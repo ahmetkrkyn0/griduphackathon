@@ -1,7 +1,7 @@
 # Grid Up Hackathon — "Pano/Hücre İçi Anomali Erken Uyarı Sistemi"
 ## Kapsamlı Analiz, Gereksinim Çözümlemesi ve Kazanma Stratejisi Raporu
 
-> **Hazırlanma tarihi:** 10 Eylül 2026
+> **Hazırlanma tarihi:** 10 Eylül 2026 · **Güncelleme:** 11 Eylül 2026 — son teslim **20 Eylül 2026 23:59** olarak netleşti; zaman planı (Bölüm 11), kapsam önceliği, riskler ve yenilik öncelikleri buna göre revize edildi.
 > **Kaynaklar:** Komitenin paylaştığı 10 dosyanın tamamı (proje konusu PDF, TEDAŞ AG pano şartnamesi, 1600 kVA teknik özellik tablosu ve çizimi, ABB TVOC-2 katalog + Modbus kılavuzu, ENTES MPR-53CS register haritası, Techimp HFCT30/HFCT50 veri sayfaları, "İstenen Veriler.xlsx") + web araştırması (kaynak listesi en sonda).
 > **Gizlilik notu:** Proje konusu dökümanı **"Hizmete Özel | Restricted"** etiketli. GitHub repo'su dışarıdan erişimde 404 döndürüyor (private görünüyor) — **public yapmayın**, dökümanları sosyal medyada/public demo videolarında paylaşmayın.
 
@@ -31,6 +31,8 @@
 
 ## 0. Yönetici Özeti (TL;DR)
 
+> ⏰ **Son teslim: 20 Eylül 2026 Pazar, 23:59** — 11 Eylül sabahından itibaren ~9,5 gün (~230 saat). **Hedef teslim saati 20 Eylül 18:00** (yükleme/erişim sorunlarına tampon). **Özellik dondurma: 17 Eylül 23:59.** Donanım siparişleri **bugün** verilmeli (hafta sonu kargo teslimatı yok). Gün gün plan: [Bölüm 11](#11-zaman-planı-ve-görev-dağılımı).
+
 **Komitenin istediği tek cümlede:** 1600 kVA'lık bir TEDAŞ tipi AG dağıtım panosuna (ve mümkünse OG hücreye) kablo kalabalığını artırmadan eklenebilen, bakım gerektirmeyen, **donanım + gömülü yazılım + merkezi on‑premise izleme + SCADA (Modbus) entegrasyonu + SMS/WhatsApp alarmı** içeren, en az 100 modüle ölçeklenen, **uçtan uca çalışan (sentetik veriyle de olur) bir prototip.** Fikir/sunum seviyesi yeterli değil.
 
 **Dökümanlardan çıkan ve çoğu takımın kaçıracağı 12 kritik içgörü:**
@@ -55,7 +57,7 @@
 **Bizi öne geçirecek 5 farklılaştırıcı:**
 1. **"Sınıra kalan süre" tahmini:** Mutlak sıcaklık henüz normalken yük‑normalize ısınma artışını yakalayıp *"L2 çıkış‑3 bağlantısı: tahmini 6 gün içinde 70 K sınırı"* diyebilmek (Bölüm 6.5).
 2. **Koruma sisteminin sağlık izlemesi:** TVOC-2 sensör durumu/diagnostik register'larını okuyup "arıza koruması sessizce devre dışı" durumunu yakalamak (Bölüm 3.6).
-3. **Gerçek register haritalarıyla çalışan simülatörler:** MPR-53CS ve TVOC-2'yi kendi dökümanlarındaki adreslerle pymodbus üzerinde taklit edip, jüriye gerçek bir SCADA/Modbus istemcisinden (ve IEC 104 test istemcisinden) okumak.
+3. **Gerçek register haritalarıyla çalışan simülatörler:** MPR-53CS ve TVOC-2'yi kendi dökümanlarındaki adreslerle pymodbus üzerinde taklit edip, jüriye gerçek bir Modbus istemcisinden (zaman kalırsa IEC 104 test istemcisinden de) okumak.
 4. **Ölçülen performans:** Tespit öne alma süresi (saat), yanlış alarm/gün/100 pano, uçtan uca alarm gecikmesi (saniye), 1.000 pano yük testinde CPU/RAM — sayılarla sunmak.
 5. **Sahaya hazır mühendislik:** TEDAŞ şartname maddelerine atıflı yerleşim, FMEA tablosu, tek planlı kesintide kurulum prosedürü, V-0 malzeme, manyetik alan ve EMC önlemleri.
 
@@ -77,12 +79,13 @@
 |---|---|
 | Format | Online |
 | Takım | En fazla 4 kişi |
-| Program tarihleri | 9 Şubat 2026 – **28 Eylül 2026** |
+| Program tarihleri | 9 Şubat 2026 – 28 Eylül 2026 (Patika sayfasındaki program bitişi) |
+| **Son teslim** | **20 Eylül 2026, 23:59** (takım tarafından teyit edildi) |
 | Başvuru son tarihi | 31 Ağustos 2026 |
 | Ödüller | 1.: 100.000 TL · 2.: 70.000 TL · 3.: 30.000 TL (toplam 200.000 TL) |
 | Süreç | Başvuru → Takım oluşumu → Mentorluk & teknik destek → Demo Day/Final sunumu → Ödül töreni |
 
-> ⚠️ **Takvim uyarısı:** Bugün 10 Eylül 2026. Sayfadaki bitiş tarihi doğruysa **~18 gün** var. Final/teslim tarihini ve demo formatını (canlı mı, video mu, süre) mentorlardan **hemen teyit edin** — Bölüm 11'deki plan buna göre sıkıştırıldı.
+> ⚠️ **Takvim:** Son teslim **20 Eylül 2026 23:59**; 11 Eylül itibarıyla **~9,5 gün** var ve son iki gün (19–20 Eylül) hafta sonuna denk geliyor. Patika'daki 28 Eylül teslim değil, program bitişi — final sunumu/Demo Day tarihi ve formatı (canlı mı, video mu, süre) ayrıca teyit edilmeli. **Format online olduğu için jüri büyük ihtimalle önce videoyu ve repo'yu görecek** → demo videosu ve README teslim paketinin en kritik parçaları. Plan: Bölüm 11.
 
 ### 1.3 Müşterinin ölçeği (çözümün boyutlandırılması için)
 
@@ -415,7 +418,7 @@ MPR-53CS; THD ölçümü, RS485, darbe sayacı, saat sayacı ve alarm kontaklı 
 
 | Tipik hackathon yaklaşımı | Neden puan kaybettirir | Bizim yaklaşımımız |
 |---|---|---|
-| ESP32/Arduino geliştirme kartı + breadboard | "Dev board bağımlılığı olmamalı" maddesine aykırı; sahada dayanıksız | Özel PCB tasarımı (şema + layout), modül bazlı MCU, endüstriyel konnektörler |
+| ESP32/Arduino geliştirme kartı + breadboard'u **ürün tasarımı olarak** sunmak | "Dev board bağımlılığı olmamalı" maddesine aykırı; sahada dayanıksız | Özel PCB tasarımı (şema; zaman kalırsa layout), modül bazlı MCU, endüstriyel konnektörler. *Prototipte aynı MCU ailesinin geliştirme kiti kullanılabilir — önemli olan ürün şemasının ve BOM'un dev board'a bağımlı olmadığını açıkça göstermek.* |
 | DHT11/DHT22 nem-sıcaklık | Doğruluk/uzun vadeli kararlılık zayıf, yoğuşmada bozulur | Kalibre dijital T/RH sensörü (ör. SHT4x sınıfı) + filtreli kapak + çiy noktası hesabı |
 | ACS712 gibi Hall etkili akım sensörü, iletkeni keserek | Canlı devreye müdahale, 2312 A için uygunsuz, güçlü manyetik alanda doygunluk | Mevcut AT + MPR-53CS'yi Modbus'tan okuma; fider için ayrık çekirdekli AT; AT sekonderine 5 A:125 mA mini AT |
 | Firebase/ThingSpeak/AWS + Telegram bot | **Public cloud yasak** | Tamamen on-prem yığın; SMS için yerel GSM modem |
@@ -915,7 +918,7 @@ Hedef dağılım (ISA-18.2 / EEMUA 191): **~%5 yüksek, %15 orta, %80 düşük**
 
 **Sunumun iskeleti (≈12 dk):** Problem ve sahadan bir hikâye (30 s) → dökümanlardan çıkardığımız 4–5 kritik içgörü (1 dk) → mimari (1,5 dk) → canlı demo (7 dk) → ölçek + maliyet/ROI + saha kurulum planı (1,5 dk) → yol haritası ve PoC teklifi (30 s).
 
-**Yedek plan:** Tüm demo akışının kesintisiz **video kaydı**; canlı demo aksarsa videoya geçiş. Online final ise videoyu önceden kaydedip canlı Q&A'de ekran paylaşımıyla tek bir senaryoyu (S4) canlı gösterin.
+**Video ve yedek plan:** Demo videosu, teslimden sonra canlı sunum olsa bile **20 Eylül teslim paketinin parçası** olarak 19 Eylül'de çekilmeli. Kurgu **3–5 dk**: S0 → S1 → S3 → S4 → S5 akışı + S7/S8'den kısa kesitler + mimari ve ölçek slaytı. Canlı final olursa aynı video yedek olur; online Q&A'de ekran paylaşımıyla tek bir senaryoyu (S4) canlı gösterin. **10 günlük planda S7 (1.000 pano) basit tutulur; S8'deki IEC 104 kısmı yalnızca zaman kalırsa yapılır.**
 
 ---
 
@@ -978,30 +981,73 @@ griduphackathon/
 
 ## 11. Zaman Planı ve Görev Dağılımı
 
-> Varsayım: final/teslim **28 Eylül 2026** ve 4 kişilik takım. Tarih farklıysa oranları koruyarak ölçekleyin.
+> **Son teslim: 20 Eylül 2026 Pazar 23:59.** Plan 11 Eylül Cuma sabahı başlıyor (~230 saat). Varsayım: 4 kişilik takım. 3 kişiyseniz R3 ile R4'ü birleştirin ve "Should" listesinin yarısını "Could"a indirin.
 
 **Roller:**
-- **R1 Donanım/Elektronik:** sensör seçimi, Pano Beyni şeması/PCB, PD kartı şeması, maket, yerleşim çizimi, FMEA'nın donanım kısmı.
-- **R2 Gömülü yazılım:** firmware (Modbus master/slave, sensör okuma, kenar algoritmaları, tamponlama), MPR-53CS/TVOC-2 simülatörleri.
-- **R3 Backend/Veri/Algoritma:** sentetik veri üreteci, risk motoru, alarm yöneticisi, bildirim (SMS/WhatsApp), SCADA ağ geçidi, yük testi.
-- **R4 Frontend/UX/Sunum:** arayüz, dijital ikiz, mobil PWA, dokümantasyon düzeni, sunum ve video.
+- **R1 Donanım/Elektronik:** sensör seçimi ve **bugünkü sipariş**, Pano Beyni şeması (PCB layout yalnızca zaman kalırsa), maket, EK-II/14 yerleşim çizimi, FMEA'nın donanım kısmı, kurulum prosedürü.
+- **R2 Gömülü yazılım:** firmware (sensör okuma, Modbus master/slave, kenar algoritmaları, tamponlama), MPR-53CS/TVOC-2 simülatörleri, firmware akış diyagramı.
+- **R3 Backend/Veri/Algoritma:** sentetik veri üreteci, risk motoru, alarm yöneticisi, bildirim (SMS/WhatsApp), Modbus TCP ağ geçidi, yük testi, doğrulama metrikleri.
+- **R4 Frontend/UX/Sunum:** arayüz, basit dijital ikiz, dokümantasyon düzeni, komiteyle iletişim, sunum ve video.
 
-| Gün | Tarih | Hedef | Çıktı |
+**10 günlük sprint kuralları:**
+1. **Önce uçtan uca, sonra derinlik:** 13 Eylül akşamı en basit haliyle *senaryo → alarm → telefona SMS* zinciri çalışmalı.
+2. **Her akşam 21:00'de 15 dakikalık kontrol noktası:** ne çalışıyor, ne bloklu, ne kesiliyor.
+3. **Donanım gecikirse durmayın:** gerçek sensör okuması ile simülatör aynı MQTT/Modbus arayüzünü kullansın; parça gelince yalnızca veri kaynağı değişsin.
+4. **17 Eylül 23:59 özellik dondurma:** çalışmayan her şey kesilir veya simülasyonla gösterilir. 18–20 Eylül yalnızca dokümantasyon, video ve hata düzeltme.
+5. **Teslim hedefi 20 Eylül 18:00** — 23:59'a bırakılmaz.
+
+| Gün | Tarih | Görevler | Akşam kontrol noktası |
 |---|---|---|---|
-| 1–2 | 11–12 Eyl | **Mimari dondurma**: veri modeli (MQTT topic/payload), Modbus haritası v1, alarm matrisi, senaryo listesi; **donanım siparişleri** (T/RH, termal dizi, GSM modem, RS485 dönüştürücü, MCU modülleri); WhatsApp test numarası kurulumu; komiteye soruların iletilmesi | `02`, `03`, `06` taslak |
-| 3–5 | 13–15 Eyl | Sentetik veri üreteci + ısıl model; MPR-53CS/TVOC-2 simülatörleri; broker + DB + ingestion iskeleti; arayüz tel kafes (wireframe) | Veri akışı uçtan uca "merhaba dünya" |
-| 6–9 | 16–19 Eyl | Risk motoru (L0–L3), alarm yöneticisi, SMS/WhatsApp; firmware sensör + Modbus; arayüz ekranları 1–5; Pano Beyni şeması | Senaryo S1–S4 yazılımda çalışır |
-| 10–12 | 20–22 Eyl | Donanım entegrasyonu + maket; SCADA ağ geçidi (Modbus TCP + IEC 104); yük testi 1.000 pano; doğrulama metrikleri | Tüm senaryolar fiziksel demoda |
-| 13–14 | 23–24 Eyl | Hata ayıklama, eşik ayarı, FMEA, BOM/ROI, kurulum prosedürü, dokümantasyon | `docs/` tamam |
-| 15–16 | 25–26 Eyl | Sunum, prova ×3, **yedek video** | Sunum + video |
-| 17 | 27 Eyl | Tampon: son düzeltmeler, repo temizliği, README testi (temiz makinede) | Teslim hazır |
-| 18 | 28 Eyl | Teslim / final | — |
+| D1 | **11 Eyl Cum** | **R1:** parça listesini kesinleştir, **öğlene kadar sipariş**, elektronik blok diyagram<br>**R2:** repo iskeleti, MCU geliştirme ortamı, MPR-53CS simülatörüne başlangıç<br>**R3:** MQTT topic/payload şeması, Docker Compose (broker + DB), veri üreteci tasarımı<br>**R4:** ekran listesi + wireframe; **komiteye teslim formatı ve diğer sorular** (12.2) | Mimari, veri modeli ve Modbus haritası v1 donduruldu |
+| D2 | 12 Eyl Cmt | **R1:** EK-II/14 üzerinde yerleşim çizimi, maket malzemesi, şema başlangıcı (güç, RS485, MCU)<br>**R2:** MPR-53CS + TVOC-2 simülatörleri (gerçek adresler); PC üzerinde edge: Modbus master + MQTT<br>**R3:** sentetik veri üreteci + ısıl model + arıza enjeksiyonu; ingestion → DB<br>**R4:** arayüz iskeleti (filo listesi, pano detay) canlı veriye bağlı | Simülatör → edge → MQTT → DB → ekran akıyor |
+| D3 | 13 Eyl Paz | **R1:** şema devam; GSM modem + SIM testi (R3 ile)<br>**R2:** L0 limitleri + veri kalitesi kuralları kenarda; yerel tampon<br>**R3:** alarm yöneticisi v1 (öncelik; aktif/onaylı/temizlendi) + **SMS gönderimi**<br>**R4:** alarm konsolu v1 | 🏁 **Kilometre taşı 1:** senaryo → alarm → **telefona SMS** |
+| D4 | 14 Eyl Pzt | **R1:** gelen parçalarla sensör testleri (3× sıcaklık probu, T/RH), ısıtıcı + MOSFET devresi, maket gövdesi<br>**R2:** MCU firmware: sensör okuma + MQTT/seri köprü<br>**R3:** L1: K indeksi (RLS), faz karşılaştırma, çiy noktası; sabit eşik karşılaştırma betiği<br>**R4:** EK-II/14 SVG üzerinde sensör konumları ve renklendirme | S1 (gevşek bağlantı) simülasyonda K ile yakalanıyor |
+| D5 | 15 Eyl Sal | **R1:** maket montajı; şema v1 PDF + I/O tablosu + BOM taslağı<br>**R2:** Pano Beyni Modbus slave haritası + Modbus TCP ağ geçidi; QModMaster ile okuma<br>**R3:** TVOC-2 trip + koruma sağlığı kuralları; WhatsApp (test numarası); çift yönlü SMS onayı<br>**R4:** trend/korelasyon ekranı (I²–ΔT), olay zaman çizelgesi | S2–S5 simülasyonda çalışıyor |
+| D6 | 16 Eyl Çar | **Tüm ekip:** fiziksel maket entegrasyonu (gerçek sensör + ısıtıcı → MCU → sistem), S0–S5 fiziksel demo, hata listesi<br>**R3 ek:** 1.000 pano simülatörü + Grafana kaynak paneli | 🏁 **Kilometre taşı 2:** fiziksel demo S0–S5 |
+| D7 | 17 Eyl Per | **R1:** FMEA, kurulum prosedürü, çevresel/manyetik alan notları<br>**R2:** S6 (haberleşme kopması + backfill), firmware akış diyagramı<br>**R3:** doğrulama metrikleri (recall, precision, öne alma süresi, yanlış alarm) + yük testi ölçümleri; zaman kalırsa sınıra kalan süre / IEC 104<br>**R4:** arayüz cilası, Türkçe metinler, sunum iskeleti | 🧊 **23:59 özellik dondurma** |
+| D8 | 18 Eyl Cum | **Dokümantasyon günü:** `docs/` (bu raporun özetleri), elektronik dokümantasyon (şema PDF, I/O, bağlantı şeması, BOM), Modbus harita dokümanı, mimari diyagramlar, ölçek hesabı + yük testi grafikleri; README'deki "tek komutla demo"yu **temiz makinede** test; yalnızca kritik hata düzeltmeleri | Repo teslim edilebilir durumda |
+| D9 | 19 Eyl Cmt | Sunum destesi; **demo videosu** (2 tam çekim + kurgu, 3–5 dk); prova ×2; jüri soru bankası çalışması | Video + sunum bitti |
+| D10 | **20 Eyl Paz** | Sabah teslim kontrol listesi (aşağıda) ve erişim testleri → **18:00 teslim** → 23:59'a kadar yalnızca acil durum tamponu | ✅ Teslim edildi |
 
-**Kapsam önceliği (MoSCoW):**
-- **Must:** sentetik veri + ısıl model, L0+L1 tespit, alarm konsolu, SMS, Modbus haritası + simülatörler + Modbus TCP istemci demosu, on-prem Docker yığını, maket + en az 1 gerçek sıcaklık/nem sensörü, mimari + FMEA + ölçek hesabı, elektronik şema.
-- **Should:** WhatsApp, IEC 104, dijital ikiz ısı haritası, 1.000 pano yük testi, sınıra kalan süre, termal dizi, PCB layout.
-- **Could:** PD kartı prototipi (şema yeterli), gaz sensörü, filo karşılaştırması, mobil PWA, ROI hesaplayıcısı arayüzü.
-- **Won't (bu hackathonda):** Gerçek pano kurulumu, sertifikasyon testleri, ML tabanlı karmaşık modeller.
+**Bugün (11 Eylül) verilecek sipariş — prototip için minimum set** (stoktan hızlı gönderim yapan yurt içi tedarikçileri seçin; hafta sonu teslimat olmadığı için Pazartesi–Salı gelir):
+
+| Parça | Adet | Kullanım |
+|---|---|---|
+| MCU geliştirme kiti (ürün şemasındaki MCU ailesiyle aynı: ESP32-S3 veya STM32) | 2 | Pano Beyni prototipi (1 yedek) |
+| USB–RS485 dönüştürücü | 2 | PC'deki MPR-53CS/TVOC-2 simülatörleri ↔ MCU Modbus hattı |
+| RS485 transceiver modülü (mümkünse izoleli) | 2–3 | MCU tarafı |
+| Su geçirmez dijital sıcaklık probu (DS18B20 sınıfı) veya NTC | 4 | L1/L2/L3 "bağlantı" + ortam — **faz karşılaştırmasını gerçek sensörle gösterir** |
+| SHT4x sınıfı sıcaklık-nem modülü | 2 | Alt/üst ortam, çiy noktası |
+| Alüminyum gövdeli güç direnci (ör. 10 Ω / 25–50 W) | 3 | "Gevşek bağlantı" ısıtıcıları |
+| Lojik seviyeli MOSFET modülü | 3 | Isıtıcıların PWM kontrolü |
+| 12 V / 5 A adaptör | 1 | Isıtıcı beslemesi |
+| Bakır veya alüminyum lama parçası | 3 | Faz baraları maketi |
+| 5 V röle modülü + küçük 12 V fan | 1 + 1 | Otomatik aksiyon (ısıtıcı/fan) demosu |
+| Ultrasonik nemlendirici modülü | 1 | Yoğuşma senaryosu |
+| Reed kontak + mıknatıs | 1 | Kapı sensörü |
+| Parlak LED / flaş modülü | 1 | "Ark ışığı" tetiği |
+| **4G USB modem veya LTE Cat-1 modül + SIM** (yurt içi distribütörden; IMEI kaydı sorunsuz) | 1 | Canlı SMS — 2G modüller yerine 4G tercih edin |
+| Dekota/foreks levha, DIN ray parçası, vida | — | 1:4 maket |
+| *(Could)* MLX90640 sınıfı termal dizi modülü | 1 | Termal dizi demosu — gelmezse simülasyon |
+
+**Teslim kontrol listesi (20 Eylül sabahı):**
+- [ ] Teslim platformu ve formatı teyit edildi (link/zip/video/sunum, boyut sınırları)
+- [ ] Repo erişimi jüri gözüyle test edildi (gizli pencerede veya başka hesapla)
+- [ ] **Public link isteniyorsa:** gizli dökümanları içermeyen **yeni, temiz bir repo** kullanıldı (mevcut git geçmişinde `Hackathon Verileri/` ve proje PDF'i var — dosyayı silmek geçmişten silmez)
+- [ ] README: amaç, mimari görseli, tek komutla kurulum, demo senaryoları, ekip
+- [ ] README'de **beklenen 7 teknik çıktı → dosya/klasör** eşleştirme tablosu
+- [ ] Elektronik dokümantasyon: şema PDF, I/O tablosu, bağlantı şeması, BOM
+- [ ] Firmware kaynak kodu + akış diyagramı; frontend kaynak kodu + ekran görüntüleri
+- [ ] Modbus harita dokümanı, mimari, FMEA, ölçek hesabı + yük testi, maliyet/ROI
+- [ ] Demo videosu (3–5 dk): link erişimi test edildi; gizli dökümanların sayfaları görünmüyor
+- [ ] Sunum dosyası (PDF kopyasıyla birlikte)
+- [ ] `.env`, API anahtarları (WhatsApp token), telefon numaraları, SIM PIN'i repodan temizlendi
+
+**Kapsam önceliği (MoSCoW — 20 Eylül teslimine göre):**
+- **Must (olmazsa teslim eksik kalır):** sentetik veri üreteci + ısıl model; L0 limitleri + L1 K indeksi + faz karşılaştırma + çiy noktası; sabit eşik karşılaştırma tablosu; alarm yöneticisi + alarm konsolu (öncelik/onay); **SMS (GSM modem)**; TVOC-2 trip + **koruma sağlığı** kuralları; MPR-53CS/TVOC-2 simülatörleri (gerçek adresler) + Pano Beyni Modbus haritası + Modbus TCP ile okuma; on-prem Docker Compose; maket + gerçek sıcaklık (3 faz) ve nem sensörü + ısıtıcı; firmware (sensör okuma, Modbus, MQTT) + akış diyagramı; elektronik şema PDF + I/O tablosu + BOM; mimari + FMEA + ölçek hesabı; demo videosu; README.
+- **Should:** WhatsApp (test numarası); sınıra kalan süre; EK-II/14 üzerinde basit dijital ikiz (SVG renklendirme); 1.000 pano yük testi (basit simülatör + Grafana); olay zaman çizelgesi (kara kutu); çift yönlü SMS onayı; otomatik ısıtıcı/fan aksiyonu; haberleşme kopması + backfill.
+- **Could:** IEC 60870-5-104; termal dizi sensörü; gaz/VOC sensörü; filo karşılaştırması; PCB layout (şema yeterli); ROI hesaplayıcısı arayüzü (tablo yeterli); sesli arama eskalasyonu; son nefes bildirimi.
+- **Won't (bu teslimde):** PD kartı donanımı (yalnızca blok diyagram + Bölüm 3.7'deki tasarım notu), mobil PWA, QR ile devreye alma, dil modeli, ultrasonik algılama, gerçek OTA altyapısı (tasarımda anlatılır), gerçek pano kurulumu, sertifikasyon testleri.
 
 ---
 
@@ -1011,17 +1057,22 @@ griduphackathon/
 
 | Risk | Olasılık | Etki | Önlem |
 |---|---|---|---|
-| Kapsam şişmesi (özellikle PD) | Yüksek | Yüksek | PD'yi "şema + simülasyon" seviyesinde tutun; çekirdek AG izleme önce |
-| Donanım teslim gecikmesi | Orta | Yüksek | Bugün sipariş; yerel stoklu parçalar; simülasyonla paralel ilerleme |
-| WhatsApp/Meta hesap doğrulama gecikmesi | Orta | Orta | Test numarası (5 alıcı) ile demo; SMS birincil kanal |
-| SIM/GSM modem sorunları | Orta | Yüksek | İki farklı operatör SIM'i; modem erken test |
-| Canlı demo aksaması | Orta | Çok yüksek | Yedek video; senaryo betikleri deterministik; internet bağımsız |
-| Entegrasyonda son gün sürprizleri | Yüksek | Yüksek | 3. günden itibaren uçtan uca iskelet çalışır olsun |
-| Gizli dökümanların yanlışlıkla paylaşılması | Düşük | Yüksek | Repo private kalsın; public videoda döküman sayfaları görünmesin |
+| **Süre (~9,5 gün) ve kapsam şişmesi** | Çok yüksek | Çok yüksek | MoSCoW'a sadakat; PD donanımı Won't; 17 Eylül 23:59 özellik dondurma; her akşam kesme kararı |
+| Donanım teslim gecikmesi | Yüksek | Yüksek | **Bugün (Cuma) sipariş** — hafta sonu teslimat yok, Pazartesi–Salı gelir; stoktan gönderen yurt içi tedarikçi; simülatörle aynı arayüz sayesinde paralel ilerleme |
+| Son dakika teslim/yükleme sorunu | Orta | Çok yüksek | Hedef 20 Eylül 18:00; video ve dosyalar önceden yüklenmiş; erişim testi |
+| Teslim formatı belirsizliği (repo public mi, video şart mı?) | Orta | Yüksek | 11 Eylül'de komiteye sorun; iki senaryoya da hazırlıklı olun (private + davet / temiz public repo) |
+| Git geçmişindeki gizli dökümanlar (public repo istenirse) | Orta | Yüksek | Gizli PDF'leri içermeyen **yeni temiz repo**; dosya silmek geçmişten silmez |
+| Sırların repoya sızması (WhatsApp token, telefon numaraları, SIM PIN) | Orta | Yüksek | `.env` + `.gitignore`; teslim öncesi tarama |
+| WhatsApp/Meta kurulum gecikmesi | Orta | Düşük | Test numarası (5 alıcı); SMS zaten birincil kanal |
+| SIM/GSM modem sorunları | Orta | Yüksek | D3'te test; iki farklı operatör SIM'i; 4G modem |
+| Entegrasyon sürprizleri | Yüksek | Yüksek | D3 (uçtan uca zincir) ve D6 (fiziksel entegrasyon) kilometre taşları |
+| Demo videosu / canlı demo aksaması | Orta | Çok yüksek | Deterministik senaryo betikleri; D9'da 2 tam çekim; internetten bağımsız demo |
+| Yorgunluk (10 günlük sprint) | Yüksek | Orta | Vardiyalı çalışma; 19–20 Eylül'e yeni özellik bırakmamak |
+| Gizli dökümanların videoda görünmesi | Düşük | Yüksek | Videoda döküman sayfalarını göstermeyin; yalnızca kendi çizimlerinizi kullanın |
 
 ### 12.2 Mentorlara/komiteye hemen sorulacak sorular
 
-1. Final teslim tarihi, sunum formatı (canlı/online/video) ve süresi nedir? Kriterlerin ağırlıkları var mı?
+1. 20 Eylül 23:59 teslimi **hangi platformdan ve hangi formatta** yapılacak (repo linki/zip/video/sunum; boyut sınırı)? Repo **public** mi olmalı? Teslimden sonra canlı sunum/Demo Day var mı; ne zaman ve kaç dakika? Kriterlerin ağırlıkları var mı?
 2. PDF'te vaat edilen **kabin içi/dışı fotoğrafları ve kablolama şemaları** paylaşılacak mı? (Dosyalarda yok.)
 3. Hedef öncelik **AG pano** mu, yoksa **OG hücre** de aynı ağırlıkta mı değerlendirilecek?
 4. Mevcut RTU/SCADA protokolü nedir (IEC 60870-5-104, Modbus TCP, DNP3)? RTU'lar Modbus master olarak saha cihazı okuyabiliyor mu?
@@ -1060,24 +1111,27 @@ griduphackathon/
 
 ## 14. Yenilik Backlog'u (Öne Geçirecek Ekstralar)
 
-| Fikir | Jüriye değeri | Efor | Öncelik |
+> Öncelikler 20 Eylül 23:59 teslimine göre güncellendi. "Won't" olanlar sunumda **gelecek yol haritası** olarak anlatılabilir.
+
+| Fikir | Jüriye değeri | Efor | Öncelik (20 Eylül teslimi) |
 |---|---|---|---|
-| Isıl direnç indeksi (RLS) + **sınıra kalan süre** | Çok yüksek (öngörü) | Orta | **Must** |
+| Isıl direnç indeksi (RLS) | Çok yüksek (öngörü) | Orta | **Must** |
+| **Sınıra kalan süre** tahmini | Çok yüksek | Düşük (K indeksinin üstüne) | Should |
 | **Koruma sağlığı izleme** (TVOC-2 sensör/hata register'ları) | Yüksek (operasyon bilgisi) | Düşük | **Must** |
 | MPR-53CS ve TVOC-2'nin **gerçek register haritalarıyla** simülatörleri | Yüksek (entegrasyon) | Düşük | **Must** |
 | Sabit eşik vs bizim yöntem **karşılaştırma tablosu** | Yüksek (kanıt) | Düşük | **Must** |
-| Pano çizimi üzerinde **dijital ikiz ısı haritası** | Yüksek (UX) | Orta | Should |
-| Ark olayı **kara kutu raporu** (72 saat) | Yüksek | Düşük | Should |
-| **Gaz/VOC** ile duman öncesi izolasyon bozunma uyarısı | Orta–yüksek (yenilik) | Düşük | Should |
-| Hava giriş-çıkış ΔT ile **pano enerji dengesi** | Orta (yenilik) | Düşük | Should |
+| Pano çizimi üzerinde **dijital ikiz** (basit SVG renklendirme) | Yüksek (UX) | Orta | Should |
+| Ark olayı **kara kutu** zaman çizelgesi | Yüksek | Düşük | Should |
 | **Çift yönlü SMS** ile alarm onayı | Orta (UX) | Düşük | Should |
-| **Son nefes** kesinti bildirimi | Orta | Düşük | Should |
-| Parametrik **ROI hesaplayıcısı** | Orta (maliyet kriteri) | Düşük | Should |
-| **QR ile tak-çalıştır** devreye alma | Orta (saha) | Orta | Could |
+| Parametrik **ROI hesabı** (tablo olarak) | Orta (maliyet kriteri) | Düşük | Should |
+| **Gaz/VOC** ile duman öncesi izolasyon bozunma uyarısı | Orta–yüksek (yenilik) | Düşük–orta (sensör temini) | Could |
+| Hava giriş-çıkış ΔT ile **pano enerji dengesi** | Orta (yenilik) | Düşük | Could |
+| **Son nefes** kesinti bildirimi | Orta | Düşük (tasarımda anlatılır) | Could |
 | **Filo karşılaştırması** (aynı tip panolar arası) | Yüksek (ölçekte) | Orta | Could |
-| **PRPD** tabanlı PD / gürültü ayrımı (OG eklentisi) | Orta | Yüksek | Could (şema + simülasyon) |
-| Ultrasonik (~40 kHz) yüzeysel kaçak/ark sesi dinleme | Orta | Orta | Could |
-| Şirket içinde çalışan küçük dil modeliyle Türkçe olay özeti ve saha talimatı | Orta | Orta–yüksek | Could (yalnızca on-prem model; riskli) |
+| **QR ile tak-çalıştır** devreye alma | Orta (saha) | Orta | Won't (sunumda konsept) |
+| **PRPD** tabanlı PD / gürültü ayrımı (OG eklentisi) | Orta | Yüksek | Won't (Bölüm 3.7 tasarım notu yeterli) |
+| Ultrasonik (~40 kHz) yüzeysel kaçak/ark sesi dinleme | Orta | Orta | Won't |
+| Şirket içinde çalışan küçük dil modeliyle Türkçe olay özeti ve saha talimatı | Orta | Orta–yüksek | Won't |
 
 ---
 
