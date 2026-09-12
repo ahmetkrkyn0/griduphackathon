@@ -1,0 +1,40 @@
+# Kenar ve cihaz simulasyonu — KISI A'NIN DOSYASI.
+# Ana compose bunu `include` ile ceker (PLAN.md kural 6).
+#
+# Faz 0'da yalnizca `panosim` var ve sema-gecerli sabit telemetri yayinliyor.
+# Faz 1'de gercek fizik tabanli ureteci (libs/panoalgo) kullanacak.
+# Faz 3'te mpr-sim ve tvoc-sim servisleri aktif edilecek (asagida hazir, yorumda).
+services:
+  panosim:
+    build:
+      context: ../sim
+    container_name: gridup-panosim
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      CONTRACTS_DIR: /contracts
+      SIM_PANELS: ${SIM_PANELS:-3}
+      SIM_PERIOD_S: ${SIM_PERIOD_S:-10}
+      SIM_SPEED: ${SIM_SPEED:-60}
+    volumes:
+      - ../contracts:/contracts:ro
+      - ../data:/data
+    depends_on:
+      mosquitto:
+        condition: service_started
+
+  # --- Faz 3 (TA3): gercek register adresleriyle cihaz simulatorleri ---
+  # mpr-sim:
+  #   build: { context: ../sim }
+  #   container_name: gridup-mpr-sim
+  #   command: ["python", "mpr53cs_sim.py", "--port", "5020"]
+  #   ports: ["5020:5020"]   # Modbus TCP (demoda QModMaster buraya baglanir)
+  #   volumes: ["../contracts:/contracts:ro"]
+  #
+  # tvoc-sim:
+  #   build: { context: ../sim }
+  #   container_name: gridup-tvoc-sim
+  #   command: ["python", "tvoc2_sim.py", "--port", "5021", "--unit-id", "248"]
+  #   ports: ["5021:5021"]   # fabrika ID 248 = haberlesme kapali davranisi taklit edilir
+  #   volumes: ["../contracts:/contracts:ro"]

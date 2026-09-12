@@ -1,0 +1,22 @@
+# Grafana veri kaynagi — otomatik saglanir (provisioning).
+# Grafana muhendislik gorunumu icindir; operasyon ekibinin ekrani frontend/'dir.
+apiVersion: 1
+
+datasources:
+  - name: TimescaleDB
+    uid: gridup-tsdb
+    type: postgres
+    access: proxy
+    url: timescaledb:5432
+    database: gridup
+    user: postgres
+    secureJsonData:
+      password: ${DB_PASSWORD}
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: true
+      maxOpenConns: 10
+      maxIdleConns: 5
+    isDefault: true
+    editable: true

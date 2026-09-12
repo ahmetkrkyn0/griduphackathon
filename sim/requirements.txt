@@ -1,0 +1,10 @@
+# Kisi A'nin kilit dosyasi — PLAN.md kural 5: baskasi DOKUNMAZ.
+paho-mqtt==2.1.*
+jsonschema==4.23.*
+PyYAML==6.0.*
+numpy==2.1.*
+pandas==2.2.*
+pymodbus==3.7.*
+
+# Test
+pytest==8.3.*

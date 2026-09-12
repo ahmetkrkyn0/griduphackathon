@@ -1,0 +1,18 @@
+# Pano saglayicisi. Kisi B, TB3'te buraya JSON pano dosyalarini koyar:
+#   olcek.json       -> mesaj/s, ingest p50/p95, CPU, RAM, DB boyutu (1.000 pano yuk testi)
+#   alarm-kpi.json   -> alarm/100 pano/gun, oncelik dagilimi (EEMUA 191 hedefiyle)
+#
+# PLAN.md kural 7: pano basina BIR dosya, hepsi B'nin. Grafana JSON'u merge edilemez.
+apiVersion: 1
+
+providers:
+  - name: gridup
+    orgId: 1
+    folder: Grid Up
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

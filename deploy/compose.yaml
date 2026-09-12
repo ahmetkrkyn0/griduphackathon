@@ -1,0 +1,110 @@
+# On-prem yigin — ANA COMPOSE (Kisi B'nin dosyasi).
+#
+# UC PARCALI (PLAN.md Bolum B, kural 6): herkes kendi servisini kendi dosyasinda
+# tutar, boylece tek compose dosyasi uc kisinin cakisma noktasi olmaz.
+#   compose.yaml            -> B (broker, DB, backend, grafana)
+#   compose.sim.yaml        -> A (veri ureteci + cihaz simulatorleri)
+#   compose.frontend.yaml   -> C (operasyon arayuzu)
+#
+# Calistirma (repo kokunden):
+#   docker compose -f deploy/compose.yaml up -d --build
+#   docker compose -f deploy/compose.yaml ps
+#   docker compose -f deploy/compose.yaml down -v
+#
+# `include` Docker Compose v2.20+ gerektirir:  docker compose version
+# Internet kablosu cikarilmis halde de calisir (PLAN.md GK4) — imajlar bir kez cekilir.
+name: gridup
+
+include:
+  - path: compose.sim.yaml
+  - path: compose.frontend.yaml
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: gridup-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqttdata:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/broker/uptime' -C 1 -W 3 -q 0 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: gridup-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gridup}
+      POSTGRES_DB: gridup
+    ports:
+      - "5432:5432"
+    volumes:
+      - tsdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gridup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+    container_name: gridup-backend
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      DB_DSN: postgresql://postgres:${DB_PASSWORD:-gridup}@timescaledb:5432/gridup
+      # Sozlesmeler salt okunur baglanir: esik/adres degisince yeniden build GEREKMEZ
+      CONTRACTS_DIR: /contracts
+    volumes:
+      - ../contracts:/contracts:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3).status==200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: gridup-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      # Kontrol odasi ekrani: giris ekrani olmadan acilir (yalnizca ic agda)
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_USERS_DEFAULT_THEME: dark
+      DB_PASSWORD: ${DB_PASSWORD:-gridup}
+    volumes:
+      - ./grafana:/etc/grafana/provisioning:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+volumes:
+  tsdata:
+  mqttdata:
+  grafanadata:

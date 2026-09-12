@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grid Up — Pano İzleme</title>
+    <style>
+      /* Faz 0 paleti: "yüksek performanslı HMI" — gri zemin, renk YALNIZCA anormalde.
+         Faz 1'de (TC1) frontend/src/theme.css'e taşınacak. */
+      :root {
+        --bg: #1b1d21;
+        --panel: #24272c;
+        --line: #343840;
+        --ink: #d7dae0;
+        --ink-dim: #8b919c;
+        --ok: #6f7680;
+        --p3: #c9a227;
+        --p2: #d4761a;
+        --p1: #c1382f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 20px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.55 "Segoe UI", system-ui, sans-serif;
+      }
+      main { max-width: 760px; margin: 0 auto; }
+      h1 { font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+      p.sub { color: var(--ink-dim); margin: 0 0 24px; }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+      }
+      .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
+      .row + .row { border-top: 1px solid var(--line); }
+      .k { color: var(--ink-dim); }
+      .v { font-variant-numeric: tabular-nums; }
+      .ok { color: var(--ink); }
+      .bad { color: var(--p1); font-weight: 600; }
+      code { background: #15171a; padding: 1px 5px; border-radius: 3px; color: var(--ink-dim); }
+      footer { color: var(--ink-dim); font-size: 12px; margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Grid Up — Pano/Hücre İçi Anomali Erken Uyarı Sistemi</h1>
+      <p class="sub">Faz 0 · yığın sağlık kontrolü · operasyon arayüzü Faz 1'de (TC1) gelecek</p>
+
+      <div class="card">
+        <div class="row"><span class="k">Backend</span><span class="v" id="backend">…</span></div>
+        <div class="row"><span class="k">MQTT broker</span><span class="v" id="mqtt">…</span></div>
+        <div class="row"><span class="k">TimescaleDB</span><span class="v" id="db">…</span></div>
+        <div class="row"><span class="k">Sözleşmeler okunuyor</span><span class="v" id="contracts">…</span></div>
+        <div class="row"><span class="k">Yüklenen alarm kodu</span><span class="v" id="codes">…</span></div>
+        <div class="row"><span class="k">Modbus blok sayısı</span><span class="v" id="blocks">…</span></div>
+        <div class="row"><span class="k">API'deki pano sayısı</span><span class="v" id="panels">…</span></div>
+      </div>
+
+      <footer>
+        Grafana (mühendislik görünümü): <code>localhost:3001</code> ·
+        API dokümanı: <code>localhost:8000/docs</code> ·
+        Yol haritası: <code>PLAN.md</code>
+      </footer>
+    </main>
+
+    <script>
+      const set = (id, text, bad = false) => {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.className = "v " + (bad ? "bad" : "ok");
+      };
+      const durum = (v) => (v ? "bağlı" : "YOK");
+
+      async function yenile() {
+        try {
+          const h = await (await fetch("/health")).json();
+          set("backend", "çalışıyor v" + h.version);
+          set("mqtt", durum(h.mqtt), !h.mqtt);
+          set("db", durum(h.db), !h.db);
+          set("contracts", h.contracts ? "evet" : "HAYIR", !h.contracts);
+          set("codes", (h.contracts_loaded?.alarm_codes ?? "-") + " kod");
+          set("blocks", (h.contracts_loaded?.modbus_blocks ?? "-") + " blok");
+        } catch (e) {
+          set("backend", "ERİŞİLEMİYOR", true);
+        }
+        try {
+          const p = await (await fetch("/api/v1/panels")).json();
+          set("panels", p.length + " pano");
+        } catch (e) {
+          set("panels", "-", true);
+        }
+      }
+
+      yenile();
+      setInterval(yenile, 5000);
+    </script>
+  </body>
+</html>

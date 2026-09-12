@@ -1,0 +1,17 @@
+# Operasyon arayuzu — KISI C'NIN DOSYASI.
+# Ana compose bunu `include` ile ceker (PLAN.md kural 6).
+#
+# Faz 0'da nginx ile statik bir saglik sayfasi servis ediliyor.
+# Faz 1'de (TC1) Vite + React build'i ayni imajda yayinlanacak — Dockerfile degisir,
+# bu dosya ayni kalir.
+services:
+  frontend:
+    build:
+      context: ../frontend
+    container_name: gridup-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_started
