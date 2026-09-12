@@ -1,0 +1,34 @@
+# Satir sonu normalizasyonu — UC KISI DE WINDOWS'TA CALISIYOR.
+# Bu dosya olmadan CRLF/LF farki her dosyayi bastan sona cakistirir.
+# PLAN.md Bolum B, kural 1.
+* text=auto eol=lf
+
+# Platforma bagli betikler
+*.sh    text eol=lf
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+
+# Ikili dosyalar — diff/merge denenmez
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.xlsx  binary
+*.xls   binary
+*.docx  binary
+*.pptx  binary
+*.mp4   binary
+*.mov   binary
+*.zip   binary
+*.step  binary
+*.stl   binary
+*.kicad_pcb   binary
+*.kicad_sch   binary
+*.parquet     binary
+*.woff2 binary
+
+# Uretilen dokumanlar ve fixture'lar — PR diff'inde gurultu yapmasin
+docs/03-modbus-haritasi.md   linguist-generated=true
+data/fixtures/*.csv          linguist-generated=true

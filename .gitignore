@@ -1,0 +1,63 @@
+# --- Sirlar (PLAN.md GK9) ---
+.env
+deploy/.env
+*.pem
+*.key
+secrets/
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# --- Node ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# --- Derleme ---
+build/
+firmware/build/
+*.o
+*.elf
+*.bin
+*.map
+CMakeFiles/
+CMakeCache.txt
+
+# --- Uretilen veri (fixture'lar haric: onlar kucuk ve seed'li, commit edilir) ---
+data/generated/*
+!data/generated/.gitkeep
+*.parquet
+*.db
+*.sqlite3
+loadtest/results/*
+!loadtest/results/.gitkeep
+
+# --- Medya: link ile paylasilir, repoya girmez ---
+demo/video/*.mp4
+demo/video/*.mov
+demo/video/*.mkv
+demo/sms-log.txt
+
+# --- KiCad yedekleri ---
+*-backups/
+*.kicad_prl
+*.kicad_sch-bak
+*.kicad_pcb-bak
+fp-info-cache
+
+# --- Isletim sistemi / editor ---
+Thumbs.db
+desktop.ini
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
