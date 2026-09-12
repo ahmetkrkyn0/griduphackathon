@@ -841,14 +841,14 @@ git commit -m "feat(sim): fizik tabanli sentetik veri ureteci + MQTT yayini"
 - Tüketir: `contracts/mqtt-telemetry.schema.json`, `contracts/alarm-codes.yaml`
 - Üretir (C buna güvenir): `contracts/openapi.yaml`'daki `GET /api/v1/panels`, `GET /api/v1/panels/{id}`, `GET /api/v1/alarms`, `WS /api/v1/stream`
 
-- [ ] **Adım 1: Şemayı yaz** — `deploy/initdb/001_schema.sql`: `panels` (pano_id PK, ad, konum, tip), `telemetry` (TimescaleDB hypertable, `ts`, `pano_id`, `tag`, `value` — uzun format; 10 s), `alarms` (id, pano_id, code, prio, state, raised_at, cleared_at, acked_by, reason JSONB), `events`.
-- [ ] **Adım 2: Ingest testini yaz** — `backend/tests/test_ingest.py`: şemaya uygun bir telemetri yükünü `ingest.handle_message()`'a ver, `telemetry` tablosunda beklenen satır sayısının (nokta sayısı + elektriksel + ortam) oluştuğunu doğrula; şema dışı yükün reddedilip `SYS` kaydı bıraktığını doğrula.
-- [ ] **Adım 3: Testi koştur, başarısız gör.** Beklenen: `ImportError`.
-- [ ] **Adım 4: `ingest.py`'ı yaz** — paho-mqtt abonesi → `jsonschema` doğrulaması → uzun formata düzleştirme → toplu `COPY`/`executemany` insert. Şema dışı mesaj **düşürülmez, karantinaya** yazılır (veri kalitesi kanıtı).
-- [ ] **Adım 5: Testi geçir.**
-- [ ] **Adım 6: API'yi yaz** — `GET /api/v1/panels` (son telemetriden türetilmiş filo listesi), `GET /api/v1/panels/{id}`, `GET /api/v1/alarms` (şimdilik boş liste), `WS /api/v1/stream` (MQTT → WebSocket köprüsü). Testler: her uç için durum kodu + şema doğrulaması.
+- [x] **Adım 1: Şemayı yaz** — `deploy/initdb/001_schema.sql`: `panels` (pano_id PK, ad, konum, tip), `telemetry` (TimescaleDB hypertable, `ts`, `pano_id`, `tag`, `value` — uzun format; 10 s), `alarms` (id, pano_id, code, prio, state, raised_at, cleared_at, acked_by, reason JSONB), `events`.
+- [x] **Adım 2: Ingest testini yaz** — `backend/tests/test_ingest.py`: şemaya uygun bir telemetri yükünü `ingest.handle_message()`'a ver, `telemetry` tablosunda beklenen satır sayısının (nokta sayısı + elektriksel + ortam) oluştuğunu doğrula; şema dışı yükün reddedilip `SYS` kaydı bıraktığını doğrula.
+- [x] **Adım 3: Testi koştur, başarısız gör.** Beklenen: `ImportError`.
+- [x] **Adım 4: `ingest.py`'ı yaz** — paho-mqtt abonesi → `jsonschema` doğrulaması → uzun formata düzleştirme → toplu `COPY`/`executemany` insert. Şema dışı mesaj **düşürülmez, karantinaya** yazılır (veri kalitesi kanıtı).
+- [x] **Adım 5: Testi geçir.**
+- [x] **Adım 6: API'yi yaz** — `GET /api/v1/panels` (son telemetriden türetilmiş filo listesi), `GET /api/v1/panels/{id}`, `GET /api/v1/alarms` (şimdilik boş liste), `WS /api/v1/stream` (MQTT → WebSocket köprüsü). Testler: her uç için durum kodu + şema doğrulaması.
 - [ ] **Adım 7: `docker compose up` ile uçtan uca gör:** sim → mosquitto → ingest → timescale → API.
-- [ ] **Adım 8: Commit**
+- [x] **Adım 8: Commit**
 
 ```bash
 git add backend deploy/initdb
@@ -1169,15 +1169,16 @@ Rapor §2.1'deki zorunlu gereksinimlerin her biri bir göreve bağlı mı?
 
 **Atama (Faz 0 T0.6 Adım 2'de doldurulacak):**
 
-- **Kişi A (Fizik, Kenar, Algoritma):** ____________
-- **Kişi B (Platform, Entegrasyon, Ölçek):** ____________
-- **Kişi C (Arayüz, Donanım Tasarımı, Teslim):** ____________
+- **Kişi A (Fizik, Kenar, Algoritma):** Tuna
+- **Kişi B (Platform, Entegrasyon, Ölçek):** Ahmet
+- **Kişi C (Arayüz, Donanım Tasarımı, Teslim):** Berke
 
-GitHub handle'ları: `@_____` (A), `@_____` (B), `@_____` (C) → `CODEOWNERS`'a yazılacak.
+GitHub handle'ları: `@_____` (A), `@ahmetkrkyn0` (B), `@_____` (C) → `CODEOWNERS`'a yazılacak.
 
 **Günlük Kayıt** (her akşam 21:00'de, kulvar sahibi kendi satırını ekler — dosya sonuna ekleme yapıldığı için çakışma olmaz):
 
 | Tarih | Kişi | Biten | Bloke | Kesilen |
 |---|---|---|---|---|
 | 12 Eyl | — | Faz 0 iskeleti: git hijyeni, 39 dizin, CODEOWNERS, 5 sözleşme (donduruldu), üç parçalı compose, hello-world servisleri, README iskeleti, `check_contracts.py` | Docker daemon kapalı → yığının `up` ile çalıştığı doğrulanmadı | — |
+| 12 Eyl | B (Ahmet) | TB1 kodu `b/faz1-ingest`'te: MQTT ingest (şema/topic/ts denetimi, karantina, toplu COPY), `panel_latest`, panel API + WS; 54 test (+8 DB testi yerel PostgreSQL 16'da yeşil); Docker'sız duman testi sim → MQTT → backend → DB → API/WS geçti | BIOS'ta Intel VT-x kapalı → Docker motoru başlamıyor; TB1 Adım 7 (`docker compose up`, TimescaleDB) bekliyor | — |
 | 13 Eyl | | | | |
