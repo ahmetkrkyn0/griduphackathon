@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+import anyio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter(prefix="/api/v1", tags=["stream"])
@@ -68,25 +69,31 @@ async def stream(ws: WebSocket) -> None:
                 },
             }
         )
-        sender = asyncio.create_task(_send_updates(ws, queue))
-        watcher = asyncio.create_task(_wait_for_disconnect(ws))
-        done, pending = await asyncio.wait({sender, watcher}, return_when=asyncio.FIRST_COMPLETED)
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        for task in done:
-            task.exception()  # istemci koptuysa gonderim hatasi beklenen durumdur
+        # Ham asyncio gorevleri DEGIL, anyio gorev grubu: biri bitince digeri iptal edilir,
+        # distan gelen iptal (sunucu kapanisi) de etiketiyle yukari tasinir. Eski
+        # asyncio.gather temizligi bu iptali etiketsiz bir CancelledError ile degistiriyordu.
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(_send_updates, ws, queue, tg.cancel_scope)
+            tg.start_soon(_wait_for_disconnect, ws, tg.cancel_scope)
     except WebSocketDisconnect:
         pass
     finally:
         state.hub.unsubscribe(queue)
 
 
-async def _send_updates(ws: WebSocket, queue: asyncio.Queue) -> None:
-    while True:
-        await ws.send_json(await queue.get())
-
-
-async def _wait_for_disconnect(ws: WebSocket) -> None:
-    while (await ws.receive())["type"] != "websocket.disconnect":
+async def _send_updates(ws: WebSocket, queue: asyncio.Queue, scope: anyio.CancelScope) -> None:
+    try:
+        while True:
+            await ws.send_json(await queue.get())
+    except Exception:  # istemci koptuysa gonderim hatasi beklenen durumdur
         pass
+    scope.cancel()
+
+
+async def _wait_for_disconnect(ws: WebSocket, scope: anyio.CancelScope) -> None:
+    try:
+        while (await ws.receive())["type"] != "websocket.disconnect":
+            pass
+    except Exception:  # kopmus baglantida receive hatasi da kopus demektir
+        pass
+    scope.cancel()

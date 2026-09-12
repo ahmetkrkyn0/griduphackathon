@@ -206,7 +206,7 @@ Donanım yokluğu bir eksiklik değil, **bilinçli bir mühendislik kararı** ol
 
 **Faz 0'dan kalan (üçünüzün yapması gerekenler):**
 
-- [ ] **Docker Desktop'ı başlatıp yığını doğrula** — T0.5 Adım 6 (aşağıdaki kabul kriteri)
+- [x] **Docker Desktop'ı başlatıp yığını doğrula** — T0.5 Adım 6 (aşağıdaki kabul kriteri)
 - [ ] **Kulvar atamasını yap** — Bölüm G'yi doldur, `CODEOWNERS`'daki `@kisi-a/b/c` yerine gerçek GitHub handle'larını yaz
 - [ ] **Üç dalı aç ve push et** — T0.6 Adım 3
 - [ ] **Komiteye 5 soruyu gönder** — T0.6 Adım 4 (teslim formatı, fotoğraflar, AG/OG ağırlığı, RTU protokolü, mevcut Modbus master)
@@ -847,7 +847,7 @@ git commit -m "feat(sim): fizik tabanli sentetik veri ureteci + MQTT yayini"
 - [x] **Adım 4: `ingest.py`'ı yaz** — paho-mqtt abonesi → `jsonschema` doğrulaması → uzun formata düzleştirme → toplu `COPY`/`executemany` insert. Şema dışı mesaj **düşürülmez, karantinaya** yazılır (veri kalitesi kanıtı).
 - [x] **Adım 5: Testi geçir.**
 - [x] **Adım 6: API'yi yaz** — `GET /api/v1/panels` (son telemetriden türetilmiş filo listesi), `GET /api/v1/panels/{id}`, `GET /api/v1/alarms` (şimdilik boş liste), `WS /api/v1/stream` (MQTT → WebSocket köprüsü). Testler: her uç için durum kodu + şema doğrulaması.
-- [ ] **Adım 7: `docker compose up` ile uçtan uca gör:** sim → mosquitto → ingest → timescale → API.
+- [x] **Adım 7: `docker compose up` ile uçtan uca gör:** sim → mosquitto → ingest → timescale → API.
 - [x] **Adım 8: Commit**
 
 ```bash
@@ -1181,4 +1181,5 @@ GitHub handle'ları: `@_____` (A), `@ahmetkrkyn0` (B), `@_____` (C) → `CODEOWN
 |---|---|---|---|---|
 | 12 Eyl | — | Faz 0 iskeleti: git hijyeni, 39 dizin, CODEOWNERS, 5 sözleşme (donduruldu), üç parçalı compose, hello-world servisleri, README iskeleti, `check_contracts.py` | Docker daemon kapalı → yığının `up` ile çalıştığı doğrulanmadı | — |
 | 12 Eyl | B (Ahmet) | TB1 kodu `b/faz1-ingest`'te: MQTT ingest (şema/topic/ts denetimi, karantina, toplu COPY), `panel_latest`, panel API + WS; 54 test (+8 DB testi yerel PostgreSQL 16'da yeşil); Docker'sız duman testi sim → MQTT → backend → DB → API/WS geçti | BIOS'ta Intel VT-x kapalı → Docker motoru başlamıyor; TB1 Adım 7 (`docker compose up`, TimescaleDB) bekliyor | — |
+| 12 Eyl (gece) | B (Ahmet) | VT-x açıldı → `docker compose up`: 6 servis ayakta (backend/timescaledb/mosquitto `healthy`); uçtan uca sim → mosquitto → ingest → TimescaleDB 2.30 hypertable → API/WS doğrulandı (TB1 Adım 7 ✅); karantina gerçek broker üzerinden doğrulandı; 8 DB testi TimescaleDB'de yeşil (63/63). Flaky `test_stream` kök nedeni bulundu (WS teardown'da `asyncio.gather` anyio iptalini etiketsiz `CancelledError` ile değiştiriyordu) → anyio görev grubuna geçildi + yarış testi | — | — |
 | 13 Eyl | | | | |
