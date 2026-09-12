@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gridup.local/contracts/scenario-labels-v1.json",
+  "title": "gridup-scenario-labels-v1",
+  "description": "Etiketli senaryo ciktisi. Ureten: Kisi A (libs/panoalgo/scenarios.py). Tuketen: A'nin dogrulama betigi (scripts/validate.py) ve B'nin yuk testi (loadtest/fleet.py). DONMUSTUR.",
+  "x-purpose": "Tespit basarisini SAYIYLA olcmek icin: recall, precision, one alma suresi (l0_breach_at - ilk tespit), yanlis alarm/100 pano/gun.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenario_id", "seed", "pano_id", "duration_h", "generated_at", "labels"],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "enum": [
+        "S0_normal",
+        "S1_loose_conn",
+        "S2_overload",
+        "S3_condense",
+        "S4_arc",
+        "S5_prot_health",
+        "S6_comms_loss",
+        "S7_harmonic",
+        "S8_sensor_fault",
+        "S9_pd_trend"
+      ],
+      "description": "Rapor 15.2 etiketli ariza enjeksiyonlari + 8.2 demo senaryolari"
+    },
+    "seed": {
+      "type": "integer",
+      "description": "tekrarlanabilirlik; ayni seed ayni veriyi uretir"
+    },
+    "pano_id": { "type": "string", "pattern": "^[A-Z]{3}-[0-9]{5}$" },
+    "pano_type": { "type": "string", "default": "1600kVA-dahili" },
+    "duration_h": { "type": "number", "exclusiveMinimum": 0 },
+    "sample_period_s": { "type": "number", "default": 10 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "profile": { "type": "string", "enum": ["konut", "ticari", "karma"] },
+    "season": { "type": "string", "enum": ["yaz", "kis", "gecis"] },
+    "data_file": {
+      "type": "string",
+      "description": "ayni dizindeki CSV/Parquet dosya adi, or. S1_loose_conn.csv"
+    },
+    "labels": {
+      "type": "array",
+      "description": "bos dizi = tamamen normal senaryo (S0); yanlis alarm olcumu bununla yapilir",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["t_start", "t_end", "type", "point", "expect"],
+        "properties": {
+          "t_start": { "type": "string", "format": "date-time" },
+          "t_end": { "type": "string", "format": "date-time" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "loose_connection",
+              "overload",
+              "condensation",
+              "arc",
+              "protection_health_loss",
+              "comms_loss",
+              "harmonic",
+              "sensor_frozen",
+              "sensor_drift",
+              "sensor_dropped",
+              "pd_trend",
+              "compensation_fault"
+            ]
+          },
+          "point": {
+            "type": "string",
+            "description": "etkilenen nokta (conn_temp points listesinden) veya 'PANEL' / 'SYSTEM'"
+          },
+          "severity": { "type": "string", "enum": ["P1", "P2", "P3", "SYS"] },
+          "expect": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^ALM-[A-Z0-9-]+$" },
+            "description": "beklenen alarm kodlari (alarm-codes.yaml); recall bunun uzerinden olculur"
+          },
+          "not_expect": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "bu alarmlar CIKMAMALIDIR; or. S2_overload icin ALM-K-ALM (asiri yuk ariza degil)"
+          },
+          "l0_breach_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "sabit 70 K esiginin asildigi an. ONE ALMA SURESI = l0_breach_at - ilk L1 tespiti. null = hic asilmaz (bu durumda sabit esik ariziyi TAMAMEN kacirir)."
+          },
+          "params": {
+            "type": "object",
+            "description": "enjeksiyon parametreleri, or. { k_growth_pct: 200, ramp_days: 14 }"
+          }
+        }
+      }
+    }
+  }
+}

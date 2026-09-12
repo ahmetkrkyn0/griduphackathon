@@ -1,0 +1,225 @@
+# Pano Beyni Modbus register haritasi — TEK KAYNAK.
+# DONMUSTUR (PLAN.md kural 3). Degisiklik icin contracts/changes/ altina dosya acin.
+#
+# Bu dosyayi UC YER okur, hicbiri adresi elle yazmaz (PLAN.md kural 10):
+#   1) firmware/core/modbus_map.c        (Kisi A) — kenarda slave olarak sunar
+#   2) backend/app/scada/map_loader.py   (Kisi B) — merkezde Modbus TCP sunucusu
+#   3) scripts/gen_modbus_doc.py         (Kisi B) — docs/03-modbus-haritasi.md uretir
+#
+# Kaynak: HACKATHON_ANALIZ_RAPORU.md 6.4b
+version: 1
+endianness: big           # buyuk-endian (Modbus standardi)
+mirror_fc03_fc04: true    # tum buyuklukler hem Holding (FC03) hem Input (FC04) olarak aynalanir
+word_order: high_first    # 32-bit degerlerde yuksek word once
+
+blocks:
+  - name: device_info
+    start: 0
+    count: 20
+    items:
+      - { offset: 0, name: map_version,  type: uint16, note: "bu dosyanin version alani" }
+      - { offset: 1, name: fw_version,   type: uint16, note: "ornek: 0x0301 = v0.3.1" }
+      - { offset: 2, name: serial_hi,    type: uint16 }
+      - { offset: 3, name: serial_lo,    type: uint16 }
+      - { offset: 4, name: pano_type,    type: uint16, note: "1 = 1600 kVA dahili (EK-II/14)" }
+      - { offset: 5, name: point_count,  type: uint16, note: "aktif baglanti noktasi sayisi" }
+
+  - name: health
+    start: 20
+    count: 20
+    items:
+      - { offset: 0, name: uptime_h,      type: uint16 }
+      - { offset: 1, name: last_sync_m,   type: uint16, note: "son zaman senkronundan beri dakika" }
+      - { offset: 2, name: supply_state,  type: uint16, note: "0=sebeke, 1=yedek, 2=son nefes" }
+      - { offset: 3, name: backup_pct,    type: uint16 }
+      - { offset: 4, name: rssi_dbm_neg,  type: uint16, note: "pozitif olarak: 87 => -87 dBm" }
+      - { offset: 5, name: nodes_ok,      type: uint16 }
+      - { offset: 6, name: nodes_total,   type: uint16 }
+      - { offset: 7, name: heartbeat,     type: uint16, note: "her cevrimde artar; donarsa kenar oldu" }
+      - { offset: 8, name: buffered_msgs, type: uint16 }
+      - { offset: 9, name: baseline_day,  type: uint16, note: "7 = taban ogrenme tamam" }
+
+  - name: conn_temp
+    start: 100
+    count: 50
+    type: int16
+    scale: 0.1
+    unit: degC
+    # Rapor 6.4b'de "baglanti sicakliklari 100-199" olarak verilmistir; bu aralik
+    # ikiye bolundu: 100-149 mutlak sicaklik, 150-199 ortam uzeri artis (conn_dt).
+    # 25 nokta icin 50 register yeterli (ileride 2 boy DSYA/yedek cikis eklenirse pay var).
+    note: "nokta sirasi asagidaki points listesidir; conn_dt ve k_index ayni sirayi kullanir"
+    points:
+      - GIRIS_L1
+      - GIRIS_L2
+      - GIRIS_L3
+      - GIRIS_N
+      - DSYA1_L1
+      - DSYA1_L2
+      - DSYA1_L3
+      - DSYA2_L1
+      - DSYA2_L2
+      - DSYA2_L3
+      - DSYA3_L1
+      - DSYA3_L2
+      - DSYA3_L3
+      - DSYA4_L1
+      - DSYA4_L2
+      - DSYA4_L3
+      - DSYA5_L1
+      - DSYA5_L2
+      - DSYA5_L3
+      - DSYA6_L1
+      - DSYA6_L2
+      - DSYA6_L3
+      - DSYA7_L1
+      - DSYA7_L2
+      - DSYA7_L3
+
+  - name: conn_dt
+    start: 150
+    count: 50
+    type: int16
+    scale: 0.1
+    unit: K
+    points_ref: conn_temp
+    note: "ortam uzeri sicaklik artisi — L0 limitleri bunun uzerinden (IEC 61439-1)"
+
+  - name: k_index
+    start: 200
+    count: 100
+    type: int16
+    scale: 0.1
+    unit: percent_of_baseline
+    points_ref: conn_temp
+    note: "K/K0 * 100; ornek 160 => 1600 register degeri => K/K0 = 1.6"
+
+  - name: environment
+    start: 300
+    count: 20
+    type: int16
+    scale: 0.1
+    items:
+      - { offset: 0, name: t_low_c,      unit: degC }
+      - { offset: 1, name: rh_low_pct,   unit: percent }
+      - { offset: 2, name: td_low_c,     unit: degC, note: "ciy noktasi (Magnus)" }
+      - { offset: 3, name: td_margin_k,  unit: K,    note: "negatif = yogusma" }
+      - { offset: 4, name: t_up_c,       unit: degC }
+      - { offset: 5, name: rh_up_pct,    unit: percent }
+      - { offset: 6, name: dt_air_k,     unit: K,    note: "ust - alt: pano enerji dengesi" }
+      - { offset: 7, name: voc_idx,      unit: index, note: "65535 = sensor yok" }
+
+  - name: electrical_mirror
+    start: 400
+    count: 50
+    source: MPR-53CS
+    note: "mevcut enerji analizorunden okunup aynalanir; I_primer = ham * 0.001 * CT (CT=500)"
+    items:
+      - { offset: 0,  name: i_l1_a,       type: uint16, scale: 0.1 }
+      - { offset: 1,  name: i_l2_a,       type: uint16, scale: 0.1 }
+      - { offset: 2,  name: i_l3_a,       type: uint16, scale: 0.1 }
+      - { offset: 3,  name: i_n_a,        type: uint16, scale: 0.1 }
+      - { offset: 4,  name: u_l1_v,       type: uint16, scale: 0.1 }
+      - { offset: 5,  name: u_l2_v,       type: uint16, scale: 0.1 }
+      - { offset: 6,  name: u_l3_v,       type: uint16, scale: 0.1 }
+      - { offset: 7,  name: thd_i_l1_pct, type: uint16, scale: 0.1 }
+      - { offset: 8,  name: thd_i_l2_pct, type: uint16, scale: 0.1 }
+      - { offset: 9,  name: thd_i_l3_pct, type: uint16, scale: 0.1 }
+      - { offset: 10, name: cosphi,       type: int16,  scale: 0.001 }
+      - { offset: 11, name: unbal_pct,    type: uint16, scale: 0.1 }
+      - { offset: 12, name: mpr_comm_ok,  type: uint16, note: "0 = analizor cevap vermiyor" }
+
+  - name: arc_mirror
+    start: 500
+    count: 20
+    source: ABB TVOC-2
+    access: read_only        # PLAN.md GK6: koruma devresine yazma YOK
+    note: "src_pdu = TVOC-2 Modbus kilavuzundaki PDU adresi (register no = PDU + 1)"
+    items:
+      - { offset: 0,  name: system_state,     type: uint16, src_pdu: 1300 }
+      - { offset: 1,  name: trip_count,       type: uint16, src_pdu: 149 }
+      - { offset: 2,  name: last_det_low,     type: uint16, src_pdu: 100 }
+      - { offset: 3,  name: last_det_high,    type: uint16, src_pdu: 101 }
+      - { offset: 4,  name: last_trip_relay,  type: uint16, src_pdu: 102 }
+      - { offset: 5,  name: last_trip_date,   type: uint16, src_pdu: 103, note: "1970-01-01 + N gun" }
+      - { offset: 6,  name: last_trip_hhmm,   type: uint16, src_pdu: 104, note: "MSB saat, LSB dakika" }
+      - { offset: 7,  name: last_trip_sec,    type: uint16, src_pdu: 105 }
+      - { offset: 8,  name: sensor_status_x2, type: uint16, src_pdu: 222, note: "bit 1 = OK" }
+      - { offset: 9,  name: sensor_status_x3, type: uint16, src_pdu: 223 }
+      - { offset: 10, name: amb_light_x2,     type: uint16, src_pdu: 224 }
+      - { offset: 11, name: amb_light_x3,     type: uint16, src_pdu: 225 }
+      - { offset: 12, name: active_dtc_1,     type: uint16, src_pdu: 1301 }
+      - { offset: 13, name: prot_health_ok,   type: uint16, note: "bizim ozet bitimiz; 0 = pano korumasiz" }
+      - { offset: 14, name: tvoc_comm_ok,     type: uint16, note: "0 = cevap yok (or. fabrika ID 248)" }
+
+  - name: pd
+    start: 600
+    count: 20
+    note: "OG eklentisi; AG panoda 65535/0"
+    items:
+      - { offset: 0, name: pulses_per_s, type: uint16 }
+      - { offset: 1, name: amp_dbmv,     type: int16 }
+      - { offset: 2, name: trend_slope,  type: int16, scale: 0.01 }
+      - { offset: 3, name: phase_cluster, type: uint16, scale: 0.01 }
+
+  - name: risk
+    start: 700
+    count: 20
+    items:
+      - { offset: 0, name: risk_score, type: uint16, note: "0-100" }
+      - { offset: 1, name: fault_mode, type: uint16, note: "alarm-codes.yaml hypotheses[].id" }
+      - { offset: 2, name: ttl_hours,  type: uint16, note: "65535 = bilinmiyor" }
+      - { offset: 3, name: worst_point, type: uint16, note: "conn_temp points listesindeki indeks" }
+
+  - name: alarms
+    start: 800
+    count: 30
+    note: "bit haritasi alarm-codes.yaml bitmap bolumunde"
+    items:
+      - { offset: 0,  name: alarm_bits_0_15,    type: uint16, note: "canli; bit 0-15" }
+      - { offset: 1,  name: alarm_bits_16_31,   type: uint16, note: "canli; bit 16-31" }
+      - { offset: 10, name: latched_bits_0_15,  type: uint16, note: "mandalli kopya" }
+      - { offset: 11, name: latched_bits_16_31, type: uint16 }
+      - { offset: 20, name: active_alarm_count, type: uint16 }
+      - { offset: 21, name: highest_prio,       type: uint16, note: "1=P1, 2=P2, 3=P3, 4=INFO, 5=SYS, 0=yok" }
+
+  - name: event
+    start: 830
+    count: 20
+    items:
+      - { offset: 0, name: event_count, type: uint16 }
+      - { offset: 1, name: last_code,   type: uint16, note: "alarm-codes.yaml bit numarasi" }
+      - { offset: 2, name: ts_hi,       type: uint16, note: "Unix zaman, yuksek word" }
+      - { offset: 3, name: ts_lo,       type: uint16 }
+
+  - name: command
+    start: 900
+    count: 10
+    access: write
+    functions: [6, 16]
+    auth: password_register
+    note: "yazma yalnizca bu blokta; TVOC-2 aynasina yazma ag gecidinde FILTRELENIR (GK6)"
+    items:
+      - { offset: 0, name: password,    type: uint16, note: "dogru degilse diger yazmalar yok sayilir" }
+      - { offset: 1, name: ack_alarm,   type: uint16 }
+      - { offset: 2, name: reset_latch, type: uint16 }
+      - { offset: 3, name: maint_mode,  type: uint16, note: "1 = bakim modu; P1 asla bastirilmaz" }
+      - { offset: 4, name: test_alarm,  type: uint16, note: "sentetik test alarmi tetikler" }
+
+coils:
+  note: "RTU'nun/SCADA'nin tek bakista okudugu ozet bitler"
+  items:
+    - { addr: 0, name: critical_alarm,  note: "P1 aktif" }
+    - { addr: 1, name: warning_active,  note: "P2 veya P3 aktif" }
+    - { addr: 2, name: comms_ok }
+    - { addr: 3, name: maint_mode }
+    - { addr: 4, name: prot_health_ok,  note: "ark korumasi sagligi" }
+    - { addr: 5, name: data_quality_ok }
+
+# Hat butcesi (rapor 6.4d): 19200 baud, 8E1 => 10 reg ~23 ms, 50 reg ~69 ms, 100 reg ~126 ms.
+# MPR-53CS (2 blok) + TVOC-2 (3 blok) + cevap sureleri dahil tum tur < 1 s.
+line_budget:
+  baud: 19200
+  framing: 8E1
+  bits_per_char: 11
+  poll_cycle_target_ms: 1000

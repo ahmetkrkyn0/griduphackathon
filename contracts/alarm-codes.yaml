@@ -1,0 +1,324 @@
+# Alarm kodlari, esikler ve hipotezler — TEK KAYNAK.
+# DONMUSTUR (PLAN.md kural 3).
+#
+# Bu dosyayi UC YER okur, esikleri hicbiri koda gommez (PLAN.md kural 10):
+#   1) libs/panoalgo/panoalgo/limits.py + fusion.py  (Kisi A)
+#   2) firmware/core/limits.c                        (Kisi A)
+#   3) backend/app/alarm_manager.py + notify/        (Kisi B)
+#   4) frontend/src/api/types.ts (yalnizca kod -> metin)  (Kisi C)
+#
+# Kaynak: HACKATHON_ANALIZ_RAPORU.md 6.5 (L0 limit tablosu), 6.6 (oncelik matrisi), 15.1
+version: 1
+
+priorities:
+  P1:
+    name: Kritik
+    screen: audible
+    work_order: true
+    sms: true
+    whatsapp: true
+    call_after_min: 5
+    escalate_after_min: 15
+    scada: true
+    local_relay: siren
+    suppressible: false        # bakim modunda bile bastirilmaz
+  P2:
+    name: Alarm
+    screen: true
+    work_order: true
+    sms: true
+    whatsapp: true
+    escalate_after_min: 30
+    scada: true
+    local_relay: heater_fan
+    suppressible: true
+  P3:
+    name: Uyari
+    screen: true
+    work_order: planned
+    sms: false
+    whatsapp: false
+    daily_digest: true
+    scada: optional
+    suppressible: true
+  INFO:
+    name: Bilgi
+    screen: true
+    suppressible: true
+  SYS:
+    name: Sistem
+    screen: true
+    work_order: true
+    sms: digest_only
+    suppressible: true
+
+# Modbus alarms blogundaki bit yerlesimi (contracts/modbus-map.yaml "alarms" blogu)
+bitmap:
+  live_registers:    [800, 801]   # bit 0-15, bit 16-31
+  latched_registers: [810, 811]
+  note: "bit numarasi = alarms[].bit; 32 bitten fazlasi eklenirse 802/812 acilir"
+
+alarms:
+  - code: ALM-THR-TERM-WARN
+    bit: 0
+    prio: P3
+    layer: L0
+    text: "Terminal sicaklik artisi 50 K ustu"
+    basis: "IEC 61439-1 Tablo 6 (harici iletken terminali, ortam <=35 degC)"
+    threshold: thresholds.term_rise_warn_k
+  - code: ALM-THR-TERM-ALM
+    bit: 1
+    prio: P2
+    layer: L0
+    text: "Terminal sicaklik artisi 70 K ustu"
+    basis: "IEC 61439-1 Tablo 6"
+    threshold: thresholds.term_rise_alarm_k
+  - code: ALM-THR-BUS-ALM
+    bit: 2
+    prio: P1
+    layer: L0
+    text: "Bara sicaklik artisi 105 K ustu"
+    basis: "IEC 61439-1 (ciplak bakir bara tavlanma siniri)"
+    threshold: thresholds.bus_rise_alarm_k
+  - code: ALM-THR-PHASE-DIF
+    bit: 3
+    prio: P2
+    layer: L0
+    text: "Benzer yukte fazlar arasi fark 15 K ustu"
+    basis: "NETA MTS termografi rehberi"
+    threshold: thresholds.phase_diff_alarm_k
+  - code: ALM-K-WARN
+    bit: 4
+    prio: P3
+    layer: L1
+    text: "Isil direnc indeksi K/K0 > 1.3 — baglanti direnci artisi suphesi"
+    basis: "Rapor 6.5 L1-1"
+    threshold: thresholds.k_ratio_warn
+  - code: ALM-K-ALM
+    bit: 5
+    prio: P2
+    layer: L1
+    text: "Isil direnc indeksi K/K0 > 1.6 — gevsek/oksitlenmis baglanti"
+    basis: "Rapor 6.5 L1-1"
+    threshold: thresholds.k_ratio_alarm
+  - code: ALM-TTL-14D
+    bit: 6
+    prio: P3
+    layer: L1
+    text: "70 K sinirina tahmini 14 gunden az kaldi"
+    basis: "Rapor 6.5 L1-2 / 15.1 sinira kalan sure"
+    threshold: thresholds.ttl_warn_days
+  - code: ALM-DEW-WARN
+    bit: 7
+    prio: P3
+    layer: L1
+    text: "Ciy noktasi marji 3 K altinda"
+    basis: "Magnus formulu; rapor 15.1"
+    threshold: thresholds.dew_margin_warn_k
+  - code: ALM-DEW-ALM
+    bit: 8
+    prio: P2
+    layer: L1
+    text: "Ciy noktasi marji 1 K altinda — yogusma riski"
+    basis: "Magnus formulu"
+    threshold: thresholds.dew_margin_alarm_k
+  - code: ALM-I-OVER
+    bit: 9
+    prio: P2
+    layer: L0
+    text: "Faz akimi anma degerinin ustunde"
+    basis: "EK-I/8 Tablo 8 (DSYA 250/400 A, giris 2312 A)"
+    threshold: thresholds.current_alarm_ratio
+  - code: ALM-NEUTRAL-THD
+    bit: 10
+    prio: P3
+    layer: L1
+    text: "Notr akimi ve akim THD birlikte artti — harmonik kaynakli notr isinmasi"
+    basis: "Rapor 6.5 L1-7"
+  - code: ALM-ARC-TRIP
+    bit: 11
+    prio: P1
+    layer: L0
+    text: "TVOC-2 ark tripi"
+    basis: "TVOC-2 PDU 149 trip sayaci degisimi"
+  - code: ALM-PROT-HEALTH
+    bit: 12
+    prio: P1
+    layer: L0
+    text: "Ark korumasi dedektor arizasi — pano sessizce korumasiz"
+    basis: "TVOC-2 PDU 222/223 sensor status, PDU 1300 hata biti"
+  - code: ALM-PD-TREND
+    bit: 13
+    prio: P3
+    layer: L1
+    text: "PD darbe sayisi/genligi trendi artiyor (OG)"
+    basis: "EA Technology kalici HFCT trend yaklasimi"
+  - code: ALM-DQ-FROZEN
+    bit: 14
+    prio: SYS
+    layer: "L-1"
+    text: "Sensor degeri donmus (N ornek ayni)"
+    threshold: thresholds.dq_frozen_samples
+  - code: ALM-DQ-JUMP
+    bit: 15
+    prio: SYS
+    layer: "L-1"
+    text: "Fiziksel olmayan degisim hizi"
+    basis: "Verilen Excel'deki 15 dk'da 438 A siciramalari bu katmanda isaretlenir"
+    threshold: thresholds.dq_max_rate_k_per_min
+  - code: ALM-DQ-BELOW-AMBIENT
+    bit: 16
+    prio: SYS
+    layer: "L-1"
+    text: "Baglanti sicakligi ortamin altinda — sensor yerinden dusmus olabilir"
+  - code: ALM-NODE-LOST
+    bit: 17
+    prio: SYS
+    layer: "L-1"
+    text: "Dugum sessiz"
+    threshold: thresholds.node_silent_min
+  - code: ALM-COMMS-LOST
+    bit: 18
+    prio: SYS
+    layer: "L-1"
+    text: "Merkez baglantisi koptu (heartbeat yok)"
+    threshold: thresholds.heartbeat_timeout_min
+  - code: ALM-DOOR-UNAUTH
+    bit: 19
+    prio: P2
+    layer: L0
+    text: "Planli is emri olmadan kapak acildi"
+    threshold: thresholds.door_grace_min
+  - code: ALM-LASTGASP
+    bit: 20
+    prio: P2
+    layer: L0
+    text: "Besleme kesildi (son nefes mesaji)"
+  - code: ALM-PANEL-TEMP
+    bit: 21
+    prio: P2
+    layer: L0
+    text: "Pano ic ortam sicakligi 45 degC ustu"
+    basis: "TEDAS sartname Tablo 1 (maks. 40 degC)"
+    threshold: thresholds.panel_temp_alarm_c
+
+thresholds:
+  # L0 mutlak limitler (IEC 61439-1 / NETA MTS / sartname)
+  term_rise_warn_k: 50
+  term_rise_alarm_k: 70
+  bus_rise_warn_k: 85
+  bus_rise_alarm_k: 105
+  phase_diff_warn_k: 4
+  phase_diff_alarm_k: 15
+  component_ambient_warn_k: 21
+  component_ambient_alarm_k: 40
+  panel_temp_warn_c: 40
+  panel_temp_alarm_c: 45
+  # Akim (anma akimina oran)
+  current_warn_ratio: 0.90
+  current_alarm_ratio: 1.00
+  rated_current_a:
+    main_input: 2312      # 1600 kVA, 400 V
+    dsya_1boy: 250
+    dsya_2boy: 400
+    street_lighting: 160
+  # L1 fizik tabanli
+  k_ratio_warn: 1.3
+  k_ratio_alarm: 1.6
+  ttl_warn_days: 14
+  dew_margin_warn_k: 3.0
+  dew_margin_alarm_k: 1.0
+  heater_on_margin_k: 3.0      # otomatik aksiyon esigi
+  # RLS / kestirim
+  rls_lambda: 0.998
+  tau_init_s: 900
+  excitation_min_var_i2: 1.0e7  # bunun altinda RLS guncellenmez (kalici uyarim kosulu)
+  baseline_learning_days: 7
+  # L-1 veri kalitesi
+  dq_frozen_samples: 30
+  dq_max_rate_k_per_min: 10.0
+  node_silent_min: 15
+  heartbeat_timeout_min: 5
+  door_grace_min: 2
+  # Alarm yonetimi (ISA-18.2 / EEMUA 191)
+  hysteresis_clear_min: 5
+  group_window_min: 10
+  shelve_max_min: 480
+  alarms_per_operator_day_acceptable: 150
+  alarms_per_operator_day_max: 300
+  target_distribution_pct: { high: 5, medium: 15, low: 80 }
+
+hypotheses:
+  - id: 1
+    code: HYP-LOOSE-CONN
+    text: "Gevsek/oksitlenmis baglanti"
+    severity_w: 1.0
+    evidence: [ALM-K-WARN, ALM-K-ALM, ALM-THR-PHASE-DIF, ALM-TTL-14D, ALM-THR-TERM-ALM]
+    advice: "Planli bakimda tork kontrolu ve temizlik; kritik evrede yuk azaltma onerisi"
+  - id: 2
+    code: HYP-OVERLOAD
+    text: "Asiri yuk (ariza degil)"
+    severity_w: 0.4
+    evidence: [ALM-I-OVER]
+    discriminator: "tum fazlarda uniform dT artisi VE K normal"
+    advice: "Yuk transferi / fider duzenleme onerisi"
+  - id: 3
+    code: HYP-CONDENSE
+    text: "Yogusma / yuzeysel kacak"
+    severity_w: 0.7
+    evidence: [ALM-DEW-WARN, ALM-DEW-ALM, ALM-PD-TREND]
+    advice: "Anti-kondensasyon isiticisi ac; conta ve havalandirma kontrolu"
+  - id: 4
+    code: HYP-HARMONIC
+    text: "Harmonik kaynakli notr isinmasi"
+    severity_w: 0.6
+    evidence: [ALM-NEUTRAL-THD]
+    advice: "Guc kalitesi incelemesi"
+  - id: 5
+    code: HYP-PD
+    text: "Izolasyon bozulmasi (OG)"
+    severity_w: 0.8
+    evidence: [ALM-PD-TREND]
+    advice: "Offline test planla"
+  - id: 6
+    code: HYP-ARC
+    text: "Ark olayi"
+    severity_w: 1.0
+    evidence: [ALM-ARC-TRIP]
+    advice: "Kritik alarm; olay oncesi 72 saatlik kara kutu raporu. Reset SAHADA yapilir."
+  - id: 7
+    code: HYP-PROT-LOSS
+    text: "Koruma sagligi kaybi"
+    severity_w: 1.0
+    evidence: [ALM-PROT-HEALTH]
+    advice: "Dedektor/fiber bakimi — pano korumasiz"
+  - id: 8
+    code: HYP-SELF-FAULT
+    text: "Izleme sistemi arizasi"
+    severity_w: 0.3
+    evidence: [ALM-NODE-LOST, ALM-COMMS-LOST, ALM-DQ-FROZEN, ALM-DQ-JUMP, ALM-DQ-BELOW-AMBIENT]
+    advice: "Uzaktan diagnostik; gerekirse saha ziyareti. ARIZA ALARMI DEGIL."
+  - id: 9
+    code: HYP-NORMAL
+    text: "Normal"
+    severity_w: 0.0
+    evidence: []
+    advice: "-"
+
+# Otomatik aksiyonlar (insan-donguede prensibi; rapor 6.6d)
+auto_actions:
+  - trigger: ALM-DEW-WARN
+    action: heater_relay_on
+    approval: none
+  - trigger: ALM-DEW-ALM
+    action: heater_relay_on
+    approval: none
+  - trigger: ALM-PANEL-TEMP
+    action: fan_relay_on
+    approval: none
+  - trigger: ALM-ARC-TRIP
+    action: blackbox_report_72h
+    approval: none
+  - trigger: ALM-K-ALM
+    action: load_transfer_suggestion
+    approval: human      # SCADA operatorune ONERI; otomatik trip YOK (GK6)

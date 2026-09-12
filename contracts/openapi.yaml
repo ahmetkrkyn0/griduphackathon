@@ -1,0 +1,427 @@
+# Merkez API — frontend'in tukettigi TEK arayuz.
+# DONMUSTUR (PLAN.md kural 3). Ureten: Kisi B (backend/). Tuketen: Kisi C (frontend/).
+# Kisi C alan adi UYDURMAZ; ihtiyac varsa contracts/changes/ altina oneri dosyasi acar.
+openapi: 3.1.0
+info:
+  title: Grid Up — Pano Beyni Merkez API
+  version: 1.0.0
+  description: |
+    On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
+    public cloud bagimliligi yoktur (PLAN.md GK4).
+servers:
+  - url: http://localhost:8000
+    description: Gelistirme (dogrudan backend)
+  - url: /
+    description: Uretim (nginx arkasinda, frontend ile ayni koken)
+
+tags:
+  - name: panels
+    description: Filo ve pano detayi
+  - name: alarms
+    description: ISA-18.2 alarm yasam dongusu
+  - name: events
+    description: Olay ve kara kutu
+  - name: system
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Servis sagligi
+      responses:
+        "200":
+          description: Calisiyor
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+                  version: { type: string }
+                  mqtt: { type: boolean }
+                  db: { type: boolean }
+
+  /api/v1/panels:
+    get:
+      tags: [panels]
+      summary: Filo listesi (risk skoruna gore siralanabilir)
+      parameters:
+        - { name: sort, in: query, schema: { type: string, enum: [risk, last_seen, pano_id], default: risk } }
+        - { name: min_risk, in: query, schema: { type: integer, minimum: 0, maximum: 100 } }
+        - { name: limit, in: query, schema: { type: integer, default: 200, maximum: 2000 } }
+      responses:
+        "200":
+          description: Pano ozetleri
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PanelSummary" }
+
+  /api/v1/panels/{pano_id}:
+    get:
+      tags: [panels]
+      summary: Tek pano detayi (dijital ikizi besler)
+      parameters:
+        - $ref: "#/components/parameters/PanoId"
+      responses:
+        "200":
+          description: Pano detayi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PanelDetail" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/panels/{pano_id}/series:
+    get:
+      tags: [panels]
+      summary: Zaman serisi (trend ve I^2-dT korelasyon grafikleri icin)
+      parameters:
+        - $ref: "#/components/parameters/PanoId"
+        - name: tags
+          in: query
+          required: true
+          description: "Virgulle ayrilmis etiketler, or. t_conn.GIRIS_L2.dt_c,elec.i_ph.1,k_index.DSYA3_L2"
+          schema: { type: string }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: step, in: query, description: "ornekleme araligi, or. 10s / 1m / 15m", schema: { type: string, default: 1m } }
+      responses:
+        "200":
+          description: "etiket -> [[ts_ms, deger]] dizisi"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: array
+                    prefixItems:
+                      - { type: integer, description: "unix ms" }
+                      - { type: [number, "null"] }
+
+  /api/v1/alarms:
+    get:
+      tags: [alarms]
+      summary: Alarm konsolu listesi
+      parameters:
+        - { name: state, in: query, schema: { type: string, default: "active,acked" }, description: "active,acked,shelved,cleared" }
+        - { name: prio, in: query, schema: { type: string }, description: "P1,P2,P3,INFO,SYS" }
+        - { name: pano_id, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 100 } }
+      responses:
+        "200":
+          description: Alarmlar (en yeni once)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Alarm" }
+
+  /api/v1/alarms/{alarm_id}/ack:
+    post:
+      tags: [alarms]
+      summary: Alarm onayi (ISA-18.2)
+      parameters:
+        - $ref: "#/components/parameters/AlarmId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [by]
+              properties:
+                by: { type: string, description: "kullanici adi" }
+                note: { type: string }
+                channel: { type: string, enum: [ui, sms, scada], default: ui }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "Zaten onaylanmis veya temizlenmis"
+
+  /api/v1/alarms/{alarm_id}/shelve:
+    post:
+      tags: [alarms]
+      summary: Alarmi süreli ve gerekceli rafa al (P1 rafa alinamaz)
+      parameters:
+        - $ref: "#/components/parameters/AlarmId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [by, minutes, reason]
+              properties:
+                by: { type: string }
+                minutes: { type: integer, minimum: 1, maximum: 480 }
+                reason: { type: string, minLength: 3 }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "403":
+          description: "P1 alarm rafa alinamaz (alarm-codes.yaml suppressible=false)"
+
+  /api/v1/events/{event_id}/blackbox:
+    get:
+      tags: [events]
+      summary: Olay oncesi 72 saatlik kara kutu
+      parameters:
+        - { name: event_id, in: path, required: true, schema: { type: string } }
+        - { name: window_h, in: query, schema: { type: integer, default: 72 } }
+      responses:
+        "200":
+          description: Olay + oncesindeki sinyaller + zaman cizelgesi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Blackbox" }
+
+  /api/v1/fleet/kpi:
+    get:
+      tags: [system]
+      summary: Filo KPI'lari (ISA-18.2 hedefleriyle karsilastirmali)
+      responses:
+        "200":
+          description: KPI ozeti
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FleetKpi" }
+
+components:
+  parameters:
+    PanoId:
+      name: pano_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[A-Z]{3}-[0-9]{5}$" }
+    AlarmId:
+      name: alarm_id
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    Ok:
+      description: Basarili
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: { type: boolean }
+    NotFound:
+      description: Bulunamadi
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail: { type: string }
+
+    PanelSummary:
+      type: object
+      required: [pano_id, name, risk_score, risk_mode, last_seen, comms_ok]
+      properties:
+        pano_id: { type: string }
+        name: { type: string, description: "or. Efeler TM-14" }
+        lat: { type: [number, "null"] }
+        lon: { type: [number, "null"] }
+        pano_type: { type: string, description: "1600kVA-dahili" }
+        risk_score: { type: integer, minimum: 0, maximum: 100 }
+        risk_mode: { type: string, description: "alarm-codes.yaml hypotheses[].code" }
+        risk_trend: { type: string, enum: [up, flat, down] }
+        top_alarm: { type: [string, "null"], description: "en yuksek oncelikli aktif alarm kodu" }
+        top_prio: { type: [string, "null"], enum: [P1, P2, P3, INFO, SYS, null] }
+        ttl_h: { type: [number, "null"], description: "sinira kalan sure (saat)" }
+        last_seen: { type: string, format: date-time }
+        comms_ok: { type: boolean }
+        baseline_day: { type: integer }
+
+    ConnPoint:
+      type: object
+      required: [pt, t_c, dt_c]
+      properties:
+        pt: { type: string }
+        label: { type: string, description: "Turkce gosterim adi, or. 'Giris L2'" }
+        t_c: { type: number }
+        dt_c: { type: number }
+        k: { type: [number, "null"] }
+        k_ratio: { type: [number, "null"] }
+        tau_s: { type: [number, "null"] }
+        ttl_h: { type: [number, "null"] }
+        excited: { type: boolean }
+        q: { type: integer, description: "0 = temiz" }
+        state: { type: string, enum: [normal, warn, alarm, critical, stale] }
+
+    Env:
+      type: object
+      properties:
+        t_low_c: { type: number }
+        rh_low_pct: { type: number }
+        td_low_c: { type: number }
+        td_margin_k: { type: number }
+        t_up_c: { type: number }
+        rh_up_pct: { type: number }
+        dt_air_k: { type: number }
+        voc_idx: { type: [number, "null"] }
+        door_open: { type: boolean }
+
+    Elec:
+      type: object
+      properties:
+        i_ph: { type: array, items: { type: number } }
+        i_n: { type: number }
+        u_ph: { type: array, items: { type: number } }
+        thd_i: { type: array, items: { type: number } }
+        cosphi: { type: number }
+        unbal_pct: { type: number }
+        mpr_comm_ok: { type: boolean }
+
+    Tvoc:
+      type: object
+      properties:
+        trips: { type: integer }
+        state: { type: integer }
+        last_trip_at: { type: [string, "null"], format: date-time }
+        last_det_label: { type: [string, "null"], description: "or. 'X2:4' — pano icindeki konum" }
+        prot_health_ok: { type: boolean }
+        comm_ok: { type: boolean }
+
+    DeviceHealth:
+      type: object
+      properties:
+        uptime_s: { type: integer }
+        nodes_ok: { type: integer }
+        nodes_total: { type: integer }
+        rssi_dbm: { type: number }
+        vbak_pct: { type: number }
+        buffered: { type: integer }
+        maint_mode: { type: boolean }
+        fw: { type: string }
+
+    PanelDetail:
+      type: object
+      required: [pano_id, ts, points, env, elec, health]
+      properties:
+        pano_id: { type: string }
+        name: { type: string }
+        pano_type: { type: string }
+        ts: { type: string, format: date-time }
+        risk_score: { type: integer }
+        risk_mode: { type: string }
+        risk_contributions:
+          type: object
+          additionalProperties: { type: number }
+          description: "alarm kodu -> katki (0-1); 'Neden?' bolumunu besler"
+        points: { type: array, items: { $ref: "#/components/schemas/ConnPoint" } }
+        env: { $ref: "#/components/schemas/Env" }
+        elec: { $ref: "#/components/schemas/Elec" }
+        tvoc: { $ref: "#/components/schemas/Tvoc" }
+        pd: { type: [object, "null"] }
+        health: { $ref: "#/components/schemas/DeviceHealth" }
+        active_alarms: { type: array, items: { $ref: "#/components/schemas/Alarm" } }
+
+    AlarmReason:
+      type: object
+      description: "Arayuzdeki 'Neden?' bolumu — her alarm aciklanabilir olmalidir (rapor 6.5 L4)"
+      properties:
+        signals:
+          type: array
+          items:
+            type: object
+            properties:
+              tag: { type: string }
+              value: { type: number }
+              threshold: { type: number }
+              unit: { type: string }
+        layer: { type: string, enum: ["L-1", L0, L1, L2, L3] }
+        basis: { type: string, description: "standart atfi, or. 'IEC 61439-1 Tablo 6'" }
+        point: { type: [string, "null"] }
+
+    Alarm:
+      type: object
+      required: [id, pano_id, code, prio, state, raised_at]
+      properties:
+        id: { type: string }
+        event_id: { type: [string, "null"], description: "ayni kok nedenden gelen alarmlar bu id altinda gruplanir" }
+        pano_id: { type: string }
+        code: { type: string }
+        text: { type: string, description: "Turkce alarm metni" }
+        prio: { type: string, enum: [P1, P2, P3, INFO, SYS] }
+        state: { type: string, enum: [active, acked, shelved, cleared] }
+        raised_at: { type: string, format: date-time }
+        cleared_at: { type: [string, "null"], format: date-time }
+        acked_at: { type: [string, "null"], format: date-time }
+        acked_by: { type: [string, "null"] }
+        shelved_until: { type: [string, "null"], format: date-time }
+        escalation_level: { type: integer, description: "0 = henuz eskalasyon yok" }
+        notified: { type: array, items: { type: string, enum: [sms, whatsapp, call, scada, relay] } }
+        reason: { $ref: "#/components/schemas/AlarmReason" }
+        advice: { type: string, description: "'Ne yapmali?' — hypotheses[].advice" }
+        ttl_h: { type: [number, "null"], description: "'Ne kadar acil?'" }
+
+    Blackbox:
+      type: object
+      properties:
+        event_id: { type: string }
+        pano_id: { type: string }
+        occurred_at: { type: string, format: date-time }
+        code: { type: string }
+        det_label: { type: [string, "null"] }
+        window_h: { type: integer }
+        series:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: array
+              prefixItems:
+                - { type: integer }
+                - { type: [number, "null"] }
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              ts: { type: string, format: date-time }
+              kind: { type: string, enum: [alarm, ack, action, note, trip] }
+              text: { type: string }
+
+    FleetKpi:
+      type: object
+      properties:
+        panels_total: { type: integer }
+        comms_ok_pct: { type: number }
+        alarms_per_100_panels_per_day: { type: number }
+        active_by_prio:
+          type: object
+          additionalProperties: { type: integer }
+        distribution_pct:
+          type: object
+          description: "gerceklesen oncelik dagilimi; hedef %5/%15/%80 (EEMUA 191)"
+          additionalProperties: { type: number }
+        p95_end_to_end_ms: { type: number, description: "sensor -> telefon gecikmesi" }
+        ingest_msgs_per_s: { type: number }
+
+# OpenAPI WebSocket'i kapsamaz; kanal sozlesmesi burada tanimlidir.
+x-websocket:
+  path: /api/v1/stream
+  protocol: "JSON mesajlar, sunucudan istemciye tek yonlu"
+  messages:
+    - type: tel
+      payload: "PanelSummary (degisen panolar icin)"
+    - type: alarm
+      payload: "Alarm (yeni, onaylanan veya temizlenen)"
+    - type: kpi
+      payload: FleetKpi
+    - type: hello
+      payload: "{ server_time, api_version }"
+  reconnect: "istemci 2^n saniye (maks 30) ile yeniden baglanir; kopukken 'veri eski' seridi gosterilir"
