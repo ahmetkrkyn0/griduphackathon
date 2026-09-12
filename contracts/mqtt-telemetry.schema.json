@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gridup.local/contracts/mqtt-telemetry-v1.json",
+  "title": "gridup-telemetry-v1",
+  "description": "Pano Beyni -> merkez telemetri yuku. DONMUSTUR (PLAN.md kural 3). Ureten: Kisi A (sim/, firmware/). Tuketen: Kisi B (backend/ingest.py).",
+  "x-topics": {
+    "gridup/pano/{pano_id}/tel": {
+      "periyot": "10 s (kenarda 1 s isleme, merkeze 10 s ozet)",
+      "icerik": "bu sema",
+      "qos": 1,
+      "retain": false
+    },
+    "gridup/pano/{pano_id}/evt": {
+      "periyot": "olay aninda",
+      "icerik": "bu sema + zorunlu 'alarms' alani dolu",
+      "qos": 1,
+      "retain": false
+    },
+    "gridup/pano/{pano_id}/hb": {
+      "periyot": "60 s",
+      "icerik": "{ v, ts, pano_id, seq, health }",
+      "qos": 0,
+      "retain": true
+    },
+    "gridup/pano/{pano_id}/cmd": {
+      "periyot": "merkez -> kenar, istege bagli",
+      "icerik": "{ v, ts, cmd: 'ack'|'maint_mode'|'test_alarm'|'sync_time', args: {} }",
+      "qos": 1,
+      "retain": false
+    }
+  },
+  "x-notes": [
+    "Demoda JSON; uretimde CBOR/protobuf (ikili) kullanilir — hesabi docs/09-olceklenebilirlik.md icinde.",
+    "Sicakliklar degC, artislar K (dt_c = ortam uzeri artis), akimlar A, gerilimler V, nem %.",
+    "Kenar baglantisi koptugunda mesajlar 7 gun tamponlanir; backfill ayni semayla gecmis ts ile gelir."
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "ts", "pano_id", "seq", "t_conn", "elec", "env", "health"],
+  "properties": {
+    "v": {
+      "const": 1,
+      "description": "sema surumu"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "olcum zamani (UTC, ISO 8601)"
+    },
+    "pano_id": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}-[0-9]{5}$",
+      "description": "ADM-00001 / GDZ-00123 / SIM-00999 (yuk testi)"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "kenar sira numarasi; bosluk = kayip mesaj"
+    },
+    "fw": {
+      "type": "string",
+      "description": "firmware surumu, or. 0.3.1"
+    },
+    "t_conn": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "description": "baglanti noktasi sicakliklari. Nokta adlari contracts/modbus-map.yaml conn_temp.points listesiyle AYNI olmalidir.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pt", "t_c", "dt_c"],
+        "properties": {
+          "pt": {
+            "type": "string",
+            "pattern": "^(GIRIS_(L1|L2|L3|N)|DSYA[1-7]_L[1-3])$",
+            "description": "GIRIS_L1 | GIRIS_N | DSYA3_L2 ..."
+          },
+          "t_c": { "type": "number", "minimum": -40, "maximum": 200 },
+          "dt_c": { "type": "number", "description": "ortam uzeri sicaklik artisi (K)" },
+          "k": { "type": "number", "description": "isil direnc indeksi K (dT = K * I^2)" },
+          "k_ratio": { "type": "number", "description": "K / K0 (K0 = 7 gunluk taban medyani)" },
+          "tau_s": { "type": "number", "description": "isil zaman sabiti kestirimi (s)" },
+          "ttl_h": {
+            "type": ["number", "null"],
+            "description": "70 K sinirina tahmini kalan saat; null = tahmin yok"
+          },
+          "excited": {
+            "type": "boolean",
+            "description": "false = yuk degisimi yetersiz, RLS guncellenmedi"
+          },
+          "q": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "veri kalitesi bayrak alani; 0 = temiz. Bitler alarm-codes.yaml ALM-DQ-* ile eslesir."
+          }
+        }
+      }
+    },
+    "elec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["i_ph", "i_n", "u_ph"],
+      "description": "MPR-53CS enerji analizorunden Modbus ile okunur (ek sensor yok)",
+      "properties": {
+        "i_ph": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+        "i_n": { "type": "number", "description": "notr akimi (A)" },
+        "u_ph": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+        "thd_i": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+        "cosphi": { "type": "number", "minimum": -1, "maximum": 1 },
+        "unbal_pct": { "type": "number", "description": "max|Ii - Iort| / Iort * 100" }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t_low_c", "rh_low_pct", "t_up_c", "rh_up_pct"],
+      "description": "alt (hava girisi) ve ust (hava cikisi) ortam dugumleri",
+      "properties": {
+        "t_low_c": { "type": "number" },
+        "rh_low_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "td_low_c": { "type": "number", "description": "ciy noktasi (Magnus)" },
+        "td_margin_k": { "type": "number", "description": "yuzey sicakligi - ciy noktasi; negatif = yogusma" },
+        "t_up_c": { "type": "number" },
+        "rh_up_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "dt_air_k": { "type": "number", "description": "ust - alt hava sicaklik farki (pano enerji dengesi)" },
+        "voc_idx": { "type": ["number", "null"], "description": "gaz/VOC indeksi; null = sensor yok" },
+        "door_open": { "type": "boolean" }
+      }
+    },
+    "tvoc": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "ABB TVOC-2 ark korumasindan SALT OKUNUR alinir (PLAN.md GK6)",
+      "properties": {
+        "state": { "type": "integer", "description": "PDU 1300 system state bit alani" },
+        "trips": { "type": "integer", "description": "PDU 149 trip sayaci; degisim = yeni ark olayi" },
+        "det_bits_low": { "type": "integer", "description": "PDU 100" },
+        "det_bits_high": { "type": "integer", "description": "PDU 101" },
+        "sensor_x2": { "type": "integer", "description": "PDU 222; bit 1 = OK" },
+        "sensor_x3": { "type": "integer", "description": "PDU 223" },
+        "amb_light_x2": { "type": "integer", "description": "PDU 224" },
+        "amb_light_x3": { "type": "integer", "description": "PDU 225" },
+        "prot_health_ok": { "type": "boolean", "description": "bizim ozet bitimiz: false = pano sessizce korumasiz" },
+        "comm_ok": { "type": "boolean", "description": "false = cihaz cevap vermiyor (or. fabrika ID 248)" }
+      }
+    },
+    "pd": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "OG eklentisi (HFCT); AG panoda null",
+      "properties": {
+        "pps": { "type": "number", "description": "darbe / saniye" },
+        "amp_dbmv": { "type": "number", "description": "maks. genlik (dBmV)" },
+        "trend": { "type": "number", "description": "trend egimi" },
+        "phase_cluster": { "type": "number", "description": "PRPD faz kumelenme skoru 0-1" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "mode"],
+      "properties": {
+        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "mode": {
+          "type": "string",
+          "description": "baskin hipotez kodu; alarm-codes.yaml hypotheses[].code"
+        },
+        "ttl_h": { "type": ["number", "null"] },
+        "contributions": {
+          "type": "object",
+          "description": "alarm kodu -> katki (0-1); arayuzdeki 'Neden?' bolumunu besler",
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "alarms": {
+      "type": "array",
+      "description": "kenarda tespit edilen aktif alarm kodlari; alarm-codes.yaml alarms[].code",
+      "items": { "type": "string", "pattern": "^ALM-[A-Z0-9-]+$" }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uptime_s", "nodes_ok"],
+      "properties": {
+        "uptime_s": { "type": "integer", "minimum": 0 },
+        "nodes_ok": { "type": "integer", "minimum": 0 },
+        "nodes_total": { "type": "integer", "minimum": 0 },
+        "rssi_dbm": { "type": "number" },
+        "vbak_pct": { "type": "number", "minimum": 0, "maximum": 100, "description": "yedek enerji (superkapasitor) %" },
+        "buffered": { "type": "integer", "minimum": 0, "description": "gonderilmeyi bekleyen mesaj sayisi" },
+        "maint_mode": { "type": "boolean" },
+        "baseline_day": { "type": "integer", "description": "7 gunluk taban ogrenmede kacinci gun; 7 = tamamlandi" }
+      }
+    }
+  }
+}
