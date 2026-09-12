@@ -1,0 +1,57 @@
+# Dosya sahipligi — PLAN.md Bolum A.3/A.4, kural 2: "bir dosya = bir sahip".
+#
+# YAPILACAK: @kisi-a / @kisi-b / @kisi-c yerine gercek GitHub kullanici adlarini yazin.
+#   A = Fizik, Kenar, Algoritma
+#   B = Platform, Entegrasyon, Olcek
+#   C = Arayuz, Donanim Tasarimi, Teslim
+#
+# Not: CODEOWNERS'in zorunlu inceleme etkisi ancak branch protection acikken calisir.
+# Acik olmasa bile bu dosya sahipligin tek kaynagidir — cakismada dosya sahibinin
+# surumu kazanir.
+
+# --- Kisi A: Fizik, Kenar, Algoritma ---
+/libs/          @kisi-a
+/firmware/      @kisi-a
+/sim/           @kisi-a
+/data/          @kisi-a
+/docs/05-anomali-tespiti.md        @kisi-a
+/docs/12-dogrulama-sonuclari.md    @kisi-a
+/docs/14-veri-ureteci.md           @kisi-a
+
+# --- Kisi B: Platform, Entegrasyon, Olcek ---
+/backend/       @kisi-b
+/deploy/        @kisi-b
+/loadtest/      @kisi-b
+/scripts/       @kisi-b
+/docs/02-mimari.md                 @kisi-b
+/docs/03-modbus-haritasi.md        @kisi-b
+/docs/04-iec104-haritasi.md        @kisi-b
+/docs/06-alarm-matrisi.md          @kisi-b
+/docs/07b-fmea-yazilim-sistem.md   @kisi-b
+/docs/09-olceklenebilirlik.md      @kisi-b
+/docs/15-guvenlik-kvkk.md          @kisi-b
+/docs/17-donanimsiz-dogrulama.md   @kisi-b
+
+# --- Kisi C: Arayuz, Donanim Tasarimi, Teslim ---
+/frontend/      @kisi-c
+/hardware/      @kisi-c
+/demo/          @kisi-c
+/assets/        @kisi-c
+/README.md      @kisi-c
+/docs/01-problem-analizi.md        @kisi-c
+/docs/07-fmea-donanim-saha.md      @kisi-c
+/docs/08-kurulum-proseduru.md      @kisi-c
+/docs/10-bom-maliyet-roi.md        @kisi-c
+/docs/11-standartlar-uyum.md       @kisi-c
+/docs/13-donanim-tasarimi.md       @kisi-c
+/docs/16-ux-tasarim.md             @kisi-c
+
+# --- Kilitli bolge: uc onay gerekir (PLAN.md kural 3) ---
+/contracts/     @kisi-a @kisi-b @kisi-c
+/PLAN.md        @kisi-a @kisi-b @kisi-c
+/.gitattributes @kisi-a @kisi-b @kisi-c
+/CODEOWNERS     @kisi-a @kisi-b @kisi-c
+
+# --- Komitenin gizli dokumanlari: dokunulmaz ---
+/Hackathon Verileri/               @kisi-a @kisi-b @kisi-c
+/HACKATHON_ANALIZ_RAPORU.md        @kisi-a @kisi-b @kisi-c
