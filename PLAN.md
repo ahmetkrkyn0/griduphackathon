@@ -189,6 +189,29 @@ Donanım yokluğu bir eksiklik değil, **bilinçli bir mühendislik kararı** ol
 
 > **Bu fazın tamamı `main` üzerinde, tek oturumda, tek kişi klavyede (ekran paylaşımıyla) yapılır.** Branch açılmaz. Faz 0 bitmeden kimse dalına geçmez — yoksa sözleşme üç farklı yerde üç farklı şekilde doğar.
 
+### Faz 0 durumu (12 Eylül, 21:30)
+
+**Kurulmuş ve `main`'e commit edilmiş** (`ffe8c65` → `b88aed1`):
+
+| Görev | Durum | Not |
+|---|---|---|
+| T0.1 Git hijyeni | ✅ | `.gitattributes` (LF), `.gitignore`, `.editorconfig` — tüm metin dosyaları `w/lf` |
+| T0.2 Dizin iskeleti + CODEOWNERS | ✅ | 39 dizin, `.gitkeep`'li; CODEOWNERS dosya+doküman bazında |
+| T0.3 MQTT telemetri şeması | ✅ | draft 2020-12 geçerli; topic planı şemanın içinde (`x-topics`) |
+| T0.4 Modbus + alarm + OpenAPI + senaryo | ✅ | 13 blok/430 register · 22 kod + 34 eşik + 9 hipotez · 9 uç + WS |
+| T0.5 Üç parçalı compose | ⚠️ | Dosyalar hazır, `docker compose config` altı servisi çözüyor; **`up` ile çalıştığı DOĞRULANMADI** (Docker daemon kapalı) |
+| T0.6 README iskeleti | ✅ | Tek komutla kurulum + 7 çıktı eşleme tablosu iskeleti |
+
+**Ekstra (planda yoktu, eklendi):** `scripts/check_contracts.py` — sözleşmeler arası tutarlılık denetimi. İlk koşusunda **gerçek bir adres çakışması yakaladı** (`conn_temp` 100–199 ile `conn_dt` 150–199 örtüşüyordu); düzeltildi. Her PR öncesi koşturulacak.
+
+**Faz 0'dan kalan (üçünüzün yapması gerekenler):**
+
+- [ ] **Docker Desktop'ı başlatıp yığını doğrula** — T0.5 Adım 6 (aşağıdaki kabul kriteri)
+- [ ] **Kulvar atamasını yap** — Bölüm G'yi doldur, `CODEOWNERS`'daki `@kisi-a/b/c` yerine gerçek GitHub handle'larını yaz
+- [ ] **Üç dalı aç ve push et** — T0.6 Adım 3
+- [ ] **Komiteye 5 soruyu gönder** — T0.6 Adım 4 (teslim formatı, fotoğraflar, AG/OG ağırlığı, RTU protokolü, mevcut Modbus master)
+- [ ] **Üçünüz `contracts/` dizinini okuyup onaylayın** — "kendi işimi bu arayüzle yapabilirim" dediğinizde Faz 0 kapanır
+
 **Dosyalar:**
 - Oluştur: `.gitattributes`, `.gitignore`, `.editorconfig`, `CODEOWNERS`, dizin iskeleti (`.gitkeep`'lerle)
 - Oluştur: `contracts/mqtt-telemetry.schema.json`, `contracts/modbus-map.yaml`, `contracts/alarm-codes.yaml`, `contracts/openapi.yaml`, `contracts/scenario-labels.schema.json`, `contracts/README.md`
@@ -1156,4 +1179,5 @@ GitHub handle'ları: `@_____` (A), `@_____` (B), `@_____` (C) → `CODEOWNERS`'a
 
 | Tarih | Kişi | Biten | Bloke | Kesilen |
 |---|---|---|---|---|
-| 12 Eyl | | | | |
+| 12 Eyl | — | Faz 0 iskeleti: git hijyeni, 39 dizin, CODEOWNERS, 5 sözleşme (donduruldu), üç parçalı compose, hello-world servisleri, README iskeleti, `check_contracts.py` | Docker daemon kapalı → yığının `up` ile çalıştığı doğrulanmadı | — |
+| 13 Eyl | | | | |
