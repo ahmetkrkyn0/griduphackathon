@@ -1,107 +1,138 @@
-"""Merkez API — Faz 0 iskeleti (Kisi B).
+"""Merkez API — uygulama fabrikasi (Kisi B).
 
-Faz 0'da amac tek sey: yigin ayakta ve sozlesmeler okunabiliyor.
-Faz 1'de (TB1) buraya ingestion, TimescaleDB yazimi ve gercek uclar gelir.
+Calistirma (Dockerfile):  uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000
 Uc sozlesmesi: contracts/openapi.yaml — alan adlari oradan degismez.
+
+Sozlesmeler uygulama olusturulurken okunur: /contracts bagli degilse veya bir dosya
+bozuksa servis HIC ayaga kalkmaz (yanlis esikle calismaktansa gurultulu hata).
 """
 
 from __future__ import annotations
 
-import json
-import os
-import socket
-from pathlib import Path
-from typing import Any
+import logging
+from collections.abc import Callable
+from contextlib import asynccontextmanager
+from datetime import datetime
 
-import yaml
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from . import __version__
+from .api import alarms, panels, stream
+from .api.stream import StreamHub
+from .api.views import REQUIRED_HYPOTHESES, panel_summary
+from .config import Contracts, Settings, load_contracts
+from .db import Store, StoreError
+from .ingest import IngestPipeline, MqttSubscriber, utcnow
+from .models import Sample
 
-CONTRACTS_DIR = Path(os.getenv("CONTRACTS_DIR", "/contracts"))
-MQTT_HOST = os.getenv("MQTT_HOST", "mosquitto")
-MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
-DB_DSN = os.getenv("DB_DSN", "")
-
-app = FastAPI(
-    title="Grid Up — Pano Beyni Merkez API",
-    version=__version__,
-    description="On-prem izleme platformu. Sozlesme: contracts/openapi.yaml",
-)
-
-# Gelistirmede frontend ayri portta (3000); uretimde nginx arkasinda ayni koken.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+log = logging.getLogger("gridup")
 
 
-def _tcp_ok(host: str, port: int, timeout: float = 2.0) -> bool:
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
+def create_app(
+    settings: Settings | None = None,
+    *,
+    store: Store | None = None,
+    clock: Callable[[], datetime] = utcnow,
+) -> FastAPI:
+    settings = settings or Settings.from_env()
+    contracts = load_contracts(settings.contracts_dir)
+    missing = [code for code in REQUIRED_HYPOTHESES if code not in contracts.hypothesis_codes]
+    if missing:
+        raise ValueError(f"alarm-codes.yaml hipotezlerinde eksik: {missing}")
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        owns_store = store is None
+        if owns_store:
+            from .db import PgStore
 
-def _db_ok() -> bool:
-    if not DB_DSN:
-        return False
-    try:
-        import psycopg
+            active_store: Store = PgStore(settings.db_dsn)
+        else:
+            active_store = store
+        hub = StreamHub()
+        pipeline = IngestPipeline(contracts, active_store, clock=clock)
+        pipeline.add_listener(_panel_update_publisher(active_store, hub, contracts, clock))
+        subscriber = None
+        if settings.ingest_enabled:
+            pipeline.start()
+            subscriber = MqttSubscriber(
+                settings.mqtt_host, settings.mqtt_port, contracts, pipeline.handle_message
+            )
+            subscriber.start()
+        app.state.store = active_store
+        app.state.hub = hub
+        app.state.pipeline = pipeline
+        app.state.subscriber = subscriber
+        try:
+            yield
+        finally:
+            if subscriber is not None:
+                subscriber.stop()
+            pipeline.stop()
+            if owns_store:
+                active_store.close()
 
-        with psycopg.connect(DB_DSN, connect_timeout=3) as conn:
-            conn.execute("SELECT 1")
-        return True
-    except Exception:
-        return False
+    app = FastAPI(
+        title="Grid Up — Pano Beyni Merkez API",
+        version=__version__,
+        description="On-prem izleme platformu. Sozlesme: contracts/openapi.yaml",
+        lifespan=lifespan,
+    )
+    app.state.settings = settings
+    app.state.contracts = contracts
+    app.state.clock = clock
 
+    # Gelistirmede frontend ayri portta (3000); uretimde nginx arkasinda ayni koken.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.add_exception_handler(StoreError, _store_unavailable)
+    app.include_router(panels.router)
+    app.include_router(alarms.router)
+    app.include_router(stream.router)
 
-def load_contract(name: str) -> Any:
-    """Sozlesmeyi diskten okur. Esik/adres sabitleri ASLA koda gomulmez (kural 10)."""
-    path = CONTRACTS_DIR / name
-    text = path.read_text(encoding="utf-8")
-    if path.suffix == ".json":
-        return json.loads(text)
-    return yaml.safe_load(text)
-
-
-@app.get("/health")
-def health() -> dict:
-    contracts_ok = True
-    loaded: dict[str, int] = {}
-    try:
-        alarms = load_contract("alarm-codes.yaml")
-        modbus = load_contract("modbus-map.yaml")
-        load_contract("mqtt-telemetry.schema.json")
-        loaded = {
-            "alarm_codes": len(alarms.get("alarms", [])),
-            "hypotheses": len(alarms.get("hypotheses", [])),
-            "modbus_blocks": len(modbus.get("blocks", [])),
+    @app.get("/health", tags=["system"])
+    def health(request: Request) -> dict:
+        state = request.app.state
+        subscriber = state.subscriber
+        return {
+            "ok": True,
+            "version": __version__,
+            "mqtt": bool(subscriber and subscriber.connected),
+            "db": state.store.ping(),
+            "contracts": True,
+            "contracts_loaded": {
+                "alarm_codes": len(contracts.alarm_codes["alarms"]),
+                "hypotheses": len(contracts.hypothesis_codes),
+                "ingest_topics": list(contracts.ingest_topics),
+            },
+            "ingest": dict(state.pipeline.stats),
         }
-    except Exception:
-        contracts_ok = False
 
-    return {
-        "ok": True,
-        "version": __version__,
-        "mqtt": _tcp_ok(MQTT_HOST, MQTT_PORT),
-        "db": _db_ok(),
-        "contracts": contracts_ok,
-        "contracts_loaded": loaded,
-    }
+    return app
 
 
-@app.get("/api/v1/panels")
-def list_panels() -> list[dict]:
-    """Faz 0: bos liste (frontend 404 almasin). Faz 1'de DB'den doldurulur."""
-    return []
+def _panel_update_publisher(
+    store: Store, hub: StreamHub, contracts: Contracts, clock: Callable[[], datetime]
+) -> Callable[[list[Sample]], None]:
+    """Yazilan her partiden sonra degisen panolarin ozetini WebSocket'e yayinlar."""
+
+    def publish(samples: list[Sample]) -> None:
+        if not hub.has_clients:
+            return
+        pano_ids = list(dict.fromkeys(sample.pano_id for sample in samples))
+        now = clock()
+        for record in store.list_panels(pano_ids):
+            hub.publish({"type": "tel", "payload": panel_summary(record, contracts, now)})
+
+    return publish
 
 
-@app.get("/api/v1/alarms")
-def list_alarms() -> list[dict]:
-    """Faz 0: bos liste. Faz 2'de alarm yoneticisinden doldurulur."""
-    return []
+async def _store_unavailable(request: Request, exc: StoreError) -> JSONResponse:
+    log.warning("veritabani erisilemiyor: %s", exc)
+    return JSONResponse(status_code=503, content={"detail": "Veritabani su an erisilemiyor"})

@@ -24,7 +24,9 @@ CREATE TABLE IF NOT EXISTS telemetry (
     pano_id  TEXT             NOT NULL,
     tag      TEXT             NOT NULL,
     value    DOUBLE PRECISION,
-    q        SMALLINT         NOT NULL DEFAULT 0    -- veri kalitesi bayrak alani
+    -- veri kalitesi bayrak alani. INTEGER: bitler alarm-codes.yaml bit numaralariyla
+    -- eslesir ve ALM-DQ-BELOW-AMBIENT bit 16'dir; SMALLINT (maks. 32767) tasardi.
+    q        INTEGER          NOT NULL DEFAULT 0
 );
 SELECT create_hypertable('telemetry', 'ts',
                          chunk_time_interval => INTERVAL '1 day',
