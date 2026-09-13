@@ -28,10 +28,15 @@ POINT_OPTIONAL_FIELDS = ("k", "k_ratio", "tau_s", "ttl_h")
 _DSYA_POINT = re.compile(r"DSYA(\d)_(L\d)")
 
 
-def is_comms_ok(record: PanelRecord, contracts: Contracts, now: datetime) -> bool:
-    if record.last_rx is None:
+def comms_ok_since(last_rx: datetime | None, contracts: Contracts, now: datetime) -> bool:
+    """Merkez panodan son `heartbeat_timeout_min` icinde veri aldiysa haberlesme saglamdir."""
+    if last_rx is None:
         return False
-    return now - record.last_rx <= timedelta(minutes=contracts.thresholds["heartbeat_timeout_min"])
+    return now - last_rx <= timedelta(minutes=contracts.thresholds["heartbeat_timeout_min"])
+
+
+def is_comms_ok(record: PanelRecord, contracts: Contracts, now: datetime) -> bool:
+    return comms_ok_since(record.last_rx, contracts, now)
 
 
 def top_alarm(codes: list[str], contracts: Contracts) -> tuple[str | None, str | None]:
