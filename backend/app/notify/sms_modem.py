@@ -24,8 +24,9 @@ INIT_COMMANDS = ("AT", "ATE0", "AT+CMEE=1", "AT+CMGF=0", "AT+CNMI=2,2,0,0,0")
 FINAL_ERRORS = ("ERROR", "+CMS ERROR", "+CME ERROR", "NO CARRIER", "BUSY", "NO ANSWER", "NO DIALTONE")
 URC_PREFIXES = ("RING", "+CMTI:", "+CREG:", "+CIEV:")
 PROMPT = "> "
-CR, LF, CTRL_Z = "\r", "\n", "\x1a"
+CR, LF, CTRL_Z, ESC = "\r", "\n", "\x1a", "\x1b"
 READ_SLICE_S = 0.05
+DISCARD_QUIET_S = 0.2
 
 
 class ModemError(RuntimeError):
@@ -57,6 +58,10 @@ class SmsModem:
             self._port = self._open_port(self._url, baudrate=self._baudrate, timeout=READ_SLICE_S)
         except (serial.SerialException, OSError, ValueError) as exc:
             raise ModemError(f"modem acilamadi ({self._url}): {exc}") from exc
+        # Onceki oturum AT+CMGS'ten sonra koptuysa modem hala '> ' isteminde bekler ve AT komutlarini
+        # SMS govdesi sanar: ESC yarim girisi iptal eder, gelen artik yanitlar atilir.
+        self._write(ESC)
+        self._discard_input(quiet_s=DISCARD_QUIET_S)
         for command in INIT_COMMANDS:
             self._command(command)
 
@@ -174,6 +179,15 @@ class SmsModem:
         line = bytes(self._buffer[:end]).decode("ascii", errors="replace").strip()
         del self._buffer[: end + 1]
         return line
+
+    def _discard_input(self, quiet_s: float) -> None:
+        """`quiet_s` boyunca yeni bayt gelmeyene kadar okur ve atar."""
+        while True:
+            before = len(self._buffer)
+            self._read_available(quiet_s)
+            if len(self._buffer) == before:
+                break
+        self._buffer.clear()
 
     def _fill(self, deadline: float) -> None:
         if time.monotonic() > deadline:

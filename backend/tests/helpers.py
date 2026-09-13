@@ -20,6 +20,16 @@ def utc(*args: int) -> datetime:
     return datetime(*args, tzinfo=timezone.utc)
 
 
+def load_virtual_modem():
+    """scripts/virtual_gsm_modem.py (Kisi B araci) modul olarak yuklenir; testler gercek TCP ile konusur."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("virtual_gsm_modem", REPO_ROOT / "scripts" / "virtual_gsm_modem.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def receive_json(ws, timeout_s: float = 3.0) -> dict:
     """Uygulama bozuksa test sonsuza dek beklemesin diye zaman asimli WebSocket okumasi."""
     box: queue.Queue = queue.Queue()

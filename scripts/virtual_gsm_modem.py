@@ -107,7 +107,8 @@ class VirtualModem:
             end = self._buffer.find(b"\r")
             if end < 0:
                 break
-            line = self._buffer[:end].decode(errors="replace").strip()
+            # Komut modunda basibos kontrol karakterleri (or. surucunun iptal icin gonderdigi ESC) yok sayilir
+            line = "".join(c for c in self._buffer[:end].decode(errors="replace") if c >= " ").strip()
             del self._buffer[: end + 1]
             if not line:
                 continue
@@ -247,8 +248,11 @@ class ModemServer:
                     elif command == "FAIL" and rest.isdigit():
                         owner.fail_next(int(rest))
                         self.wfile.write(b"OK\n")
+                    elif command == "RESET":
+                        owner.disconnect_host()
+                        self.wfile.write(b"OK\n")
                     else:
-                        self.wfile.write(b"ERR komut: SMS <numara> <metin> | FAIL <adet>\n")
+                        self.wfile.write(b"ERR komut: SMS <numara> <metin> | FAIL <adet> | RESET\n")
 
         self._servers = [_TcpServer((host, port), HostHandler), _TcpServer((host, control_port), ControlHandler)]
         self.port = self._servers[0].server_address[1]
@@ -275,6 +279,17 @@ class ModemServer:
     def fail_next(self, count: int) -> None:
         with self._lock:
             self.modem.fail_next(count)
+
+    def disconnect_host(self) -> None:
+        """Modem resetini / terminal sunucusu yeniden baslamasini taklit eder: host baglantisi kopar."""
+        with self._lock:
+            sock, self._host_socket = self._host_socket, None
+        if sock is not None:
+            self.modem.log.write("MODEM", "baglanti koparildi (reset)")
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
 
     def _attach(self, sock: socket.socket) -> None:
         with self._lock:

@@ -47,7 +47,7 @@ from .config import PRIO_ORDER, Contracts
 
 log = logging.getLogger("gridup.alarms")
 
-ChangeKind = Literal["raised", "reactivated", "returned", "cleared", "acked", "shelved", "unshelved"]
+ChangeKind = Literal["raised", "reactivated", "returned", "cleared", "acked", "shelved", "unshelved", "escalated", "notified"]
 AlarmKey = tuple[str, str, str | None]  # (pano_id, code, point)
 
 SHELVE_MIN_REASON_CHARS = 3  # contracts/openapi.yaml shelve.reason minLength
@@ -112,6 +112,7 @@ class Change:
     opened_event: bool = False
     by: str | None = None
     note: str | None = None
+    step: str | None = None  # escalated: "call" | "escalate"; notified: kanal
 
 
 @dataclass
@@ -131,9 +132,16 @@ class AlarmManager:
         self._group_window = timedelta(minutes=thresholds["group_window_min"])
         self._shelve_max_min = int(thresholds["shelve_max_min"])
         self._contracts = contracts
-        self._suppressible = {
-            prio: bool(spec.get("suppressible", True))
-            for prio, spec in contracts.alarm_codes["priorities"].items()
+        priorities = contracts.alarm_codes["priorities"]
+        self._suppressible = {prio: bool(spec.get("suppressible", True)) for prio, spec in priorities.items()}
+        # Onaysiz alarmin eskalasyon adimlari (dakika sirasiyla): P1 once arama, sonra ust amir
+        self._escalation = {
+            prio: sorted(
+                (timedelta(minutes=spec[field]), step)
+                for field, step in (("call_after_min", "call"), ("escalate_after_min", "escalate"))
+                if field in spec
+            )
+            for prio, spec in priorities.items()
         }
         self._hypotheses: dict[str, set[str]] = {}
         for hypothesis in contracts.alarm_codes["hypotheses"]:
@@ -290,7 +298,13 @@ class AlarmManager:
             return Change("shelved", replace(alarm), by=by, note=alarm.shelve_reason)
 
     def tick(self, now: datetime) -> list[Change]:
-        """Duvar saatine bagli zamanlayicilar: raf suresi dolan alarmlar yeniden duyurulur."""
+        """Duvar saatine bagli zamanlayicilar.
+
+        - Raf suresi dolan alarm yeniden duyurulur (onaysiz, eskalasyon zinciri bastan).
+        - Onaysiz (active) alarm, duyuruldugundan beri gecen sureye gore oncelik tablosundaki eskalasyon
+          adimlarini sirayla atar; gecikmis tick'te birikmis adimlarin hepsi sirayla atilir. Bakimdaki
+          panoda bastirilabilir alarmin eskalasyonu bekler; P1'inki beklemez.
+        """
         with self._lock:
             changes: list[Change] = []
             for alarm in sorted(self._by_id.values(), key=lambda a: a.id):
@@ -301,7 +315,19 @@ class AlarmManager:
                     alarm.acked_at = None
                     alarm.acked_by = None
                     alarm.annunciated_at = now
+                    alarm.escalation_level = 0
                     changes.append(Change("unshelved", replace(alarm), notify=True))
+                    continue
+                if alarm.state != "active":
+                    continue
+                if self._maint.get(alarm.pano_id, False) and self._suppressible[alarm.prio]:
+                    continue
+                schedule = self._escalation[alarm.prio]
+                elapsed = now - alarm.annunciated_at
+                while alarm.escalation_level < len(schedule) and elapsed >= schedule[alarm.escalation_level][0]:
+                    step = schedule[alarm.escalation_level][1]
+                    alarm.escalation_level += 1
+                    changes.append(Change("escalated", replace(alarm), notify=True, step=step, note=step))
             return changes
 
     # ------------------------------------------------------------- ic isler

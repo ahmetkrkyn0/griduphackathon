@@ -15,9 +15,29 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
-from helpers import CONTRACTS_DIR
+from helpers import CONTRACTS_DIR, load_virtual_modem
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture(scope="session")
+def vgm():
+    return load_virtual_modem()
+
+
+@pytest.fixture
+def modem_log(tmp_path) -> Path:
+    """Sanal modemin kayit dosyasi (demodaki AT komut kaydi)."""
+    return tmp_path / "runtime" / "sms-log.txt"
+
+
+@pytest.fixture
+def modem_server(vgm, modem_log):
+    """Gercek TCP uzerinde sanal GSM modem; bos portlarda acilir."""
+    server = vgm.ModemServer(vgm.VirtualModem(vgm.FileLog(modem_log)), host="127.0.0.1", port=0, control_port=0)
+    server.start()
+    yield server
+    server.stop()
 
 OPENAPI_URI = "urn:gridup:openapi"
 

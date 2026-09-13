@@ -331,6 +331,72 @@ def test_suppressed_condition_raises_once_maintenance_ends(manager):
     assert (raised.kind, raised.alarm.raised_at) == ("raised", at(1))
 
 
+# --------------------------------------------------------------- eskalasyon
+def schedule(contracts, prio: str) -> dict:
+    return contracts.alarm_codes["priorities"][prio]
+
+
+def steps(changes) -> list[tuple[str, str | None, int]]:
+    return [(c.kind, c.step, c.alarm.escalation_level) for c in changes]
+
+
+def test_unacknowledged_p1_calls_then_escalates_on_the_contract_schedule(manager, contracts):
+    call_after, escalate_after = schedule(contracts, "P1")["call_after_min"], schedule(contracts, "P1")["escalate_after_min"]
+    observe(manager, 0, cond(ARC_TRIP))
+
+    assert manager.tick(at(call_after - 0.1)) == []
+    assert steps(manager.tick(at(call_after))) == [("escalated", "call", 1)]
+    assert manager.tick(at(escalate_after - 0.1)) == []
+    assert steps(manager.tick(at(escalate_after))) == [("escalated", "escalate", 2)]
+    assert manager.tick(at(escalate_after + 600)) == []
+
+
+def test_p2_escalates_once_to_the_supervisor(manager, contracts):
+    escalate_after = schedule(contracts, "P2")["escalate_after_min"]
+    observe(manager, 0, cond(TERM_ALM, "GIRIS_L2"))
+
+    assert manager.tick(at(escalate_after - 0.1)) == []
+    assert steps(manager.tick(at(escalate_after))) == [("escalated", "escalate", 1)]
+    assert manager.tick(at(escalate_after * 10)) == []
+
+
+def test_late_tick_performs_every_step_that_is_due_in_order(manager, contracts):
+    observe(manager, 0, cond(ARC_TRIP))
+
+    changes = manager.tick(at(schedule(contracts, "P1")["escalate_after_min"] + 5))
+
+    assert steps(changes) == [("escalated", "call", 1), ("escalated", "escalate", 2)]
+
+
+def test_acknowledged_or_low_priority_alarms_do_not_escalate(manager, contracts):
+    [p2] = observe(manager, 0, cond(TERM_ALM, "GIRIS_L2"), cond(K_WARN, "DSYA3_L2"))[:1]
+    manager.ack(p2.alarm.id, by="op", now=at(1))
+
+    assert manager.tick(at(10_000)) == []
+
+
+def test_maintenance_mode_pauses_escalation_of_suppressible_alarms_but_never_p1(manager, contracts):
+    observe(manager, 0, cond(TERM_ALM, "GIRIS_L2"), cond(ARC_TRIP))
+    observe(manager, 1, cond(TERM_ALM, "GIRIS_L2"), cond(ARC_TRIP), maint_mode=True)  # teknisyen sahada
+
+    changes = manager.tick(at(schedule(contracts, "P2")["escalate_after_min"]))
+
+    assert [(c.alarm.code, c.step) for c in changes] == [(ARC_TRIP, "call"), (ARC_TRIP, "escalate")]
+
+
+def test_unshelved_alarm_restarts_its_escalation_chain(manager, contracts):
+    escalate_after = schedule(contracts, "P2")["escalate_after_min"]
+    [raised] = observe(manager, 0, cond(TERM_ALM, "GIRIS_L2"))
+    manager.tick(at(escalate_after))
+    manager.shelve(raised.alarm.id, by="op", minutes=60, reason="bakim ekibi sahada", now=at(escalate_after + 1))
+    observe(manager, escalate_after + 30, cond(TERM_ALM, "GIRIS_L2"))
+
+    [unshelved] = manager.tick(at(escalate_after + 61))
+    assert (unshelved.kind, unshelved.alarm.escalation_level) == ("unshelved", 0)
+    assert manager.tick(at(2 * escalate_after + 61 - 0.1)) == []
+    assert steps(manager.tick(at(2 * escalate_after + 61))) == [("escalated", "escalate", 1)]
+
+
 # ---------------------------------------------------------------- gruplama
 def test_same_root_cause_within_window_shares_an_event(manager, contracts):
     window = contracts.thresholds["group_window_min"]

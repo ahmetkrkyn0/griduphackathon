@@ -9,7 +9,6 @@ Sanal modemin kayit dosyasi demodaki "AT komut kaydi"dir; testler dogrudan o dos
 
 from __future__ import annotations
 
-import importlib.util
 import re
 import socket
 import threading
@@ -19,33 +18,19 @@ import pytest
 
 from app.notify.pdu import decode_submit
 from app.notify.sms_modem import ModemError, SmsModem
-from helpers import REPO_ROOT
 
 NUMBER = "+905550000001"
 MASKED = "+90******0001"
 
 
-def _load_virtual_modem():
-    spec = importlib.util.spec_from_file_location("virtual_gsm_modem", REPO_ROOT / "scripts" / "virtual_gsm_modem.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-vgm = _load_virtual_modem()
+@pytest.fixture
+def server(modem_server):
+    return modem_server
 
 
 @pytest.fixture
-def log_path(tmp_path):
-    return tmp_path / "runtime" / "sms-log.txt"
-
-
-@pytest.fixture
-def server(log_path):
-    modem_server = vgm.ModemServer(vgm.VirtualModem(vgm.FileLog(log_path)), host="127.0.0.1", port=0, control_port=0)
-    modem_server.start()
-    yield modem_server
-    modem_server.stop()
+def log_path(modem_log):
+    return modem_log
 
 
 @pytest.fixture
@@ -92,7 +77,7 @@ def test_rejected_send_raises_and_the_next_send_succeeds(modem, server):
     assert len(modem.send_sms(NUMBER, "ikinci deneme")) == 1
 
 
-def test_incoming_sms_injected_from_the_control_port_reaches_the_driver(modem, server):
+def test_incoming_sms_injected_from_the_control_port_reaches_the_driver(modem, server, vgm):
     exit_code = vgm.main(["inject", "--control", f"127.0.0.1:{server.control_port}", "--sender", NUMBER, "--text", "1 42"])
 
     assert exit_code == 0
@@ -107,6 +92,24 @@ def test_incoming_sms_arriving_during_a_send_is_not_lost(modem, server):
     modem.send_sms(NUMBER, "alarm")
 
     assert [(s.number, s.text) for s in modem.poll()] == [(NUMBER, "2 42")]
+
+
+def test_connect_cancels_a_half_finished_sms_left_by_a_dropped_session(server, log_path):
+    """Onceki oturum AT+CMGS yazip PDU'yu yazamadan koptu: modem hala '> ' isteminde bekliyor.
+    Yeni oturumun AT komutlari SMS govdesi sanilmamali (ser2net yeniden baslamasi, kablo cikmasi)."""
+    with socket.create_connection(("127.0.0.1", server.port), timeout=3) as dropped:
+        dropped.sendall(b"ATE0\rAT+CMGF=0\rAT+CMGS=23\r")
+        received = b""
+        while b"> " not in received:
+            received += dropped.recv(1024)
+
+    driver = SmsModem(f"socket://127.0.0.1:{server.port}", timeout_s=2.0)
+    try:
+        driver.connect()
+        assert driver.send_sms(NUMBER, "yeniden baglandi") != []
+    finally:
+        driver.close()
+    assert [decode_submit(pdu).text for pdu in sent_pdus(log_path)] == ["yeniden baglandi"]
 
 
 def test_call_is_dialled_and_hung_up(modem, log_path):
