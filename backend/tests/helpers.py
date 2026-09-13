@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+import queue
+import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -16,3 +18,23 @@ def encode(payload: dict) -> bytes:
 
 def utc(*args: int) -> datetime:
     return datetime(*args, tzinfo=timezone.utc)
+
+
+def receive_json(ws, timeout_s: float = 3.0) -> dict:
+    """Uygulama bozuksa test sonsuza dek beklemesin diye zaman asimli WebSocket okumasi."""
+    box: queue.Queue = queue.Queue()
+    threading.Thread(target=lambda: box.put(ws.receive_json()), daemon=True).start()
+    return box.get(timeout=timeout_s)
+
+
+class Clock:
+    """Elle ilerletilen duvar saati (create_app(clock=...))."""
+
+    def __init__(self, now: datetime) -> None:
+        self.now = now
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, minutes: float) -> None:
+        self.now += timedelta(minutes=minutes)

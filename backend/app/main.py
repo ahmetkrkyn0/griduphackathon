@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import __version__
+from .alarm_service import AlarmService, PeriodicWorker
 from .api import alarms, panels, stream
 from .api.stream import StreamHub
 from .api.views import REQUIRED_HYPOTHESES, panel_summary
@@ -53,10 +54,19 @@ def create_app(
             active_store = store
         hub = StreamHub()
         pipeline = IngestPipeline(contracts, active_store, clock=clock)
+        alarm_service = AlarmService(contracts, active_store, hub, clock=clock)
+        try:
+            alarm_service.load()
+        except StoreError as exc:  # TB1 davranisi: DB kapaliyken de ayaga kalk, DB gelince yukle
+            log.warning("alarm durumu acilista yuklenemedi, veritabani gelince yuklenecek: %s", exc)
         pipeline.add_listener(_panel_update_publisher(active_store, hub, contracts, clock))
+        pipeline.add_listener(alarm_service.on_samples)
         subscriber = None
+        alarm_worker = None
         if settings.ingest_enabled:
             pipeline.start()
+            alarm_worker = PeriodicWorker(alarm_service.tick, settings.alarm_tick_s, name="alarm-tick")
+            alarm_worker.start()
             subscriber = MqttSubscriber(
                 settings.mqtt_host, settings.mqtt_port, contracts, pipeline.handle_message
             )
@@ -64,12 +74,15 @@ def create_app(
         app.state.store = active_store
         app.state.hub = hub
         app.state.pipeline = pipeline
+        app.state.alarms = alarm_service
         app.state.subscriber = subscriber
         try:
             yield
         finally:
             if subscriber is not None:
                 subscriber.stop()
+            if alarm_worker is not None:
+                alarm_worker.stop()
             pipeline.stop()
             if owns_store:
                 active_store.close()

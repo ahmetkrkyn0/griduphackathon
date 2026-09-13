@@ -7,11 +7,15 @@ turetildigi yazilidir.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..config import PRIO_ORDER, Contracts
 from ..models import PanelRecord
+
+if TYPE_CHECKING:
+    from ..alarm_manager import Alarm
 
 # Hic veri gondermemis pano: elektriksel ariza kaniti yok ama izleme calismiyor.
 NEVER_REPORTED_MODE = "HYP-SELF-FAULT"
@@ -116,7 +120,39 @@ def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool
     return view
 
 
-def panel_detail(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def alarm_view(alarm: Alarm, contracts: Contracts) -> dict[str, Any]:
+    """contracts/openapi.yaml Alarm semasi. Kimlik metin olarak dondurulur."""
+    spec = contracts.alarm(alarm.code) or {}
+    view: dict[str, Any] = {
+        "id": str(alarm.id),
+        "event_id": alarm.event_id,
+        "pano_id": alarm.pano_id,
+        "code": alarm.code,
+        "text": spec.get("text", alarm.code),
+        "prio": alarm.prio,
+        "state": alarm.state,
+        "raised_at": alarm.raised_at.isoformat(),
+        "cleared_at": _iso(alarm.cleared_at),
+        "acked_at": _iso(alarm.acked_at),
+        "acked_by": alarm.acked_by,
+        "shelved_until": _iso(alarm.shelved_until),
+        "escalation_level": alarm.escalation_level,
+        "notified": list(alarm.notified),
+        "reason": alarm.reason,
+        "ttl_h": alarm.ttl_h,
+    }
+    if alarm.advice is not None:
+        view["advice"] = alarm.advice
+    return view
+
+
+def panel_detail(
+    record: PanelRecord, contracts: Contracts, now: datetime, active_alarms: Iterable[Alarm] = ()
+) -> dict[str, Any]:
     score, mode, _ = _risk(record.payload)
     detail: dict[str, Any] = {
         "pano_id": record.pano_id,
@@ -124,7 +160,7 @@ def panel_detail(record: PanelRecord, contracts: Contracts, now: datetime) -> di
         "pano_type": record.pano_type,
         "risk_score": score,
         "risk_mode": mode,
-        "active_alarms": [],  # TB2: alarm yoneticisi doldurur
+        "active_alarms": [alarm_view(alarm, contracts) for alarm in active_alarms],
     }
     payload = record.payload
     if payload is None:

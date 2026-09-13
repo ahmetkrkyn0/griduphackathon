@@ -40,4 +40,4 @@ def get_panel(request: Request, pano_id: str) -> dict[str, Any]:
     record = state.store.get_panel(pano_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"pano bulunamadi: {pano_id}")
-    return panel_detail(record, state.contracts, state.clock())
+    return panel_detail(record, state.contracts, state.clock(), state.alarms.active_for_panel(pano_id))

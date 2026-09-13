@@ -32,7 +32,8 @@ class Settings:
     mqtt_host: str = "mosquitto"
     mqtt_port: int = 1883
     db_dsn: str = ""
-    ingest_enabled: bool = True
+    ingest_enabled: bool = True  # False: MQTT abonesi ve arka plan isleri (yazici, alarm zamanlayicisi) calismaz
+    alarm_tick_s: float = 5.0  # raf suresi + haberlesme denetimi araligi
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -42,6 +43,7 @@ class Settings:
             mqtt_port=int(os.getenv("MQTT_PORT", "1883")),
             db_dsn=os.getenv("DB_DSN", ""),
             ingest_enabled=os.getenv("INGEST_ENABLED", "1").lower() not in ("0", "false", "no"),
+            alarm_tick_s=float(os.getenv("ALARM_TICK_S", "5")),
         )
 
 

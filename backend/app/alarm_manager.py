@@ -146,6 +146,7 @@ class AlarmManager:
         self._by_id: dict[int, Alarm] = {}
         self._events: dict[str, list[_Event]] = {}
         self._last_ts: dict[str, datetime] = {}
+        self._maint: dict[str, bool] = {}  # panonun son ornegindeki bakim modu
         self._restored: set[int] = set()  # histerezis saati henuz ilk ornekle baslatilmamis
         self.stats = {"raised": 0, "cleared": 0, "suppressed_maint": 0, "backfill_ignored": 0, "unknown_codes": 0}
 
@@ -191,6 +192,7 @@ class AlarmManager:
                 self.stats["backfill_ignored"] += 1
                 return []
             self._last_ts[pano_id] = ts
+            self._maint[pano_id] = maint_mode
 
             present: dict[AlarmKey, Condition] = {}
             for condition in conditions:
@@ -231,6 +233,31 @@ class AlarmManager:
                 alarm.cleared_at = ts
                 changes.append(self._close(alarm, "cleared"))
             return changes
+
+    def assert_condition(self, pano_id: str, condition: Condition, *, ts: datetime, now: datetime) -> list[Change]:
+        """Merkezde uretilen kosul (or. haberlesme kopuklugu) `ts` aninda dogru.
+
+        `observe`'un aksine panonun diger kosullarinin yoklugunu degerlendirmez. Kosul, panodan
+        yeniden veri gelip `observe` onu H dk boyunca gormeyince temizlenir. Panonun son ornegi
+        bakim modundaysa bastirilabilir kosul olusmaz.
+        """
+        with self._lock:
+            if self._contracts.alarm(condition.code) is None:
+                self.stats["unknown_codes"] += 1
+                return []
+            open_alarms = self._open.setdefault(pano_id, {})
+            alarm = open_alarms.get((pano_id, condition.code, condition.point))
+            if alarm is None:
+                prio = self._contracts.prio_of(condition.code)
+                if self._maint.get(pano_id, False) and self._suppressible[prio]:
+                    self.stats["suppressed_maint"] += 1
+                    return []
+                return [self._raise(pano_id, condition, prio, ts, now)]
+            alarm.last_true_at = max(alarm.last_true_at, ts)
+            if alarm.cleared_at is not None:
+                alarm.cleared_at = None
+                return [Change("reactivated", replace(alarm))]
+            return []
 
     def ack(self, alarm_id: int, *, by: str, now: datetime, note: str | None = None) -> Change:
         with self._lock:

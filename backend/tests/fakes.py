@@ -5,11 +5,14 @@ PgStore'un belgelenmis davranisini taklit eder:
   - bilinmeyen pano ilk mesajinda kendiliginden kaydolur (ad = pano_id)
   - son durum yalnizca DAHA YENI `ts` ile degisir (backfill ezmez); `last_rx` her mesajda ilerler
   - list_panels() PgStore gibi yalnizca ozet alanlarini dondurur, get_panel() tam yuku
-PgStore'un kendisi tests/test_db_integration.py icinde gercek TimescaleDB'ye karsi test edilir.
+  - alarm satirinda aciklama (reason/advice/ttl_h) ilk yazimdan sonra degismez; liste en yeni once
+PgStore'un kendisi tests/test_db_integration.py ve tests/test_alarm_store.py icinde gercek
+TimescaleDB'ye karsi test edilir.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from app.db import StoreError
@@ -45,7 +48,11 @@ class MemoryStore:
         self.fail_writes = 0  # >0 ise siradaki N yazma `fail_exc` atar
         self.fail_exc: Exception = StoreError("yapay yazma hatasi")
         self.poison_pano: str | None = None  # bu panonun mesajini iceren her yazma veri hatasi verir
-        self.unavailable = False  # True ise okumalar StoreError atar
+        self.unavailable = False  # True ise okumalar ve alarm yazimlari StoreError atar
+        self.alarms: dict[int, object] = {}  # id -> Alarm
+        self.events: dict[str, tuple] = {}  # event_id -> (pano_id, occurred_at, code)
+        self.journal: list[tuple] = []  # (alarm_id, at, action, state, by, note)
+        self.fail_alarm_saves = 0  # >0 ise siradaki N alarm yazimi StoreError atar
         for panel in panels:
             self.add_panel(**panel)
 
@@ -101,6 +108,44 @@ class MemoryStore:
 
     def ping(self) -> bool:
         return not self.unavailable
+
+    def save_alarm_changes(self, changes, at) -> None:
+        self._check()
+        if self.fail_alarm_saves > 0:
+            self.fail_alarm_saves -= 1
+            raise StoreError("yapay alarm yazma hatasi")
+        for change in changes:
+            alarm = change.alarm
+            if change.opened_event:
+                self.events.setdefault(alarm.event_id, (alarm.pano_id, alarm.raised_at, alarm.code))
+            stored = self.alarms.get(alarm.id)
+            if stored is not None:  # PgStore gibi: aciklama olustugu anin kanitidir
+                alarm = replace(alarm, reason=stored.reason, advice=stored.advice, ttl_h=stored.ttl_h)
+            self.alarms[alarm.id] = replace(alarm)
+            self.journal.append((alarm.id, at, change.kind, alarm.state, change.by, change.note))
+
+    def load_open_alarms(self):
+        self._check()
+        return [replace(a) for _, a in sorted(self.alarms.items()) if a.state != "cleared"]
+
+    def list_alarms(self, states, prios, pano_id, limit):
+        self._check()
+        selected = [
+            a
+            for a in self.alarms.values()
+            if a.state in states and (prios is None or a.prio in prios) and (pano_id is None or a.pano_id == pano_id)
+        ]
+        selected.sort(key=lambda a: (a.raised_at, a.id), reverse=True)
+        return [replace(a) for a in selected[:limit]]
+
+    def get_alarm(self, alarm_id: int):
+        self._check()
+        alarm = self.alarms.get(alarm_id)
+        return replace(alarm) if alarm else None
+
+    def next_alarm_id(self) -> int:
+        self._check()
+        return max(self.alarms, default=0) + 1
 
     # ------------------------------------------------------------ test yardimcilari
     def set_last_rx(self, pano_id: str, when: datetime) -> None:

@@ -107,6 +107,10 @@ class RiskEngine:
             add(self._explain(code, payload))
         return list(conditions.values())
 
+    def center_condition(self, code: str, signals: list[Signal]) -> Condition:
+        """Merkezde uretilen kosul (or. ALM-COMMS-LOST): ayni aciklama ve oneri kurallariyla."""
+        return self._condition(code, {}, point=None, signals=signals)
+
     # ------------------------------------------------------------- aciklama
     def _explain(self, code: str, payload: dict[str, Any]) -> list[Condition]:
         if self._contracts.alarm(code) is None:

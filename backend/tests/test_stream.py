@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import queue
-import threading
 from datetime import datetime
 
 from fastapi.testclient import TestClient
@@ -11,16 +9,9 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.main import create_app
 from fakes import MemoryStore
-from helpers import CONTRACTS_DIR, encode, utc
+from helpers import CONTRACTS_DIR, encode, receive_json, utc
 
 NOW = utc(2026, 9, 13, 10, 5, 0)
-
-
-def receive_json(ws, timeout_s: float = 3.0) -> dict:
-    """Uygulama bozuksa test sonsuza dek beklemesin diye zaman asimli okuma."""
-    box: queue.Queue = queue.Queue()
-    threading.Thread(target=lambda: box.put(ws.receive_json()), daemon=True).start()
-    return box.get(timeout=timeout_s)
 
 
 def test_stream_sends_hello_then_summaries_of_ingested_panels(api_contract, tel_payload):

@@ -35,6 +35,7 @@ TERM_ALM = "ALM-THR-TERM-ALM"  # P2
 DEW_WARN = "ALM-DEW-WARN"  # P3, yogusma kaniti
 ARC_TRIP = "ALM-ARC-TRIP"  # P1, bastirilamaz
 PROT_HEALTH = "ALM-PROT-HEALTH"  # P1, bastirilamaz
+COMMS_LOST = "ALM-COMMS-LOST"  # SYS, merkezde uretilir
 
 
 def at(minutes: float) -> datetime:
@@ -284,6 +285,35 @@ def test_ack_of_shelved_alarm_ends_shelving(manager):
 
     assert (change.alarm.state, change.alarm.shelved_until) == ("acked", None)
     assert manager.tick(at(61)) == []
+
+
+# ------------------------------------------------- merkezde uretilen kosul
+def test_center_asserted_condition_raises_once_and_leaves_other_alarms_alone(manager, contracts):
+    observe(manager, 0, cond(K_WARN, "GIRIS_L2"))
+
+    [comms] = manager.assert_condition(PANO, cond(COMMS_LOST), ts=at(7), now=at(7))
+
+    assert (comms.kind, comms.alarm.code, comms.alarm.prio) == ("raised", COMMS_LOST, contracts.prio_of(COMMS_LOST))
+    assert manager.assert_condition(PANO, cond(COMMS_LOST), ts=at(8), now=at(8)) == []
+    assert {a.code for a in manager.open_alarms()} == {K_WARN, COMMS_LOST}  # K_WARN'in yoklugu degerlendirilmez
+
+
+def test_center_condition_clears_once_data_flows_again_for_hysteresis(manager, hyst):
+    observe(manager, 0)
+    manager.assert_condition(PANO, cond(COMMS_LOST), ts=at(7), now=at(7))
+    manager.assert_condition(PANO, cond(COMMS_LOST), ts=at(9), now=at(9))
+
+    assert observe(manager, 9 + hyst - 1) == []  # veri geri geldi, son dogrulamadan beri H dolmadi
+    [cleared] = observe(manager, 9 + hyst)
+
+    assert (cleared.kind, cleared.alarm.code) == ("cleared", COMMS_LOST)
+
+
+def test_center_condition_is_suppressed_while_the_panel_is_in_maintenance(manager):
+    """Teknisyen bakimda Pano Beyni'ni kapatti: kopukluk alarmi uretilmez."""
+    observe(manager, 0, maint_mode=True)
+
+    assert manager.assert_condition(PANO, cond(COMMS_LOST), ts=at(7), now=at(7)) == []
 
 
 # -------------------------------------------------------------- bakim modu
