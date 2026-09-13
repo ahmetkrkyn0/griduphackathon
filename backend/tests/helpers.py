@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import queue
 import threading
@@ -48,3 +49,20 @@ class Clock:
 
     def advance(self, minutes: float) -> None:
         self.now += timedelta(minutes=minutes)
+
+
+class LoopThread:
+    """Arka plan thread'inde calisan asyncio dongusu: sunucular gercek TCP'de, testler senkron istemciyle konusur."""
+
+    def __init__(self) -> None:
+        self.loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self.loop.run_forever, name="test-loop", daemon=True)
+        self._thread.start()
+
+    def run(self, coro, timeout: float = 5.0):
+        return asyncio.run_coroutine_threadsafe(coro, self.loop).result(timeout)
+
+    def close(self) -> None:
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self._thread.join(5)
+        self.loop.close()

@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 
 from . import __version__
 from .alarm_service import AlarmService, PeriodicWorker
-from .api import alarms, panels, stream
+from .api import alarms, insights, panels, stream
 from .api.stream import StreamHub
 from .api.views import REQUIRED_HYPOTHESES, panel_summary
 from .config import Contracts, Settings, load_contracts
@@ -29,6 +29,13 @@ from .db import Store, StoreError
 from .ingest import IngestPipeline, MqttSubscriber, utcnow
 from .models import Sample
 from .notify.dispatcher import Notifier, NotifyConfig, channels_from_env
+from .scada.encoder import PanelEncoder
+from .scada.gateway import CommandSink, ScadaGateway, parse_units
+from .scada.iec104_points import PointCatalog
+from .scada.iec104_server import Iec104Server
+from .scada.map_loader import RegisterMap, load_map
+from .scada.modbus_tcp import ModbusTcpServer
+from .scada.service import GatewayStations, ScadaService
 
 log = logging.getLogger("gridup")
 
@@ -46,6 +53,10 @@ def create_app(
     missing = [code for code in REQUIRED_HYPOTHESES if code not in contracts.hypothesis_codes]
     if missing:
         raise ValueError(f"alarm-codes.yaml hipotezlerinde eksik: {missing}")
+    # SCADA: bozuk harita veya birim eslemesi servisi hic kaldirmaz (yanlis adresle yayin yapilmaz)
+    scada_enabled = settings.modbus_enabled or settings.iec104_enabled
+    regmap = load_map(settings.contracts_dir / "modbus-map.yaml") if scada_enabled else None
+    units = parse_units(settings.modbus_units, contracts.pano_id_re) if scada_enabled else {}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -65,6 +76,10 @@ def create_app(
             log.warning("alarm durumu acilista yuklenemedi, veritabani gelince yuklenecek: %s", exc)
         pipeline.add_listener(_panel_update_publisher(active_store, hub, contracts, clock))
         pipeline.add_listener(alarm_service.on_samples)
+        scada = None
+        if regmap is not None:  # dinleyiciler ingest baslamadan eklenir: ilk ornekler kacmaz
+            scada = _scada_service(app, settings, contracts, regmap, units, active_store, alarm_service, pipeline, clock)
+            await scada.start()
         subscriber = None
         alarm_worker = None
         notifier = None
@@ -82,9 +97,12 @@ def create_app(
         app.state.pipeline = pipeline
         app.state.alarms = alarm_service
         app.state.subscriber = subscriber
+        app.state.scada = scada
         try:
             yield
         finally:
+            if scada is not None:
+                await scada.stop()
             if subscriber is not None:
                 subscriber.stop()
             if alarm_worker is not None:
@@ -114,6 +132,7 @@ def create_app(
     )
     app.add_exception_handler(StoreError, _store_unavailable)
     app.include_router(panels.router)
+    app.include_router(insights.router)
     app.include_router(alarms.router)
     app.include_router(stream.router)
 
@@ -133,6 +152,7 @@ def create_app(
                 "ingest_topics": list(contracts.ingest_topics),
             },
             "ingest": dict(state.pipeline.stats),
+            "scada": state.scada.status() if state.scada is not None else None,
         }
 
     return app
@@ -161,6 +181,60 @@ def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Ca
         len(config.escalation),
     )
     return notifier
+
+
+def _scada_service(
+    app: FastAPI,
+    settings: Settings,
+    contracts: Contracts,
+    regmap: RegisterMap,
+    units: dict[int, str],
+    store: Store,
+    alarm_service: AlarmService,
+    pipeline: IngestPipeline,
+    clock: Callable[[], datetime],
+) -> ScadaService:
+    """SCADA ag gecidi (TB3): Modbus TCP ve IEC 104 ayni birim eslemesini paylasir; ayarlar MODBUS_* / IEC104_*."""
+    gateway = ScadaGateway(
+        regmap,
+        contracts,
+        alarms=alarm_service,
+        store=store,
+        clock=clock,
+        units=units or None,
+        password=settings.modbus_password,
+        command_sink=_edge_command_sink(app, clock),
+    )
+    pipeline.add_listener(gateway.on_samples)
+    alarm_service.add_listener(gateway.on_alarm_changes)
+    modbus = None
+    if settings.modbus_enabled:
+        modbus = ModbusTcpServer(
+            gateway,
+            host=settings.modbus_host,
+            port=settings.modbus_port,
+            allowed_networks=settings.modbus_allowed_clients,
+        )
+    iec104 = None
+    if settings.iec104_enabled:
+        stations = GatewayStations(gateway, PointCatalog(regmap, PanelEncoder(regmap, contracts)), clock)
+        iec104 = Iec104Server(
+            stations,
+            host=settings.iec104_host,
+            port=settings.iec104_port,
+            allowed_networks=settings.iec104_allowed_clients,
+        )
+    return ScadaService(gateway, modbus, iec104=iec104, refresh_s=settings.modbus_refresh_s)
+
+
+def _edge_command_sink(app: FastAPI, clock: Callable[[], datetime]) -> CommandSink:
+    """SCADA'nin bakim modu / test alarmi komutu MQTT cmd topic'iyle kenara; abone yoksa iletilemedi (False)."""
+
+    def send(pano_id: str, cmd: str, args: dict) -> bool:
+        subscriber = getattr(app.state, "subscriber", None)
+        return subscriber is not None and subscriber.publish_command(pano_id, cmd, args, ts=clock())
+
+    return send
 
 
 def _configure_logging() -> None:

@@ -42,6 +42,10 @@ services:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-gridup}
       POSTGRES_DB: gridup
+    # Docker'in /dev/shm varsayilani 64 MB: PostgreSQL paralel isciler (VACUUM indeks temizligi, buyuk paralel
+    # sorgular) dinamik paylasimli bellegi burada acar ve "No space left on device" ile duser (13 Eyl'de
+    # yuk testi sonrasi VACUUM'da olculdu: 67 MB segment istendi). docs/07b Y10.
+    shm_size: 1gb
     ports:
       - "5432:5432"
     volumes:
@@ -79,10 +83,24 @@ services:
       WHATSAPP_RECIPIENTS: ${WHATSAPP_RECIPIENTS:-}
       WHATSAPP_TEMPLATE: ${WHATSAPP_TEMPLATE:-}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v25.0}
+      # --- SCADA Modbus TCP ag gecidi (TB3). Varsayilan SALT OKUNUR ve yalnizca ozel aglardan. ---
+      # Harita: contracts/modbus-map.yaml -> docs/03-modbus-haritasi.md. Konteyner icinde port hep 502.
+      MODBUS_ENABLED: ${MODBUS_ENABLED:-1}
+      MODBUS_TCP_PORT: 502
+      MODBUS_WRITE_PASSWORD: ${MODBUS_WRITE_PASSWORD:-}
+      MODBUS_UNITS: ${MODBUS_UNITS:-}
+      MODBUS_ALLOWED_CLIENTS: ${MODBUS_ALLOWED_CLIENTS:-}
+      # --- IEC 60870-5-104 kontrollu istasyon (TB3 Adim 8). Ayni birim eslemesi (ortak adres = birim), SALT OKUNUR. ---
+      # Nokta plani: docs/04-iec104-haritasi.md. Konteyner icinde port hep 2404.
+      IEC104_ENABLED: ${IEC104_ENABLED:-1}
+      IEC104_PORT: 2404
+      IEC104_ALLOWED_CLIENTS: ${IEC104_ALLOWED_CLIENTS:-}
     volumes:
       - ../contracts:/contracts:ro
     ports:
       - "8000:8000"
+      - "${MODBUS_TCP_PORT:-502}:502"
+      - "${IEC104_PORT:-2404}:2404"
     depends_on:
       timescaledb:
         condition: service_healthy
