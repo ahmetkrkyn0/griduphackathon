@@ -1038,9 +1038,9 @@ def test_k_index_not_updated_without_excitation():
 - Oluştur: `loadtest/fleet.py`, `loadtest/README.md`, `deploy/grafana/dashboards/olcek.json`, `dashboards/alarm-kpi.json`
 - Oluştur: `scripts/gen_modbus_doc.py`, `docs/03-modbus-haritasi.md` (üretilmiş), `docs/09-olceklenebilirlik.md`, `docs/07b-fmea-yazilim-sistem.md`, `docs/15-guvenlik-kvkk.md`, `docs/17-donanimsiz-dogrulama.md`
 
-- [ ] **Adım 1: `map_loader.py`** — `contracts/modbus-map.yaml` → register tablosu (tek kaynak). Test: YAML'daki her blok adresinin çakışmadığını doğrula.
-- [ ] **Adım 2: Modbus TCP sunucusu** — pymodbus server; FC03/FC04 aynalı, FC06/16 yalnızca `command` bloğunda ve **şifre register'ı doğruysa**; TVOC-2 aynası **salt okunur** (GK6). Test: istemciden okuma + yetkisiz yazmanın reddi.
-- [ ] **Adım 3: `scripts/gen_modbus_doc.py`** — YAML → `docs/03-modbus-haritasi.md` (ve CSV). Doküman elle yazılmaz (kural 10).
+- [x] **Adım 1: `map_loader.py`** — `contracts/modbus-map.yaml` → register tablosu (tek kaynak). Test: YAML'daki her blok adresinin çakışmadığını doğrula.
+- [x] **Adım 2: Modbus TCP sunucusu** — pymodbus server; FC03/FC04 aynalı, FC06/16 yalnızca `command` bloğunda ve **şifre register'ı doğruysa**; TVOC-2 aynası **salt okunur** (GK6). Test: istemciden okuma + yetkisiz yazmanın reddi.
+- [x] **Adım 3: `scripts/gen_modbus_doc.py`** — YAML → `docs/03-modbus-haritasi.md` (ve CSV). Doküman elle yazılmaz (kural 10).
 - [ ] **Adım 4: Yük testi** — `loadtest/fleet.py`: `panoalgo` üretecini **kütüphane olarak** kullanıp 1.000 sanal panoyu MQTT'ye basar (A'nın kodunu kopyalama, import et). Ölçülecekler: mesaj/s, ingest gecikmesi p50/p95, CPU, RAM, DB büyümesi, uçtan uca alarm gecikmesi.
 - [ ] **Adım 5: Grafana panoları** — `olcek.json` (mesaj/s, CPU, RAM, p95, DB boyutu), `alarm-kpi.json` (alarm/100 pano/gün, öncelik dağılımı — ISA-18.2 hedefiyle karşılaştırmalı).
 - [ ] **Adım 6: Ölçüm sonuçlarını `docs/09`'a yaz** — rapor §6.8 tablosunun **ölçülmüş** sütunu; 100 pano ve 1.000 pano için gerçek sayılar + hücresel veri bütçesi.
