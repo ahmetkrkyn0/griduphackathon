@@ -40,7 +40,7 @@ flowchart LR
   BE -- "cmd (bakım, test alarmı)" --> MQ
   GW -- "SMS / arama" --> TEL["Saha ekibi telefonu"]
   BE -. "WhatsApp Cloud API<br/>(tek dışa çıkan kanal, kapatılabilir)" .-> TEL
-  SCADA["Dağıtım SCADA"] -- "Modbus TCP 502" --> BE
+  SCADA["Dağıtım SCADA"] -- "Modbus TCP 502<br/>IEC 60870-5-104 2404" --> BE
 ```
 
 **Tasarım ilkesi — tespit kenarda, yönetim merkezde.** Pano Beyni ölçer ve karar verir (`alarms` alanı, nokta `q` bitleri); merkez
@@ -58,7 +58,7 @@ yeniden yazmaz. Kenarın kendi başına bilemeyeceği tek şeyi üretir: **haber
 | **Risk motoru** | Kenar kodlarını noktaya bağlar, sinyal + eşik + öneri + kalan süre | `backend/app/risk.py` | B |
 | **Alarm yöneticisi** | ISA-18.2 yaşam döngüsü, histerezis, gruplama, raf, bakım modu, eskalasyon | `backend/app/alarm_manager.py`, `alarm_service.py` | B |
 | **Bildirim ağ geçidi** | SMS (PDU) + arama, WhatsApp, çift yönlü SMS onayı, denetim izi | `backend/app/notify/` | B |
-| **SCADA ağ geçidi** | Modbus TCP 502: her pano bir birim, aynı harita, şifreli komut bloğu, GK6 filtresi | `backend/app/scada/` | B |
+| **SCADA ağ geçidi** | Modbus TCP 502: her pano bir birim, aynı harita, şifreli komut bloğu, GK6 filtresi. IEC 60870-5-104 2404: aynı değerler, kendiliğinden zaman etiketli gönderim, salt okunur | `backend/app/scada/` | B |
 | **API** | Filo, pano detayı, seri, alarm konsolu, kara kutu, KPI, WebSocket | `backend/app/api/` | B |
 | Veritabanı | Telemetri (uzun format hypertable), son durum, alarmlar, olaylar, denetim izi | `deploy/initdb/*.sql` | B |
 | Operasyon arayüzü | Filo, pano detayı, dijital ikiz, alarm konsolu, trend, kara kutu | `frontend/` | C |
@@ -153,6 +153,12 @@ Merkez, SCADA için her panoyu bir Modbus birimi olarak sunar ve her birimde **k
 Böylece SCADA mühendisi panonun yanındaki RTU'dan da merkezden de aynı adresi okur. Okuma veritabanına gitmez (bellek görüntüsü). Harita,
 kodlama kuralları, istisna kodları ve yazma güvenliği: `docs/03-modbus-haritasi.md`.
 
+Dağıtım SCADA'ları çoğunlukla **IEC 60870-5-104** konuştuğu için aynı görüntü TCP 2404'te kontrollü istasyon olarak da sunulur: ortak
+adres = Modbus birimi, IOA = 1000 + PDU adresi, değerler fiziksel kayan nokta, "yok" değeri IV kalite bayrağı. Ana istasyon genel
+sorgulama yapar; sonrasında değişen değerler zaman etiketli olarak kendiliğinden gelir (yoklama gerekmez). İstasyon salt okunurdur, kontrol
+komutları COT 44 ile reddedilir. İki protokol aynı kodlayıcıyı kullandığı için aynı panoda farklı değer gösteremez (canlıda 139 adreste
+0 fark). Nokta planı ve zamanlayıcılar: `docs/04-iec104-haritasi.md`.
+
 ## 6. Dağıtım
 
 Tek komut: `docker compose -f deploy/compose.yaml up -d`. İnternet kablosu çıkarılmış halde çalışır (GK4); imajlar bir kez çekilir.
@@ -161,7 +167,7 @@ Tek komut: `docker compose -f deploy/compose.yaml up -d`. İnternet kablosu çı
 |---|---|---|---|---|
 | `mosquitto` | eclipse-mosquitto:2.0 | 1883 | B | `mqttdata` (QoS 1 kuyruğu) |
 | `timescaledb` | timescale/timescaledb:latest-pg16 | 5432 | B | `tsdata` |
-| `backend` | `backend/Dockerfile` | 8000 (API/WS), 502 (Modbus TCP) | B | — (sözleşmeler salt okunur bağlı) |
+| `backend` | `backend/Dockerfile` | 8000 (API/WS), 502 (Modbus TCP), 2404 (IEC 104) | B | — (sözleşmeler salt okunur bağlı) |
 | `gsm-modem` | `scripts/virtual_gsm_modem.py` | 127.0.0.1:7001 (yalnızca gelen SMS enjeksiyonu) | B | `deploy/runtime/sms-log.txt` |
 | `grafana` | grafana/grafana:11.2.0 | 3001 | B | `grafanadata` |
 | `panosim`, cihaz simülatörleri | `sim/` | — | A | — |

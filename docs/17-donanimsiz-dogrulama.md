@@ -32,7 +32,7 @@ Donanım satın alınmadı (PLAN.md GK3). Bu bir eksiklik değil, üç gerekçes
 | Risk açıklaması + ISA-18.2 alarm yöneticisi | Merkez | **Aynısı** | **Gerçek** | `test_alarm_manager`, `test_risk`, `test_api_alarms` | B · ✅ |
 | GSM modem (SMS, arama) | USB modem veya terminal sunucusu | Sanal modem (`scripts/virtual_gsm_modem.py`) | **Sürücü gerçek** (AT komutları, PDU); modem simülasyon. Gerçek modemde yalnızca `SMS_DEVICE` değişir | AT kaydı + PDU dökümü (`deploy/runtime/sms-log.txt`), `test_sms_modem` | B · ✅ |
 | WhatsApp | Meta Cloud API | Gerçek API istemcisi | **Gerçek**; telefona teslim için Meta test numarası ve token gerekir | `test_whatsapp`, `test_notifier` | B · istemci ✅, **gerçek telefona teslim bekliyor** (token: Ahmet) |
-| SCADA / RTU | Dağıtım SCADA'sı | QModMaster / pymodbus istemcisi | **Ağ geçidi gerçek**, istemci test aracı | docs/03 §14, `test_scada_*` | B · ✅ |
+| SCADA / RTU | Dağıtım SCADA'sı | QModMaster / pymodbus istemcisi; IEC 104 için bağımsız test istemcisi | **Ağ geçidi gerçek** (Modbus TCP + IEC 60870-5-104), istemci test aracı | docs/03 §14, docs/04 §8, `test_scada_*`, `test_iec104_*` | B · ✅ |
 | 1.000–10.000 pano filosu | Saha | Şablon yük üreteci (`loadtest/fleet.py`) | Platform yükü gerçek, değerler fiziksel değil | docs/09 | B · ✅ |
 | Operasyon arayüzü | Kontrol odası | React arayüzü | **Gerçek** | `frontend/`, `docs/16` | C · **bekliyor** |
 
@@ -68,6 +68,8 @@ dedektör kancası (`CentralDetector`) `panoalgo` gelince yalnızca bağlanacak;
 | Canlı yığında PC'den okuma: 3 panoda `conn_temp` = arayüzün gördüğü değer × 10 | ✅ 13 Eylül |
 | Koruma cihazına yazma yok: TVOC-2 aynasına yazma **doğru şifreyle bile** 0x02 | ✅ `test_scada_gateway`, 13 Eylül canlı |
 | Harita dokümanı ve Excel tablosu sözleşmeden üretilir, elle yazılmaz | ✅ `docs/03`, `test_gen_modbus_doc` |
+| Merkezde IEC 60870-5-104 kontrollü istasyon (2404): genel sorgulama, yayın adresi, saat senkronu, zaman etiketli kendiliğinden gönderim, t1/t2/t3, k/w | ✅ 72 test (elle kurulmuş çerçeveler), mutasyon 37/37 · kodek 12/12 · nokta planı 9/9 |
+| Canlı yığında bağımsız IEC 104 istemcisi: IEC 104 = REST API (87 kontrol) = Modbus FC03 (139 adres) | ✅ 13 Eylül, **0 fark**; ilk koşu yayın sorgusunda standart dışı cevabı yakaladı, düzeltildi (`docs/04` §8) |
 | MPR-53CS ve TVOC-2 simülatörleri kılavuz adreslerinde; TVOC-2 fabrika ID 248'de sessiz, 1–247'de cevap veriyor; CT = 500 dönüşümü | A · **bekliyor** |
 
 Jüri demosu (QModMaster adımları): docs/03 §11.
@@ -91,13 +93,14 @@ Jüri demosu (QModMaster adımları): docs/03 §11.
 |---|---|---|---|
 | Ingest, veritabanı, API | ✅ (gerçek TimescaleDB entegrasyon testleri dahil) | — | 1.000 pano: görünme p95 657 ms, kayıp 0 |
 | Alarm yöneticisi + bildirim | ✅ | TB2'de 107 mutasyonun tamamı | P1/P2 SMS, eskalasyon, SMS onayı |
-| Modbus TCP ağ geçidi | 35 + 60 + 9 | 19/19 · 35/35 · kodlayıcı 28/28 | Modbus = API; GK6 yazma reddi |
+| Modbus TCP ağ geçidi | 35 + 61 + 9 | 19/19 · 35/35 · kodlayıcı 28/28 | Modbus = API; GK6 yazma reddi |
+| IEC 60870-5-104 istasyonu | 30 + 24 + 12 + 3 + 3 | 37/37 · 12/12 · 9/9 | IEC 104 = API = Modbus, 0 fark; komut reddi |
 | Analiz uçları (seri, kara kutu, KPI) | 25 + 4 (gerçek DB) | 20/20 | Seri ve KPI canlı veriden |
 | Yük, depolama, sıkıştırma | 12 + 5 + 2 (gerçek DB) | 5/5 | 100 → 10.000 pano; sıkıştırma 48× |
 | Grafana panoları | Her panel sorgusu gerçek DB'de | 4/4 | Paneller canlı veriyle |
 | Temiz veritabanı kurulumu | `initdb` 001–005 boş DB'de, 23 gerçek DB testi o DB'de | — | 13 Eylül |
 
-Toplam: `TEST_DB_DSN` ile **507 test**.
+Toplam: `TEST_DB_DSN` ile **580 test**.
 
 ## 5. Jüri soruları — ölçümle güncellenmiş cevaplar (B)
 
@@ -105,7 +108,7 @@ Rapor §13 soru bankasındaki entegrasyon, ölçek ve güvenlik soruları (PLAN.
 
 | # | Soru | Cevap (kanıtıyla) |
 |---|---|---|
-| 5 | Mevcut SCADA'ya nasıl bağlanıyor? | Merkezden **Modbus TCP 502** çalışıyor: her pano bir birim, kenardaki haritanın aynısı, varsayılan salt okunur (docs/03). Sahada RTU'ya Pano Beyni'nin Modbus slave portu (A). Tek master kısıtı için üç kurulum senaryosu (docs/03 §2). IEC 60870-5-104 **eşlemesi tasarlandı** (rapor §6.4c), kodlanmadı. |
+| 5 | Mevcut SCADA'ya nasıl bağlanıyor? | Merkezden **Modbus TCP 502** çalışıyor: her pano bir birim, kenardaki haritanın aynısı, varsayılan salt okunur (docs/03). Sahada RTU'ya Pano Beyni'nin Modbus slave portu (A). Tek master kısıtı için üç kurulum senaryosu (docs/03 §2). Aynı veri **IEC 60870-5-104 (TCP 2404)** kontrollü istasyon olarak da sunuluyor: genel sorgulama, zaman etiketli kendiliğinden gönderim, salt okunur (docs/04); canlıda IEC 104 = API = Modbus, 0 fark. |
 | 6 | "Public cloud yok" dediniz; WhatsApp? | Birincil kanal tamamen yurt içi **GSM SMS**'tir ve sürücüsü üretim sürücüsüdür. WhatsApp ikincil ve kapatılabilir; mesajda yalnızca saha kodu, öncelik ve tek satır var. Alıcı numarası Meta'ya gittiği için açılması KVKK birimi kararına bağlı (docs/15 §4.2). |
 | 12 | 10.000 panoya nasıl ölçeklenir? | **Ölçtük:** tek backend süreci 5.000 panoya kadar görünme p95 < 1 s; 10.000'de veri kaybetmeden doyuyor ve darboğaz ölçüldü (şema doğrulaması). Kaldıraçlar: 60 s raporlama (mesaj hızı ÷6) ve paylaşımlı abonelikle çoklu ingest. Depolama: sıkıştırma 48× **ölçüldü ve açık**; 100 pano 10 s'de ~105 GB/yıl, 60 s'de ~17 GB/yıl (docs/09). |
 | 13 | Siber güvenlik? | Kodda olanlar: sözleşme dışı veri karantinası, pano kimliği denetimi, Modbus IP listesi + salt okunur varsayılan + koruma cihazına yazma yasağı + kaba kuvvet kilidi, denetim izi (docs/15). Tasarımda olanlar: cihaz sertifikası, mTLS, imzalı OTA (A/C). **Demo yığınında broker anonim ve API'de kimlik doğrulama yok**; üretim farkları listelendi (docs/15 §5). |

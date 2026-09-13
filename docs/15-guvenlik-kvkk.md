@@ -41,7 +41,7 @@ flowchart LR
   EXT["Dış: Meta WhatsApp Cloud API"]
 
   PB -- "C2 MQTT/TLS, özel APN<br/>yalnızca DIŞARI bağlantı" --> MQ
-  SC -- "C3 Modbus TCP 502" --> BE
+  SC -- "C3 Modbus TCP 502<br/>IEC 104 2404" --> BE
   UI -- "C4 HTTPS + WebSocket" --> BE
   GF -- "C4 SQL (salt okunur kullanıcı)" --> DB
   BE -- "C6 HTTPS, yalnızca dışarı" --> EXT
@@ -54,6 +54,7 @@ flowchart LR
 | C2 Pano Beyni → broker | MQTT | Cihaz sertifikasıyla **mTLS**, cihaz başına topic ACL (`gridup/pano/<kendi-id>/#`), özel APN/VPN, sahada **gelen port yok** | 📐 · ⚠️ demo broker'ı düz **1883 ve anonim** |
 | C2 merkez → Pano Beyni komutu | MQTT `cmd` | Yalnızca bakım modu ve test alarmı; koruma cihazına komut yolu yok; kopukken kuyruğa alınmaz | ✅ `test_mqtt_subscriber`, `test_scada_gateway` |
 | C3 SCADA → backend | Modbus TCP | İzinli ağ listesi, bağlantı sınırı, boşta zaman aşımı, varsayılan salt okunur, şifreli ve bağlantıya bağlı komut kilidi, 3 yanlış şifrede IP kilidi, **koruma cihazı aynasına yazma şifreyle bile yok** | ✅ `test_modbus_tcp`, `test_scada_gateway` (mutasyon 35/35 + 19/19) |
+| C3 SCADA → backend | IEC 60870-5-104 | İzinli ağ listesi, en çok 8 bağlantı, **salt okunur** (tüm kontrol komutları COT 44 ile reddedilir ve sayılır), protokol ihlalinde ve t1 onay zaman aşımında bağlantı kapatılır, saat senkronu sistem saatini değiştirmez | ✅ `test_iec104_server` (mutasyon 37/37), 13 Eylül canlı |
 | C4 arayüz → backend | HTTP + WebSocket | TLS, kurumsal kimlik (OIDC/SSO), rol (izleyici / operatör / mühendis), CORS | ⚠️ demo'da **kimlik doğrulama yok**, `by` alanı serbest metin · 🧭 |
 | C5 backend → modem | AT komutları (seri / ser2net) | Terminal sunucusu yalnızca merkez OT ağında; gelen SMS'ten yalnızca kayıtlı numaraların onayı | ✅ `test_notifier::test_reply_from_an_unregistered_number_is_ignored` |
 | C6 backend → Meta | HTTPS | Yalnızca dışarı; mesajda yalnızca saha kodu + öncelik + tek satır + iç portal bağlantısı; kanal kapatılabilir | ✅ `test_templates`, `test_whatsapp` |
@@ -159,6 +160,7 @@ Jüri bu soruyu soracak; cevabımız bu tablodur. Demo **bilinçli olarak** tek 
 | REST/WS API | HTTP, kimlik doğrulama yok | HTTPS, OIDC/SSO, rol tabanlı yetki, onaylayan kimliği token'dan |
 | Grafana | Anonim izleyici | SSO, salt okunur veritabanı kullanıcısı |
 | Modbus TCP | Özel ağların tamamı izinli, salt okunur | SCADA ön-ucunun /32 adresi; komut gerekiyorsa uzun rastgele şifre + ayrı VLAN |
+| IEC 60870-5-104 | Özel ağların tamamı izinli, düz TCP 2404, salt okunur | SCADA ön-ucunun /32 adresi; ön-uç destekliyorsa IEC 62351-3 (TLS), desteklemiyorsa ayrı VLAN / VPN |
 | Veritabanı şifresi | `gridup` (varsayılan) | Sır yöneticisinden, rotasyonlu |
 | İmajlar | `latest-pg16` etiketi | Özet (digest) ile sabit, imaj taraması |
 | Sırlar | `deploy/.env` | Sır yöneticisi (Vault vb.) |
