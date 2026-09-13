@@ -79,10 +79,18 @@ services:
       WHATSAPP_RECIPIENTS: ${WHATSAPP_RECIPIENTS:-}
       WHATSAPP_TEMPLATE: ${WHATSAPP_TEMPLATE:-}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v25.0}
+      # --- SCADA Modbus TCP ag gecidi (TB3). Varsayilan SALT OKUNUR ve yalnizca ozel aglardan. ---
+      # Harita: contracts/modbus-map.yaml -> docs/03-modbus-haritasi.md. Konteyner icinde port hep 502.
+      MODBUS_ENABLED: ${MODBUS_ENABLED:-1}
+      MODBUS_TCP_PORT: 502
+      MODBUS_WRITE_PASSWORD: ${MODBUS_WRITE_PASSWORD:-}
+      MODBUS_UNITS: ${MODBUS_UNITS:-}
+      MODBUS_ALLOWED_CLIENTS: ${MODBUS_ALLOWED_CLIENTS:-}
     volumes:
       - ../contracts:/contracts:ro
     ports:
       - "8000:8000"
+      - "${MODBUS_TCP_PORT:-502}:502"
     depends_on:
       timescaledb:
         condition: service_healthy
