@@ -32,6 +32,7 @@ Yazma politikasi (rapor 7.4 "salt okunur varsayilan", GK6 "koruma devresine yazm
 from __future__ import annotations
 
 import asyncio
+import heapq
 import logging
 import re
 import threading
@@ -123,6 +124,7 @@ class ScadaGateway:
 
         self._lock = threading.Lock()
         self._panels: dict[str, _Panel] = {}
+        self._units_stale = False
         self._failures: dict[str, int] = {}
         self._locked_until: dict[str, float] = {}
         if self._auto_units:
@@ -146,13 +148,19 @@ class ScadaGateway:
             }
 
     def _tracked(self, pano_id: str) -> _Panel | None:
-        """Kilit altinda: panonun kaydi; sabit eslemede eslenmemis pano izlenmez."""
+        """Kilit altinda: panonun kaydi; sabit eslemede eslenmemis pano izlenmez. Yeni pano eslemeyi bayatlatir."""
         panel = self._panels.get(pano_id)
         if panel is None and (self._auto_units or pano_id in self._fixed_ids):
             panel = self._panels[pano_id] = _Panel()
-            if self._auto_units:
-                self._units = {unit: pid for unit, pid in enumerate(sorted(self._panels)[:MAX_UNIT], start=1)}
+            self._units_stale = self._auto_units
         return panel
+
+    def _assign_units(self) -> None:
+        """Kilit altinda, parti sonunda BIR KEZ: pano basina yeniden siralama 10.000 panoluk ilk periyotta
+        ingest thread'ini saniyelerce kilitliyordu (O(n^2 log n)); en kucuk 247 kimlik O(n log 247)."""
+        if self._units_stale:
+            self._units = dict(enumerate(heapq.nsmallest(MAX_UNIT, self._panels), start=1))
+            self._units_stale = False
 
     # ------------------------------------------------------------ dinleyiciler
     def on_samples(self, samples: list[Sample]) -> None:
@@ -162,6 +170,7 @@ class ScadaGateway:
                 panel = self._tracked(sample.pano_id)
                 if panel is not None:
                     panel.offer(sample.payload, sample.ts, sample.received_at)
+            self._assign_units()
 
     def on_alarm_changes(self, changes: list[Change]) -> None:
         """Alarm servisi dinleyicisi: mandal bitleri ve olay blogu (alarm servisinin kilidi altinda, kisa tutulur)."""
@@ -177,6 +186,7 @@ class ScadaGateway:
                 panel.latched |= 1 << bit
                 if change.kind == "raised":
                     panel.events = EventLog((panel.events.count + 1) & 0xFFFF, bit, alarm.raised_at)
+            self._assign_units()
 
     def refresh(self) -> None:
         """Depodan pano listesi, tip ve (bellekte olmayan) son durum. Engelleyicidir; StoreError yukselir."""
@@ -189,6 +199,7 @@ class ScadaGateway:
                 panel.pano_type = record.pano_type
                 if record.last_rx is not None and (panel.last_rx is None or record.last_rx > panel.last_rx):
                     panel.last_rx = record.last_rx
+            self._assign_units()
             missing = [pid for pid in self._units.values() if self._panels.get(pid) is None or self._panels[pid].payload is None]
         for pano_id in missing:
             record = self._store.get_panel(pano_id)
@@ -199,6 +210,7 @@ class ScadaGateway:
                 if panel is not None:
                     panel.pano_type = record.pano_type
                     panel.offer(record.payload, datetime.fromisoformat(record.payload["ts"]), record.last_rx)
+                self._assign_units()
 
     # ------------------------------------------------------------ okuma
     def read_registers(self, unit: int, address: int, count: int, function: int) -> Sequence[int]:

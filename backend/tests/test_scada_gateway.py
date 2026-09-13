@@ -514,3 +514,25 @@ def test_status_counts_locked_clients(rig):
     assert rig.gateway.status()["locked_clients"] == 1
     rig.monotonic.now += 301
     assert rig.gateway.status()["locked_clients"] == 0
+
+
+def test_auto_units_scale_to_a_large_fleet_arriving_at_once(make_rig, tel_payload):
+    """10.000 panoluk filoda ilk periyot: birim atamasi pano basina degil parti basina bir kez (ingest thread'i kilitlenmez)."""
+    import random
+    import time as _time
+
+    from app.models import Sample
+
+    rig = make_rig(units=None)
+    numbers = list(range(1, 10001))
+    random.Random(7).shuffle(numbers)  # yuk araci gibi rastgele fazlarla: siralama her seferinde O(n log n)
+    samples = [
+        Sample(pano_id=f"SIM-{n:05d}", ts=RX, seq=1, received_at=RX, topic="t", payload=tel_payload, rows=())
+        for n in numbers
+    ]
+    started = _time.monotonic()
+    rig.gateway.on_samples(samples)
+    elapsed = _time.monotonic() - started
+    units = rig.gateway.units()
+    assert (len(units), units[1], units[247]) == (247, "SIM-00001", "SIM-00247")
+    assert elapsed < 1.0, f"10.000 yeni pano {elapsed:.1f} s surdu"
