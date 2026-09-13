@@ -227,6 +227,17 @@ class ScadaGateway:
             raise ModbusError(ExceptionCode.ILLEGAL_DATA_ADDRESS, f"coil {address}-{address + count - 1} tanimsiz")
         return self._image(pano_id).coils[address : address + count]
 
+    def panel_image(self, unit: int) -> PanelImage | None:
+        """Diger SCADA protokolleri (IEC 104) icin ayni goruntu. Eslenmemis birim KeyError; verisi olmayan None."""
+        with self._lock:
+            pano_id = self._units.get(unit)
+        if pano_id is None:
+            raise KeyError(unit)
+        try:
+            return self._image(pano_id)
+        except ModbusError:
+            return None
+
     def _pano_of(self, unit: int) -> str:
         with self._lock:
             pano_id = self._units.get(unit)

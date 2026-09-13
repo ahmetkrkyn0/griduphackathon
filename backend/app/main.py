@@ -29,10 +29,13 @@ from .db import Store, StoreError
 from .ingest import IngestPipeline, MqttSubscriber, utcnow
 from .models import Sample
 from .notify.dispatcher import Notifier, NotifyConfig, channels_from_env
+from .scada.encoder import PanelEncoder
 from .scada.gateway import CommandSink, ScadaGateway, parse_units
+from .scada.iec104_points import PointCatalog
+from .scada.iec104_server import Iec104Server
 from .scada.map_loader import RegisterMap, load_map
 from .scada.modbus_tcp import ModbusTcpServer
-from .scada.service import ScadaService
+from .scada.service import GatewayStations, ScadaService
 
 log = logging.getLogger("gridup")
 
@@ -51,8 +54,9 @@ def create_app(
     if missing:
         raise ValueError(f"alarm-codes.yaml hipotezlerinde eksik: {missing}")
     # SCADA: bozuk harita veya birim eslemesi servisi hic kaldirmaz (yanlis adresle yayin yapilmaz)
-    regmap = load_map(settings.contracts_dir / "modbus-map.yaml") if settings.modbus_enabled else None
-    units = parse_units(settings.modbus_units, contracts.pano_id_re) if settings.modbus_enabled else {}
+    scada_enabled = settings.modbus_enabled or settings.iec104_enabled
+    regmap = load_map(settings.contracts_dir / "modbus-map.yaml") if scada_enabled else None
+    units = parse_units(settings.modbus_units, contracts.pano_id_re) if scada_enabled else {}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -190,7 +194,7 @@ def _scada_service(
     pipeline: IngestPipeline,
     clock: Callable[[], datetime],
 ) -> ScadaService:
-    """Modbus TCP ag gecidi (TB3): ayarlar deploy/.env'den (MODBUS_*); bos birim eslemesi = otomatik."""
+    """SCADA ag gecidi (TB3): Modbus TCP ve IEC 104 ayni birim eslemesini paylasir; ayarlar MODBUS_* / IEC104_*."""
     gateway = ScadaGateway(
         regmap,
         contracts,
@@ -203,13 +207,24 @@ def _scada_service(
     )
     pipeline.add_listener(gateway.on_samples)
     alarm_service.add_listener(gateway.on_alarm_changes)
-    server = ModbusTcpServer(
-        gateway,
-        host=settings.modbus_host,
-        port=settings.modbus_port,
-        allowed_networks=settings.modbus_allowed_clients,
-    )
-    return ScadaService(gateway, server, refresh_s=settings.modbus_refresh_s)
+    modbus = None
+    if settings.modbus_enabled:
+        modbus = ModbusTcpServer(
+            gateway,
+            host=settings.modbus_host,
+            port=settings.modbus_port,
+            allowed_networks=settings.modbus_allowed_clients,
+        )
+    iec104 = None
+    if settings.iec104_enabled:
+        stations = GatewayStations(gateway, PointCatalog(regmap, PanelEncoder(regmap, contracts)), clock)
+        iec104 = Iec104Server(
+            stations,
+            host=settings.iec104_host,
+            port=settings.iec104_port,
+            allowed_networks=settings.iec104_allowed_clients,
+        )
+    return ScadaService(gateway, modbus, iec104=iec104, refresh_s=settings.modbus_refresh_s)
 
 
 def _edge_command_sink(app: FastAPI, clock: Callable[[], datetime]) -> CommandSink:

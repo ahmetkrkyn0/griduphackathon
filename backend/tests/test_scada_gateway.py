@@ -536,3 +536,14 @@ def test_auto_units_scale_to_a_large_fleet_arriving_at_once(make_rig, tel_payloa
     units = rig.gateway.units()
     assert (len(units), units[1], units[247]) == (247, "SIM-00001", "SIM-00247")
     assert elapsed < 1.0, f"10.000 yeni pano {elapsed:.1f} s surdu"
+
+
+def test_panel_image_for_other_protocols(make_rig, tel_payload):
+    """IEC 104 istasyonu ayni goruntuyu kullanir: eslenmemis birim KeyError, verisi olmayan None."""
+    rig = make_rig(units={1: PANO, 2: "ADM-00002"})
+    rig.ingest(tel_payload)
+    image = rig.gateway.panel_image(1)
+    assert image.registers[101] == 780
+    assert rig.gateway.panel_image(2) is None
+    with pytest.raises(KeyError):
+        rig.gateway.panel_image(3)

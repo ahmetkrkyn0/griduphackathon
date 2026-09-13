@@ -238,6 +238,7 @@ class PanelEncoder:
         self._regmap = regmap
         self._contracts = contracts
         self._plan = tuple(_plan(regmap))
+        self._sources = {register.name: (register, source) for register, source in self._plan}
         self._size = max((block.end for block in regmap.blocks), default=0)
         self._coils = tuple((coil.address, COIL_SOURCES[coil.name][1]) for coil in regmap.coils)
         self._coil_size = max((coil.address + 1 for coil in regmap.coils), default=0)
@@ -254,6 +255,15 @@ class PanelEncoder:
         for address, get in self._coils:
             coils[address] = bool(get(facts))
         return PanelImage(tuple(registers), tuple(coils))
+
+    def na_raw(self, name: str) -> int | None:
+        """Register'in "yok" ham degeri (kaynagi bos oldugunda yazilan); bayraklarin "yok" hali olmaz."""
+        register, source = self._sources[name]
+        if source.kind == FLAG:
+            return None
+        if source.na is not None:
+            return source.na
+        return NA_INT16 if register.type == "int16" else NA_UINT16
 
     def bitmask(self, alarms: Sequence[Alarm]) -> int:
         mask = 0

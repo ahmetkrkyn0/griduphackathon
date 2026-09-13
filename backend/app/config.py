@@ -46,6 +46,11 @@ class Settings:
     modbus_units: str = ""  # "1=ADM-00001,2=ADM-00002"; bos -> otomatik (yalnizca demo)
     modbus_allowed_clients: tuple[str, ...] = DEFAULT_MODBUS_ALLOWED_CLIENTS
     modbus_refresh_s: float = 30.0
+    # --- IEC 60870-5-104 kontrollu istasyon (TB3 Adim 8). Ayni birim eslemesi, salt okunur. ---
+    iec104_enabled: bool = False
+    iec104_host: str = "0.0.0.0"
+    iec104_port: int = 2404
+    iec104_allowed_clients: tuple[str, ...] = DEFAULT_MODBUS_ALLOWED_CLIENTS
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -63,6 +68,10 @@ class Settings:
             modbus_units=os.getenv("MODBUS_UNITS", "").strip(),
             modbus_allowed_clients=_csv(os.getenv("MODBUS_ALLOWED_CLIENTS", "")) or DEFAULT_MODBUS_ALLOWED_CLIENTS,
             modbus_refresh_s=float(os.getenv("MODBUS_REFRESH_S", "30")),
+            iec104_enabled=os.getenv("IEC104_ENABLED", "1").lower() not in ("0", "false", "no"),
+            iec104_host=os.getenv("IEC104_HOST", "0.0.0.0"),
+            iec104_port=int(os.getenv("IEC104_PORT", "2404")),
+            iec104_allowed_clients=_csv(os.getenv("IEC104_ALLOWED_CLIENTS", "")) or DEFAULT_MODBUS_ALLOWED_CLIENTS,
         )
 
 

@@ -90,11 +90,17 @@ services:
       MODBUS_WRITE_PASSWORD: ${MODBUS_WRITE_PASSWORD:-}
       MODBUS_UNITS: ${MODBUS_UNITS:-}
       MODBUS_ALLOWED_CLIENTS: ${MODBUS_ALLOWED_CLIENTS:-}
+      # --- IEC 60870-5-104 kontrollu istasyon (TB3 Adim 8). Ayni birim eslemesi (ortak adres = birim), SALT OKUNUR. ---
+      # Nokta plani: docs/04-iec104-haritasi.md. Konteyner icinde port hep 2404.
+      IEC104_ENABLED: ${IEC104_ENABLED:-1}
+      IEC104_PORT: 2404
+      IEC104_ALLOWED_CLIENTS: ${IEC104_ALLOWED_CLIENTS:-}
     volumes:
       - ../contracts:/contracts:ro
     ports:
       - "8000:8000"
       - "${MODBUS_TCP_PORT:-502}:502"
+      - "${IEC104_PORT:-2404}:2404"
     depends_on:
       timescaledb:
         condition: service_healthy
