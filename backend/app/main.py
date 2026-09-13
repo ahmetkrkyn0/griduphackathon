@@ -29,6 +29,10 @@ from .db import Store, StoreError
 from .ingest import IngestPipeline, MqttSubscriber, utcnow
 from .models import Sample
 from .notify.dispatcher import Notifier, NotifyConfig, channels_from_env
+from .scada.gateway import CommandSink, ScadaGateway, parse_units
+from .scada.map_loader import RegisterMap, load_map
+from .scada.modbus_tcp import ModbusTcpServer
+from .scada.service import ScadaService
 
 log = logging.getLogger("gridup")
 
@@ -46,6 +50,9 @@ def create_app(
     missing = [code for code in REQUIRED_HYPOTHESES if code not in contracts.hypothesis_codes]
     if missing:
         raise ValueError(f"alarm-codes.yaml hipotezlerinde eksik: {missing}")
+    # SCADA: bozuk harita veya birim eslemesi servisi hic kaldirmaz (yanlis adresle yayin yapilmaz)
+    regmap = load_map(settings.contracts_dir / "modbus-map.yaml") if settings.modbus_enabled else None
+    units = parse_units(settings.modbus_units, contracts.pano_id_re) if settings.modbus_enabled else {}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -65,6 +72,10 @@ def create_app(
             log.warning("alarm durumu acilista yuklenemedi, veritabani gelince yuklenecek: %s", exc)
         pipeline.add_listener(_panel_update_publisher(active_store, hub, contracts, clock))
         pipeline.add_listener(alarm_service.on_samples)
+        scada = None
+        if regmap is not None:  # dinleyiciler ingest baslamadan eklenir: ilk ornekler kacmaz
+            scada = _scada_service(app, settings, contracts, regmap, units, active_store, alarm_service, pipeline, clock)
+            await scada.start()
         subscriber = None
         alarm_worker = None
         notifier = None
@@ -82,9 +93,12 @@ def create_app(
         app.state.pipeline = pipeline
         app.state.alarms = alarm_service
         app.state.subscriber = subscriber
+        app.state.scada = scada
         try:
             yield
         finally:
+            if scada is not None:
+                await scada.stop()
             if subscriber is not None:
                 subscriber.stop()
             if alarm_worker is not None:
@@ -133,6 +147,7 @@ def create_app(
                 "ingest_topics": list(contracts.ingest_topics),
             },
             "ingest": dict(state.pipeline.stats),
+            "scada": state.scada.status() if state.scada is not None else None,
         }
 
     return app
@@ -161,6 +176,49 @@ def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Ca
         len(config.escalation),
     )
     return notifier
+
+
+def _scada_service(
+    app: FastAPI,
+    settings: Settings,
+    contracts: Contracts,
+    regmap: RegisterMap,
+    units: dict[int, str],
+    store: Store,
+    alarm_service: AlarmService,
+    pipeline: IngestPipeline,
+    clock: Callable[[], datetime],
+) -> ScadaService:
+    """Modbus TCP ag gecidi (TB3): ayarlar deploy/.env'den (MODBUS_*); bos birim eslemesi = otomatik."""
+    gateway = ScadaGateway(
+        regmap,
+        contracts,
+        alarms=alarm_service,
+        store=store,
+        clock=clock,
+        units=units or None,
+        password=settings.modbus_password,
+        command_sink=_edge_command_sink(app, clock),
+    )
+    pipeline.add_listener(gateway.on_samples)
+    alarm_service.add_listener(gateway.on_alarm_changes)
+    server = ModbusTcpServer(
+        gateway,
+        host=settings.modbus_host,
+        port=settings.modbus_port,
+        allowed_networks=settings.modbus_allowed_clients,
+    )
+    return ScadaService(gateway, server, refresh_s=settings.modbus_refresh_s)
+
+
+def _edge_command_sink(app: FastAPI, clock: Callable[[], datetime]) -> CommandSink:
+    """SCADA'nin bakim modu / test alarmi komutu MQTT cmd topic'iyle kenara; abone yoksa iletilemedi (False)."""
+
+    def send(pano_id: str, cmd: str, args: dict) -> bool:
+        subscriber = getattr(app.state, "subscriber", None)
+        return subscriber is not None and subscriber.publish_command(pano_id, cmd, args, ts=clock())
+
+    return send
 
 
 def _configure_logging() -> None:

@@ -30,7 +30,7 @@ import paho.mqtt.client as mqtt
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
-from .config import Contracts, topic_filter, topic_regex
+from .config import PANO_ID_PLACEHOLDER, Contracts, topic_filter, topic_regex
 from .db import Store, StoreError
 from .models import Rejection, Sample, TelemetryRow
 
@@ -293,6 +293,8 @@ class MqttSubscriber:
 
     clean_session=False + sabit client_id: backend yeniden baslarken broker QoS 1 mesajlari
     bekletir (mosquitto.conf max_queued_messages), yeniden baslatma veri kaybettirmez.
+
+    Ayni baglanti merkez -> kenar komutlarini da yayinlar (x-topics cmd; SCADA ag gecidi kullanir).
     """
 
     def __init__(
@@ -308,6 +310,8 @@ class MqttSubscriber:
         self._host = host
         self._port = port
         self._subscriptions = [(topic_filter(t), qos) for t, qos in contracts.ingest_topics.items()]
+        self._command_topic = contracts.command_topic
+        self._command_qos = contracts.command_qos
         self._forward = on_message
         self.connected = False
         self._client = client or mqtt.Client(
@@ -325,6 +329,20 @@ class MqttSubscriber:
     def stop(self) -> None:
         self._client.disconnect()
         self._client.loop_stop()
+
+    def publish_command(self, pano_id: str, cmd: str, args: dict[str, Any], *, ts: datetime) -> bool:
+        """Kenara komut; True = broker'a teslim edilmek uzere paho'ya verildi.
+
+        Kopukken KUYRUGA ALINMAZ: saatler sonra teslim edilen eski bir komut (or. bakim modu) sahada
+        surpriz yaratir. Cagiran (SCADA ag gecidi) basarisizligi istemciye bildirir, operator tekrar dener.
+        """
+        if not self.connected:
+            log.warning("MQTT kopuk, kenar komutu gonderilmedi: %s -> %s", cmd, pano_id)
+            return False
+        topic = self._command_topic.replace(PANO_ID_PLACEHOLDER, pano_id)
+        body = json.dumps({"v": 1, "ts": ts.isoformat(), "cmd": cmd, "args": args}, ensure_ascii=False)
+        info = self._client.publish(topic, body, qos=self._command_qos, retain=False)
+        return info.rc == mqtt.MQTT_ERR_SUCCESS
 
     def _on_connect(self, client, userdata, flags, reason_code, properties) -> None:
         if reason_code.is_failure:

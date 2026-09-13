@@ -19,6 +19,10 @@ import yaml
 # x-topics icinde telemetri semasini tasiyan topic turleri (tel = periyodik, evt = olay aninda).
 # hb ve cmd farkli icerik tasir; heartbeat TB2'de alarm yoneticisiyle birlikte eklenir.
 INGEST_TOPIC_KINDS = ("tel", "evt")
+COMMAND_TOPIC_KIND = "cmd"  # merkez -> kenar komutu (SCADA bakim modu / test alarmi)
+
+# OT aglari ozel adreslerdir; sahada SCADA on-uc sunucusunun adresine daraltilir (rapor 7.4 "IP beyaz liste").
+DEFAULT_MODBUS_ALLOWED_CLIENTS = ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128")
 
 PANO_ID_PLACEHOLDER = "{pano_id}"
 
@@ -34,6 +38,14 @@ class Settings:
     db_dsn: str = ""
     ingest_enabled: bool = True  # False: MQTT abonesi ve arka plan isleri (yazici, alarm zamanlayicisi) calismaz
     alarm_tick_s: float = 5.0  # raf suresi + haberlesme denetimi araligi
+    # --- SCADA Modbus TCP ag gecidi (TB3). Varsayilan: salt okunur, yalnizca ozel aglardan. ---
+    modbus_enabled: bool = False
+    modbus_host: str = "0.0.0.0"
+    modbus_port: int = 502
+    modbus_password: int | None = None  # None -> hicbir yazma kabul edilmez
+    modbus_units: str = ""  # "1=ADM-00001,2=ADM-00002"; bos -> otomatik (yalnizca demo)
+    modbus_allowed_clients: tuple[str, ...] = DEFAULT_MODBUS_ALLOWED_CLIENTS
+    modbus_refresh_s: float = 30.0
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -44,7 +56,28 @@ class Settings:
             db_dsn=os.getenv("DB_DSN", ""),
             ingest_enabled=os.getenv("INGEST_ENABLED", "1").lower() not in ("0", "false", "no"),
             alarm_tick_s=float(os.getenv("ALARM_TICK_S", "5")),
+            modbus_enabled=os.getenv("MODBUS_ENABLED", "1").lower() not in ("0", "false", "no"),
+            modbus_host=os.getenv("MODBUS_HOST", "0.0.0.0"),
+            modbus_port=int(os.getenv("MODBUS_TCP_PORT", "502")),
+            modbus_password=parse_modbus_password(os.getenv("MODBUS_WRITE_PASSWORD", "")),
+            modbus_units=os.getenv("MODBUS_UNITS", "").strip(),
+            modbus_allowed_clients=_csv(os.getenv("MODBUS_ALLOWED_CLIENTS", "")) or DEFAULT_MODBUS_ALLOWED_CLIENTS,
+            modbus_refresh_s=float(os.getenv("MODBUS_REFRESH_S", "30")),
         )
+
+
+def parse_modbus_password(value: str) -> int | None:
+    """MODBUS_WRITE_PASSWORD: bos -> None (salt okunur); aksi halde 1-65535 (0, register'in bos halidir)."""
+    value = value.strip()
+    if not value:
+        return None
+    if not value.isdigit() or not 1 <= int(value) <= 0xFFFF:
+        raise ValueError("MODBUS_WRITE_PASSWORD 1-65535 arasinda bir tam sayi olmali")
+    return int(value)
+
+
+def _csv(value: str) -> tuple[str, ...]:
+    return tuple(part.strip() for part in value.split(",") if part.strip())
 
 
 class Contracts:
@@ -59,6 +92,7 @@ class Contracts:
         self._alarms = {alarm["code"]: alarm for alarm in alarm_codes["alarms"]}
         self.hypothesis_codes = {h["code"] for h in alarm_codes["hypotheses"]}
         self.ingest_topics: dict[str, int] = _ingest_topics(telemetry_schema)
+        self.command_topic, self.command_qos = _command_topic(telemetry_schema)
 
     def alarm(self, code: str) -> dict | None:
         return self._alarms.get(code)
@@ -78,6 +112,13 @@ def _ingest_topics(schema: dict) -> dict[str, int]:
     if len(topics) != len(INGEST_TOPIC_KINDS):
         raise ValueError(f"x-topics icinde {INGEST_TOPIC_KINDS} topic'leri bulunamadi: {list(topics)}")
     return topics
+
+
+def _command_topic(schema: dict) -> tuple[str, int]:
+    for template, spec in schema["x-topics"].items():
+        if template.rsplit("/", 1)[-1] == COMMAND_TOPIC_KIND:
+            return template, int(spec.get("qos", 0))
+    raise ValueError(f"x-topics icinde '{COMMAND_TOPIC_KIND}' topic'i bulunamadi")
 
 
 def topic_filter(template: str) -> str:

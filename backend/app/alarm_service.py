@@ -173,6 +173,14 @@ class AlarmService:
         """Pano detayindaki active_alarms: konsolun varsayilan filtresiyle ayni (active, acked)."""
         return [a for a in self.load().open_alarms(pano_id) if a.state in ("active", "acked")]
 
+    def open_alarms(self, pano_id: str) -> list[Alarm] | None:
+        """Bellekteki acik alarmlar (tum durumlar); durum henuz yuklenmediyse None.
+
+        Veritabanina GITMEZ: Modbus ag gecidi bunu olay dongusunden, her okuma isteginde cagirir.
+        """
+        manager = self._manager
+        return None if manager is None else manager.open_alarms(pano_id)
+
     # ------------------------------------------------------------- ic isler
     def _raise_conflict_if_closed(self, alarm_id: int) -> None:
         stored = self._store.get_alarm(alarm_id)
