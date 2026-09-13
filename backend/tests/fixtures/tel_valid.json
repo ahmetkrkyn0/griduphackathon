@@ -1,0 +1,63 @@
+{
+  "v": 1,
+  "ts": "2026-09-13T10:00:00+00:00",
+  "pano_id": "ADM-00001",
+  "seq": 42,
+  "fw": "0.1.0",
+  "t_conn": [
+    { "pt": "GIRIS_L1", "t_c": 41.5, "dt_c": 16.5, "k": 0.000103, "k_ratio": 1.02, "tau_s": 910.0, "ttl_h": null, "excited": true, "q": 0 },
+    { "pt": "GIRIS_L2", "t_c": 78.0, "dt_c": 53.0, "k": 0.000171, "k_ratio": 1.45, "tau_s": 880.0, "ttl_h": 150.5, "excited": true, "q": 0 },
+    { "pt": "GIRIS_L3", "t_c": 40.9, "dt_c": 15.9, "k": 0.0001, "k_ratio": 0.99, "tau_s": 905.0, "ttl_h": null, "excited": true, "q": 0 },
+    { "pt": "GIRIS_N", "t_c": 27.1, "dt_c": 2.1, "q": 4 },
+    { "pt": "DSYA3_L2", "t_c": 48.2, "dt_c": 23.2, "k": 0.00012, "k_ratio": 1.1, "tau_s": 900.0, "ttl_h": null, "excited": false, "q": 0 }
+  ],
+  "elec": {
+    "i_ph": [400.0, 420.0, 388.0],
+    "i_n": 48.0,
+    "u_ph": [231.2, 230.8, 232.0],
+    "thd_i": [4.1, 4.3, 3.9],
+    "cosphi": 0.96,
+    "unbal_pct": 4.1
+  },
+  "env": {
+    "t_low_c": 25.0,
+    "rh_low_pct": 60.0,
+    "td_low_c": 16.7,
+    "td_margin_k": 8.3,
+    "t_up_c": 31.5,
+    "rh_up_pct": 52.0,
+    "dt_air_k": 6.5,
+    "voc_idx": null,
+    "door_open": false
+  },
+  "tvoc": {
+    "state": 1,
+    "trips": 0,
+    "det_bits_low": 0,
+    "det_bits_high": 0,
+    "sensor_x2": 2,
+    "sensor_x3": 2,
+    "amb_light_x2": 12,
+    "amb_light_x3": 15,
+    "prot_health_ok": true,
+    "comm_ok": true
+  },
+  "pd": null,
+  "risk": {
+    "score": 38,
+    "mode": "HYP-LOOSE-CONN",
+    "ttl_h": 150.5,
+    "contributions": { "ALM-K-WARN": 0.6, "ALM-THR-TERM-WARN": 0.4 }
+  },
+  "alarms": ["ALM-THR-TERM-WARN", "ALM-K-WARN"],
+  "health": {
+    "uptime_s": 86400,
+    "nodes_ok": 5,
+    "nodes_total": 5,
+    "rssi_dbm": -71.0,
+    "vbak_pct": 100.0,
+    "buffered": 0,
+    "maint_mode": false,
+    "baseline_day": 7
+  }
+}

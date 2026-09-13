@@ -64,6 +64,21 @@ services:
       DB_DSN: postgresql://postgres:${DB_PASSWORD:-gridup}@timescaledb:5432/gridup
       # Sozlesmeler salt okunur baglanir: esik/adres degisince yeniden build GEREKMEZ
       CONTRACTS_DIR: /contracts
+      ALARM_TICK_S: ${ALARM_TICK_S:-5}
+      # --- Bildirim (TB2). Degerler deploy/.env'den; bos kanal kapali demektir. ---
+      # SMS birincil kanal: sanal modem varsayilan; gercek modemde yalnizca bu satir degisir
+      SMS_DEVICE: ${SMS_DEVICE:-socket://gsm-modem:7000}
+      SMS_BAUD: ${SMS_BAUD:-115200}
+      ALERT_RECIPIENTS: ${ALERT_RECIPIENTS:-}
+      ALERT_ESCALATION: ${ALERT_ESCALATION:-}
+      CALL_RING_S: ${CALL_RING_S:-20}
+      PORTAL_URL: ${PORTAL_URL:-http://gridup.local}
+      # WhatsApp ikincil kanal (sirket disina cikan tek kanal, kapatilabilir)
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_ID: ${WHATSAPP_PHONE_ID:-}
+      WHATSAPP_RECIPIENTS: ${WHATSAPP_RECIPIENTS:-}
+      WHATSAPP_TEMPLATE: ${WHATSAPP_TEMPLATE:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v25.0}
     volumes:
       - ../contracts:/contracts:ro
     ports:
@@ -72,6 +87,8 @@ services:
       timescaledb:
         condition: service_healthy
       mosquitto:
+        condition: service_started
+      gsm-modem:
         condition: service_started
     healthcheck:
       test:
@@ -83,6 +100,24 @@ services:
       timeout: 5s
       retries: 6
       start_period: 15s
+
+  # Sanal GSM modem (TB2): gercek modemin AT komut arayuzu, donanim alinmadan (PLAN.md GK3).
+  # AT komut kaydi + PDU dokumu: deploy/runtime/sms-log.txt (git disi; numara icerir, GK9).
+  # Gelen SMS (cift yonlu onay) enjeksiyonu yalnizca bu makineden:
+  #   python scripts/virtual_gsm_modem.py inject --control localhost:7001 --sender +905550000001 --text "1 42"
+  gsm-modem:
+    build:
+      context: ../backend
+    container_name: gridup-gsm-modem
+    restart: unless-stopped
+    command: ["python", "/scripts/virtual_gsm_modem.py", "serve", "--port", "7000", "--control-port", "7001", "--log", "/runtime/sms-log.txt"]
+    environment:
+      PYTHONPATH: /srv
+    volumes:
+      - ../scripts:/scripts:ro
+      - ./runtime:/runtime
+    ports:
+      - "127.0.0.1:7001:7001"
 
   grafana:
     image: grafana/grafana:11.2.0

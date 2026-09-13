@@ -1,0 +1,4 @@
+# Calisma zamani ciktilari (sanal GSM modem kaydi vb.). PDU dokumu telefon numarasi tasir:
+# ASLA commit edilmez (PLAN.md GK9). Klasor bu dosya sayesinde repoda bulunur.
+*
+!.gitignore

@@ -206,7 +206,7 @@ Donanım yokluğu bir eksiklik değil, **bilinçli bir mühendislik kararı** ol
 
 **Faz 0'dan kalan (üçünüzün yapması gerekenler):**
 
-- [ ] **Docker Desktop'ı başlatıp yığını doğrula** — T0.5 Adım 6 (aşağıdaki kabul kriteri)
+- [x] **Docker Desktop'ı başlatıp yığını doğrula** — T0.5 Adım 6 (aşağıdaki kabul kriteri)
 - [ ] **Kulvar atamasını yap** — Bölüm G'yi doldur, `CODEOWNERS`'daki `@kisi-a/b/c` yerine gerçek GitHub handle'larını yaz
 - [ ] **Üç dalı aç ve push et** — T0.6 Adım 3
 - [ ] **Komiteye 5 soruyu gönder** — T0.6 Adım 4 (teslim formatı, fotoğraflar, AG/OG ağırlığı, RTU protokolü, mevcut Modbus master)
@@ -841,14 +841,14 @@ git commit -m "feat(sim): fizik tabanli sentetik veri ureteci + MQTT yayini"
 - Tüketir: `contracts/mqtt-telemetry.schema.json`, `contracts/alarm-codes.yaml`
 - Üretir (C buna güvenir): `contracts/openapi.yaml`'daki `GET /api/v1/panels`, `GET /api/v1/panels/{id}`, `GET /api/v1/alarms`, `WS /api/v1/stream`
 
-- [ ] **Adım 1: Şemayı yaz** — `deploy/initdb/001_schema.sql`: `panels` (pano_id PK, ad, konum, tip), `telemetry` (TimescaleDB hypertable, `ts`, `pano_id`, `tag`, `value` — uzun format; 10 s), `alarms` (id, pano_id, code, prio, state, raised_at, cleared_at, acked_by, reason JSONB), `events`.
-- [ ] **Adım 2: Ingest testini yaz** — `backend/tests/test_ingest.py`: şemaya uygun bir telemetri yükünü `ingest.handle_message()`'a ver, `telemetry` tablosunda beklenen satır sayısının (nokta sayısı + elektriksel + ortam) oluştuğunu doğrula; şema dışı yükün reddedilip `SYS` kaydı bıraktığını doğrula.
-- [ ] **Adım 3: Testi koştur, başarısız gör.** Beklenen: `ImportError`.
-- [ ] **Adım 4: `ingest.py`'ı yaz** — paho-mqtt abonesi → `jsonschema` doğrulaması → uzun formata düzleştirme → toplu `COPY`/`executemany` insert. Şema dışı mesaj **düşürülmez, karantinaya** yazılır (veri kalitesi kanıtı).
-- [ ] **Adım 5: Testi geçir.**
-- [ ] **Adım 6: API'yi yaz** — `GET /api/v1/panels` (son telemetriden türetilmiş filo listesi), `GET /api/v1/panels/{id}`, `GET /api/v1/alarms` (şimdilik boş liste), `WS /api/v1/stream` (MQTT → WebSocket köprüsü). Testler: her uç için durum kodu + şema doğrulaması.
-- [ ] **Adım 7: `docker compose up` ile uçtan uca gör:** sim → mosquitto → ingest → timescale → API.
-- [ ] **Adım 8: Commit**
+- [x] **Adım 1: Şemayı yaz** — `deploy/initdb/001_schema.sql`: `panels` (pano_id PK, ad, konum, tip), `telemetry` (TimescaleDB hypertable, `ts`, `pano_id`, `tag`, `value` — uzun format; 10 s), `alarms` (id, pano_id, code, prio, state, raised_at, cleared_at, acked_by, reason JSONB), `events`.
+- [x] **Adım 2: Ingest testini yaz** — `backend/tests/test_ingest.py`: şemaya uygun bir telemetri yükünü `ingest.handle_message()`'a ver, `telemetry` tablosunda beklenen satır sayısının (nokta sayısı + elektriksel + ortam) oluştuğunu doğrula; şema dışı yükün reddedilip `SYS` kaydı bıraktığını doğrula.
+- [x] **Adım 3: Testi koştur, başarısız gör.** Beklenen: `ImportError`.
+- [x] **Adım 4: `ingest.py`'ı yaz** — paho-mqtt abonesi → `jsonschema` doğrulaması → uzun formata düzleştirme → toplu `COPY`/`executemany` insert. Şema dışı mesaj **düşürülmez, karantinaya** yazılır (veri kalitesi kanıtı).
+- [x] **Adım 5: Testi geçir.**
+- [x] **Adım 6: API'yi yaz** — `GET /api/v1/panels` (son telemetriden türetilmiş filo listesi), `GET /api/v1/panels/{id}`, `GET /api/v1/alarms` (şimdilik boş liste), `WS /api/v1/stream` (MQTT → WebSocket köprüsü). Testler: her uç için durum kodu + şema doğrulaması.
+- [x] **Adım 7: `docker compose up` ile uçtan uca gör:** sim → mosquitto → ingest → timescale → API.
+- [x] **Adım 8: Commit**
 
 ```bash
 git add backend deploy/initdb
@@ -972,15 +972,15 @@ def test_k_index_not_updated_without_excitation():
 - Tüketir: `panoalgo.quality/limits/detect/fusion` (A), `contracts/alarm-codes.yaml`
 - Üretir (C buna güvenir): `POST /api/v1/alarms/{id}/ack`, `/shelve`, `GET /api/v1/alarms` tam gövdesi (`reason.signals`, `reason.thresholds`, `advice` alanları dolu)
 
-- [ ] **Adım 1: Alarm durum makinesi testini yaz** — `backend/tests/test_alarm_manager.py`: ISA-18.2 yaşam döngüsü (`normal → active → acked → cleared`; `shelved` süreli ve gerekçeli; P1 **asla** bastırılamaz — bakım modunda bile). Histerezis: eşik altına inse de 5 dk geri dönmüyorsa temizlenir. Gruplama: aynı kök nedenden 10 dk içinde gelen alarmlar tek `event_id` altında.
-- [ ] **Adım 2: Testi koştur, başarısız gör.**
-- [ ] **Adım 3: `alarm_manager.py`'ı yaz ve testi geçir.**
+- [x] **Adım 1: Alarm durum makinesi testini yaz** — `backend/tests/test_alarm_manager.py`: ISA-18.2 yaşam döngüsü (`normal → active → acked → cleared`; `shelved` süreli ve gerekçeli; P1 **asla** bastırılamaz — bakım modunda bile). Histerezis: eşik altına inse de 5 dk geri dönmüyorsa temizlenir. Gruplama: aynı kök nedenden 10 dk içinde gelen alarmlar tek `event_id` altında.
+- [x] **Adım 2: Testi koştur, başarısız gör.**
+- [x] **Adım 3: `alarm_manager.py`'ı yaz ve testi geçir.**
 - [ ] **Adım 4: Risk motorunu bağla** — `risk.py`: ingest edilen her telemetri için `panoalgo` çağrıları → alarm adayları → alarm yöneticisi. **A'nın algoritmasını yeniden yazma; import et.**
-- [ ] **Adım 5: Sanal GSM modem yaz** — `scripts/virtual_gsm_modem.py`: PTY çifti açar (`socat`/`pyserial` ile), `AT`, `AT+CMGF=1`, `AT+CMGS="+90..."` komutlarını yanıtlar, gönderilen her SMS'i `demo/sms-log.txt`'ye zaman damgalı PDU dökümüyle yazar. `notify/sms_modem.py` **üretim sürücüsüdür** (gerçek modemde aynı kod; fark yalnızca `SMS_DEVICE` yolu).
-- [ ] **Adım 6: WhatsApp Cloud API gönderici** — `notify/whatsapp.py`: yalnızca hassas olmayan kısa metin (saha kodu, öncelik, tek satır açıklama, iç portal bağlantısı). Token `.env`'den. Test numarası ≤5 alıcı. Ağ yoksa düşürülen mesaj kuyruğa alınır ve log'lanır (demo internet olmadan da çökmemeli).
-- [ ] **Adım 7: Eskalasyon ve çift yönlü onay** — P1'de 5 dk onay yoksa ikinci alıcı, 15 dk'da üst amir; gelen "1"/"2" SMS'i ack'e çevirir (sanal modemden okunur).
-- [ ] **Adım 8: `docs/06`'yı yaz** (öncelik matrisi, kanallar, hedef dağılım %5/%15/%80, alarm seli önlemleri).
-- [ ] **Adım 9: Commit** — `feat(backend): ISA-18.2 alarm yoneticisi, risk motoru ve bildirim ag gecidi`
+- [x] **Adım 5: Sanal GSM modem yaz** — `scripts/virtual_gsm_modem.py`: PTY çifti açar (`socat`/`pyserial` ile), `AT`, `AT+CMGF=1`, `AT+CMGS="+90..."` komutlarını yanıtlar, gönderilen her SMS'i `demo/sms-log.txt`'ye zaman damgalı PDU dökümüyle yazar. `notify/sms_modem.py` **üretim sürücüsüdür** (gerçek modemde aynı kod; fark yalnızca `SMS_DEVICE` yolu).
+- [x] **Adım 6: WhatsApp Cloud API gönderici** — `notify/whatsapp.py`: yalnızca hassas olmayan kısa metin (saha kodu, öncelik, tek satır açıklama, iç portal bağlantısı). Token `.env`'den. Test numarası ≤5 alıcı. Ağ yoksa düşürülen mesaj kuyruğa alınır ve log'lanır (demo internet olmadan da çökmemeli).
+- [x] **Adım 7: Eskalasyon ve çift yönlü onay** — P1'de 5 dk onay yoksa ikinci alıcı, 15 dk'da üst amir; gelen "1"/"2" SMS'i ack'e çevirir (sanal modemden okunur).
+- [x] **Adım 8: `docs/06`'yı yaz** (öncelik matrisi, kanallar, hedef dağılım %5/%15/%80, alarm seli önlemleri).
+- [x] **Adım 9: Commit** — `feat(backend): ISA-18.2 alarm yoneticisi, risk motoru ve bildirim ag gecidi`
 
 **Kabul:** `pytest backend/tests -v` yeşil · S1 fixture'ı oynatıldığında `demo/sms-log.txt`'de AT komut kaydı oluşuyor **ve** bir telefona gerçek WhatsApp mesajı düşüyor.
 
@@ -1169,15 +1169,18 @@ Rapor §2.1'deki zorunlu gereksinimlerin her biri bir göreve bağlı mı?
 
 **Atama (Faz 0 T0.6 Adım 2'de doldurulacak):**
 
-- **Kişi A (Fizik, Kenar, Algoritma):** ____________
-- **Kişi B (Platform, Entegrasyon, Ölçek):** ____________
-- **Kişi C (Arayüz, Donanım Tasarımı, Teslim):** ____________
+- **Kişi A (Fizik, Kenar, Algoritma):** Tuna
+- **Kişi B (Platform, Entegrasyon, Ölçek):** Ahmet
+- **Kişi C (Arayüz, Donanım Tasarımı, Teslim):** Berke
 
-GitHub handle'ları: `@_____` (A), `@_____` (B), `@_____` (C) → `CODEOWNERS`'a yazılacak.
+GitHub handle'ları: `@_____` (A), `@ahmetkrkyn0` (B), `@_____` (C) → `CODEOWNERS`'a yazılacak.
 
 **Günlük Kayıt** (her akşam 21:00'de, kulvar sahibi kendi satırını ekler — dosya sonuna ekleme yapıldığı için çakışma olmaz):
 
 | Tarih | Kişi | Biten | Bloke | Kesilen |
 |---|---|---|---|---|
 | 12 Eyl | — | Faz 0 iskeleti: git hijyeni, 39 dizin, CODEOWNERS, 5 sözleşme (donduruldu), üç parçalı compose, hello-world servisleri, README iskeleti, `check_contracts.py` | Docker daemon kapalı → yığının `up` ile çalıştığı doğrulanmadı | — |
+| 12 Eyl | B (Ahmet) | TB1 kodu `b/faz1-ingest`'te: MQTT ingest (şema/topic/ts denetimi, karantina, toplu COPY), `panel_latest`, panel API + WS; 54 test (+8 DB testi yerel PostgreSQL 16'da yeşil); Docker'sız duman testi sim → MQTT → backend → DB → API/WS geçti | BIOS'ta Intel VT-x kapalı → Docker motoru başlamıyor; TB1 Adım 7 (`docker compose up`, TimescaleDB) bekliyor | — |
+| 12 Eyl (gece) | B (Ahmet) | VT-x açıldı → `docker compose up`: 6 servis ayakta (backend/timescaledb/mosquitto `healthy`); uçtan uca sim → mosquitto → ingest → TimescaleDB 2.30 hypertable → API/WS doğrulandı (TB1 Adım 7 ✅); karantina gerçek broker üzerinden doğrulandı; 8 DB testi TimescaleDB'de yeşil (63/63). Flaky `test_stream` kök nedeni bulundu (WS teardown'da `asyncio.gather` anyio iptalini etiketsiz `CancelledError` ile değiştiriyordu) → anyio görev grubuna geçildi + yarış testi | — | — |
 | 13 Eyl | | | | |
+| 13 Eyl | B (Ahmet) | TB2 `b/alarm-manager`'da (TB1 dalının üstünde, 10 commit): ISA-18.2 alarm yöneticisi (histerezis, P1 mandallama, raf, bakım modu, kök neden gruplama, eskalasyon 5/15/30 dk), risk motoru (kenar alarmlarına Neden/Ne yapmalı/Ne kadar acil), alarm API (liste/ack/shelve + WS + `active_alarms`), merkezde `ALM-COMMS-LOST`, kalıcılık + denetim izi (`003_alarms.sql`), SMS PDU kodlayıcı + üretim modem sürücüsü + sanal GSM modem (compose `gsm-modem`), WhatsApp Cloud API istemcisi, bildirim ağ geçidi (çift yönlü SMS onayı), `docs/06` (tablolar sözleşmeden üretilir). 215 test (152 TB2); 107 mutasyonun tamamı testlerce yakalandı. Canlı yığın: P1/P2 → iki alıcıya SMS, alarmdan modemin kabulüne 0,29 sn (PDU dökümü), kayıtlı numaradan "1 5" onayladı / kayıtsız numara yok sayıldı, sessiz pano 5,1 dk'da COMMS-LOST, onaysız P1 5. dk'da iki alıcıya arama, 15. dk'da üst amire eskalasyon SMS'i (seviye 2), yeniden başlatmada alarmlar aynı kimlikle geri geldi | TB2 Adım 4: `panoalgo` yok → merkez dedektör kancası hazır, şimdilik kenarın `alarms` alanı kullanılıyor (A) · WhatsApp'ın gerçek telefona gitmesi için Meta test numarası + token + doğrulanmış alıcı gerekiyor (Ahmet) · `b/faz1-ingest` 13:00 penceresinde main'e alınmadı · `/panels/{id}/series`, `/events/{id}/blackbox`, `/fleet/kpi` hiçbir göreve atanmamış (TC3 bekliyor) | Plandan sapma: SMS kaydı `demo/sms-log.txt` yerine git dışı `deploy/runtime/sms-log.txt` (PDU numara taşır, GK9); PTY yerine TCP (`socket://`, konteynerler arası PTY yok; sahadaki karşılığı ser2net). Karar gerekiyor: M2 metni "P3 → telefon" diyor, sözleşmede P3'ün SMS/WhatsApp'ı kapalı → S1 telefonu P2'de (K/K₀ > 1,6) çaldırır |
