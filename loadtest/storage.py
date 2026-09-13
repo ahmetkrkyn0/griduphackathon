@@ -80,7 +80,9 @@ def measure(dsn: str, *, panels: int, points: int, period_s: float) -> dict[str,
                             rows += 1
             load_s = time.monotonic() - started
             conn.execute(f"ANALYZE {TEST_TABLE}")
-            [(raw_bytes,)] = conn.execute(f"SELECT hypertable_size('{TEST_TABLE}')").fetchall()
+            [(raw_bytes, index_bytes)] = conn.execute(
+                f"SELECT total_bytes, index_bytes FROM hypertable_detailed_size('{TEST_TABLE}')"
+            ).fetchall()
             conn.execute(
                 f"ALTER TABLE {TEST_TABLE} SET (timescaledb.compress, "
                 "timescaledb.compress_segmentby = 'pano_id, tag', timescaledb.compress_orderby = 'ts DESC')"
@@ -114,6 +116,7 @@ def measure(dsn: str, *, panels: int, points: int, period_s: float) -> dict[str,
         "rows_per_message": round(rows_per_message, 1),
         "load_rows_per_s": round(rows / load_s),
         "raw_bytes_per_row": round(raw_bpr, 1),
+        "raw_index_share_pct": round(100.0 * index_bytes / raw_bytes, 1),
         "compressed_bytes_per_row": round(compressed_bpr, 2),
         "compression_ratio": round(raw_bytes / compressed_bytes, 1),
         "projections": projections,

@@ -30,7 +30,8 @@
 
 ## 2. Uygulama sırasında ortaya çıkan hata türleri
 
-Rapordaki tabloda olmayan ama kodu yazarken veya ölçerken **bulunan** hata türleri. Hepsinin önlemi uygulandı ve testle kilitlendi.
+Rapordaki tabloda olmayan ama kodu yazarken veya ölçerken **bulunan** hata türleri. Hepsinin önlemi uygulandı; kanıt sütunu otomatik testi
+veya (yapılandırma değişikliklerinde) canlı doğrulamayı gösterir.
 
 | # | Hata türü | Nasıl bulundu | Etki | Ş | O | D | RÖS | Önlem | Kanıt | Sonra |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -43,13 +44,14 @@ Rapordaki tabloda olmayan ama kodu yazarken veya ölçerken **bulunan** hata tü
 | Y7 | **Bildirim kanalı arızası** (modem koptu, takıldı; internet yok) | TB2 | SMS/WhatsApp gitmez | 9 | 4 | 3 | 108 | ✅ Sürücü yeniden bağlanır, yarım SMS'i ESC ile iptal eder; takılan modem zaman aşımına düşer; WhatsApp geçici hatası tekrar denenir, kalıcı hata bir kez kaydedilir; SMS ve WhatsApp birbirinden bağımsız | `test_sms_modem` (kopuk oturum, zaman aşımı), `test_notifier::test_temporary_whatsapp_failure_is_retried` | 9×2×2 = **36** |
 | Y8 | **Sözleşme tutarsızlığı** (yanlış eşik veya adres) | Faz 0 (`check_contracts.py` gerçek bir adres çakışması yakaladı) | Yanlış eşikle alarm, yanlış register'dan SCADA okuması | 9 | 3 | 7 | 189 | ✅ Bozuk sözleşme veya harita servisi **başlatmaz**; adres, alarm ve komut tabloları sözleşmeden **üretilir** (docs/03, docs/06, Grafana) ve güncel olmaları testte sınanır; register'ın merkez kaynağı tanımsızsa ağ geçidi kurulmaz | `test_map_loader`, `test_gen_modbus_doc::test_committed_doc_and_csv_are_up_to_date`, `test_scada_encoder::test_register_without_central_source_refuses_to_build` | 9×1×2 = **18** |
 | Y9 | **Modbus portu başka süreçte** | TB3 | Backend hiç açılmazsa alarm zinciri de durur | 8 | 2 | 2 | 32 | ✅ Port açılamazsa backend durmaz; hata `/health` → `scada.error` | `test_scada_app::test_busy_port_does_not_take_the_backend_down` | 8×2×1 = **16** |
+| Y10 | **PostgreSQL paylaşımlı belleği yetersiz** (Docker `/dev/shm` varsayılanı 64 MB) | Yük testi sonrası `VACUUM` (13 Eyl): `could not resize shared memory segment … No space left on device` | Paralel işçili bakım ve büyük sorgular düşer: şişen tablo temizlenemez, Grafana panelleri yük altında hata verebilir | 6 | 5 | 6 | 180 | ✅ `deploy/compose.yaml` TimescaleDB `shm_size: 1gb`; konteyner yeniden oluşturuldu, aynı `VACUUM` başarılı | 13 Eyl canlı doğrulama: `/dev/shm` 64 MB → 1 GB, VACUUM hatasız | 6×1×3 = **18** |
 
 ## 3. Özet
 
 | | Satır | RÖS toplamı (önce) | RÖS toplamı (şimdi) |
 |---|---|---|---|
 | Rapor §7.3 yazılım/sistem satırları | 9 | 975 | **801** — uygulanmış önlemle düşenler: #4 60 → 30, #7 126 → 42, #11 80 → 20. Diğerleri tasarım / yol haritası önlemleri tamamlanana kadar **önceki RÖS'te** sayılır |
-| Uygulamada bulunan hata türleri | 9 | 1.460 | 184 |
+| Uygulamada bulunan hata türleri | 10 | 1.640 | 202 |
 
 **En yüksek kalan risk:** #8 kaçırılan alarm (RÖS 210). Merkez tarafı hazırdır; tespit başarısı Kişi A'nın doğrulama tablosuyla (docs/12:
 duyarlılık, keskinlik, öne alma süresi) ölçülecektir. İkinci sırada #6 (RS485 hattını bozmak, 160) sahada keşif ve devreye alma prosedürüyle

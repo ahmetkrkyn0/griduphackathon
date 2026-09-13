@@ -42,6 +42,10 @@ services:
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-gridup}
       POSTGRES_DB: gridup
+    # Docker'in /dev/shm varsayilani 64 MB: PostgreSQL paralel isciler (VACUUM indeks temizligi, buyuk paralel
+    # sorgular) dinamik paylasimli bellegi burada acar ve "No space left on device" ile duser (13 Eyl'de
+    # yuk testi sonrasi VACUUM'da olculdu: 67 MB segment istendi). docs/07b Y10.
+    shm_size: 1gb
     ports:
       - "5432:5432"
     volumes:
