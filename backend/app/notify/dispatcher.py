@@ -38,6 +38,7 @@ log = logging.getLogger("gridup.notify")
 
 REPLY = re.compile(r"\s*([12])(?:\s+(\d+))?\s*")
 REPLY_NOTES = {"1": "gordum", "2": "ekip yonlendirildi"}
+REPLY_BACKOFF_MIN_S, REPLY_BACKOFF_MAX_S = 5.0, 60.0
 
 
 def _numbers(raw: str) -> tuple[str, ...]:
@@ -138,6 +139,8 @@ class Notifier:
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._reply_backoff_s = 0.0  # modem erisilemiyorsa yanit okuma denemeleri seyreltilir
+        self._next_reply_read = 0.0
 
     # ------------------------------------------------------ alarm servisi
     def __call__(self, changes: list[Change]) -> None:
@@ -186,27 +189,34 @@ class Notifier:
             self._thread = None
         if self._sms is not None:
             self._sms.close()
+        if self._whatsapp is not None:
+            self._whatsapp.close()
 
     def _run(self) -> None:
         while not self._stop.is_set():
+            waited = False
             try:
-                self.run_once(wait_s=0.5)
+                waited = self.run_once(wait_s=0.5)
             except Exception:  # isci thread'i asla olmez
                 log.exception("bildirim dongusu hata verdi")
-            if self._sms is None:
+            if not waited:  # modemde beklenmediyse dongu bosa donmesin
                 self._wake.wait(0.5)
                 self._wake.clear()
 
-    def run_once(self, wait_s: float = 0.0) -> None:
-        """Vadesi gelen isleri bir kez gonderir, ardindan gelen SMS yanitlarini `wait_s` boyunca okur."""
+    def run_once(self, wait_s: float = 0.0) -> bool:
+        """Vadesi gelen isleri bir kez gonderir, ardindan gelen SMS yanitlarini `wait_s` boyunca okur.
+
+        True = modemden okunarak beklendi; False = beklenmedi (SMS kanali yok ya da modem geri cekilmede).
+        """
         now = time.monotonic()
         with self._lock:
             due = [job for job in self._jobs if job.not_before <= now]
             self._jobs = [job for job in self._jobs if job.not_before > now]
         for job in due:
             self._deliver(job)
-        if self._sms is not None:
-            self._read_replies(wait_s)
+        if self._sms is None or time.monotonic() < self._next_reply_read:
+            return False
+        return self._read_replies(wait_s)
 
     # ------------------------------------------------------------- ic isler
     def _deliver(self, job: _Job) -> None:
@@ -246,16 +256,20 @@ class Notifier:
         if not self._sms.connected:
             self._sms.connect()
 
-    def _read_replies(self, wait_s: float) -> None:
+    def _read_replies(self, wait_s: float) -> bool:
         try:
             self._ensure_modem()
             messages = self._sms.poll(wait_s)
         except ModemError as exc:
-            log.warning("gelen SMS okunamadi: %s", exc)
+            self._reply_backoff_s = min(max(self._reply_backoff_s * 2, REPLY_BACKOFF_MIN_S), REPLY_BACKOFF_MAX_S)
+            self._next_reply_read = time.monotonic() + self._reply_backoff_s
+            log.warning("gelen SMS okunamadi, %.0f sn sonra tekrar denenecek: %s", self._reply_backoff_s, exc)
             self._sms.close()
-            return
+            return False
+        self._reply_backoff_s = 0.0
         for sms in messages:
             self._handle_reply(sms)
+        return True
 
     def _handle_reply(self, sms: Sms) -> None:
         sender = normalize_msisdn(sms.number)

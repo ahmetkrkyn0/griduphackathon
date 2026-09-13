@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+import serial
 
 from app.alarm_manager import AlarmManager, Condition
 from app.notify.dispatcher import NotifyConfig, Notifier
@@ -239,6 +240,25 @@ def test_lost_modem_connection_is_reestablished(gateway, manager, modem_server, 
     assert len(sent_sms(modem_log)) == 3
     gateway.notifier.run_once()
     assert len(sent_sms(modem_log)) == 4  # 2 alarm x 2 alici
+
+
+def test_unreachable_modem_is_not_hammered_while_waiting_for_replies(contracts):
+    """Modem konteyneri yok: yanit okuma dongusu her 0,5 sn'de baglanip log sellemez, geri cekilir."""
+    attempts: list[str] = []
+
+    def refuse(url: str, **options):
+        attempts.append(url)
+        raise serial.SerialException("baglanti reddedildi")
+
+    notifier = Notifier(
+        contracts, NotifyConfig(recipients=FIELD_TEAM), sms=SmsModem("socket://gsm-modem:7000", open_port=refuse),
+        whatsapp=None, on_delivery=lambda d: None, on_reply=lambda *a: None, clock=lambda: T0,
+    )
+
+    for _ in range(5):
+        notifier.run_once()
+
+    assert len(attempts) == 1
 
 
 def test_gateway_without_channels_accepts_changes_and_does_nothing(contracts, manager):
