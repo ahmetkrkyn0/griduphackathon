@@ -22,6 +22,9 @@ INGEST_TOPIC_KINDS = ("tel", "evt")
 
 PANO_ID_PLACEHOLDER = "{pano_id}"
 
+# Yuksekten dusuge. SYS (izleme sistemi) is emri acar, INFO yalnizca ekrana duser.
+PRIO_ORDER = ("P1", "P2", "P3", "SYS", "INFO")
+
 
 @dataclass(frozen=True)
 class Settings:

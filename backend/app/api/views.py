@@ -10,11 +10,8 @@ import re
 from datetime import datetime, timedelta
 from typing import Any
 
-from ..config import Contracts
+from ..config import PRIO_ORDER, Contracts
 from ..models import PanelRecord
-
-# Yuksekten dusuge. SYS (izleme sistemi) is emri acar, INFO yalnizca ekrana duser.
-PRIO_ORDER = ("P1", "P2", "P3", "SYS", "INFO")
 
 # Hic veri gondermemis pano: elektriksel ariza kaniti yok ama izleme calismiyor.
 NEVER_REPORTED_MODE = "HYP-SELF-FAULT"
