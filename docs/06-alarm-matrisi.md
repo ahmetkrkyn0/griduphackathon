@@ -208,7 +208,7 @@ Denetim izi: `alarm_journal` (kim, ne zaman, ne yaptı; onay notu, raf gerekçes
 
 ## 10. Doğrulama (ölçülmüş, 13 Eylül 2026)
 
-**Otomatik testler:** 214 backend testinin 151'i TB2'ye ait. Veritabanı testleri gerçek TimescaleDB'ye, SMS testleri gerçek TCP
+**Otomatik testler:** 215 backend testinin 152'si TB2'ye ait. Veritabanı testleri gerçek TimescaleDB'ye, SMS testleri gerçek TCP
 üzerinden sanal modeme karşı koşar.
 
 | Dosya | Test | Kapsam |
@@ -216,20 +216,23 @@ Denetim izi: `alarm_journal` (kim, ne zaman, ne yaptı; onay notu, raf gerekçes
 | `test_alarm_manager.py` | 44 | Yaşam döngüsü, histerezis, mandallama, raf, bakım modu, gruplama, eskalasyon, yeniden başlatma |
 | `test_risk.py` | 26 | 22 kodun sinyal/eşik/nokta açıklaması, öneri seçimi, veri kalitesi bitleri |
 | `test_api_alarms.py` | 23 | Uçlar ve sözleşme şeması, WebSocket, kopukluk denetimi, DB kapalıyken açılış, yazma hatası |
-| `test_notifier.py` | 13 | Kanal kuralı, eskalasyon kanalları, çift yönlü onay, tekrar deneme, modem yeniden bağlanma |
+| `test_notifier.py` | 14 | Kanal kuralı, eskalasyon kanalları, çift yönlü onay, tekrar deneme, modem yeniden bağlanma ve geri çekilme |
 | `test_pdu.py` | 13 | Referans PDU vektörleri, UCS-2, uzantı tablosu, birleşik SMS dolgu bitleri, alfanümerik gönderici |
 | `test_sms_modem.py` | 11 | Sürücü ↔ sanal modem (TCP), istem sırası, takılmış/kopmuş modem |
 | `test_whatsapp.py` | 8 | Cloud API istek gövdesi (metin/şablon), hata sınıfları |
 | `test_alarm_store.py` | 7 | TimescaleDB kalıcılığı, denetim izi, bildirim kaydı |
 | `test_templates.py` | 6 | Tek parça GSM-7 garantisi, Türkçe katlama |
 
-**Mutasyon denetimi:** Testlerin gerçekten hata yakaladığını ölçmek için üretim koduna 106 elle tanımlı hata (yanlış eşik, ters koşul,
+**Mutasyon denetimi:** Testlerin gerçekten hata yakaladığını ölçmek için üretim koduna 107 elle tanımlı hata (yanlış eşik, ters koşul,
 atlanan adım…) tek tek enjekte edildi. Son turda her mutasyonu en az bir test yakaladı. İlk turda hayatta kalan 6 mutasyon eksik
 testleri gösterdi (ör. nötrün faz farkına katılması, istem beklenmeden PDU yazılması); bunlar için test eklendi.
 
 **Canlı yığın** (`docker compose up`, 13 Eylül 2026 10:08 UTC):
-- MQTT'ye basılan P1 (`ALM-ARC-TRIP`) ve P2 (`ALM-DEW-ALM`) telemetrisi: iki alarm, iki alıcıya dört SMS **~1 sn içinde** sanal modemde
-  (PDU dökümüyle), `notified: ["sms"]`, `notifications` tablosunda dört maskeli satır.
+- MQTT'ye basılan P1 (`ALM-ARC-TRIP`) ve P2 (`ALM-DEW-ALM`) telemetrisi: iki alarm, iki alıcıya dört SMS sanal modemde (PDU dökümüyle);
+  P1 alarmının oluşmasından modemin SMS'i kabulüne **0,29 sn** (ikinci alıcı 0,35 sn; `alarm_journal` → `notifications` zaman damgaları),
+  `notified: ["sms"]`, `notifications` tablosunda maskeli satırlar.
+- Onaysız bırakılan P1: **5. dakikada** (10:13:10) iki alıcıya arama (`ATD`/`ATH`), **15. dakikada** (10:23:10) üst amire eskalasyon SMS'i;
+  alarm `escalation_level = 2`, `notified: ["sms", "call"]`.
 - Kayıtlı numaradan `1 5` → alarm 5 `acked_by = sms:+90******0001`, not "gordum"; kayıtsız numaradan `1 4` → yok sayıldı, alarm açık kaldı.
 - Sessiz kalan test panosu 5,1 dk sonra `ALM-COMMS-LOST` (SYS) açtı.
 - Backend konteyneri yeniden başlatıldı: onaylı ve raftaki alarmlar aynı kimlik ve durumla geri geldi.
