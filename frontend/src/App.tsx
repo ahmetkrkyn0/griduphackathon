@@ -1,10 +1,24 @@
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { usingMocks } from "./api/client";
 import { ago, num } from "./lib/format";
 import { useNow } from "./lib/useNow";
+import { AlarmKonsolu } from "./pages/AlarmKonsolu";
+import { BolgeHaritasi } from "./pages/BolgeHaritasi";
+import { CihazSagligi } from "./pages/CihazSagligi";
 import { FiloListesi } from "./pages/FiloListesi";
+import { OlayAnalizi } from "./pages/OlayAnalizi";
 import { PanoDetay } from "./pages/PanoDetay";
+import { TrendKorelasyon } from "./pages/TrendKorelasyon";
 import { FleetProvider, useFleet } from "./state/fleet";
+
+const NAV = [
+  { to: "/", label: "Filo", end: true },
+  { to: "/alarmlar", label: "Alarmlar" },
+  { to: "/trend", label: "Trend" },
+  { to: "/olay", label: "Kara kutu" },
+  { to: "/cihaz-sagligi", label: "Cihaz sağlığı" },
+  { to: "/bolge", label: "Bölge" },
+];
 
 export function App() {
   return (
@@ -14,12 +28,26 @@ export function App() {
           <Link to="/" className="brand">
             Grid Up Pano İzleme
           </Link>
+          <nav className="nav" aria-label="Ana gezinme">
+            {NAV.map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+                {n.label}
+              </NavLink>
+            ))}
+          </nav>
           <FleetKpis />
         </header>
         <StatusStrip />
         <Routes>
           <Route path="/" element={<FiloListesi />} />
           <Route path="/pano/:panoId" element={<PanoDetay />} />
+          <Route path="/alarmlar" element={<AlarmKonsolu />} />
+          <Route path="/trend" element={<TrendKorelasyon />} />
+          <Route path="/trend/:panoId" element={<TrendKorelasyon />} />
+          <Route path="/olay" element={<OlayAnalizi />} />
+          <Route path="/olay/:eventId" element={<OlayAnalizi />} />
+          <Route path="/cihaz-sagligi" element={<CihazSagligi />} />
+          <Route path="/bolge" element={<BolgeHaritasi />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </FleetProvider>

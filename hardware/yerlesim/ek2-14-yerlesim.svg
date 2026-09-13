@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EK-II/14 (1250-1600 kVA dahili tip pano) uzerinde sensor YERLESIM cizimi — olculendirilmis surum.
+  assets/ek2-14-pano.svg'nin ayni geometrisi (frontend/src/lib/panelGeometry.ts ile birebir), burada
+  TC3 Adim 4'un istedigi "her ogenin yaninda olcu ve baradan uzaklik" eklenmis halidir.
+  Komitenin cizim PDF'inden gorsel alinmamistir (yalniz TEDAS-MLZ/2003-06.B EK-II/14 olculeri
+  kaynak alinmistir), PLAN.md Bolum C durustluk kurali.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-160 -110 1960 1820" font-family="Barlow, Arial, sans-serif">
+  <style>
+    .enc   { fill:#F7F7F4; stroke:#8E958F; stroke-width:6; }
+    .zone  { fill:#EEEFEA; }
+    .rule  { stroke:#8E958F; stroke-width:3; }
+    .dash  { stroke-dasharray:14 10; }
+    .rail  { stroke:#8E958F; stroke-width:10; }
+    .bar   { fill:#B9B4A6; }
+    .dev   { fill:#5D646A; }
+    .ours  { fill:#2C63C9; }
+    .dsya  { fill:#5D646A; }
+    .spare { opacity:.45; }
+    .pt    { fill:#A3A9AD; stroke:#fff; stroke-width:4; }
+    .lbl   { font-size:32px; fill:#212629; }
+    .lbl-sm{ font-size:22px; fill:#5F666B; }
+    .dim   { stroke:#C1471D; stroke-width:2.5; fill:none; }
+    .dimtx { font-size:24px; fill:#C1471D; font-weight:600; }
+    .title { font-size:38px; font-weight:600; fill:#212629; }
+    .arrow { fill:#C1471D; }
+  </style>
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="0" y="-80">EK-II/14 sensor yerlesimi — olculendirilmis (kendi cizimimiz)</text>
+
+  <rect class="enc" x="0" y="0" width="1600" height="1500" rx="6"/>
+  <rect class="zone" x="0" y="0" width="1600" height="350"/>
+  <rect class="zone" x="0" y="1100" width="1600" height="400"/>
+  <line class="rule" x1="0" y1="350" x2="1600" y2="350"/>
+  <line class="rule dash" x1="0" y1="1100" x2="1600" y2="1100"/>
+
+  <!-- Ust bolme yuksekligi olcusu -->
+  <line class="dim" x1="-40" y1="0" x2="-40" y2="350" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text class="dimtx" x="-135" y="185" transform="rotate(-90, -95, 185)">Ust bolme 350 mm</text>
+
+  <!-- Kablo bolgesi yuksekligi olcusu -->
+  <line class="dim" x1="-40" y1="1100" x2="-40" y2="1500" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text class="dimtx" x="-135" y="1310" transform="rotate(-90, -95, 1310)">Kablo bolgesi &#8805;400 mm</text>
+
+  <!-- Ust bolme icerigi -->
+  <line class="rail" x1="60" y1="205" x2="1540" y2="205"/>
+  <rect class="dev" x="90" y="158" width="120" height="94" rx="6"/>
+  <text class="lbl-sm" x="90" y="146">S7 TVOC-2</text>
+  <rect class="ours" x="240" y="150" width="170" height="110" rx="8"/>
+  <text class="lbl-sm" x="240" y="138">Pano Beyni</text>
+  <!-- Kontrolcu - bara mesafesi (manyetik alan/clearance) -->
+  <line class="dim" x1="325" y1="260" x2="325" y2="500" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text class="dimtx" x="345" y="400">&#8805;250 mm (manyetik alan, docs/13)</text>
+
+  <!-- Ana baralar -->
+  <rect class="bar" x="40" y="500" width="1520" height="20" rx="3"/>
+  <rect class="bar" x="40" y="685" width="1520" height="20" rx="3"/>
+  <rect class="bar" x="40" y="870" width="1520" height="20" rx="3"/>
+  <rect class="bar spare" x="40" y="1282" width="1520" height="16" rx="3"/>
+  <text class="lbl-sm" x="60" y="495">L1</text>
+  <text class="lbl-sm" x="60" y="680">L2</text>
+  <text class="lbl-sm" x="60" y="865">L3</text>
+  <text class="lbl-sm" x="60" y="1278">N</text>
+
+  <!-- Giris baglanti noktalari -->
+  <rect class="bar" x="1320" y="0" width="20" height="510"/>
+  <rect class="bar" x="1390" y="0" width="20" height="695"/>
+  <rect class="bar" x="1460" y="0" width="20" height="880"/>
+  <circle class="pt" cx="1330" cy="510" r="15"/><text class="lbl-sm" x="1350" y="500">S1 Giris L1</text>
+  <circle class="pt" cx="1400" cy="695" r="15"/><text class="lbl-sm" x="1420" y="685">S1 Giris L2</text>
+  <circle class="pt" cx="1470" cy="880" r="15"/><text class="lbl-sm" x="1490" y="870">S1 Giris L3</text>
+
+  <!-- DSYA seritleri + pitch olcusu -->
+  <rect class="dsya" x="70" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="120" y="405" text-anchor="middle">DSYA-1</text>
+  <rect class="dsya" x="230" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="280" y="405" text-anchor="middle">DSYA-2</text>
+  <rect class="dsya" x="390" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="440" y="405" text-anchor="middle">DSYA-3</text>
+  <rect class="dsya" x="550" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="600" y="405" text-anchor="middle">DSYA-4</text>
+  <rect class="dsya" x="710" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="760" y="405" text-anchor="middle">DSYA-5</text>
+  <rect class="dsya spare" x="870" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="920" y="405" text-anchor="middle">6 yedek</text>
+  <rect class="dsya spare" x="1030" y="420" width="100" height="620" rx="10"/>
+  <text class="lbl" x="1080" y="405" text-anchor="middle">7 yedek</text>
+
+  <line class="dim" x1="120" y1="1070" x2="280" y2="1070" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text class="dimtx" x="130" y="1055">160 mm pitch (EK-I/8 Tablo 8: bara terminalleri arasi 185 mm)</text>
+
+  <!-- Terminal noktalari (S1) -->
+  <g>
+    <circle class="pt" cx="90" cy="1080" r="14"/><circle class="pt" cx="120" cy="1080" r="14"/><circle class="pt" cx="150" cy="1080" r="14"/>
+    <circle class="pt" cx="410" cy="1080" r="14"/><circle class="pt" cx="440" cy="1080" r="14"/><circle class="pt" cx="470" cy="1080" r="14"/>
+  </g>
+  <text class="lbl-sm" x="440" y="1050" text-anchor="middle">S1 baglanti sicaklik dugumu (pabuc uzeri, kablosuz, enerji toplayan)</text>
+
+  <!-- Termal dizi -->
+  <rect class="ours" x="410" y="700" width="60" height="40" rx="6"/>
+  <text class="lbl-sm" x="480" y="725">S2 Termal dizi, saydam kapagin IC tarafi (sartname 2.2.6.1: PC/cam LWIR gecirmez)</text>
+
+  <!-- Ortam dugumleri -->
+  <rect class="ours" x="70" y="1150" width="60" height="40" rx="6"/>
+  <text class="lbl-sm" x="140" y="1175">S3 Ortam dugumu, alt (hava girisi)</text>
+  <line class="dim" x1="100" y1="1190" x2="100" y2="1500" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text class="dimtx" x="110" y="1350">Taban 0 mm (alt kablo bolgesi)</text>
+
+  <rect class="ours" x="900" y="60" width="60" height="40" rx="6"/>
+  <text class="lbl-sm" x="970" y="85">S4 Ortam dugumu, ust (hava cikisi)</text>
+  <line class="dim" x1="930" y1="0" x2="930" y2="100" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text class="dimtx" x="940" y="45">Tavan 0 mm</text>
+
+  <!-- Kapi reed -->
+  <rect class="ours" x="1550" y="700" width="30" height="60" rx="4"/>
+  <text class="lbl-sm" x="1430" y="695">S5 Kapi reed (kapak mentese karsisi)</text>
+
+  <text class="lbl-sm" x="0" y="1560">Not: tum konumlar EK-I/8 Tablo 8 (5 cikis + 2 yedek DSYA) ve EK-II/14 govde olculerine (1600x1500x450 mm) sadiktir.</text>
+</svg>

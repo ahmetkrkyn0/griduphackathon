@@ -149,6 +149,41 @@ export interface AckBody {
   channel?: "ui" | "sms" | "scada";
 }
 
+export interface ShelveBody {
+  by: string;
+  minutes: number;
+  reason: string;
+}
+
+export interface AlarmQuery {
+  /** Virgülle ayrılmış durumlar; backend varsayılanı "active,acked". */
+  state?: string;
+  /** Virgülle ayrılmış öncelikler, ör. "P1,P2". */
+  prio?: string;
+  pano_id?: string;
+  limit?: number;
+}
+
+/** {tag: [[unix_ms, deger|null]]}; bkz. GET /panels/{id}/series. */
+export type SeriesResponse = Record<string, Array<[number, number | null]>>;
+
+export interface TimelineEntry {
+  ts: string;
+  kind: "alarm" | "ack" | "action" | "note" | "trip";
+  text: string;
+}
+
+export interface Blackbox {
+  event_id: string;
+  pano_id: string;
+  occurred_at: string;
+  code: string;
+  det_label: string | null;
+  window_h: number;
+  series: SeriesResponse;
+  timeline: TimelineEntry[];
+}
+
 // openapi.yaml x-websocket. Backend: main.py "tel" -> panel_summary, alarm_service.py "alarm" -> alarm_view.
 export type StreamMessage =
   | { type: "hello"; payload: { server_time: string; api_version: string } }
@@ -161,4 +196,8 @@ export interface Api {
   panel(panoId: string, signal?: AbortSignal): Promise<PanelDetail>;
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
+  alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;
+  shelve(alarmId: string, body: ShelveBody): Promise<{ ok?: boolean }>;
+  series(panoId: string, tags: string[], from: Date, to: Date, step?: string, signal?: AbortSignal): Promise<SeriesResponse>;
+  blackbox(eventId: string, windowH?: number, signal?: AbortSignal): Promise<Blackbox>;
 }

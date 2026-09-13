@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, errorText } from "../api/errors";
-import type { Alarm, ConnPoint, PanelDetail } from "../api/types";
+import type { Alarm, ConnPoint, PanelDetail, SeriesResponse } from "../api/types";
 import { AlarmNedeni } from "../components/AlarmNedeni";
+import { CizgiGrafik } from "../components/CizgiGrafik";
 import { OnGorunus } from "../components/OnGorunus";
 import { PrioMark } from "../components/PrioMark";
 import { ago, num, ttlText } from "../lib/format";
@@ -31,13 +32,14 @@ export function PanoDetay() {
   const [loadError, setLoadError] = useState<LoadError | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [ackBusy, setAckBusy] = useState(false);
-  const [ackMessage, setAckMessage] = useState<string | null>(null);
+  const [shelveBusy, setShelveBusy] = useState(false);
+  const [alarmMessage, setAlarmMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setDetail(null);
     setLoadError(null);
     setSelected(null);
-    setAckMessage(null);
+    setAlarmMessage(null);
   }, [panoId]);
 
   const load = useCallback(
@@ -67,21 +69,39 @@ export function PanoDetay() {
     return () => clearInterval(timer);
   }, [load]);
 
-  const onAck = async (alarm: Alarm) => {
+  const onAck = async (alarm: Alarm, note: string) => {
     setAckBusy(true);
-    setAckMessage(null);
+    setAlarmMessage(null);
     try {
-      await api.ack(alarm.id, { by: OPERATOR, channel: "ui" });
-      setAckMessage("Onaylandı.");
+      await api.ack(alarm.id, { by: OPERATOR, channel: "ui", note: note || undefined });
+      setAlarmMessage("Onaylandı.");
       await load();
     } catch (e) {
-      setAckMessage(
+      setAlarmMessage(
         e instanceof ApiError && e.status === 409
           ? "Bu alarm zaten onaylanmış veya temizlenmiş."
           : `Onaylanamadı: ${errorText(e)}`,
       );
     } finally {
       setAckBusy(false);
+    }
+  };
+
+  const onShelve = async (alarm: Alarm, minutes: number, reason: string) => {
+    setShelveBusy(true);
+    setAlarmMessage(null);
+    try {
+      await api.shelve(alarm.id, { by: OPERATOR, minutes, reason });
+      setAlarmMessage("Rafa alındı.");
+      await load();
+    } catch (e) {
+      setAlarmMessage(
+        e instanceof ApiError && e.status === 403
+          ? "P1 alarm rafa alınamaz."
+          : `Rafa alınamadı: ${errorText(e)}`,
+      );
+    } finally {
+      setShelveBusy(false);
     }
   };
 
@@ -157,7 +177,7 @@ export function PanoDetay() {
 
         <div>
           {primary ? (
-            <AlarmNedeni alarm={primary} onAck={onAck} ackBusy={ackBusy} ackMessage={ackMessage} />
+            <AlarmNedeni alarm={primary} onAck={onAck} onShelve={onShelve} ackBusy={ackBusy} shelveBusy={shelveBusy} message={alarmMessage} />
           ) : (
             <p className="calm">Aktif alarm yok.</p>
           )}
@@ -178,6 +198,7 @@ export function PanoDetay() {
           )}
 
           {group.length > 0 && <FazKarsilastirma points={group} focus={focus} />}
+          {focus && <NoktaTrendi panoId={panoId} point={focus} label={group.find((p) => p.pt === focus)?.label ?? pointLabel(focus)} />}
         </div>
       </div>
 
@@ -206,6 +227,58 @@ function FazKarsilastirma({ points, focus }: { points: ConnPoint[]; focus: strin
           </div>
         );
       })}
+    </section>
+  );
+}
+
+const TREND_RANGES = [
+  { days: 7, label: "7 gün", step: "30m" },
+  { days: 14, label: "14 gün", step: "1h" },
+  { days: 30, label: "30 gün", step: "2h" },
+];
+
+/** TC2: nokta tıklanınca gerçek zaman serisi trendi (K/K₀ ve ΔT), GET /panels/{id}/series. */
+function NoktaTrendi({ panoId, point, label }: { panoId: string; point: string; label: string }) {
+  const [rangeIdx, setRangeIdx] = useState(1);
+  const [data, setData] = useState<SeriesResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const range = TREND_RANGES[rangeIdx];
+
+  useEffect(() => {
+    setData(null);
+    setError(null);
+    const controller = new AbortController();
+    const to = new Date();
+    const from = new Date(to.getTime() - range.days * 86_400_000);
+    api
+      .series(panoId, [`t_conn.${point}.k_ratio`, `t_conn.${point}.dt_c`], from, to, range.step, controller.signal)
+      .then(setData)
+      .catch((e) => !controller.signal.aborted && setError(errorText(e)));
+    return () => controller.abort();
+  }, [panoId, point, range.days, range.step]);
+
+  return (
+    <section className="phases">
+      <h3>{label} trendi</h3>
+      <div className="chart-range" role="group" aria-label="Zaman aralığı">
+        {TREND_RANGES.map((r, i) => (
+          <button key={r.label} type="button" aria-pressed={i === rangeIdx} onClick={() => setRangeIdx(i)}>
+            {r.label}
+          </button>
+        ))}
+      </div>
+      {error && <p className="dim small">{error}</p>}
+      {!data && !error && <p className="dim small">Yükleniyor…</p>}
+      {data && (
+        <CizgiGrafik
+          series={[
+            { key: "k", label: "K/K₀", color: "#2C63C9", points: data[`t_conn.${point}.k_ratio`] ?? [] },
+            { key: "dt", label: "Ortam üstü artış (K)", color: "#DD6418", points: data[`t_conn.${point}.dt_c`] ?? [], axis: "right" },
+          ]}
+          yLabelLeft="K/K₀"
+          yLabelRight="ΔT (K)"
+        />
+      )}
     </section>
   );
 }

@@ -7,7 +7,8 @@ export const AXIS_DAYS = 14;
 export const AXIS_HOURS = AXIS_DAYS * 24;
 
 // Operator icin aciliyet sirasi: kritik > alarm > izleme kopuklugu > uyari > bilgi.
-const URGENCY: Record<Prio, number> = { P1: 0, P2: 1, SYS: 2, P3: 3, INFO: 4 };
+export const URGENCY: Record<Prio, number> = { P1: 0, P2: 1, SYS: 2, P3: 3, INFO: 4 };
+export const prioRank = (prio: Prio): number => URGENCY[prio];
 
 /** Panonun is listesindeki onceligi. Haberlesmesi kopan pano, alarmi olmasa da SYS sayilir. */
 export function effectivePrio(panel: PanelSummary): Prio | null {

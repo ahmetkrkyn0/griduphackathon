@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { Alarm, AlarmSignal } from "../api/types";
 import { ago, measure, ttlText } from "../lib/format";
 import { CHANNEL_TEXT, adviceText, alarmText, signalLabel, unitText } from "../lib/labels";
@@ -5,9 +7,13 @@ import { PrioMark } from "./PrioMark";
 
 interface Props {
   alarm: Alarm;
-  onAck?: (alarm: Alarm) => void;
+  /** Panonun adı/kimliği: yalnızca alarm konsolu gibi çoklu-pano listelerinde gösterilir. */
+  panoName?: string;
+  onAck?: (alarm: Alarm, note: string) => void;
+  onShelve?: (alarm: Alarm, minutes: number, reason: string) => void;
   ackBusy?: boolean;
-  ackMessage?: string | null;
+  shelveBusy?: boolean;
+  message?: string | null;
 }
 
 function SignalRow({ signal }: { signal: AlarmSignal }) {
@@ -34,18 +40,30 @@ function SignalRow({ signal }: { signal: AlarmSignal }) {
 }
 
 /** Her alarm uc soruyu cevaplar: Neden? Ne yapmali? Ne kadar acil? (rapor 6.5 L4) */
-export function AlarmNedeni({ alarm, onAck, ackBusy = false, ackMessage = null }: Props) {
+export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false, shelveBusy = false, message = null }: Props) {
+  const [note, setNote] = useState("");
+  const [shelving, setShelving] = useState(false);
+  const [minutes, setMinutes] = useState(60);
+  const [reason, setReason] = useState("");
+
   const signals = alarm.reason?.signals ?? [];
   const ttl = ttlText(alarm.ttl_h);
   const advice = adviceText(alarm.advice);
   const notified = (alarm.notified ?? []).map((channel) => CHANNEL_TEXT[channel] ?? channel);
+  const canShelve = onShelve && alarm.prio !== "P1" && (alarm.state === "active" || alarm.state === "acked");
 
   return (
     <div className="qa">
       <div className="qa-head">
         <PrioMark prio={alarm.prio} acked={alarm.state === "acked"} />
         <strong>{alarmText(alarm.code, alarm.text)}</strong>
+        {panoName && (
+          <Link className="pano" to={`/pano/${alarm.pano_id}`}>
+            {panoName} <span className="dim">{alarm.pano_id}</span>
+          </Link>
+        )}
         <span className="dim">{ago(alarm.raised_at)}</span>
+        {alarm.state === "shelved" && <span className="badge-shelved">rafta{alarm.shelved_until ? `, ${ago(alarm.shelved_until)} bitiyor` : ""}</span>}
       </div>
 
       <section>
@@ -86,8 +104,23 @@ export function AlarmNedeni({ alarm, onAck, ackBusy = false, ackMessage = null }
 
       <div className="actions">
         {alarm.state === "active" && onAck && (
-          <button type="button" className="btn" disabled={ackBusy} onClick={() => onAck(alarm)}>
-            {ackBusy ? "Onaylanıyor…" : "Onayla"}
+          <>
+            <input
+              type="text"
+              placeholder="Yorum (opsiyonel)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              aria-label="Onay yorumu"
+              style={{ minWidth: 180 }}
+            />
+            <button type="button" className="btn" disabled={ackBusy} onClick={() => onAck(alarm, note)}>
+              {ackBusy ? "Onaylanıyor…" : "Onayla"}
+            </button>
+          </>
+        )}
+        {canShelve && !shelving && (
+          <button type="button" className="btn ghost" onClick={() => setShelving(true)}>
+            Rafa al
           </button>
         )}
         {alarm.state === "acked" && (
@@ -95,12 +128,33 @@ export function AlarmNedeni({ alarm, onAck, ackBusy = false, ackMessage = null }
             {alarm.acked_by ?? "Bilinmeyen kullanıcı"} onayladı{alarm.acked_at ? `, ${ago(alarm.acked_at)}` : ""}
           </span>
         )}
-        {ackMessage && (
+        {message && (
           <span className="dim" role="status">
-            {ackMessage}
+            {message}
           </span>
         )}
       </div>
+
+      {shelving && onShelve && (
+        <div className="shelf-form">
+          <label className="dim small" htmlFor={`min-${alarm.id}`}>
+            Süre (dk)
+          </label>
+          <input id={`min-${alarm.id}`} type="number" min={1} max={480} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} style={{ width: 70 }} />
+          <input type="text" placeholder="Gerekçe (≥3 karakter)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <button
+            type="button"
+            className="btn"
+            disabled={shelveBusy || reason.trim().length < 3}
+            onClick={() => onShelve(alarm, minutes, reason.trim())}
+          >
+            {shelveBusy ? "Rafa alınıyor…" : "Onayla"}
+          </button>
+          <button type="button" className="btn ghost" onClick={() => setShelving(false)}>
+            Vazgeç
+          </button>
+        </div>
+      )}
     </div>
   );
 }

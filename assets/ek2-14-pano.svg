@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EK-II/14 (1250-1600 kVA dahili tip pano) olculerine gore CIZILMIS KENDI CIZIMIMIZ.
+  Komitenin "AG Pano Teknik Cizim-1600kVA.pdf" dosyasindan hicbir gorsel alinmamistir;
+  yalniz olculer (1600 x 1500 x 450 mm, TEDAS-MLZ/2003-06.B EK-II/14) kaynak alinmistir
+  (PLAN.md Bolum C durustluk kurali, rapor SS12.1). Koordinatlar frontend/src/lib/panelGeometry.ts
+  ile birebir aynidir; dijital ikiz ekrani (OnGorunus.tsx) bu cizimin canli/renklendirilmis halidir.
+  Bu dosya statik: docs/13 (donanim tasarimi) ve hardware/yerlesim/ icin referans.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-120 -100 1840 1760" font-family="Barlow, Arial, sans-serif">
+  <style>
+    .enc   { fill:#F7F7F4; stroke:#8E958F; stroke-width:6; }
+    .zone  { fill:#EEEFEA; }
+    .rule  { stroke:#8E958F; stroke-width:3; }
+    .dash  { stroke-dasharray:14 10; }
+    .rail  { stroke:#8E958F; stroke-width:10; }
+    .bar   { fill:#B9B4A6; }
+    .dev   { fill:#5D646A; }
+    .ours  { fill:#2C63C9; }
+    .dsya  { fill:#5D646A; }
+    .spare { opacity:.45; }
+    .cable { stroke:#5D646A; stroke-width:12; opacity:.35; }
+    .pt    { fill:#A3A9AD; stroke:#fff; stroke-width:4; }
+    .lbl   { font-size:34px; fill:#212629; }
+    .lbl-sm{ font-size:24px; fill:#5F666B; }
+    .dim   { stroke:#212629; stroke-width:2; fill:none; }
+    .dimtx { font-size:26px; fill:#212629; }
+    .title { font-size:40px; font-weight:600; fill:#212629; }
+  </style>
+
+  <text class="title" x="0" y="-70">EK-II/14 &#8212; 1250&#8211;1600 kVA dahili tip pano &#8212; sensor yerlesimi (kendi cizimimiz)</text>
+
+  <!-- Govde -->
+  <rect class="enc" x="0" y="0" width="1600" height="1500" rx="6"/>
+  <rect class="zone" x="0" y="0" width="1600" height="350"/>
+  <rect class="zone" x="0" y="1100" width="1600" height="400"/>
+  <line class="rule" x1="0" y1="350" x2="1600" y2="350"/>
+  <line class="rule dash" x1="0" y1="1100" x2="1600" y2="1100"/>
+
+  <!-- Dis olcu cizgileri -->
+  <g class="dim">
+    <line x1="0" y1="-30" x2="1600" y2="-30"/>
+    <line x1="0" y1="-40" x2="0" y2="-20"/>
+    <line x1="1600" y1="-40" x2="1600" y2="-20"/>
+  </g>
+  <text class="dimtx" x="750" y="-14">A = 1600 mm (+100/-0)</text>
+  <g class="dim">
+    <line x1="-30" y1="0" x2="-30" y2="1500"/>
+    <line x1="-40" y1="0" x2="-20" y2="0"/>
+    <line x1="-40" y1="1500" x2="-20" y2="1500"/>
+  </g>
+  <text class="dimtx" x="-115" y="750" transform="rotate(-90, -70, 750)">B = 1500 mm (+100/-0)</text>
+  <text class="dimtx" x="1610" y="150">Derinlik C = 450 mm</text>
+
+  <!-- Ust bolme: haberlesme unitesi bolmesi (sartname 2.2.8.1.iv) -->
+  <line class="rail" x1="60" y1="205" x2="1540" y2="205"/>
+  <rect class="dev" x="90" y="158" width="120" height="94" rx="6"/>
+  <text class="lbl-sm" x="90" y="146">S7 TVOC-2</text>
+  <rect class="ours" x="240" y="150" width="170" height="110" rx="8"/>
+  <text class="lbl-sm" x="240" y="138">Pano Beyni (kontrolcu)</text>
+  <rect class="dev spare" x="440" y="160" width="120" height="90" rx="6"/>
+  <text class="lbl-sm" x="440" y="264">Modem</text>
+  <g class="dev spare">
+    <rect x="610" y="172" width="30" height="66" rx="3"/>
+    <rect x="652" y="172" width="30" height="66" rx="3"/>
+    <rect x="694" y="172" width="30" height="66" rx="3"/>
+    <rect x="736" y="172" width="30" height="66" rx="3"/>
+    <rect x="778" y="172" width="30" height="66" rx="3"/>
+  </g>
+  <text class="lbl-sm" x="610" y="264">Sigortalar</text>
+  <g class="dev spare">
+    <circle cx="1010" cy="205" r="42" fill="none" stroke="#5D646A" stroke-width="8"/>
+    <circle cx="1115" cy="205" r="42" fill="none" stroke="#5D646A" stroke-width="8"/>
+    <circle cx="1220" cy="205" r="42" fill="none" stroke="#5D646A" stroke-width="8"/>
+  </g>
+  <text class="lbl-sm" x="1010" y="264">Sbt. Komp.</text>
+  <text class="lbl-sm" x="1300" y="264">S6 MPR-53CS (EO)</text>
+  <rect class="dev" x="1400" y="160" width="96" height="90" rx="4"/>
+
+  <!-- Ana baralar -->
+  <rect class="bar" x="40" y="500" width="1520" height="20" rx="3"/>
+  <rect class="bar" x="40" y="685" width="1520" height="20" rx="3"/>
+  <rect class="bar" x="40" y="870" width="1520" height="20" rx="3"/>
+  <rect class="bar spare" x="40" y="1282" width="1520" height="16" rx="3"/>
+  <text class="lbl-sm" x="60" y="495">L1</text>
+  <text class="lbl-sm" x="60" y="680">L2</text>
+  <text class="lbl-sm" x="60" y="865">L3</text>
+  <text class="lbl-sm" x="60" y="1278">N</text>
+  <!-- Giris baralari (dahili tipte tavandan) -->
+  <rect class="bar" x="1320" y="0" width="20" height="510"/>
+  <rect class="bar" x="1390" y="0" width="20" height="695"/>
+  <rect class="bar" x="1460" y="0" width="20" height="880"/>
+  <rect class="bar spare" x="1532" y="0" width="16" height="1290"/>
+  <circle class="pt" cx="1330" cy="510" r="15"/><text class="lbl-sm" x="1350" y="500">S1 Giris L1</text>
+  <circle class="pt" cx="1400" cy="695" r="15"/><text class="lbl-sm" x="1420" y="685">S1 Giris L2</text>
+  <circle class="pt" cx="1470" cy="880" r="15"/><text class="lbl-sm" x="1490" y="870">S1 Giris L3</text>
+  <circle class="pt" cx="1540" cy="1290" r="15"/><text class="lbl-sm" x="1440" y="1330">S1 Giris N</text>
+
+  <!-- DSYA seritleri (5 cikis + 2 yedek, Tablo 8) -->
+  <g>
+    <!-- n=1..7 -->
+    <rect class="dsya" x="70" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="120" y="405" text-anchor="middle">DSYA-1</text>
+    <rect class="dsya" x="230" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="280" y="405" text-anchor="middle">DSYA-2</text>
+    <rect class="dsya" x="390" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="440" y="405" text-anchor="middle">DSYA-3</text>
+    <rect class="dsya" x="550" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="600" y="405" text-anchor="middle">DSYA-4</text>
+    <rect class="dsya" x="710" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="760" y="405" text-anchor="middle">DSYA-5</text>
+    <rect class="dsya spare" x="870" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="920" y="405" text-anchor="middle">6 yedek</text>
+    <rect class="dsya spare" x="1030" y="420" width="100" height="620" rx="10"/>
+    <text class="lbl" x="1080" y="405" text-anchor="middle">7 yedek</text>
+  </g>
+
+  <!-- Terminal olcum noktalari (S1: kablosuz baglanti sicaklik dugumu) -->
+  <g>
+    <circle class="pt" cx="90" cy="1080" r="15"/><circle class="pt" cx="120" cy="1080" r="15"/><circle class="pt" cx="150" cy="1080" r="15"/>
+    <circle class="pt" cx="250" cy="1080" r="15"/><circle class="pt" cx="280" cy="1080" r="15"/><circle class="pt" cx="310" cy="1080" r="15"/>
+    <circle class="pt" cx="410" cy="1080" r="15"/><circle class="pt" cx="440" cy="1080" r="15"/><circle class="pt" cx="470" cy="1080" r="15"/>
+    <circle class="pt" cx="570" cy="1080" r="15"/><circle class="pt" cx="600" cy="1080" r="15"/><circle class="pt" cx="630" cy="1080" r="15"/>
+    <circle class="pt" cx="730" cy="1080" r="15"/><circle class="pt" cx="760" cy="1080" r="15"/><circle class="pt" cx="790" cy="1080" r="15"/>
+  </g>
+  <text class="lbl-sm" x="440" y="1050" text-anchor="middle">S1 baglanti sicaklik dugumleri (L1/L2/L3 pabuc uzeri, kablosuz)</text>
+
+  <!-- Termal dizi (saydam kapagin ICINDE, sartname 2.2.6.1, polikarbonat LWIR gecirmez) -->
+  <rect class="ours" x="410" y="700" width="60" height="40" rx="6"/>
+  <text class="lbl-sm" x="480" y="725">S2 Termal dizi (kapagin ic tarafi)</text>
+
+  <!-- Kablo bolgesi + ortam dugumleri -->
+  <text class="lbl-sm" x="700" y="1130">Kablo bolgesi, en az 400 mm (sartname EK-II/14)</text>
+  <rect class="ours" x="70" y="1150" width="60" height="40" rx="6"/>
+  <text class="lbl-sm" x="140" y="1175">S3 Ortam dugumu (alt, hava girisi)</text>
+  <rect class="ours" x="900" y="80" width="60" height="40" rx="6"/>
+  <text class="lbl-sm" x="970" y="105">S4 Ortam dugumu (ust, hava cikisi)</text>
+
+  <!-- Kapi/kapak sensoru -->
+  <rect class="ours" x="1550" y="700" width="30" height="60" rx="4"/>
+  <text class="lbl-sm" x="1470" y="695">S5 Kapi reed</text>
+
+  <!-- Bara mesafesi notu (manyetik alan / clearance) -->
+  <text class="lbl-sm" x="1140" y="620">Kontrolcu &#8596; en yakin bara &#8805; 250 mm</text>
+  <line class="dim" x1="1240" y1="265" x2="1330" y2="500"/>
+</svg>

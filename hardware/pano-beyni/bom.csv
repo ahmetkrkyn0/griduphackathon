@@ -1,0 +1,19 @@
+kategori,parca,uretici_kodu,adet_panobasina,birim_fiyat_usd_adet1,birim_fiyat_usd_adet1000,tedarik_notu
+MCU,ESP32-S3-WROOM-1-N8R8 modul,Espressif ESP32-S3-WROOM-1-N8R8,1,3.80,2.60,Dagitici stok; 8-12 hafta MOQ altinda
+Guvenlik,Guvenli eleman ATECC608A-SSHDA,Microchip ATECC608A-SSHDA,1,0.55,0.32,
+Bellek,Harici flash 16MB,Winbond W25Q128JVSIQ,1,0.60,0.38,
+Izolasyon,Izoleli RS485 transceiver,Analog Devices ADM2587EBRWZ,2,4.90,3.70,RS485 #1 (master) ve #2 (slave)
+Guc,Izoleli AC/DC SMPS 5V 2A,MEAN WELL IRM-10-5,1,7.20,5.10,
+Guc,3V3 LDO regulator,Texas Instruments TLV1117-33,1,0.35,0.18,
+Yedek enerji,Superkapasitor 10F 2.7V,Eaton HB1840-2R7107-R,2,2.10,1.55,Seri baglanti 2x
+Radyo,802.15.4/BLE harici modul,Nordic nRF52840 modul (ör. Fanstel BT840F),1,4.50,3.20,
+Backhaul,Hucresel modem (M.2/UART),Quectel EC200A-EU,1,14.50,10.80,Ozel APN SIM ayri kalemde
+Role,Kuru kontak role 24V,Omron G5LE-1-VD 24DC,2,0.85,0.55,
+Role surucu,Darlington dizi surucu,Texas Instruments ULN2003AN,1,0.30,0.16,
+Opto,Optokuplor girisi,Toshiba TLP291 (PC817 esdeger),4,0.12,0.06,
+Akim olcum,I2C akim/gerilim ADC,Texas Instruments INA226AIDGST,3,1.35,0.90,Fider CT girisleri (ops.)
+Konnektor,Vidali klemens 2 kutup,Phoenix Contact MC 1.5/2-ST-3.5,10,0.30,0.18,J1-J10 govde ortalama
+Kutu,DIN ray kutu V-0,Fibox ARCA 92/125 (PC V-0),1,6.50,4.80,IP20 dahili tip
+PCB,4 katmanli PCB + montaj,-- (yerli PCB uretici),1,8.00,3.20,Adet 1000'de panel uretim indirimi
+Kaplama,Konformal kaplama (akrilik),-- (islem hizmeti),1,1.20,0.60,
+Toplam,,,,,,Adet 1: ~56 USD/pano; Adet 1000: ~37 USD/pano (SIM/veri ve kurulum isciligi haric)
