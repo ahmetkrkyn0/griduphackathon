@@ -165,7 +165,7 @@ Jüri bu soruyu soracak; cevabımız bu tablodur. Demo **bilinçli olarak** tek 
 
 ## 6. Doğrulama özeti
 
-- Modbus ağ geçidi: 35 protokol + 59 politika + 9 uygulama testi; politika kodunda 35/35, sunucuda 19/19 mutasyon yakalandı; canlı yığında GK6
+- Modbus ağ geçidi: 35 protokol + 60 politika + 9 uygulama testi; politika kodunda 35/35, sunucuda 19/19 mutasyon yakalandı; canlı yığında GK6
   yazma reddi gösterildi.
 - Ingest girdi doğrulama: şema, topic/pano kimliği, boyut, NaN/NUL, zehirli mesaj izolasyonu testleri.
 - Bildirim: kayıtsız numaranın SMS onayı yok sayılır; alıcı her kayıtta maskelidir.

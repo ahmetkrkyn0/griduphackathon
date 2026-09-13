@@ -1044,7 +1044,7 @@ def test_k_index_not_updated_without_excitation():
 - [x] **Adım 4: Yük testi** — `loadtest/fleet.py`: `panoalgo` üretecini **kütüphane olarak** kullanıp 1.000 sanal panoyu MQTT'ye basar (A'nın kodunu kopyalama, import et). Ölçülecekler: mesaj/s, ingest gecikmesi p50/p95, CPU, RAM, DB büyümesi, uçtan uca alarm gecikmesi.
 - [x] **Adım 5: Grafana panoları** — `olcek.json` (mesaj/s, CPU, RAM, p95, DB boyutu), `alarm-kpi.json` (alarm/100 pano/gün, öncelik dağılımı — ISA-18.2 hedefiyle karşılaştırmalı).
 - [x] **Adım 6: Ölçüm sonuçlarını `docs/09`'a yaz** — rapor §6.8 tablosunun **ölçülmüş** sütunu; 100 pano ve 1.000 pano için gerçek sayılar + hücresel veri bütçesi.
-- [ ] **Adım 7: `docs/07b`, `docs/15`, `docs/17`'yi yaz.** `docs/17` Bölüm C'deki beş hamleyi ve "neyi simüle ettik, neyi kanıtladık" tablosunu içerir.
+- [x] **Adım 7: `docs/07b`, `docs/15`, `docs/17`'yi yaz.** `docs/17` Bölüm C'deki beş hamleyi ve "neyi simüle ettik, neyi kanıtladık" tablosunu içerir.
 - [ ] **Adım 8: (Could) IEC 60870-5-104 slave** — yalnızca Adım 1–7 bittiyse.
 - [x] **Adım 9: Commit** — `feat(backend): Modbus TCP ag gecidi + uretilmis harita dokumani` + `test(loadtest): 1000 pano yuk testi ve olcek olcumleri`
 

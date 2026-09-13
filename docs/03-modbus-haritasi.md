@@ -381,7 +381,7 @@ kimliği, adet sınırları) ayrıca elle kurulmuş ham çerçevelerle sınanır
 | Harita tutarlılığı | `test_map_loader.py`: gerçek sözleşmede adresler, çakışma, tip, nokta sırası | 41 test |
 | Değer kodlama | `test_scada_encoder.py`: `tel_valid.json`'dan elle hesaplanmış ham değerler | 84 test; 28/28 mutasyon yakalandı |
 | Protokol | `test_modbus_tcp.py`: pymodbus istemcisi + ham çerçeveler | 35 test; 19/19 mutasyon yakalandı |
-| Ağ geçidi politikası | `test_scada_gateway.py`: gerçek TCP, gerçek alarm servisi, şifre/kilit/GK6/komutlar | 59 test; 33/33 mutasyon yakalandı |
+| Ağ geçidi politikası | `test_scada_gateway.py`: gerçek TCP, gerçek alarm servisi, şifre/kilit/GK6/komutlar | 60 test (10.000 panoluk filo dahil); 35/35 mutasyon yakalandı |
 | Uygulama bağlantısı | `test_scada_app.py`: **Modbus değeri = API değeri**, port doluyken backend ayakta | 9 test |
 | Doküman güncelliği | `test_gen_modbus_doc.py`: bu doküman ve CSV sözleşmeden yeniden üretilebiliyor | 6 test |
 | Canlı yığın (13 Eyl) | `docker compose` yığını, PC'den Modbus TCP okuması | 3 panoda `conn_temp` = API × 10; eşlenmemiş birim 0x0A; şifresiz yazma 0x01; harita boşluğu 0x02 |
