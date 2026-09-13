@@ -1,0 +1,68 @@
+/* Tasarim token'lari — Yon A "RAL 7035": pano govdesinin acik grisi zemin olur.
+   ISA-101 yuksek performansli HMI: renk YALNIZCA anormal durumda.
+   Oncelik her yerde renk + sekil + karakterle gosterilir (renk korlugu). */
+:root {
+  --bg: #e2e4df;
+  --surface: #f4f5f1;
+  --well: #d9dbd5;
+  --plate: #2a2f33;
+  --ink: #212629;
+  --dim: #5f666b;
+  --line: #c7cac3;
+
+  --p1: #c62828;
+  --p2: #dd6418;
+  --p3: #c99700;
+  --sys: #56688a;
+  --ours: #2c63c9; /* yalnizca bizim donanimimiz ve odak halkasi */
+
+  --dot: #a3a9ad;
+  --bar: #b9b4a6;
+  --device: #5d646a;
+
+  --sans: "Barlow", system-ui, sans-serif;
+  --cond: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.45 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ours);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3D dijital ikiz denemesi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600&display=swap" rel="stylesheet" />
+<style>
+  /* SPIKE — atilacak kod. Amac: (1) gorsel etki, (2) efor ve performans olcumu.
+     Uretimde React Three Fiber + npm ile paketlenmis three.js (CDN yok, GK4). */
+  :root { --bg: #EDF0F2; --ink: #1D252C; --dim: #616C76; --line: #D3D9DE; --ours: #2C63C9; --p1: #C62828; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 "Barlow", system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  .hud { position: fixed; left: 20px; top: 16px; pointer-events: none; }
+  .hud h1 { margin: 0; font: 600 22px "Barlow Semi Condensed", sans-serif; }
+  .hud p { margin: 2px 0 0; color: var(--dim); }
+  .bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 10px; padding: 6px; width: max-content; max-width: calc(100vw - 32px); }
+  .bar button { border: 0; background: none; padding: 7px 12px; border-radius: 7px; cursor: pointer; font: inherit; color: var(--ink); }
+  .bar button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .bar button:focus-visible { outline: 3px solid var(--ours); }
+  .bar .sep { width: 1px; background: var(--line); margin: 4px 2px; }
+  .card { position: fixed; right: 20px; top: 16px; width: 270px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h2 { margin: 0 0 6px; font: 600 18px "Barlow Semi Condensed", sans-serif; }
+  .card .r { display: flex; justify-content: space-between; padding: 3px 0; border-top: 1px solid #EEF1F3; font-variant-numeric: tabular-nums; }
+  .card .d { color: var(--dim); }
+  .perf { position: fixed; left: 20px; bottom: 18px; color: var(--dim); font-size: 12px; max-width: 260px; }
+  .lbl { font: 500 12px "Barlow", sans-serif; color: var(--ink); background: rgba(255,255,255,.88); padding: 1px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+  .lbl.ours { background: var(--ours); color: #fff; }
+  .lbl.bad { background: var(--p1); color: #fff; }
+  #tip { position: fixed; pointer-events: none; background: var(--ink); color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 12px; }
+  #err { position: fixed; inset: 0; display: grid; place-items: center; color: var(--dim); }
+  @media (max-width: 800px) { .card { top: auto; bottom: 110px; right: 16px; left: 16px; width: auto; } .perf { display: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+  <div id="err">3D sahne yükleniyor. Açılmazsa internet bağlantısını kontrol edin (deneme three.js'i CDN'den çekiyor).</div>
+  <div id="stage"></div>
+  <div class="hud">
+    <h1>Efeler TM-14</h1>
+    <p>1600 × 1500 × 450 mm, 25 ölçüm noktası. Noktaya tıklayın, sürükleyerek döndürün.</p>
+  </div>
+  <aside class="card" id="card" hidden></aside>
+  <div id="tip" hidden></div>
+  <div class="bar" role="toolbar" aria-label="İkiz kontrolleri">
+    <button data-scn="normal" aria-pressed="true">Normal</button>
+    <button data-scn="s1" aria-pressed="false">Gevşek bağlantı</button>
+    <button data-scn="s5" aria-pressed="false">Dedektör arızası</button>
+    <span class="sep"></span>
+    <button data-tog="cover" aria-pressed="true">Saydam kapak</button>
+    <button data-tog="coverage" aria-pressed="false">Ark koruma kapsaması</button>
+    <button data-tog="labels" aria-pressed="true">Etiketler</button>
+    <span class="sep"></span>
+    <button data-cam="persp">3/4 görünüş</button>
+    <button data-cam="front">Ön</button>
+  </div>
+  <div class="perf" id="perf"></div>
+
+<script src="data.js"></script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+document.getElementById("err").remove();
+const t0 = performance.now();
+const M = window.MOCK;
+const stage = document.getElementById("stage");
+
+// --- Sahne -----------------------------------------------------------------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+stage.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+Object.assign(labelRenderer.domElement.style, { position: "fixed", inset: "0", pointerEvents: "none" });
+stage.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#EDF0F2");
+
+const HOME = { pos: new THREE.Vector3(2300, 1700, 3600), target: new THREE.Vector3(0, 720, 0) };
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 10, 30000);
+camera.position.copy(HOME.pos);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.target);
+controls.enableDamping = true;
+controls.minDistance = 900;
+controls.maxDistance = 8000;
+controls.maxPolarAngle = Math.PI * 0.52;
+
+scene.add(new THREE.HemisphereLight("#ffffff", "#c9d0d6", 1.6));
+const sun = new THREE.DirectionalLight("#ffffff", 2.2);
+sun.position.set(1800, 3200, 2600);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -1600, right: 1600, top: 2000, bottom: -400, near: 100, far: 8000 });
+scene.add(sun);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.ShadowMaterial({ opacity: 0.13 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// --- Malzemeler -----------------------------------------------------------
+const mat = {
+  ral7035: new THREE.MeshStandardMaterial({ color: "#CDD1CC", roughness: 0.85, metalness: 0.05 }),
+  ral7035glass: new THREE.MeshStandardMaterial({ color: "#CDD1CC", roughness: 0.85, transparent: true, opacity: 0.28, depthWrite: false }),
+  plate: new THREE.MeshStandardMaterial({ color: "#E2E5E1", roughness: 0.9 }),
+  bar: new THREE.MeshStandardMaterial({ color: "#C2BCAE", roughness: 0.35, metalness: 0.85 }),
+  copper: new THREE.MeshStandardMaterial({ color: "#B97A4D", roughness: 0.4, metalness: 0.8 }),
+  dsya: new THREE.MeshStandardMaterial({ color: "#454C53", roughness: 0.6 }),
+  dsyaFace: new THREE.MeshStandardMaterial({ color: "#D9DCDD", roughness: 0.7 }),
+  insul: new THREE.MeshStandardMaterial({ color: "#3A4046", roughness: 0.7 }),
+  cable: new THREE.MeshStandardMaterial({ color: "#23272B", roughness: 0.8 }),
+  device: new THREE.MeshStandardMaterial({ color: "#5B636A", roughness: 0.6 }),
+  ours: new THREE.MeshStandardMaterial({ color: "#F4F6F8", roughness: 0.5 }),
+  oursAccent: new THREE.MeshStandardMaterial({ color: "#2C63C9", roughness: 0.4, emissive: "#2C63C9", emissiveIntensity: 0.25 }),
+  cover: new THREE.MeshStandardMaterial({ color: "#E8F0F4", roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false }),
+};
+
+// mm cinsinden, min kose koordinatiyla kutu. Govde: x 0..1600, y 0..1500, z 0..450 (z=450 on yuz).
+const root = new THREE.Group();
+root.position.set(-800, 0, -225);
+scene.add(root);
+function box(w, h, d, m, x, y, z, { round = 0, shadow = true } = {}) {
+  const g = round ? new RoundedBoxGeometry(w, h, d, 2, round) : new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.set(x + w / 2, y + h / 2, z + d / 2);
+  mesh.castShadow = shadow; mesh.receiveShadow = true;
+  root.add(mesh);
+  return mesh;
+}
+const labels = [];
+function label(text, x, y, z, cls = "") {
+  const div = document.createElement("div");
+  div.className = "lbl " + cls; div.textContent = text;
+  const o = new CSS2DObject(div); o.position.set(x, y, z); root.add(o); labels.push(o);
+  return o;
+}
+
+// --- Govde (on acik) -------------------------------------------------------
+box(1600, 1500, 20, mat.ral7035, 0, 0, 0);                               // arka
+box(20, 1500, 450, mat.ral7035glass, 0, 0, 0, { shadow: false });        // sol yan (yari saydam)
+box(20, 1500, 450, mat.ral7035glass, 1580, 0, 0, { shadow: false });     // sag yan
+box(1600, 20, 450, mat.ral7035, 0, 1480, 0);                             // tavan
+box(1600, 20, 450, mat.ral7035, 0, 0, 0);                                // taban
+box(1560, 12, 430, mat.plate, 20, 1150, 20);                             // ust bolme tabani
+box(1560, 900, 6, mat.plate, 20, 350, 22);                               // montaj plakasi
+
+// --- Ust bolme: DIN ray, TVOC-2, Pano Beyni, modem, sigortalar, kompanzasyon -----
+box(1480, 35, 8, mat.bar, 60, 1300, 40);
+box(170, 95, 70, mat.device, 90, 1270, 48, { round: 6 });
+label("TVOC-2", 175, 1395, 90);
+box(150, 95, 64, mat.ours, 320, 1270, 48, { round: 8 });
+box(150, 12, 4, mat.oursAccent, 320, 1340, 112);
+label("Pano Beyni", 395, 1405, 90, "ours");
+box(120, 80, 55, mat.device, 520, 1275, 48, { round: 6 });
+label("Modem", 580, 1385, 80);
+for (let i = 0; i < 5; i++) box(28, 75, 60, mat.dsyaFace, 700 + i * 36, 1280, 48, { round: 3 });
+for (let i = 0; i < 3; i++) {
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(42, 42, 230, 32), mat.dsyaFace);
+  c.position.set(1030 + i * 110, 1162 + 115, 250); c.castShadow = true; root.add(c);
+}
+label("Kompanzasyon", 1140, 1430, 250);
+box(96, 96, 30, mat.device, 1400, 1300, 420, { round: 4 });              // MPR-53CS ust on kapakta
+label("MPR-53CS", 1448, 1425, 450);
+
+// --- Baralar ---------------------------------------------------------------
+const PH_Y = { L1: 1000, L2: 815, L3: 630 };
+for (const y of Object.values(PH_Y)) { box(1500, 100, 10, mat.bar, 50, y - 50, 140); box(1500, 100, 10, mat.bar, 50, y - 50, 158); }
+box(1500, 60, 10, mat.bar, 50, 220, 150);                                         // N barasi
+for (const x of [60, 1240]) box(24, 520, 40, mat.insul, x - 12, 560, 120);        // bara mesnetleri
+const GX = { L1: 1320, L2: 1390, L3: 1460 };                                       // giris baralari (dahili tipte ustten)
+for (const [p, x] of Object.entries(GX)) box(50, 1480 - PH_Y[p], 10, mat.bar, x - 25, PH_Y[p], 180);
+box(40, 1260, 10, mat.bar, 1510, 220, 185);
+label("Ana baralar 2 × 100×10 mm", 1400, 560, 200);
+
+// --- DSYA seritleri + kablo pabuclari + kablolar -------------------------------
+const DX = (n) => 150 + 165 * (n - 1);
+const lugPos = {};
+for (let n = 1; n <= 7; n++) {
+  const x = DX(n), spare = n >= 6;
+  box(104, 660, 130, mat.dsya, x - 52, 470, 190, { round: 6 });
+  for (const y of [1000, 815, 630]) box(80, 120, 8, mat.dsyaFace, x - 40, y - 60, 320, { round: 3 });
+  label(spare ? `${n} yedek` : `DSYA-${n}`, x, 1145, 330);
+  for (const [i, p] of ["L1", "L2", "L3"].entries()) {
+    const lx = x + (i - 1) * 30;
+    box(20, 44, 16, mat.copper, lx - 10, 410, 250);
+    lugPos[`DSYA${n}_${p}`] = new THREE.Vector3(lx, 432, 280);
+    if (!spare) {
+      const cab = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 390, 12), mat.cable);
+      cab.position.set(lx, 215, 258); cab.castShadow = true; root.add(cab);
+    }
+  }
+}
+label("Kablo bölgesi en az 400 mm", 700, 60, 420);
+for (const [p, x] of Object.entries(GX)) lugPos[`GIRIS_${p}`] = new THREE.Vector3(x, PH_Y[p], 200);
+lugPos.GIRIS_N = new THREE.Vector3(1530, 250, 205);
+
+// --- Sensor dugumleri --------------------------------------------------------
+const STATE_COLOR = { normal: "#9AA3AA", warn: "#C99700", alarm: "#DD6418", critical: "#C62828", stale: "#D5DADE" };
+const nodes = new Map();
+const nodeGeo = new RoundedBoxGeometry(30, 36, 26, 2, 6);
+const haloGeo = new THREE.SphereGeometry(48, 24, 16);
+for (const p of M.detail.points) {
+  const pos = lugPos[p.pt]; if (!pos) continue;
+  const mesh = new THREE.Mesh(nodeGeo, new THREE.MeshStandardMaterial({ color: STATE_COLOR.normal, roughness: 0.45 }));
+  mesh.position.copy(pos); mesh.castShadow = true; mesh.userData = { ...p };
+  const halo = new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color: "#DD6418", transparent: true, opacity: 0, depthWrite: false }));
+  mesh.add(halo); mesh.userData.halo = halo;
+  root.add(mesh); nodes.set(p.pt, mesh);
+}
+// Ortam dugumleri, termal dizi
+box(60, 40, 30, mat.ours, 770, 70, 390, { round: 6 }); label("Ortam düğümü, alt", 800, 150, 420, "ours");
+box(60, 40, 30, mat.ours, 900, 1420, 390, { round: 6 }); label("Ortam düğümü, üst", 930, 1470, 420, "ours");
+box(46, 28, 26, mat.ours, 777, 1110, 400, { round: 5 }); label("Termal dizi, kapağın içinde", 800, 1060, 440, "ours");
+
+// --- TVOC-2 dedektorleri ve kapsama konileri ------------------------------------
+const detectors = [];
+for (const [i, x] of [260, 640, 1020, 1390].entries()) {
+  const id = `X2:${i + 1}`;
+  const d = new THREE.Mesh(new THREE.CylinderGeometry(12, 12, 30, 16), mat.device);
+  d.position.set(x, 1125, 380); root.add(d);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(330, 700, 32, 1, true),
+    new THREE.MeshBasicMaterial({ color: "#2C63C9", transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }));
+  cone.position.set(x, 1125 - 350, 380); cone.visible = false; root.add(cone);
+  const l = label(id, x, 1170, 395); l.visible = false;
+  detectors.push({ id, d, cone, l });
+}
+
+// --- Saydam kapak (polikarbonat, sartname 2.2.6.1) --------------------------------
+const cover = box(1560, 720, 6, mat.cover, 20, 430, 436, { shadow: false });
+
+// --- Etkilesim -------------------------------------------------------------
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+const tip = document.getElementById("tip"), card = document.getElementById("card");
+const pick = (e) => {
+  mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  return ray.intersectObjects([...nodes.values()], false)[0]?.object;
+};
+renderer.domElement.addEventListener("pointermove", (e) => {
+  const o = pick(e);
+  renderer.domElement.style.cursor = o ? "pointer" : "";
+  tip.hidden = !o;
+  if (o) { tip.textContent = `${o.userData.label}: ${M.num(o.userData.t_c)} °C`; tip.style.left = e.clientX + 14 + "px"; tip.style.top = e.clientY + 10 + "px"; }
+});
+const stateTr = { normal: "Normal", warn: "Uyarı", alarm: "Alarm", critical: "Kritik" };
+let cardPt = null;
+function showCard(u) {
+  cardPt = u.pt;
+  card.hidden = false;
+  card.innerHTML = `<h2>${u.label}</h2>
+    <div class="r"><span class="d">Durum</span><b>${stateTr[u.state]}</b></div>
+    <div class="r"><span class="d">Sıcaklık</span><b>${M.num(u.t_c)} °C</b></div>
+    <div class="r"><span class="d">Ortam üstü artış</span><b>${M.num(u.dt_c)} K</b></div>
+    <div class="r"><span class="d">K/K₀</span><b>${u.k_ratio == null ? "yük yok" : M.num(u.k_ratio, 2)}</b></div>
+    <div class="r"><span class="d">70 K sınırına</span><b>${u.ttl_h ? M.fmtTtl(u.ttl_h) : "risk yok"}</b></div>`;
+}
+renderer.domElement.addEventListener("click", (e) => { const o = pick(e); if (o) showCard(o.userData); });
+
+// --- Senaryolar ------------------------------------------------------------
+let anim = null;
+const lerp = (a, b, k) => a + (b - a) * k;
+function setNode(pt, patch) {
+  const n = nodes.get(pt); Object.assign(n.userData, patch);
+  const c = STATE_COLOR[n.userData.state];
+  n.material.color.set(c);
+  n.material.emissive.set(n.userData.state === "normal" ? "#000000" : c);
+  n.material.emissiveIntensity = n.userData.state === "normal" ? 0 : 0.35;
+  n.userData.halo.material.color.set(c);
+}
+function resetAll() {
+  for (const p of M.detail.points) {
+    const s1 = p.pt === "DSYA3_L2";
+    setNode(p.pt, { ...p, state: "normal", ttl_h: null, k_ratio: s1 ? 1.0 : p.k_ratio, t_c: s1 ? 46.2 : p.t_c, dt_c: s1 ? 22.1 : p.dt_c });
+  }
+  for (const d of detectors) {
+    d.cone.material.color.set("#2C63C9"); d.cone.material.opacity = 0.07; d.d.material = mat.device;
+    d.l.element.className = "lbl"; d.l.element.textContent = d.id;
+  }
+  anim = null;
+  if (cardPt) showCard(nodes.get(cardPt).userData);
+}
+// Durum esikleri SPIKE icin burada; uretimde API ConnPoint.state gonderir (kural 10).
+function scenario(name) {
+  resetAll();
+  if (name === "s1") { anim = { kind: "s1", t: 0 }; showCard(nodes.get("DSYA3_L2").userData); flyTo(new THREE.Vector3(250, 1050, 2500), new THREE.Vector3(-300, 560, 0)); }
+  if (name === "s5") {
+    toggle("coverage", true);
+    const d = detectors[3];
+    d.cone.material.color.set("#C62828"); d.cone.material.opacity = 0.2;
+    d.d.material = new THREE.MeshStandardMaterial({ color: "#C62828", emissive: "#C62828", emissiveIntensity: 0.5 });
+    d.l.element.className = "lbl bad"; d.l.element.textContent = "X2:4 arızalı, bu bölge korumasız";
+    anim = { kind: "s5" };
+    flyTo(new THREE.Vector3(1500, 1300, 2300), new THREE.Vector3(500, 800, 0));
+  }
+  if (name === "normal") flyTo(HOME.pos, HOME.target);
+}
+
+let fly = null;
+function flyTo(pos, target) { fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(), k: 0 }; }
+
+// --- Toolbar ---------------------------------------------------------------
+const toggles = { cover: true, coverage: false, labels: true };
+function toggle(key, value) {
+  toggles[key] = value ?? !toggles[key];
+  document.querySelector(`[data-tog="${key}"]`).setAttribute("aria-pressed", toggles[key]);
+  if (key === "cover") cover.visible = toggles.cover;
+  if (key === "coverage") detectors.forEach((d) => { d.cone.visible = toggles.coverage; d.l.visible = toggles.coverage; });
+  if (key === "labels") labels.forEach((l) => { if (!detectors.some((d) => d.l === l)) l.visible = toggles.labels; });
+}
+document.querySelector(".bar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.scn) {
+    document.querySelectorAll("[data-scn]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    scenario(b.dataset.scn);
+  }
+  if (b.dataset.tog) toggle(b.dataset.tog);
+  if (b.dataset.cam === "front") flyTo(new THREE.Vector3(0, 750, 4200), new THREE.Vector3(0, 750, 0));
+  if (b.dataset.cam === "persp") flyTo(HOME.pos, HOME.target);
+});
+
+// --- Dongu -----------------------------------------------------------------
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clock = new THREE.Clock();
+let frames = 0, fpsT = 0, firstFrame = null;
+const perf = document.getElementById("perf");
+resetAll();
+
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta(), t = clock.elapsedTime;
+  if (fly) {
+    fly.k = Math.min(1, fly.k + dt / (reduced ? 0.01 : 1.2));
+    const e = 1 - Math.pow(1 - fly.k, 3);
+    camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e);
+    if (fly.k >= 1) fly = null;
+  }
+  if (anim?.kind === "s1") {
+    anim.t = Math.min(1, anim.t + dt / 7);   // 42 gunluk bozulma 7 saniyede
+    const k = lerp(1.0, 1.64, anim.t), dT = lerp(22.1, 34.3, anim.t);
+    const state = k > 1.6 ? "alarm" : k > 1.3 ? "warn" : "normal";
+    setNode("DSYA3_L2", { k_ratio: +k.toFixed(2), dt_c: +dT.toFixed(1), t_c: +(24.1 + dT).toFixed(1), state, ttl_h: state === "normal" ? null : Math.round(lerp(900, 146, anim.t)) });
+    if (cardPt === "DSYA3_L2") showCard(nodes.get("DSYA3_L2").userData);
+  }
+  for (const n of nodes.values()) {
+    const s = n.userData.state, h = n.userData.halo;
+    h.material.opacity = s === "normal" ? 0 : (reduced ? 0.25 : 0.15 + 0.15 * Math.sin(t * 4));
+    h.scale.setScalar(s === "alarm" || s === "critical" ? 1 + (reduced ? 0 : 0.15 * Math.sin(t * 4)) : 0.8);
+  }
+  if (anim?.kind === "s5" && !reduced) detectors[3].cone.material.opacity = 0.14 + 0.08 * Math.sin(t * 5);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+
+  if (firstFrame === null) firstFrame = Math.round(performance.now() - t0);
+  frames++; fpsT += dt;
+  if (fpsT > 1) {
+    perf.textContent = `${(frames / fpsT).toFixed(0)} fps, ${renderer.info.render.calls} çizim çağrısı, ${renderer.info.render.triangles.toLocaleString("tr-TR")} üçgen, ilk kare ${firstFrame} ms`;
+    frames = 0; fpsT = 0;
+  }
+});
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
