@@ -1,0 +1,151 @@
+﻿pdu;holding;input;ad;blok;tip;olcek;birim;erisim;tvoc2_pdu;merkez_kaynagi;not
+0;40001;30001;device_info.map_version;device_info;uint16;;;read;;modbus-map.yaml `version`;bu dosyanin version alani
+1;40002;30002;device_info.fw_version;device_info;uint16;;;read;;`fw` 'M.m.p' -> 0xMmpp;ornek: 0x0301 = v0.3.1
+2;40003;30003;device_info.serial_hi;device_info;uint16;;;read;;"- (kenar merkeze gondermiyor; hep 'yok')";
+3;40004;30004;device_info.serial_lo;device_info;uint16;;;read;;"- (kenar merkeze gondermiyor; hep 'yok')";
+4;40005;30005;device_info.pano_type;device_info;uint16;;;read;;`panels.pano_type` (1600kVA-dahili = 1, bilinmeyen = 0);1 = 1600 kVA dahili (EK-II/14)
+5;40006;30006;device_info.point_count;device_info;uint16;;;read;;`t_conn` nokta sayisi;aktif baglanti noktasi sayisi
+20;40021;30021;health.uptime_h;health;uint16;;;read;;`health.uptime_s` / 3600;
+21;40022;30022;health.last_sync_m;health;uint16;;;read;;merkezin panodan son veri aldigi andan beri gecen dakika;son zaman senkronundan beri dakika
+22;40023;30023;health.supply_state;health;uint16;;;read;;"canli ALM-LASTGASP -> 2; aksi halde 'yok'";0=sebeke, 1=yedek, 2=son nefes
+23;40024;30024;health.backup_pct;health;uint16;;;read;;`health.vbak_pct`;
+24;40025;30025;health.rssi_dbm_neg;health;uint16;;;read;;-`health.rssi_dbm`;pozitif olarak: 87 => -87 dBm
+25;40026;30026;health.nodes_ok;health;uint16;;;read;;`health.nodes_ok`;
+26;40027;30027;health.nodes_total;health;uint16;;;read;;`health.nodes_total`;
+27;40028;30028;health.heartbeat;health;uint16;;;read;;"`seq` (16 bit sarar; donarsa kenar sessiz)";"her cevrimde artar; donarsa kenar oldu"
+28;40029;30029;health.buffered_msgs;health;uint16;;;read;;`health.buffered`;
+29;40030;30030;health.baseline_day;health;uint16;;;read;;`health.baseline_day`;7 = taban ogrenme tamam
+100;40101;30101;conn_temp.GIRIS_L1;conn_temp;int16;0.1;degC;read;;`t_conn[GIRIS_L1].t_c`;
+101;40102;30102;conn_temp.GIRIS_L2;conn_temp;int16;0.1;degC;read;;`t_conn[GIRIS_L2].t_c`;
+102;40103;30103;conn_temp.GIRIS_L3;conn_temp;int16;0.1;degC;read;;`t_conn[GIRIS_L3].t_c`;
+103;40104;30104;conn_temp.GIRIS_N;conn_temp;int16;0.1;degC;read;;`t_conn[GIRIS_N].t_c`;
+104;40105;30105;conn_temp.DSYA1_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA1_L1].t_c`;
+105;40106;30106;conn_temp.DSYA1_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA1_L2].t_c`;
+106;40107;30107;conn_temp.DSYA1_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA1_L3].t_c`;
+107;40108;30108;conn_temp.DSYA2_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA2_L1].t_c`;
+108;40109;30109;conn_temp.DSYA2_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA2_L2].t_c`;
+109;40110;30110;conn_temp.DSYA2_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA2_L3].t_c`;
+110;40111;30111;conn_temp.DSYA3_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA3_L1].t_c`;
+111;40112;30112;conn_temp.DSYA3_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA3_L2].t_c`;
+112;40113;30113;conn_temp.DSYA3_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA3_L3].t_c`;
+113;40114;30114;conn_temp.DSYA4_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA4_L1].t_c`;
+114;40115;30115;conn_temp.DSYA4_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA4_L2].t_c`;
+115;40116;30116;conn_temp.DSYA4_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA4_L3].t_c`;
+116;40117;30117;conn_temp.DSYA5_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA5_L1].t_c`;
+117;40118;30118;conn_temp.DSYA5_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA5_L2].t_c`;
+118;40119;30119;conn_temp.DSYA5_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA5_L3].t_c`;
+119;40120;30120;conn_temp.DSYA6_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA6_L1].t_c`;
+120;40121;30121;conn_temp.DSYA6_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA6_L2].t_c`;
+121;40122;30122;conn_temp.DSYA6_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA6_L3].t_c`;
+122;40123;30123;conn_temp.DSYA7_L1;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA7_L1].t_c`;
+123;40124;30124;conn_temp.DSYA7_L2;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA7_L2].t_c`;
+124;40125;30125;conn_temp.DSYA7_L3;conn_temp;int16;0.1;degC;read;;`t_conn[DSYA7_L3].t_c`;
+150;40151;30151;conn_dt.GIRIS_L1;conn_dt;int16;0.1;K;read;;`t_conn[GIRIS_L1].dt_c`;
+151;40152;30152;conn_dt.GIRIS_L2;conn_dt;int16;0.1;K;read;;`t_conn[GIRIS_L2].dt_c`;
+152;40153;30153;conn_dt.GIRIS_L3;conn_dt;int16;0.1;K;read;;`t_conn[GIRIS_L3].dt_c`;
+153;40154;30154;conn_dt.GIRIS_N;conn_dt;int16;0.1;K;read;;`t_conn[GIRIS_N].dt_c`;
+154;40155;30155;conn_dt.DSYA1_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA1_L1].dt_c`;
+155;40156;30156;conn_dt.DSYA1_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA1_L2].dt_c`;
+156;40157;30157;conn_dt.DSYA1_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA1_L3].dt_c`;
+157;40158;30158;conn_dt.DSYA2_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA2_L1].dt_c`;
+158;40159;30159;conn_dt.DSYA2_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA2_L2].dt_c`;
+159;40160;30160;conn_dt.DSYA2_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA2_L3].dt_c`;
+160;40161;30161;conn_dt.DSYA3_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA3_L1].dt_c`;
+161;40162;30162;conn_dt.DSYA3_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA3_L2].dt_c`;
+162;40163;30163;conn_dt.DSYA3_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA3_L3].dt_c`;
+163;40164;30164;conn_dt.DSYA4_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA4_L1].dt_c`;
+164;40165;30165;conn_dt.DSYA4_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA4_L2].dt_c`;
+165;40166;30166;conn_dt.DSYA4_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA4_L3].dt_c`;
+166;40167;30167;conn_dt.DSYA5_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA5_L1].dt_c`;
+167;40168;30168;conn_dt.DSYA5_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA5_L2].dt_c`;
+168;40169;30169;conn_dt.DSYA5_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA5_L3].dt_c`;
+169;40170;30170;conn_dt.DSYA6_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA6_L1].dt_c`;
+170;40171;30171;conn_dt.DSYA6_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA6_L2].dt_c`;
+171;40172;30172;conn_dt.DSYA6_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA6_L3].dt_c`;
+172;40173;30173;conn_dt.DSYA7_L1;conn_dt;int16;0.1;K;read;;`t_conn[DSYA7_L1].dt_c`;
+173;40174;30174;conn_dt.DSYA7_L2;conn_dt;int16;0.1;K;read;;`t_conn[DSYA7_L2].dt_c`;
+174;40175;30175;conn_dt.DSYA7_L3;conn_dt;int16;0.1;K;read;;`t_conn[DSYA7_L3].dt_c`;
+200;40201;30201;k_index.GIRIS_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[GIRIS_L1].k_ratio` x 100;
+201;40202;30202;k_index.GIRIS_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[GIRIS_L2].k_ratio` x 100;
+202;40203;30203;k_index.GIRIS_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[GIRIS_L3].k_ratio` x 100;
+203;40204;30204;k_index.GIRIS_N;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[GIRIS_N].k_ratio` x 100;
+204;40205;30205;k_index.DSYA1_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA1_L1].k_ratio` x 100;
+205;40206;30206;k_index.DSYA1_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA1_L2].k_ratio` x 100;
+206;40207;30207;k_index.DSYA1_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA1_L3].k_ratio` x 100;
+207;40208;30208;k_index.DSYA2_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA2_L1].k_ratio` x 100;
+208;40209;30209;k_index.DSYA2_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA2_L2].k_ratio` x 100;
+209;40210;30210;k_index.DSYA2_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA2_L3].k_ratio` x 100;
+210;40211;30211;k_index.DSYA3_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA3_L1].k_ratio` x 100;
+211;40212;30212;k_index.DSYA3_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA3_L2].k_ratio` x 100;
+212;40213;30213;k_index.DSYA3_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA3_L3].k_ratio` x 100;
+213;40214;30214;k_index.DSYA4_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA4_L1].k_ratio` x 100;
+214;40215;30215;k_index.DSYA4_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA4_L2].k_ratio` x 100;
+215;40216;30216;k_index.DSYA4_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA4_L3].k_ratio` x 100;
+216;40217;30217;k_index.DSYA5_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA5_L1].k_ratio` x 100;
+217;40218;30218;k_index.DSYA5_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA5_L2].k_ratio` x 100;
+218;40219;30219;k_index.DSYA5_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA5_L3].k_ratio` x 100;
+219;40220;30220;k_index.DSYA6_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA6_L1].k_ratio` x 100;
+220;40221;30221;k_index.DSYA6_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA6_L2].k_ratio` x 100;
+221;40222;30222;k_index.DSYA6_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA6_L3].k_ratio` x 100;
+222;40223;30223;k_index.DSYA7_L1;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA7_L1].k_ratio` x 100;
+223;40224;30224;k_index.DSYA7_L2;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA7_L2].k_ratio` x 100;
+224;40225;30225;k_index.DSYA7_L3;k_index;int16;0.1;percent_of_baseline;read;;`t_conn[DSYA7_L3].k_ratio` x 100;
+300;40301;30301;environment.t_low_c;environment;int16;0.1;degC;read;;`env.t_low_c`;
+301;40302;30302;environment.rh_low_pct;environment;int16;0.1;percent;read;;`env.rh_low_pct`;
+302;40303;30303;environment.td_low_c;environment;int16;0.1;degC;read;;`env.td_low_c`;ciy noktasi (Magnus)
+303;40304;30304;environment.td_margin_k;environment;int16;0.1;K;read;;`env.td_margin_k`;negatif = yogusma
+304;40305;30305;environment.t_up_c;environment;int16;0.1;degC;read;;`env.t_up_c`;
+305;40306;30306;environment.rh_up_pct;environment;int16;0.1;percent;read;;`env.rh_up_pct`;
+306;40307;30307;environment.dt_air_k;environment;int16;0.1;K;read;;`env.dt_air_k`;ust - alt: pano enerji dengesi
+307;40308;30308;environment.voc_idx;environment;int16;0.1;index;read;;`env.voc_idx`;65535 = sensor yok
+400;40401;30401;electrical_mirror.i_l1_a;electrical_mirror;uint16;0.1;;read;;`elec.i_ph[0]`;
+401;40402;30402;electrical_mirror.i_l2_a;electrical_mirror;uint16;0.1;;read;;`elec.i_ph[1]`;
+402;40403;30403;electrical_mirror.i_l3_a;electrical_mirror;uint16;0.1;;read;;`elec.i_ph[2]`;
+403;40404;30404;electrical_mirror.i_n_a;electrical_mirror;uint16;0.1;;read;;`elec.i_n`;
+404;40405;30405;electrical_mirror.u_l1_v;electrical_mirror;uint16;0.1;;read;;`elec.u_ph[0]`;
+405;40406;30406;electrical_mirror.u_l2_v;electrical_mirror;uint16;0.1;;read;;`elec.u_ph[1]`;
+406;40407;30407;electrical_mirror.u_l3_v;electrical_mirror;uint16;0.1;;read;;`elec.u_ph[2]`;
+407;40408;30408;electrical_mirror.thd_i_l1_pct;electrical_mirror;uint16;0.1;;read;;`elec.thd_i[0]`;
+408;40409;30409;electrical_mirror.thd_i_l2_pct;electrical_mirror;uint16;0.1;;read;;`elec.thd_i[1]`;
+409;40410;30410;electrical_mirror.thd_i_l3_pct;electrical_mirror;uint16;0.1;;read;;`elec.thd_i[2]`;
+410;40411;30411;electrical_mirror.cosphi;electrical_mirror;int16;0.001;;read;;`elec.cosphi`;
+411;40412;30412;electrical_mirror.unbal_pct;electrical_mirror;uint16;0.1;;read;;`elec.unbal_pct`;
+412;40413;30413;electrical_mirror.mpr_comm_ok;electrical_mirror;uint16;;;read;;`elec` geldiyse 1;0 = analizor cevap vermiyor
+500;40501;30501;arc_mirror.system_state;arc_mirror;uint16;;;read_only;1300;`tvoc.state`;
+501;40502;30502;arc_mirror.trip_count;arc_mirror;uint16;;;read_only;149;`tvoc.trips`;
+502;40503;30503;arc_mirror.last_det_low;arc_mirror;uint16;;;read_only;100;`tvoc.det_bits_low`;
+503;40504;30504;arc_mirror.last_det_high;arc_mirror;uint16;;;read_only;101;`tvoc.det_bits_high`;
+504;40505;30505;arc_mirror.last_trip_relay;arc_mirror;uint16;;;read_only;102;"- (kenar merkeze gondermiyor; hep 'yok')";
+505;40506;30506;arc_mirror.last_trip_date;arc_mirror;uint16;;;read_only;103;"- (kenar merkeze gondermiyor; hep 'yok')";1970-01-01 + N gun
+506;40507;30507;arc_mirror.last_trip_hhmm;arc_mirror;uint16;;;read_only;104;"- (kenar merkeze gondermiyor; hep 'yok')";MSB saat, LSB dakika
+507;40508;30508;arc_mirror.last_trip_sec;arc_mirror;uint16;;;read_only;105;"- (kenar merkeze gondermiyor; hep 'yok')";
+508;40509;30509;arc_mirror.sensor_status_x2;arc_mirror;uint16;;;read_only;222;`tvoc.sensor_x2`;bit 1 = OK
+509;40510;30510;arc_mirror.sensor_status_x3;arc_mirror;uint16;;;read_only;223;`tvoc.sensor_x3`;
+510;40511;30511;arc_mirror.amb_light_x2;arc_mirror;uint16;;;read_only;224;`tvoc.amb_light_x2`;
+511;40512;30512;arc_mirror.amb_light_x3;arc_mirror;uint16;;;read_only;225;`tvoc.amb_light_x3`;
+512;40513;30513;arc_mirror.active_dtc_1;arc_mirror;uint16;;;read_only;1301;"- (kenar merkeze gondermiyor; hep 'yok')";
+513;40514;30514;arc_mirror.prot_health_ok;arc_mirror;uint16;;;read_only;;`tvoc.prot_health_ok` (TVOC-2 yoksa 0);"bizim ozet bitimiz; 0 = pano korumasiz"
+514;40515;30515;arc_mirror.tvoc_comm_ok;arc_mirror;uint16;;;read_only;;`tvoc.comm_ok` (TVOC-2 yoksa 0);0 = cevap yok (or. fabrika ID 248)
+600;40601;30601;pd.pulses_per_s;pd;uint16;;;read;;`pd.pps`;
+601;40602;30602;pd.amp_dbmv;pd;int16;;;read;;`pd.amp_dbmv`;
+602;40603;30603;pd.trend_slope;pd;int16;0.01;;read;;`pd.trend`;
+603;40604;30604;pd.phase_cluster;pd;uint16;0.01;;read;;`pd.phase_cluster`;
+700;40701;30701;risk.risk_score;risk;uint16;;;read;;`risk.score`;0-100
+701;40702;30702;risk.fault_mode;risk;uint16;;;read;;`risk.mode` -> hypotheses[].id;alarm-codes.yaml hypotheses[].id
+702;40703;30703;risk.ttl_hours;risk;uint16;;;read;;`risk.ttl_h`;65535 = bilinmiyor
+703;40704;30704;risk.worst_point;risk;uint16;;;read;;en kotu nokta: durum > K/K0 > dT (yalnizca q = 0);conn_temp points listesindeki indeks
+800;40801;30801;alarms.alarm_bits_0_15;alarms;uint16;;;read;;canli alarmlar (active/acked, kosul suruyor), bit 0-15;"canli; bit 0-15"
+801;40802;30802;alarms.alarm_bits_16_31;alarms;uint16;;;read;;canli alarmlar, bit 16-31;"canli; bit 16-31"
+810;40811;30811;alarms.latched_bits_0_15;alarms;uint16;;;read;;canli | onaysiz | mandal (reset_latch'e kadar), bit 0-15;mandalli kopya
+811;40812;30812;alarms.latched_bits_16_31;alarms;uint16;;;read;;mandalli kopya, bit 16-31;
+820;40821;30821;alarms.active_alarm_count;alarms;uint16;;;read;;canli alarm sayisi;
+821;40822;30822;alarms.highest_prio;alarms;uint16;;;read;;canli alarmlarin en acili (P1>P2>P3>SYS>INFO);1=P1, 2=P2, 3=P3, 4=INFO, 5=SYS, 0=yok
+830;40831;30831;event.event_count;event;uint16;;;read;;ag gecidinin gordugu alarm acilislari (16 bit sarar);
+831;40832;30832;event.last_code;event;uint16;;;read;;son acilan alarmin bit numarasi;alarm-codes.yaml bit numarasi
+832;40833;30833;event.ts_hi;event;uint16;;;read;;son acilisin olay zamani, Unix s yuksek word;Unix zaman, yuksek word
+833;40834;30834;event.ts_lo;event;uint16;;;read;;son acilisin olay zamani, Unix s dusuk word;
+900;40901;30901;command.password;command;uint16;;;write;;okumada her zaman 0;dogru degilse diger yazmalar yok sayilir
+901;40902;30902;command.ack_alarm;command;uint16;;;write;;"komut; okumada 0";
+902;40903;30903;command.reset_latch;command;uint16;;;write;;"komut; okumada 0";
+903;40904;30904;command.maint_mode;command;uint16;;;write;;"komut; okumada `health.maint_mode`";"1 = bakim modu; P1 asla bastirilmaz"
+904;40905;30905;command.test_alarm;command;uint16;;;write;;"komut; okumada 0";sentetik test alarmi tetikler

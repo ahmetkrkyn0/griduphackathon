@@ -53,7 +53,11 @@ log = logging.getLogger("gridup.scada")
 
 MAX_UNIT = 247
 ACK_ALL = 0xFFFF
+ACK_MAX_BIT_VALUE = 32  # ack_alarm = bit + 1 (bit 0-31)
 MAINT_ON, MAINT_OFF = 1, 2
+UNLOCK_S = 60.0
+MAX_PASSWORD_FAILURES = 3
+LOCKOUT_S = 300.0
 ACKABLE_STATES = ("active", "shelved")  # alarm_manager.ack ile ayni
 LATCHING_CHANGES = ("raised", "reactivated")
 
@@ -95,9 +99,9 @@ class ScadaGateway:
         units: Mapping[int, str] | None = None,
         password: int | None = None,
         command_sink: CommandSink | None = None,
-        unlock_s: float = 60.0,
-        max_password_failures: int = 3,
-        lockout_s: float = 300.0,
+        unlock_s: float = UNLOCK_S,
+        max_password_failures: int = MAX_PASSWORD_FAILURES,
+        lockout_s: float = LOCKOUT_S,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._regmap = regmap
@@ -273,7 +277,7 @@ class ScadaGateway:
         test = named.get("test_alarm", 0)
         if (
             reserved_nonzero
-            or not (ack in (0, ACK_ALL) or 1 <= ack <= 32)
+            or not (ack in (0, ACK_ALL) or 1 <= ack <= ACK_MAX_BIT_VALUE)
             or reset not in (0, 1)
             or maint not in (0, MAINT_ON, MAINT_OFF)
             or test not in (0, 1)
