@@ -53,6 +53,7 @@ class MemoryStore:
         self.events: dict[str, tuple] = {}  # event_id -> (pano_id, occurred_at, code)
         self.journal: list[tuple] = []  # (alarm_id, at, action, state, by, note)
         self.fail_alarm_saves = 0  # >0 ise siradaki N alarm yazimi StoreError atar
+        self.notifications: list = []  # Delivery kayitlari
         for panel in panels:
             self.add_panel(**panel)
 
@@ -146,6 +147,10 @@ class MemoryStore:
     def next_alarm_id(self) -> int:
         self._check()
         return max(self.alarms, default=0) + 1
+
+    def record_notification(self, delivery) -> None:
+        self._check()
+        self.notifications.append(delivery)
 
     # ------------------------------------------------------------ test yardimcilari
     def set_last_rx(self, pano_id: str, when: datetime) -> None:

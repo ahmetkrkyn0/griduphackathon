@@ -11,7 +11,7 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import psycopg
 from psycopg.rows import class_row, dict_row
@@ -20,6 +20,9 @@ from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .alarm_manager import Alarm, Change
 from .models import PanelRecord, Rejection, Sample
+
+if TYPE_CHECKING:
+    from .notify.dispatcher import Delivery
 
 
 class StoreError(RuntimeError):
@@ -69,6 +72,10 @@ class Store(Protocol):
 
     def next_alarm_id(self) -> int:
         """Alarm kimligini tek yazici alarm yoneticisi verir: acilista max(id) + 1."""
+        ...
+
+    def record_notification(self, delivery: Delivery) -> None:
+        """Bildirim denetim izi (KVKK): kanal, maskeli alici, zaman, sonuc."""
         ...
 
 
@@ -135,6 +142,10 @@ ON CONFLICT (id) DO UPDATE SET {", ".join(f"{c} = EXCLUDED.{c}" for c in _ALARM_
 """
 
 _INSERT_JOURNAL = "INSERT INTO alarm_journal (alarm_id, at, action, state, by_user, note) VALUES (%s, %s, %s, %s, %s, %s)"
+
+_INSERT_NOTIFICATION = (
+    "INSERT INTO notifications (alarm_id, channel, recipient, sent_at, ok, detail) VALUES (%s, %s, %s, %s, %s, %s)"
+)
 
 _SELECT_ALARMS = f"SELECT {', '.join(ALARM_COLUMNS)} FROM alarms"
 
@@ -269,6 +280,13 @@ class PgStore:
         with self._connection() as conn:
             (value,) = conn.execute("SELECT COALESCE(max(id), 0) + 1 FROM alarms").fetchone()
             return int(value)
+
+    def record_notification(self, delivery: Delivery) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                _INSERT_NOTIFICATION,
+                (delivery.alarm_id, delivery.channel, delivery.recipient, delivery.sent_at, delivery.ok, delivery.detail),
+            )
 
     def _select_alarms(self, query: str, params: Any) -> list[Alarm]:
         with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:

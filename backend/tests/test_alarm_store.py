@@ -19,6 +19,7 @@ import pytest
 
 from app.alarm_manager import AlarmManager, Condition
 from app.db import PgStore
+from app.notify.dispatcher import Delivery
 from helpers import utc
 
 DSN = os.getenv("TEST_DB_DSN")
@@ -153,6 +154,21 @@ def test_list_alarms_filters_by_state_priority_and_panel_newest_first(manager, s
     assert {a.id for a in everything} == {k_warn.id, term.id, dew.id}
     assert everything[-1].id == k_warn.id  # en eski en sonda
     assert newest[0].raised_at == T0 + timedelta(minutes=2)
+
+
+def test_notification_attempts_are_stored_for_the_audit_trail(manager, store, db, pano_id):
+    alarm = raise_k_warn(manager, store, pano_id)
+
+    store.record_notification(Delivery(alarm.id, "sms", "+90******0001", RX, False, "+CMS ERROR: 500"))
+    store.record_notification(Delivery(alarm.id, "whatsapp", "+90******0001", RX, True, "gonderildi"))
+
+    rows = db.execute(
+        "SELECT channel, recipient, sent_at, ok, detail FROM notifications WHERE alarm_id = %s ORDER BY id", (alarm.id,)
+    ).fetchall()
+    assert rows == [
+        ("sms", "+90******0001", RX, False, "+CMS ERROR: 500"),
+        ("whatsapp", "+90******0001", RX, True, "gonderildi"),
+    ]
 
 
 def test_next_alarm_id_is_above_every_stored_id(manager, store, pano_id):

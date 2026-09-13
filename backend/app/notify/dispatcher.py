@@ -32,7 +32,7 @@ from .pdu import Sms
 from .privacy import mask_number
 from .sms_modem import ModemError, SmsModem
 from .templates import escalation_sms, fold, sms_alarm, whatsapp_alarm
-from .whatsapp import WhatsAppClient, WhatsAppError
+from .whatsapp import DEFAULT_API_VERSION, WhatsAppClient, WhatsAppError
 
 log = logging.getLogger("gridup.notify")
 
@@ -52,8 +52,9 @@ def normalize_msisdn(number: str) -> str:
 
 @dataclass(frozen=True)
 class NotifyConfig:
-    recipients: tuple[str, ...] = ()  # saha / bolge ekibi
+    recipients: tuple[str, ...] = ()  # saha / bolge ekibi (SMS, arama)
     escalation: tuple[str, ...] = ()  # vardiya amiri / ust amir
+    whatsapp_recipients: tuple[str, ...] = ()  # bossa `recipients`; Meta'da dogrulanmis numaralar
     portal_url: str = "http://gridup.local"
     call_ring_s: float = 20.0
     retry_max_attempts: int = 5
@@ -64,9 +65,27 @@ class NotifyConfig:
         return cls(
             recipients=_numbers(os.getenv("ALERT_RECIPIENTS", "")),
             escalation=_numbers(os.getenv("ALERT_ESCALATION", "")),
+            whatsapp_recipients=_numbers(os.getenv("WHATSAPP_RECIPIENTS", "")),
             portal_url=os.getenv("PORTAL_URL", "http://gridup.local"),
             call_ring_s=float(os.getenv("CALL_RING_S", "20")),
         )
+
+
+def channels_from_env() -> tuple[SmsModem | None, WhatsAppClient | None]:
+    """SMS_DEVICE bossa SMS/arama, WHATSAPP_TOKEN veya WHATSAPP_PHONE_ID bossa WhatsApp kapali."""
+    device = os.getenv("SMS_DEVICE", "").strip()
+    sms = SmsModem(device, baudrate=int(os.getenv("SMS_BAUD", "115200"))) if device else None
+    token, phone_id = os.getenv("WHATSAPP_TOKEN", "").strip(), os.getenv("WHATSAPP_PHONE_ID", "").strip()
+    whatsapp = None
+    if token and phone_id:
+        whatsapp = WhatsAppClient(
+            token,
+            phone_id,
+            api_version=os.getenv("WHATSAPP_API_VERSION", DEFAULT_API_VERSION),
+            template=os.getenv("WHATSAPP_TEMPLATE", "").strip() or None,
+            language=os.getenv("WHATSAPP_LANG", "tr"),
+        )
+    return sms, whatsapp
 
 
 @dataclass(frozen=True)
@@ -111,6 +130,7 @@ class Notifier:
         self._on_delivery = on_delivery
         self._on_reply = on_reply
         self._clock = clock
+        self._whatsapp_field_team = config.whatsapp_recipients or config.recipients
         self._authorized = {normalize_msisdn(n) for n in (*config.recipients, *config.escalation)}
         self._last_alarm_for: dict[str, int] = {}
         self._jobs: list[_Job] = []
@@ -137,7 +157,7 @@ class Notifier:
             if spec.get("sms") is True and self._sms is not None:
                 jobs += [_Job(alarm, "sms", n, sms_alarm(alarm, text)) for n in self._config.recipients]
             if spec.get("whatsapp") is True and self._whatsapp is not None:
-                jobs += [self._whatsapp_job(alarm, n, text) for n in self._config.recipients]
+                jobs += [self._whatsapp_job(alarm, n, text) for n in self._whatsapp_field_team]
         elif change.kind == "escalated" and change.step == "call" and self._sms is not None:
             jobs += [_Job(alarm, "call", n) for n in self._config.recipients]
         elif change.kind == "escalated" and change.step == "escalate":

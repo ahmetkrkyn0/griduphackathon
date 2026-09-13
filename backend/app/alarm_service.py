@@ -23,6 +23,7 @@ import logging
 import threading
 from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from .alarm_manager import Alarm, AlarmManager, AlarmNotFound, AlarmStateConflict, Change
 from .api.stream import StreamHub
@@ -31,6 +32,9 @@ from .config import Contracts
 from .db import Store, StoreError
 from .models import Sample
 from .risk import CentralDetector, RiskEngine, signal
+
+if TYPE_CHECKING:
+    from .notify.dispatcher import Delivery
 
 log = logging.getLogger("gridup.alarms")
 
@@ -146,6 +150,20 @@ class AlarmService:
                 raise
             self._apply([change], now)
             return change.alarm
+
+    def record_delivery(self, delivery: Delivery) -> None:
+        """Bildirim ag gecidinin her denemesi: denetim izine yazilir; basariliysa kanal alarmda gorunur."""
+        try:
+            self._store.record_notification(delivery)
+        except StoreError as exc:
+            log.warning("bildirim kaydi yazilamadi (alarm %s, %s): %s", delivery.alarm_id, delivery.channel, exc)
+        if not delivery.ok:
+            return
+        manager = self.load()
+        with self._serial:
+            change = manager.mark_notified(delivery.alarm_id, delivery.channel)
+            if change is not None:
+                self._apply([change], self._clock())
 
     # ------------------------------------------------------------ sorgular
     def list_alarms(self, states: Sequence[str], prios: Sequence[str] | None, pano_id: str | None, limit: int) -> list[Alarm]:

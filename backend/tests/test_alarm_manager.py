@@ -397,6 +397,19 @@ def test_unshelved_alarm_restarts_its_escalation_chain(manager, contracts):
     assert steps(manager.tick(at(2 * escalate_after + 61))) == [("escalated", "escalate", 1)]
 
 
+def test_successful_delivery_marks_its_channel_on_the_alarm_once(manager):
+    [raised] = observe(manager, 0, cond(TERM_ALM, "GIRIS_L2"))
+
+    first = manager.mark_notified(raised.alarm.id, "sms")
+    again = manager.mark_notified(raised.alarm.id, "sms")
+    whatsapp = manager.mark_notified(raised.alarm.id, "whatsapp")
+
+    assert (first.kind, first.step, first.alarm.notified) == ("notified", "sms", ("sms",))
+    assert again is None
+    assert whatsapp.alarm.notified == ("sms", "whatsapp")
+    assert manager.mark_notified(999, "sms") is None  # temizlenmis / bilinmeyen alarm
+
+
 # ---------------------------------------------------------------- gruplama
 def test_same_root_cause_within_window_shares_an_event(manager, contracts):
     window = contracts.thresholds["group_window_min"]

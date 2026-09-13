@@ -10,6 +10,7 @@ bozuksa servis HIC ayaga kalkmaz (yanlis esikle calismaktansa gurultulu hata).
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -27,6 +28,7 @@ from .config import Contracts, Settings, load_contracts
 from .db import Store, StoreError
 from .ingest import IngestPipeline, MqttSubscriber, utcnow
 from .models import Sample
+from .notify.dispatcher import Notifier, NotifyConfig, channels_from_env
 
 log = logging.getLogger("gridup")
 
@@ -38,6 +40,8 @@ def create_app(
     clock: Callable[[], datetime] = utcnow,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
+    if settings.ingest_enabled:
+        _configure_logging()
     contracts = load_contracts(settings.contracts_dir)
     missing = [code for code in REQUIRED_HYPOTHESES if code not in contracts.hypothesis_codes]
     if missing:
@@ -63,8 +67,10 @@ def create_app(
         pipeline.add_listener(alarm_service.on_samples)
         subscriber = None
         alarm_worker = None
+        notifier = None
         if settings.ingest_enabled:
             pipeline.start()
+            notifier = _start_notifier(contracts, alarm_service, clock)
             alarm_worker = PeriodicWorker(alarm_service.tick, settings.alarm_tick_s, name="alarm-tick")
             alarm_worker.start()
             subscriber = MqttSubscriber(
@@ -84,6 +90,8 @@ def create_app(
             if alarm_worker is not None:
                 alarm_worker.stop()
             pipeline.stop()
+            if notifier is not None:
+                notifier.stop()
             if owns_store:
                 active_store.close()
 
@@ -128,6 +136,41 @@ def create_app(
         }
 
     return app
+
+
+def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Callable[[], datetime]) -> Notifier:
+    """Kanallar ortam degiskenlerinden (deploy/.env): SMS_DEVICE, ALERT_*, WHATSAPP_*."""
+    config = NotifyConfig.from_env()
+    sms, whatsapp = channels_from_env()
+    notifier = Notifier(
+        contracts,
+        config,
+        sms=sms,
+        whatsapp=whatsapp,
+        on_delivery=alarm_service.record_delivery,
+        on_reply=lambda alarm_id, by, note: alarm_service.ack(alarm_id, by=by, note=note),
+        clock=clock,
+    )
+    alarm_service.add_listener(notifier)
+    notifier.start()
+    log.info(
+        "bildirim kanallari: sms=%s whatsapp=%s, %d saha + %d eskalasyon alicisi",
+        "acik" if sms else "kapali",
+        "acik" if whatsapp else "kapali",
+        len(config.recipients),
+        len(config.escalation),
+    )
+    return notifier
+
+
+def _configure_logging() -> None:
+    """Uygulama kayitlari (gridup.*) konteyner loguna duser; uvicorn kendi logger'larini ayri kurar."""
+    root = logging.getLogger()
+    if not root.handlers:
+        logging.basicConfig(
+            level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        )
 
 
 def _panel_update_publisher(

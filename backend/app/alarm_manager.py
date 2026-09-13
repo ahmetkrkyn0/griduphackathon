@@ -297,6 +297,15 @@ class AlarmManager:
             alarm.shelve_reason = reason.strip()
             return Change("shelved", replace(alarm), by=by, note=alarm.shelve_reason)
 
+    def mark_notified(self, alarm_id: int, channel: str) -> Change | None:
+        """Basarili teslimde kanal alarmin `notified` listesine bir kez eklenir (arayuzdeki kanal rozetleri)."""
+        with self._lock:
+            alarm = self._by_id.get(alarm_id)
+            if alarm is None or channel in alarm.notified:
+                return None
+            alarm.notified = (*alarm.notified, channel)
+            return Change("notified", replace(alarm), step=channel, note=channel)
+
     def tick(self, now: datetime) -> list[Change]:
         """Duvar saatine bagli zamanlayicilar.
 

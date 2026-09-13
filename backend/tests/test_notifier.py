@@ -110,6 +110,22 @@ def test_p2_alarm_goes_by_sms_and_whatsapp_to_every_field_recipient(gateway, man
     ]
 
 
+def test_whatsapp_uses_its_own_verified_recipient_list_when_configured(contracts, manager, whatsapp_stub):
+    """Demo SMS alicilari hayali numaralardir (sanal modem); WhatsApp yalnizca Meta'da dogrulanmis numaraya gider."""
+    notifier = Notifier(
+        contracts,
+        NotifyConfig(recipients=FIELD_TEAM, whatsapp_recipients=("+905321112233",)),
+        sms=None,
+        whatsapp=WhatsAppClient("token", "123", transport=httpx.MockTransport(whatsapp_stub)),
+        on_delivery=lambda d: None, on_reply=lambda *a: None, clock=lambda: T0,
+    )
+
+    notifier([raise_alarm(manager, "ALM-THR-TERM-ALM", "DSYA3_L2")])
+    notifier.run_once()
+
+    assert [r["to"] for r in whatsapp_stub.requests] == ["905321112233"]
+
+
 @pytest.mark.parametrize("code", ["ALM-K-WARN", "ALM-COMMS-LOST"])
 def test_warnings_and_system_alarms_page_nobody(gateway, manager, modem_log, whatsapp_stub, code):
     """P3 gunluk ozete, SYS toplu ozete gider (priorities.*.sms = false / digest_only)."""

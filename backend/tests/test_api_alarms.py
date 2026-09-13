@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.notify.dispatcher import Delivery
 from fakes import MemoryStore
 from helpers import CONTRACTS_DIR, Clock, encode, receive_json, utc
 
@@ -277,6 +278,19 @@ def test_panel_that_never_reported_does_not_raise_comms_lost(client, app, clock,
     app.state.alarms.tick()
 
     assert list_alarms(client) == []
+
+
+# ------------------------------------------------------------ bildirim kaydi
+def test_delivery_attempts_are_recorded_and_successful_channels_shown_on_the_alarm(client, app, store, tel_payload):
+    send(app, tel_payload)
+    alarm_id = int(by_code(list_alarms(client))["ALM-K-WARN"]["id"])
+
+    app.state.alarms.record_delivery(Delivery(alarm_id, "sms", "+90******0001", NOW, False, "CMS ERROR 500"))
+    app.state.alarms.record_delivery(Delivery(alarm_id, "sms", "+90******0001", NOW, True, "gonderildi"))
+    app.state.alarms.record_delivery(Delivery(alarm_id, "whatsapp", "+90******0001", NOW, True, "gonderildi"))
+
+    assert by_code(list_alarms(client))["ALM-K-WARN"]["notified"] == ["sms", "whatsapp"]
+    assert [(n.channel, n.ok) for n in store.notifications] == [("sms", False), ("sms", True), ("whatsapp", True)]
 
 
 # ------------------------------------------------------------- dayaniklilik
