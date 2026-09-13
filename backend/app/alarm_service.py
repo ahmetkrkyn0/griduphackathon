@@ -173,8 +173,8 @@ class AlarmService:
         """Pano detayindaki active_alarms: konsolun varsayilan filtresiyle ayni (active, acked)."""
         return [a for a in self.load().open_alarms(pano_id) if a.state in ("active", "acked")]
 
-    def open_alarms(self, pano_id: str) -> list[Alarm] | None:
-        """Bellekteki acik alarmlar (tum durumlar); durum henuz yuklenmediyse None.
+    def open_alarms(self, pano_id: str | None = None) -> list[Alarm] | None:
+        """Bellekteki acik alarmlar (tum durumlar; pano_id None ise tum filo); durum henuz yuklenmediyse None.
 
         Veritabanina GITMEZ: Modbus ag gecidi bunu olay dongusunden, her okuma isteginde cagirir.
         """
