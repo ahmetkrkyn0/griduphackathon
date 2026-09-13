@@ -104,6 +104,38 @@ def test_backfilled_older_sample_does_not_raise_or_clear(manager, hyst):
     assert [a.id for a in manager.open_alarms()] == [raised.alarm.id]
 
 
+def test_restored_open_alarms_continue_their_lifecycle(contracts, hyst):
+    """Backend yeniden baslar: depodan yuklenen acik alarm ayni kimlikle surer, yeni alarm cakismaz."""
+    before = AlarmManager(contracts, first_id=40)
+    [raised] = observe(before, 0, cond(TERM_ALM, "GIRIS_L2"))
+
+    after = AlarmManager(contracts, first_id=41)
+    after.restore([raised.alarm])
+
+    assert observe(after, 1, cond(TERM_ALM, "GIRIS_L2")) == []
+    [new] = observe(after, 2, cond(TERM_ALM, "GIRIS_L2"), cond(K_WARN, "DSYA3_L2"))
+    assert new.alarm.id == 41
+    assert after.ack(40, by="op", now=at(3)).alarm.state == "acked"
+    [cleared] = observe(after, 2 + hyst, cond(K_WARN, "DSYA3_L2"))
+    assert cleared.alarm.id == 40
+
+
+def test_restored_alarm_is_not_cleared_before_hysteresis_after_restart(contracts, hyst):
+    """Depodaki last_true_at yalnizca durum degisiminde yazilir (eskidir). Kesinti boyunca kosulun
+    ne oldugunu bilmiyoruz: yeniden baslatmadan sonraki ilk ornekten itibaren H dk dogrulanmadan
+    alarm temizlenmez (aksi halde sinirda salinan kosul yeniden baslatmada yeni alarm + bildirim uretir)."""
+    before = AlarmManager(contracts, first_id=40)
+    [raised] = observe(before, 0, cond(K_WARN, "GIRIS_L2"))  # depoya yazilan son hal: last_true_at = 0
+
+    after = AlarmManager(contracts, first_id=41)
+    after.restore([raised.alarm])
+
+    assert observe(after, 180) == []  # 3 saat sonra ilk ornek, kosul yok
+    assert observe(after, 180 + hyst - 1) == []
+    [cleared] = observe(after, 180 + hyst)
+    assert (cleared.kind, cleared.alarm.id) == ("cleared", 40)
+
+
 # -------------------------------------------------------------------- onay
 def test_ack_records_operator_and_time(manager):
     [raised] = observe(manager, 0, cond(TERM_ALM, "GIRIS_L2"))

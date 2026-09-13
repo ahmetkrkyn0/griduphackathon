@@ -146,6 +146,7 @@ class AlarmManager:
         self._by_id: dict[int, Alarm] = {}
         self._events: dict[str, list[_Event]] = {}
         self._last_ts: dict[str, datetime] = {}
+        self._restored: set[int] = set()  # histerezis saati henuz ilk ornekle baslatilmamis
         self.stats = {"raised": 0, "cleared": 0, "suppressed_maint": 0, "backfill_ignored": 0, "unknown_codes": 0}
 
     # ------------------------------------------------------------ sorgular
@@ -160,6 +161,20 @@ class AlarmManager:
             return [replace(alarm) for alarm in sorted(alarms, key=lambda a: a.id)]
 
     # ------------------------------------------------------------- girdiler
+    def restore(self, alarms: Iterable[Alarm]) -> None:
+        """Depodan yuklenen acik alarmlari geri koyar (yeniden baslatma).
+
+        Depodaki `last_true_at` yalnizca durum degisiminde yazilir, yani eskidir; kesinti boyunca
+        kosulun ne oldugu bilinmez. Bu yuzden histerezis panonun yeniden baslatma sonrasi ilk
+        orneginden baslar: dogrulanmadan temizlenmez. Olay gruplari geri yuklenmez.
+        """
+        with self._lock:
+            for alarm in alarms:
+                restored = replace(alarm)
+                self._open.setdefault(alarm.pano_id, {})[alarm.key] = restored
+                self._by_id[alarm.id] = restored
+                self._restored.add(alarm.id)
+
     def observe(
         self,
         pano_id: str,
@@ -186,6 +201,10 @@ class AlarmManager:
                 present.setdefault((pano_id, condition.code, condition.point), condition)
 
             open_alarms = self._open.setdefault(pano_id, {})
+            for alarm in open_alarms.values():
+                if alarm.id in self._restored:
+                    alarm.last_true_at = max(alarm.last_true_at, ts)
+                    self._restored.discard(alarm.id)
             changes: list[Change] = []
             for key, condition in present.items():
                 alarm = open_alarms.get(key)

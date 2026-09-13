@@ -1,20 +1,24 @@
 """Depolama katmani (Kisi B).
 
 `Store` sozlesmesini hem uretimdeki PgStore hem de testlerdeki bellek ici cift uygular.
-Tablolar: deploy/initdb/001_schema.sql (panels, telemetry, quarantine) ve 002_ingest.sql (panel_latest).
+Tablolar: deploy/initdb/001_schema.sql (panels, telemetry, quarantine, events, alarms),
+002_ingest.sql (panel_latest) ve 003_alarms.sql (alarm_journal + durum makinesi zamanlari).
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from typing import Protocol
+from dataclasses import fields
+from datetime import datetime
+from typing import Any, Protocol
 
 import psycopg
-from psycopg.rows import class_row
+from psycopg.rows import class_row, dict_row
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool, PoolTimeout
 
+from .alarm_manager import Alarm, Change
 from .models import PanelRecord, Rejection, Sample
 
 
@@ -42,6 +46,30 @@ class Store(Protocol):
         ...
 
     def ping(self) -> bool: ...
+
+    # ------------------------------------------------------------ alarmlar (TB2)
+    def save_alarm_changes(self, changes: Sequence[Change], at: datetime) -> None:
+        """Tek transaction, verilen sirayla: yeni olaylar -> alarm satirlari (upsert) -> denetim izi.
+
+        Ayni alarmin ardisik degisiklikleri (raised, acked) ayni partide gelebilir; son durum kalir.
+        """
+        ...
+
+    def load_open_alarms(self) -> list[Alarm]:
+        """Temizlenmemis tum alarmlar (yeniden baslatmada alarm yoneticisine geri yuklenir)."""
+        ...
+
+    def list_alarms(
+        self, states: Sequence[str], prios: Sequence[str] | None, pano_id: str | None, limit: int
+    ) -> list[Alarm]:
+        """En yeni once (raised_at, esitlikte id)."""
+        ...
+
+    def get_alarm(self, alarm_id: int) -> Alarm | None: ...
+
+    def next_alarm_id(self) -> int:
+        """Alarm kimligini tek yazici alarm yoneticisi verir: acilista max(id) + 1."""
+        ...
 
 
 _REGISTER_PANEL = "INSERT INTO panels (pano_id, name) VALUES (%s, %s) ON CONFLICT (pano_id) DO NOTHING"
@@ -85,6 +113,50 @@ SELECT {_PANEL_COLUMNS}, l.payload
 FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 WHERE p.pano_id = %s
 """
+
+
+ALARM_COLUMNS = tuple(f.name for f in fields(Alarm))
+
+_INSERT_EVENT = """
+INSERT INTO events (event_id, pano_id, occurred_at, code, payload)
+VALUES (%s, %s, %s, %s, %s)
+ON CONFLICT (event_id) DO NOTHING
+"""
+
+# Aciklama (reason/advice/ttl_h) alarm olustugu anin kanitidir: guncellenmez.
+_ALARM_MUTABLE = (
+    "state", "last_true_at", "annunciated_at", "cleared_at", "acked_at", "acked_by",
+    "shelved_until", "shelve_reason", "escalation_level", "notified",
+)
+_UPSERT_ALARM = f"""
+INSERT INTO alarms ({", ".join(ALARM_COLUMNS)})
+VALUES ({", ".join(f"%({c})s" for c in ALARM_COLUMNS)})
+ON CONFLICT (id) DO UPDATE SET {", ".join(f"{c} = EXCLUDED.{c}" for c in _ALARM_MUTABLE)}
+"""
+
+_INSERT_JOURNAL = "INSERT INTO alarm_journal (alarm_id, at, action, state, by_user, note) VALUES (%s, %s, %s, %s, %s, %s)"
+
+_SELECT_ALARMS = f"SELECT {', '.join(ALARM_COLUMNS)} FROM alarms"
+
+_LIST_ALARMS = f"""
+{_SELECT_ALARMS}
+WHERE state = ANY(%(states)s::text[])
+  AND (%(prios)s::text[] IS NULL OR prio = ANY(%(prios)s::text[]))
+  AND (%(pano_id)s::text IS NULL OR pano_id = %(pano_id)s::text)
+ORDER BY raised_at DESC, id DESC
+LIMIT %(limit)s
+"""
+
+
+def _alarm_params(alarm: Alarm) -> dict[str, Any]:
+    params = {name: getattr(alarm, name) for name in ALARM_COLUMNS}
+    params["notified"] = list(alarm.notified)
+    params["reason"] = Jsonb(alarm.reason)
+    return params
+
+
+def _alarm_from_row(row: dict[str, Any]) -> Alarm:
+    return Alarm(**{**row, "notified": tuple(row["notified"])})
 
 
 class PgStore:
@@ -155,3 +227,49 @@ class PgStore:
             return True
         except StoreError:
             return False
+
+    # ------------------------------------------------------------ alarmlar (TB2)
+    def save_alarm_changes(self, changes: Sequence[Change], at: datetime) -> None:
+        if not changes:
+            return
+        with self._connection() as conn, conn.cursor() as cur:
+            events = [
+                (c.alarm.event_id, c.alarm.pano_id, c.alarm.raised_at, c.alarm.code,
+                 Jsonb({"prio": c.alarm.prio, "point": c.alarm.point}))
+                for c in changes
+                if c.opened_event
+            ]
+            if events:
+                cur.executemany(_INSERT_EVENT, events)
+            cur.executemany(_UPSERT_ALARM, [_alarm_params(c.alarm) for c in changes])
+            cur.executemany(
+                _INSERT_JOURNAL,
+                [(c.alarm.id, at, c.kind, c.alarm.state, c.by, c.note) for c in changes],
+            )
+
+    def load_open_alarms(self) -> list[Alarm]:
+        return self._select_alarms(f"{_SELECT_ALARMS} WHERE state <> 'cleared' ORDER BY id", ())
+
+    def list_alarms(
+        self, states: Sequence[str], prios: Sequence[str] | None, pano_id: str | None, limit: int
+    ) -> list[Alarm]:
+        params = {
+            "states": list(states),
+            "prios": list(prios) if prios is not None else None,
+            "pano_id": pano_id,
+            "limit": limit,
+        }
+        return self._select_alarms(_LIST_ALARMS, params)
+
+    def get_alarm(self, alarm_id: int) -> Alarm | None:
+        alarms = self._select_alarms(f"{_SELECT_ALARMS} WHERE id = %s", (alarm_id,))
+        return alarms[0] if alarms else None
+
+    def next_alarm_id(self) -> int:
+        with self._connection() as conn:
+            (value,) = conn.execute("SELECT COALESCE(max(id), 0) + 1 FROM alarms").fetchone()
+            return int(value)
+
+    def _select_alarms(self, query: str, params: Any) -> list[Alarm]:
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return [_alarm_from_row(row) for row in cur.execute(query, params).fetchall()]
