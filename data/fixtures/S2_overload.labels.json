@@ -5,14 +5,14 @@
   "pano_type": "1600kVA-dahili",
   "duration_h": 168.0,
   "sample_period_s": 900.0,
-  "generated_at": "2026-09-14T13:01:37+00:00",
+  "generated_at": "2026-09-14T13:31:18+00:00",
   "profile": "karma",
-  "season": "yaz",
+  "season": "gecis",
   "data_file": "S2_overload.csv",
   "labels": [
     {
-      "t_start": "2026-07-08T08:00:00+00:00",
-      "t_end": "2026-07-13T00:00:00+00:00",
+      "t_start": "2026-04-08T08:00:00+00:00",
+      "t_end": "2026-04-13T00:00:00+00:00",
       "type": "overload",
       "point": "PANEL",
       "expect": [
@@ -24,9 +24,9 @@
         "ALM-K-WARN"
       ],
       "params": {
-        "load_multiplier": 1.35
+        "load_multiplier": 1.8
       },
-      "l0_breach_at": "2026-07-08T08:45:00+00:00"
+      "l0_breach_at": "2026-04-08T09:15:00+00:00"
     }
   ]
 }

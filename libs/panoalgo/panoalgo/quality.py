@@ -80,6 +80,12 @@ def q_bits(codes: list[str], contracts_dir: Path | None = None) -> int:
     return field
 
 
+def codes_from_bits(field: int, contracts_dir: Path | None = None) -> list[str]:
+    """q bit alanini alarm kodlarina geri cevirir (backend/app/risk.py:184-192 esi)."""
+    bits = load_contract(contracts_dir)["bits"]
+    return sorted(code for code, bit in bits.items() if field & (1 << bit))
+
+
 # ------------------------------------------------------------------ durumsuz
 
 

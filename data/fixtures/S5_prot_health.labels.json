@@ -5,14 +5,14 @@
   "pano_type": "1600kVA-dahili",
   "duration_h": 72.0,
   "sample_period_s": 900.0,
-  "generated_at": "2026-09-14T13:01:50+00:00",
+  "generated_at": "2026-09-14T13:31:36+00:00",
   "profile": "karma",
-  "season": "yaz",
+  "season": "gecis",
   "data_file": "S5_prot_health.csv",
   "labels": [
     {
-      "t_start": "2026-07-07T00:00:00+00:00",
-      "t_end": "2026-07-09T00:00:00+00:00",
+      "t_start": "2026-04-07T00:00:00+00:00",
+      "t_end": "2026-04-09T00:00:00+00:00",
       "type": "protection_health_loss",
       "point": "PANEL",
       "expect": [

@@ -68,8 +68,12 @@ MAX_MESSAGE_BYTES = 64_000
 PEAK_UTILISATION = 0.80
 
 # Anma akiminda saglikli bir baglantinin ortam uzeri artisi. IEC 61439-1 terminal
-# limiti 70 K'dir; saglikli tasarim bunun altinda pay birakir.
-DT_AT_RATED_K = 60.0
+# ALARM limiti 70 K, UYARI limiti 50 K'dir. 60 K secilmisti; olculdu ki bu deger
+# saglikli panoyu yaz tepe yukunde 59 K'ya cikariyor ve ornekleri'nin %20'sinde
+# ALM-THR-TERM-WARN uretiyordu — yani "saglikli" senaryo surekli uyari veriyordu.
+# 40 K, hem uyari esigine pay birakir hem de K uc katina ciktiginda 70 K'nin
+# asilmasini saglar (40 x 3 = 120 K).
+DT_AT_RATED_K = 40.0
 K_SPREAD = 0.15  # nokta basina K0 dagilimi (rapor 15.2: "nokta basina K0 (dagilimli)")
 
 TAU_MIN_S = 600.0   # rapor 15.2: isil zaman sabiti 10-30 dk
@@ -105,7 +109,9 @@ COSPHI_NO_LOAD, COSPHI_SPAN, COSPHI_MAX = 0.93, 0.05, 0.99
 # Uretec, ariza enjeksiyonunu FIZIKSEL PARAMETRE uzerinden yapar: "alarm uret" demez,
 # K'yi buyutur / yuku artirir / sensoru bozar ve sonucu tespit katmanlarina biraktir.
 # Boylece senaryolar tespit algoritmasini gercekten sinar, ona cevabi fisildamaz.
-LOAD_MULTIPLIER_MAX = 1.5     # asiri yuk senaryosunda anma akiminin ustune cikilabilir
+# Rapor 15.2 asiri yuku "gunlerce %110-130 In" diye tanimlar; carpanin bu bolgeye
+# ulasabilmesi icin ust sinir anma akiminin iki katina kadar acik birakildi.
+LOAD_MULTIPLIER_MAX = 2.0
 SENSOR_DRIFT_K_PER_H = 2.0    # suruklenen sensorun saatlik kaymasi (TURETILMIS)
 SENSOR_DROPPED_BELOW_AMBIENT_K = 8.0  # yerinden dusmus sensor ortamin altini olcer
 

@@ -5,9 +5,9 @@
   "pano_type": "1600kVA-dahili",
   "duration_h": 168.0,
   "sample_period_s": 900.0,
-  "generated_at": "2026-09-14T13:01:01+00:00",
+  "generated_at": "2026-09-14T13:30:28+00:00",
   "profile": "karma",
-  "season": "yaz",
+  "season": "gecis",
   "data_file": "S0_normal.csv",
   "labels": []
 }

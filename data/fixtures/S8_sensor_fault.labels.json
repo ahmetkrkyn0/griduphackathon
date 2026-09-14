@@ -5,14 +5,14 @@
   "pano_type": "1600kVA-dahili",
   "duration_h": 168.0,
   "sample_period_s": 900.0,
-  "generated_at": "2026-09-14T13:02:11+00:00",
+  "generated_at": "2026-09-14T13:32:07+00:00",
   "profile": "karma",
-  "season": "yaz",
+  "season": "gecis",
   "data_file": "S8_sensor_fault.csv",
   "labels": [
     {
-      "t_start": "2026-07-08T08:00:00+00:00",
-      "t_end": "2026-07-13T00:00:00+00:00",
+      "t_start": "2026-04-08T08:00:00+00:00",
+      "t_end": "2026-04-13T00:00:00+00:00",
       "type": "sensor_dropped",
       "point": "DSYA6_L1",
       "expect": [

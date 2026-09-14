@@ -58,6 +58,23 @@ POINT_RULES: dict[str, tuple[str, str]] = {
     "ALM-TTL-14D": ("ttl_h", "<"),
 }
 
+# "Benzer yukte" kosulu: sozlesme metni ALM-THR-PHASE-DIF icin "Benzer yukte fazlar
+# arasi fark 15 K ustu" der. Bu nitelemeyi atlarsak faz dengesizligi tek basina alarm
+# uretir: dT = K*I^2 oldugu icin %14 akim farki %31 sicaklik farki demektir ve 45 K'lik
+# bir noktada bu 14 K eder — esigin dibinde. Olculdu: niteleme olmadan SAGLIKLI pano
+# orneklerinin %33'unde ALM-THR-PHASE-DIF cikiyordu.
+# Akimlari birbirine bu orandan daha uzak fazlar "benzer yukte" sayilmaz; o durumda
+# karsilastirma akim-normalize sekliyle detect.phase_compare() uzerinden yapilir.
+SIMILAR_LOAD_MAX_RATIO = 1.10
+
+# Sozlesmede esigi OLMAYAN kodlar icin turetilmis varsayilanlar. Sozlesmeye eklenmesi
+# contracts/changes/2026-09-14-eksik-esikler.md ile onerildi; oradan okunabiliyorsa
+# sozlesme degeri kazanir.
+NEUTRAL_RATIO_KEY, DEFAULT_NEUTRAL_RATIO_WARN = "neutral_current_ratio_warn", 0.30
+NEUTRAL_THD_KEY, DEFAULT_NEUTRAL_THD_WARN_PCT = "neutral_thd_warn_pct", 15.0
+PD_PPS_KEY, DEFAULT_PD_PPS_WARN = "pd_pps_warn", 20.0
+PD_CLUSTER_KEY, DEFAULT_PD_CLUSTER_WARN = "pd_phase_cluster_warn", 0.5
+
 _CACHE: dict[str, dict] = {}
 
 
@@ -116,6 +133,7 @@ def evaluate(
         codes |= _electrical(sample, contract)
         codes |= _environment(sample, contract)
         codes |= _protection(sample, previous)
+        codes |= _partial_discharge(sample, contract)
         return sorted(codes, key=lambda c: contract["bits"][c])
     except Exception:  # noqa: BLE001 - bkz. docstring: istisna sizdirmak yasak
         return []
@@ -143,6 +161,12 @@ def _phase_difference(sample: dict, contract: dict) -> set[str]:
     Gruplama cikis bazlidir: DSYA1 sicak, DSYA5 soguk olabilir — farkli fiderler
     farkli yuk tasir, aralarindaki fark anomali degildir.
     """
+    currents = sample["elec"]["i_ph"]
+    if not _phases_similarly_loaded(currents):
+        # "Benzer yukte" kosulu saglanmiyor: ham sicaklik farki bu durumda
+        # dengesizligin dogal sonucudur, anomali degildir.
+        return set()
+
     groups: dict[str, list[float]] = {}
     for point in sample["t_conn"]:
         match = _PHASE_POINT.match(point["pt"])
@@ -157,6 +181,12 @@ def _phase_difference(sample: dict, contract: dict) -> set[str]:
     return set()
 
 
+def _phases_similarly_loaded(i_ph: list[float]) -> bool:
+    """Uc faz birbirine yakin akim tasiyor mu (sozlesmedeki 'benzer yukte')."""
+    low, high = min(i_ph), max(i_ph)
+    return low > 0.0 and (high / low) <= SIMILAR_LOAD_MAX_RATIO
+
+
 def _electrical(sample: dict, contract: dict) -> set[str]:
     """Asiri akim: limit = current_alarm_ratio * anma akimi (ana giris).
 
@@ -164,9 +194,49 @@ def _electrical(sample: dict, contract: dict) -> set[str]:
     telemetride yoktur. backend/app/risk.py:198-203 de main_input kullanir —
     fider anma degeri kullanilsaydi merkez yanlis fideri isaret ederdi.
     """
+    elec = sample["elec"]
+    thresholds = contract["thresholds"]
+    found = set()
+
     ratio = threshold_for("ALM-I-OVER", contract)
-    rated = float(contract["thresholds"]["rated_current_a"]["main_input"])
-    return {"ALM-I-OVER"} if max(sample["elec"]["i_ph"]) > ratio * rated else set()
+    rated = float(thresholds["rated_current_a"]["main_input"])
+    if max(elec["i_ph"]) > ratio * rated:
+        found.add("ALM-I-OVER")
+
+    # Harmonik kaynakli notr isinmasi: sozlesme "notr akimi VE akim THD birlikte
+    # artti" der ama esik vermez (bkz. contracts/changes/). Iki kosul BIRLIKTE
+    # aranir; tek basina yuksek THD (dogrusal olmayan yuk) veya tek basina yuksek
+    # notr akimi (dengesizlik) ariza degildir.
+    thd = elec.get("thd_i")
+    mean_i = sum(elec["i_ph"]) / len(elec["i_ph"])
+    if thd and mean_i > 0.0:
+        neutral_ratio = float(elec["i_n"]) / mean_i
+        mean_thd = sum(thd) / len(thd)
+        ratio_warn = float(thresholds.get(NEUTRAL_RATIO_KEY, DEFAULT_NEUTRAL_RATIO_WARN))
+        thd_warn = float(thresholds.get(NEUTRAL_THD_KEY, DEFAULT_NEUTRAL_THD_WARN_PCT))
+        if neutral_ratio > ratio_warn and mean_thd > thd_warn:
+            found.add("ALM-NEUTRAL-THD")
+    return found
+
+
+def _partial_discharge(sample: dict, contract: dict) -> set[str]:
+    """Kismi desarj trendi (OG). AG panoda pd blogu null, kural hic calismaz.
+
+    Ayirt edici mutlak genlik DEGIL faz kumelenmesidir: gercek PD belirli faz
+    acilarinda toplanir (PRPD imzasi), gurultu ise faza duzgun dagilir. Iki kosul
+    birlikte aranir, aksi halde gurultulu bir sahada surekli alarm cikar.
+    """
+    pd_block = sample.get("pd")
+    if not pd_block:
+        return set()
+    thresholds = contract["thresholds"]
+    pps_warn = float(thresholds.get(PD_PPS_KEY, DEFAULT_PD_PPS_WARN))
+    cluster_warn = float(thresholds.get(PD_CLUSTER_KEY, DEFAULT_PD_CLUSTER_WARN))
+    pps = pd_block.get("pps")
+    cluster = pd_block.get("phase_cluster")
+    if pps is None or cluster is None:
+        return set()
+    return {"ALM-PD-TREND"} if pps > pps_warn and cluster > cluster_warn else set()
 
 
 def _environment(sample: dict, contract: dict) -> set[str]:

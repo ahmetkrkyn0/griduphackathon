@@ -35,6 +35,7 @@ from pathlib import Path
 from .detect import load_thresholds
 from .edge import EdgePipeline
 from .generator import PanelSimulator, format_pano_id
+from .quality import codes_from_bits
 
 EXPORT_PERIOD_S = 900.0          # 15 dk (rapor 15.2 Excel uyumu)
 SECONDS_PER_HOUR = 3600.0
@@ -45,6 +46,13 @@ MV_PANEL_TYPE = "OG-hucre"
 # Mevsim baslangiclari: yogusma kis gecelerinde, isil senaryolar yaz yukunde anlamli.
 SUMMER_START = datetime(2026, 7, 6, 0, 0, tzinfo=timezone.utc)   # Pazartesi
 WINTER_START = datetime(2026, 1, 5, 0, 0, tzinfo=timezone.utc)   # Pazartesi
+# Gecis mevsimi, ISIL OLMAYAN senaryolarin varsayilanidir. Sebep olculmustur: Ege
+# yazinda ortam 35-42 degC'ye ciktigi icin pano ic havasi 45 degC esigini gercekten
+# asar ve ALM-PANEL-TEMP orneklerin yarisinda dogru bir sekilde cikar. Bu bir yanlis
+# alarm degildir — sartname ortam varsayimi 40 degC'dir ve asilmaktadir — ama yanlis
+# alarm TABANI olcmek istedigimiz S0 gibi senaryolarda algoritmayi degil iklimi
+# olcerdi. Yaz kosulunun kendisi docs/12'de ayrica raporlanir.
+SHOULDER_START = datetime(2026, 4, 6, 0, 0, tzinfo=timezone.utc)  # Pazartesi
 
 
 @dataclass(frozen=True)
@@ -58,7 +66,7 @@ class ScenarioSpec:
     severity: str | None = None
     expect: tuple[str, ...] = ()
     not_expect: tuple[str, ...] = ()
-    season: str = "yaz"
+    season: str = "gecis"
     profile: str = "karma"
     medium_voltage: bool = False
     params: dict = field(default_factory=dict)
@@ -74,18 +82,21 @@ SCENARIOS: dict[str, ScenarioSpec] = {
     "S1_loose_conn": ScenarioSpec(
         text="Gevsek baglanti: K yavasca %200 artar (rapor 15.2)",
         default_duration_h=720.0,
+        season="yaz",
         label_type="loose_connection",
         point=TARGET_POINT,
         severity="P2",
         expect=("ALM-K-WARN", "ALM-K-ALM", "ALM-THR-TERM-WARN", "ALM-THR-TERM-ALM"),
         not_expect=("ALM-I-OVER",),
-        # load_multiplier 0.8: senaryo NORMAL yukte kurulur, yaz tepe yukunde degil.
-        # Sebep fiziksel: sabit 70 K esigi ancak dT o sinira dayaninca uyarir; pano
-        # surekli tepe yukte kosuyorsa saglikli dT zaten 40 K'ya yakindir ve K'nin
-        # 1.6'yi gecmesi ile 70 K'nin asilmasi neredeyse ayni ana duser. Gercek
-        # sahada panolar yilin cogunu tepe yukun altinda gecirir; erken uyarinin
-        # degeri tam olarak bu bolgede ortaya cikar.
-        params={"k_growth_pct": 200, "load_multiplier": 0.8},
+        # load_multiplier 0.95 iki kisiti birlikte saglar ve OLCULEREK secilmistir:
+        #   (a) sabit 70 K esigi gercekten asilmali, yoksa "sabit esikle karsilastirma"
+        #       yapilamaz  -> K x3 iken tepe artis 70 K'yi gecmeli;
+        #   (b) K/K0 = 1.6 esigi ile 70 K ihlali arasinda en az 48 saat olmali
+        #       (PLAN.md TA2 kabul kriteri).
+        # Tarama (720 h, seed 1304): yuk 0.85 -> 63 K, ihlal YOK · 0.90 -> 71 K, one
+        # alma 149 h · 0.95 -> 79 K, one alma 125 h · 1.00 -> 88 K, one alma 73 h.
+        # 0.95 secildi: ihlal payi rahat (79 K) ve one alma kriterin iki katindan fazla.
+        params={"k_growth_pct": 200, "load_multiplier": 0.95},
     ),
     "S2_overload": ScenarioSpec(
         text="Asiri yuk: akim anma degerinin ustunde, K SABIT (ariza degil)",
@@ -95,7 +106,7 @@ SCENARIOS: dict[str, ScenarioSpec] = {
         severity="P2",
         expect=("ALM-I-OVER",),
         not_expect=("ALM-K-ALM", "ALM-K-WARN"),
-        params={"load_multiplier": 1.35},
+        params={"load_multiplier": 1.8},
     ),
     "S3_condense": ScenarioSpec(
         text="Yogusma: kis gecesi nem yukselir, yuzey ciy noktasinin altina iner",
@@ -197,7 +208,7 @@ def build(
     l0_limit = float(thresholds["term_rise_alarm_k"])
     baseline_h = min(float(thresholds["baseline_learning_days"]) * 24.0, duration_h / 3.0)
 
-    start = WINTER_START if spec.season == "kis" else SUMMER_START
+    start = {"kis": WINTER_START, "yaz": SUMMER_START, "gecis": SHOULDER_START}[spec.season]
     pano_id = format_pano_id("SIM", DEFAULT_PANO_INDEX)
     sim = PanelSimulator(
         pano_id=pano_id,
@@ -272,10 +283,24 @@ def _inject(spec: ScenarioSpec, sim: PanelSimulator, hours: float, baseline_h: f
         sim.set_pd_activity(min(1.0, progress))
 
 
+# Rampanin pencerenin bu kadarlik kisminda tamamlanmasi, kalani tam bozulmada gecer.
+# Rapor 15.2 bozulmayi "7-30 gun boyunca %0 -> %200 artis; ILERI EVREDE ARALIKLI
+# SICRAMALAR" diye tarif eder — yani K sonsuza kadar dogrusal buyumez, bir plato
+# vardir. Plato ayrica sabit 70 K esiginin gercekten asilmasina zaman birakir.
+#
+# Plato UZUN olmali: en yuksek sicaklik artisi, en yuksek K ile en yuksek YUKUN ayni
+# ana denk gelmesini gerektirir. Yuk gunden gune degistigi icin kisa bir plato (0.7)
+# ile olculdu ki tepe artis 53 K'da kaliyor, 70 K'ya hic ulasilmiyordu: K 3.0'a
+# ciktiginda o gunlerin yuku dusuktu. 0.5 ile plato ~11 gun surer ve icine birden
+# cok yuk tepesi girer.
+RAMP_COMPLETES_AT = 0.5
+
+
 def _progress(hours: float, baseline_h: float, duration_h: float) -> float:
-    """Enjeksiyon penceresi icinde 0 -> 1 ilerleme."""
+    """Enjeksiyon penceresi icinde 0 -> 1 ilerleme (rampa erken tamamlanir, sonra plato)."""
     span = max(duration_h - baseline_h, 1e-9)
-    return min(1.0, max(0.0, (hours - baseline_h) / span))
+    raw = (hours - baseline_h) / span
+    return min(1.0, max(0.0, raw / RAMP_COMPLETES_AT))
 
 
 def _in_comms_gap(spec: ScenarioSpec, hours: float, baseline_h: float) -> bool:
@@ -311,6 +336,9 @@ def _row(payload: dict, spec: ScenarioSpec) -> dict:
         "target_dt_c": target["dt_c"] if target else None,
         "target_k_ratio": target.get("k_ratio") if target else None,
         "q_any": max(p["q"] for p in points),
+        # Veri kalitesi kodlari alarms[] icinde DEGIL q bit alanindadir (cift alarm
+        # onlemi, bkz. edge.py). Dogrulama betigi icin ayri sutunda geri cozuluyor.
+        "dq_codes": ";".join(sorted({c for p in points for c in codes_from_bits(p["q"])})),
         "pd_pps": pd_block["pps"] if pd_block else 0.0,
         "risk_score": payload["risk"]["score"],
         "risk_mode": payload["risk"]["mode"],
