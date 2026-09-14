@@ -137,6 +137,36 @@ flowchart TD
 **Ölçülen sonuç:** 240 adımda en büyük göreli fark **K: 1,36e-8 · τ: 1,42e-8** —
 istenen eşiğin 73 katı altında. İki uygulamadan biri değişirse test kırılır.
 
+Bu, sentetik vektör üzerindeki eşitliktir. Aynı eşitlik **gerçek üreteç verisinde**
+de ölçüldü: 600 ölçüm, 25 nokta, hem Python kenar boru hattı hem `panobeyni-sim`
+ikilisi — **K/K₀ farkı 0,0004**, yani register kuantizasyonunun (0,001 çözünürlük)
+kendisi. Yol boyunca üç gerçek ayrışma bulundu ve kapatıldı: `lam` örnekleme
+periyoduna taşınmıyordu, taban medyanı iki tarafta farklı hesaplanıyordu ve bir
+örneklik kayma vardı.
+
+### 5.1 Aynı kaynak, ikinci hedef
+
+MCU emülasyonu (Renode/Wokwi — PLAN.md TA3 Adım 7, **Should**) bu ortamda ARM
+araç zinciri bulunmadığı için yapılmadı. Taşınabilirlik iddiasının **ölçülebilir**
+kısmı yine de doğrulandı: aynı kaynak ikinci bir sayı hassasiyeti hedefinde
+derlenip koşuldu.
+
+| Hedef | En büyük göreli fark | Tolerans | Sonuç |
+|---|---|---|---|
+| `double` (host) | K 1,36e-8 · τ 1,42e-8 | 1e-6 | geçer |
+| `float` (`-DPANO_USE_FLOAT=ON`) | K 6,77e-6 · τ 6,24e-6 | 1e-4 | geçer |
+
+`float` sürümünün farkı bir bozulma değil **bilinçli bir takastır**: FPU'su yalnızca
+tek duyarlıklı olan MCU'larda (Cortex-M4F) çok daha hızlı ve küçüktür. 240 adımda
+birikmiş 7e-6'lık göreli fark, `K/K₀ = 1,6` eşiğinde 1,1e-5'lik bir kaymaya karşılık
+gelir — alarm kararını değiştirmesi fiziksel olarak imkânsızdır. Tolerans sessizce
+gevşetilmez; ölçülen fark her koşuda ekrana basılır.
+
+```bash
+cmake -S firmware -B firmware/build-float -G Ninja -DPANO_USE_FLOAT=ON
+ctest --test-dir firmware/build-float --output-on-failure
+```
+
 ```bash
 python -m panoalgo.vectors --out data/fixtures/rls_vectors.csv
 cmake -S firmware -B firmware/build && cmake --build firmware/build

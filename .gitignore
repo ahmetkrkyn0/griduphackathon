@@ -25,6 +25,7 @@ dist/
 # --- Derleme ---
 build/
 firmware/build/
+firmware/build-float/
 *.o
 *.elf
 *.bin
@@ -64,3 +65,4 @@ desktop.ini
 
 # Firmware derleme ciktisi (Kisi A)
 firmware/build/
+firmware/build-float/
