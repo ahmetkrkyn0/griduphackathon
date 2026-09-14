@@ -9,9 +9,29 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 akşam (zemin tam beyaza çekildi + Artifact senkronize edildi, §14).
-**Son commit:** `--bg` tam beyaz (`#FFFFFF`), turuncu parıltı güçlendirildi, karşılaştırma
-Artifact'ının kendi bayat CSS'i düzeltildi.
+**Son güncelleme:** 14 Eylül 2026 akşam (3D dijital ikize gerçekçilik detayları eklendi, §15).
+**Son commit:** 3D ikize DIN ray profili, durum LED'leri, devre kesici anahtarları, sarkan
+kablolar, cıvata/bant detayları ve malzeme iyileştirmeleri eklendi.
+
+## 15. Oturum 6 devamı — "panoları daha gerçekçi yap"
+
+Kullanıcının isteği üzerine `components/Ikiz3D.tsx`'teki 3D sahneye, harici model/doku dosyası
+eklemeden (GK4: internet yok), yalnızca prosedürel three.js geometrisiyle gerçekçilik detayları
+eklendi:
+
+| Detay | Ne eklendi |
+|---|---|
+| DIN ray | Tek düz kutu yerine 3 katmanlı, gerçek TS35 profiline yakın siluet |
+| Durum LED'leri | TVOC-2 (API'nin `tvoc.prot_health_ok` alanına bağlı — yeşil/kırmızı, kural 10 ile çatışmaz), Pano Beyni, Modem (dekoratif titreşim) |
+| DSYA devre kesicileri | Her faz yüzeyine anahtar kolu + pencere — gerçek MCB görünümü |
+| Kablolar | Düz silindir yerine `TubeGeometry` ile hafif sarkan/bükülen tüpler |
+| Kablo pabuçları / kondansatörler | Cıvata başı ve kıvrım bantları eklendi |
+| Malzemeler | RAL 7035 gövdeye clearcoat, bakır/DIN raya daha metalik değerler, yumuşak dolgu ışığı |
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §13. Doğrulama: tsc temiz, 71/71 test yeşil, build
+başarılı (Ikiz3D parçası 529 kB, tembel yükleniyor). ADM-00014 (sağlıklı) ve GDZ-00231 (arızalı
+TVOC-2, kırmızı LED) ile görsel kontrol yapıldı. **İki ekran görüntüsü kullanıcıya doğrudan
+gönderildi (SendUserFile)** — bu oturumdaki "önce göster, sonra anlat" dersi uygulandı (§12).
 
 ## 14. Oturum 6 devamı — "hâlâ grimsi": iki kök neden
 
@@ -32,8 +52,6 @@ yeşil, build başarılı, 1440px görsel kontrol. `assets/ekran/`'daki 8 dosya 
 
 ## 13. Oturum 6 devamı — zemin ve tipografi: tek standart
 
-## 13. Oturum 6 devamı — zemin ve tipografi: tek standart
-
 Kullanıcı §12'deki düzen revizyonunun hemen ardından: "arkaplanı biraz daha aç beyaz tonları belki
 turuncu hafif fade efekti olabilir backgroundda şu grimsi renkten kurtul bir de fontta tek bir
 standarttan ilerleyelim."
@@ -48,8 +66,6 @@ standarttan ilerleyelim."
 
 Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §11. Doğrulama: tsc temiz, 71/71 test yeşil, build
 başarılı, 1440px/390px görsel kontrol.
-
-## 12. Oturum 6 — Kullanıcı geri bildirimi: "tasarımda değişiklik göremiyorum" + düzen revizyonu
 
 ## 12. Oturum 6 — Kullanıcı geri bildirimi: "tasarımda değişiklik göremiyorum" + düzen revizyonu
 
@@ -84,8 +100,6 @@ Ayrıntı, gerekçe tablosu ve bilinçli sınır (`.console-filters`'a turuncu e
 "doğruladım" demek yetmez — kullanıcı hiçbir şey görmeden ikna olmasını beklemek doğru değildi.
 Bundan sonra görsel değişikliklerde ekran görüntüsünü veya Artifact linkini doğrudan paylaşmak
 gerekiyor.
-
-## 11. Oturum 5 — Tasarım revizyonu uygulaması: R5 (14 Eylül, "Devam et")
 
 ## 11. Oturum 5 — Tasarım revizyonu uygulaması: R5 (14 Eylül, "Devam et")
 

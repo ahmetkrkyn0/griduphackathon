@@ -105,6 +105,11 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -1600, right: 1600, top: 2000, bottom: -400, near: 100, far: 8000 });
   scene.add(sun);
+  // Yumusak dolgu isigi: guclu yonlu isigin sert golgesini hafifletir, metal yuzeylerde gercekci
+  // ikinci bir yansima olusturur (fotograf stuyosu "fill light" mantigi).
+  const fill = new THREE.DirectionalLight("#dce6ec", 0.55);
+  fill.position.set(-1600, 900, 1600);
+  scene.add(fill);
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.ShadowMaterial({ opacity: 0.12 }));
   floor.rotation.x = -Math.PI / 2;
@@ -112,14 +117,18 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   scene.add(floor);
 
   // Fiziksel malzemeler: pano govdesi RAL 7035, bakir, izolator. Durum rengi degil, malzeme rengi.
+  // Gercekcilik gecisi (kullanici istegi): govdeye boyali sacin hafif parlakligini veren clearcoat,
+  // baralara/DIN raya/bakira daha metalik degerler.
   const mat = {
-    ral7035: new THREE.MeshStandardMaterial({ color: "#CDD1CC", roughness: 0.85, metalness: 0.05 }),
+    ral7035: new THREE.MeshPhysicalMaterial({ color: "#CDD1CC", roughness: 0.78, metalness: 0.08, clearcoat: 0.35, clearcoatRoughness: 0.45 }),
     ral7035glass: new THREE.MeshStandardMaterial({ color: "#CDD1CC", roughness: 0.85, transparent: true, opacity: 0.28, depthWrite: false }),
     plate: new THREE.MeshStandardMaterial({ color: "#E2E5E1", roughness: 0.9 }),
-    bar: new THREE.MeshStandardMaterial({ color: "#C2BCAE", roughness: 0.35, metalness: 0.85 }),
-    copper: new THREE.MeshStandardMaterial({ color: "#B97A4D", roughness: 0.4, metalness: 0.8 }),
+    bar: new THREE.MeshStandardMaterial({ color: "#C2BCAE", roughness: 0.3, metalness: 0.9 }),
+    rail: new THREE.MeshStandardMaterial({ color: "#B8BCC0", roughness: 0.25, metalness: 0.9 }),
+    copper: new THREE.MeshStandardMaterial({ color: "#B97A4D", roughness: 0.3, metalness: 0.9 }),
     dsya: new THREE.MeshStandardMaterial({ color: "#454C53", roughness: 0.6 }),
     face: new THREE.MeshStandardMaterial({ color: "#D9DCDD", roughness: 0.7 }),
+    toggle: new THREE.MeshStandardMaterial({ color: "#1B1E20", roughness: 0.4 }),
     insul: new THREE.MeshStandardMaterial({ color: "#3A4046", roughness: 0.7 }),
     cable: new THREE.MeshStandardMaterial({ color: "#23272B", roughness: 0.8 }),
     device: new THREE.MeshStandardMaterial({ color: device, roughness: 0.6 }),
@@ -154,6 +163,14 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     allLabels.push(obj);
     return obj;
   }
+  /** Kucuk durum LED'i (guc/veri gostergesi) — gercekci detay, olculu parlaklikta. */
+  function led(colorHex: string, x: number, y: number, z: number) {
+    const m = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 1.4, roughness: 0.3 });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(4.5, 10, 8), m);
+    mesh.position.set(x, y, z);
+    root.add(mesh);
+    return mesh;
+  }
 
   // Govde (on kapaklar acik)
   box(1600, 1500, 20, mat.ral7035, 0, 0, 0);
@@ -165,20 +182,34 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   box(1560, 900, 6, mat.plate, 20, 350, 22);
 
   // Ust bolme: DIN ray, TVOC-2, Pano Beyni, modem, sigortalar, kompanzasyon, MPR-53CS
-  box(1480, 35, 8, mat.bar, 60, 1300, 40);
+  // DIN ray: gercek TS35 profiline yakin siluet (duz kutu degil) — govde ic cekilmis, alt/ust
+  // kenarlar one cikintili; parlak galvanizli celik malzeme.
+  box(1480, 4, 10, mat.rail, 60, 1300, 38);
+  box(1480, 27, 7, mat.rail, 60, 1304, 40);
+  box(1480, 4, 10, mat.rail, 60, 1327, 38);
   box(170, 95, 70, mat.device, 90, 1270, 48, 6);
+  const tvocLed = led("#2ecc71", 250, 1350, 119);
   staticLabels.push(label("TVOC-2", 175, 1395, 90));
   box(150, 95, 64, mat.ours, 320, 1270, 48, 8);
   box(150, 12, 4, mat.oursAccent, 320, 1340, 112);
+  led("#2ecc71", 340, 1350, 117);
   staticLabels.push(label("Pano Beyni", 395, 1405, 90, "ours"));
   box(120, 80, 55, mat.device, 520, 1275, 48, 6);
+  const modemLed = led("#37c25e", 632, 1345, 104);
   staticLabels.push(label("Modem", 580, 1385, 80));
   for (let i = 0; i < 5; i++) box(28, 75, 60, mat.face, 700 + i * 36, 1280, 48, 3);
   for (let i = 0; i < 3; i++) {
+    const cx = 1030 + i * 110;
     const c = new THREE.Mesh(new THREE.CylinderGeometry(42, 42, 230, 32), mat.face);
-    c.position.set(1030 + i * 110, 1277, 250);
+    c.position.set(cx, 1277, 250);
     c.castShadow = true;
     root.add(c);
+    // Kondansator kivrim bantlari: govde uzerinde iki ince koyu halka.
+    for (const ry of [1277 - 62, 1277 + 62]) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(42.6, 42.6, 9, 32), mat.insul);
+      band.position.set(cx, ry, 250);
+      root.add(band);
+    }
   }
   staticLabels.push(label("Kompanzasyon", 1140, 1430, 250));
   box(96, 96, 30, mat.device, 1400, 1300, 420, 4);
@@ -206,15 +237,34 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     const x = dsyaX(n);
     const spare = n >= FIRST_SPARE_DSYA;
     box(104, 660, 130, mat.dsya, x - 52, lugY + 40, 190, 6);
-    for (const p of PHASES) box(80, 120, 8, mat.face, x - 40, H - BAR_Y[p] - 60, 320, 3);
+    for (const p of PHASES) {
+      const fy = H - BAR_Y[p] - 60;
+      box(80, 120, 8, mat.face, x - 40, fy, 320, 3);
+      if (!spare) {
+        // Devre kesici anahtar kolu + acik/kapali penceresi — gercek MCB gorunumu.
+        box(24, 34, 9, mat.toggle, x - 12, fy + 66, 328, 3);
+        box(20, 12, 3, mat.insul, x - 10, fy + 22, 328);
+      }
+    }
     staticLabels.push(label(spare ? `${n} yedek` : `DSYA-${n}`, x, lugY + 720, 330));
     PHASES.forEach((_, i) => {
       const lx = x + (i - 1) * 30;
       box(20, 44, 16, mat.copper, lx - 10, lugY - 22, 250);
+      // Baglanti civatasi: pabucun on yuzunde kucuk bir civata basi.
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 5, 8), mat.insul);
+      bolt.rotation.x = Math.PI / 2;
+      bolt.position.set(lx, lugY - 4, 266 + 2.5);
+      bolt.castShadow = true;
+      root.add(bolt);
       if (!spare) {
-        const len = lugY - 22 - 20;
-        const cab = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, len, 12), mat.cable);
-        cab.position.set(lx, 20 + len / 2, 258);
+        // Kablo: dumduz silindir yerine hafif sarkan (dogal agirlikla bukulen) bir tup.
+        const yTop = lugY - 22, yBot = 20;
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(lx, yBot, 258),
+          new THREE.Vector3(lx + (i - 1) * 5, (yBot + yTop) / 2, 258 + 13),
+          new THREE.Vector3(lx, yTop, 258),
+        ]);
+        const cab = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 9, 8, false), mat.cable);
         cab.castShadow = true;
         root.add(cab);
       }
@@ -352,6 +402,10 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     controls.update();
     let pulsing = false;
     if (!reduced) {
+      // Modem LED'i: veri aktivitesini cagristiran duzensiz, hafif titresim (dekoratif).
+      const blink = Math.sin(t * 9) * Math.sin(t * 2.3) > 0.6 ? 2.2 : 1.2;
+      modemLed.material.emissiveIntensity = blink;
+      pulsing = true;
       const s = Math.sin(t * 4);
       for (const n of nodes.values()) {
         if (!isAbnormal(n.state) || n.acked || n.previewT != null) continue;
@@ -447,6 +501,11 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
         selectedLabel.position.copy(sel.mesh.position).add(new THREE.Vector3(0, -70, 20));
         selectedLabel.element.textContent = sel.point?.label ?? pointLabel(sel.pt);
       }
+
+      // TVOC-2 govde LED'i: koruma sagligi API'den geliyor (kural 10), renk burada uydurulmuyor.
+      const tvocHealthy = tvoc?.prot_health_ok !== false;
+      tvocLed.material.color.set(tvocHealthy ? "#2ecc71" : colors.critical);
+      tvocLed.material.emissive.set(tvocHealthy ? "#2ecc71" : colors.critical);
 
       // Koruma sagligi: arizali dedektor etiketi API'den gelir (ornek: "X2:4").
       const brokenNo = tvoc?.prot_health_ok === false ? /X2:(\d)/.exec(tvoc.last_det_label ?? "")?.[1] : undefined;

@@ -357,6 +357,35 @@ kaynak token'ların o anki halini yeniden okuyup senkronize etmek gerekiyor.
 
 ---
 
+## 13. 3D dijital ikizde gerçekçilik geçişi (kullanıcı isteği: "panoları daha gerçekçi yap")
+
+`components/Ikiz3D.tsx`'teki sahne şimdiye kadar düz renkli kutulardan oluşuyordu (fonksiyonel,
+ama "oyuncak" görünümlü). Harici model/doku dosyası eklenmedi (GK4: internet yok, CDN yok) —
+hepsi mevcut three.js geometrilerinden **prosedürel** olarak üretildi:
+
+| Detay | Ne değişti |
+|---|---|
+| DIN ray | Düz tek kutu yerine 3 kutulu bir siluet (ince alt/üst kenar + içeri çekilmiş gövde) — gerçek TS35 profiline yakın; parlak galvanizli çelik malzeme (`mat.rail`) |
+| Durum LED'leri | TVOC-2, Pano Beyni, Modem'in ön yüzünde küçük parlayan küreler. **TVOC-2'ninki dekoratif değil**: `tvoc.prot_health_ok` API alanına bağlı — sağlıklıyken yeşil, arızalıyken kırmızı (kural 10 ile çatışmaz, yeni bir eşik icat edilmedi, zaten var olan durumu gösteriyor). Modem LED'i veri aktivitesini çağrıştıran hafif düzensiz bir titreşimle yanıp sönüyor (saf dekoratif) |
+| DSYA devre kesicileri | Her faz yüzeyine siyah anahtar kolu + altında açık renkli bir pencere eklendi — gerçek bir MCB'nin önden görünüşüne yakın. Anahtar durumu herhangi bir alarm rengine bağlanmadı (sensör düğümü zaten durumu gösteriyor; anahtar yalnızca "gerçek bir cihaz" hissi katmak için) |
+| Kablolar | Dümdüz silindir yerine `CatmullRomCurve3` + `TubeGeometry` ile hafifçe sarkan/bükülen tüpler — doğal ağırlık altında eğilen kablo görünümü |
+| Kablo pabuçları | Ön yüzde küçük bir bağlantı cıvatası başı eklendi |
+| Kompanzasyon kondansatörleri | Gövde üzerinde iki ince koyu kıvrım bandı (gerçek kondansatörlerdeki crimp bantları) |
+| Malzemeler | RAL 7035 gövde artık `MeshPhysicalMaterial` + hafif clearcoat (boyalı sacın donuk parlaklığı); bakır baralar ve DIN ray daha metalik (`metalness` 0.9); yumuşak bir dolgu ışığı eklendi (sert gölgeleri hafifletir, stüdyo fotoğrafçılığındaki "fill light" mantığı) |
+
+**Bilinçli sınır:** Anahtar/pencere renkleri ve DIN ray detayı tamamen **dekoratif malzeme
+detayı** — hiçbiri yeni bir durum/alarm anlamı taşımıyor, kural 10'u (renkler yalnızca API'nin
+`ConnPoint.state`'inden) ihlal etmiyor. Tek istisna TVOC-2 LED'i, o da zaten var olan
+`tvoc.prot_health_ok` alanını yansıtıyor, yeni bir şey icat etmiyor.
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı (Ikiz3D parçası
+511 kB'den 529 kB'ye çıktı, hâlâ tembel yükleniyor, ilk açılış paketini etkilemiyor). Tarayıcıda
+ADM-00014 (sağlıklı TVOC-2, yeşil LED) ve GDZ-00231 (arızalı TVOC-2, kırmızı LED) ile görsel
+doğrulama yapıldı; ekran görüntüleri kullanıcıya doğrudan gönderildi (SendUserFile) — yalnızca
+metinle anlatılmadı (bkz. §12'nin dersi).
+
+---
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>
