@@ -9,8 +9,24 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 öğleden sonra (tasarım revizyonu R1–R4 uygulandı, §10).
-**Son commit:** Tasarım revizyonu R4 (olay modu, risk matrisi, mock kara kutu düzeltmesi) — bkz. §10.
+**Son güncelleme:** 14 Eylül 2026 öğleden sonra (tasarım revizyonu R1–R5 tamamlandı, §11).
+**Son commit:** Tasarım revizyonu R5 (ekran görüntüleri yenilendi) — bkz. §11. Plan uçtan uca bitti.
+
+## 11. Oturum 5 — Tasarım revizyonu uygulaması: R5 (14 Eylül, "Devam et")
+
+Kullanıcı yine "Devam et" dedi; planın son adımı R5 (ekran görüntülerini yeni paletle yenileme)
+uygulandı. **`frontend/TASARIM-REVIZYONU.md` planının tamamı (R1–R5) artık uygulanmış durumda.**
+
+`assets/ekran/`'daki 8 dosyanın hepsi aynı rota/pano/sekme kombinasyonlarıyla (1440×900, mock
+verisi) yeniden çekildi ve eskilerinin üzerine yazıldı; tek tek görsel olarak kontrol edildi
+(turuncu kimlik bandı, grafit plaka, yeni mavi/turuncu tonlar, olay modu, risk matrisi hepsi
+doğru görünüyor). `docs/16-ux-tasarim.md`'ye §2.1 risk matrisi notu ve yeni §2.2 (olay modu) eklendi.
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §8.
+
+**Bu, kullanıcının 14 Eylül öğleden sonra başlattığı tasarım revizyonu talebinin tamamının
+kapanışıdır** (ADM/GDZ marka analizi → global araştırma → revize plan → R1 token/tipografi → R2
+marka katmanı → R3 Y6+Y1 → R4 Y2+Y3 → R5 ekran görüntüleri). Sıradaki iş, önceki oturumlarda
+not düşülen ekip riskine (§0.1, A kulvarı) veya PLAN.md'de C'ye kalan başka bir maddeye bağlı.
 
 ## 10. Oturum 4 — Tasarım revizyonu uygulaması: R4 (14 Eylül, "Devam et")
 

@@ -1,8 +1,7 @@
 # Tasarım Revizyonu Planı — "RAL 7035 + Aydem kimliği"
 
-> **Sahip:** Kişi C (Berke) · **Tarih:** 14 Eylül 2026 · **Durum:** kullanıcı onayladı, **R1–R4 uygulandı**
-> (§6, §8). R5 (ekran görüntülerini yenileme) zaman kalırsa yapılacak.
-> Bağlantılı: [`docs/16-ux-tasarim.md`](../docs/16-ux-tasarim.md) (mevcut tasarım gerekçesi).
+> **Sahip:** Kişi C (Berke) · **Tarih:** 14 Eylül 2026 · **Durum:** kullanıcı onayladı, **plan uçtan uca
+> uygulandı (R1–R5)**. Bağlantılı: [`docs/16-ux-tasarim.md`](../docs/16-ux-tasarim.md) (tasarım gerekçesi).
 
 ## 0. Tek paragrafta öneri
 
@@ -171,7 +170,7 @@ SVG'leri (tarayıcıda okundu, 14 Eylül 2026), Aydem Enerji logo kılavuzu sayf
 | R2 | Marka katmanı: kimlik bandı, ürün işareti, plakalar, boş durumlar (§3.5) | `App.tsx`, `app.css`, `index.html` (favicon) | ✅ Uygulandı |
 | R3 | Y6 (onaylanınca duran hareket) + Y1 (3D zaman kaydırıcı) | `Ikiz3D.tsx`, `OnGorunus.tsx`, `PanoDetay.tsx` | ✅ Uygulandı |
 | R4 | Y2 (olay modu) + Y3 (risk matrisi) | `PanoDetay.tsx`, `AlarmNedeni.tsx`, `FiloListesi.tsx`, yeni `RiskMatrisi.tsx`, `mock.ts` düzeltmesi | ✅ Uygulandı |
-| R5 | Ekran görüntülerini yeniden al, `docs/16` §1 ve §5'i güncelle | `assets/ekran/`, `docs/16-ux-tasarim.md` | ⏳ Zaman kalırsa |
+| R5 | Ekran görüntülerini yeniden al, `docs/16`'yı güncelle | `assets/ekran/`, `docs/16-ux-tasarim.md` | ✅ Uygulandı |
 
 **Kabul ölçütleri:** tüm testler yeşil; kontrast (metin ≥ 4,5:1, grafik ≥ 3:1) token bazında
 doğrulanmış; veri alanı stillerinde `--brand` kullanımı sıfır (grep); 400 px genişlikte yatay taşma yok.
@@ -239,9 +238,28 @@ gerektirmez; Y3'teki "etki" yalnızca mevcut `pano_type` alanından gelir.
   kırmızı üst kenarı ve kara kutu kısayolu (EVT-51 → gerçek zaman çizelgesi) doğrulandı; 390 px
   mobilde hem risk matrisi hem Filo listesi yatay taşmasız.
 
+## 8. Yapıldı: R5 — ekran görüntüleri yenilendi
+
+`assets/ekran/`'daki 8 dosyanın hepsi, R1–R4 sonrası yeni palet ve düzenle (`npm run dev:mock`,
+1440×900, mock verisi) aynı rota/pano/sekme kombinasyonlarıyla yeniden çekildi:
+
+| Dosya | Rota | Not |
+|---|---|---|
+| `01-filo-listesi.png` | `/` | Zaman ekseni (varsayılan) sekmesi |
+| `02-pano-detay-alarm.png` | `/pano/ADM-00014` | Ön görünüş sekmesi |
+| `02-pano-detay-normal.png` | `/pano/ADM-00301` | Boş/sakin durum (`.calm`, ince turuncu çizgi) |
+| `03-alarm-konsolu.png` | `/alarmlar` | Açık filtre; iki P1 kartı da olay modu stilinde |
+| `04-trend-korelasyon.png` | `/trend/ADM-00014` | Nokta DSYA-3 L2, tam sayfa |
+| `05-olay-analizi-kara-kutu.png` | `/olay/EVT-60` | 72 saat penceresi |
+| `06-cihaz-sagligi.png` | `/cihaz-sagligi` | — |
+| `07-bolge-haritasi.png` | `/bolge` | — |
+
+`docs/16-ux-tasarim.md` §2.1'e risk matrisi, yeni §2.2'ye olay modu notu eklendi; §5'teki tablo aynı
+dosya adlarını kullandığı için görsel değişmiş haliyle otomatik güncel.
+
 ---
 
-## 8. Yapıldı: 3D dijital ikiz entegrasyonu (14 Eylül, önceki oturum)
+## 9. Yapıldı: 3D dijital ikiz entegrasyonu (14 Eylül, önceki oturum)
 
 - `frontend/src/components/Ikiz3D.tsx`: spike'taki sahnenin üretim hali. three.js npm'den
   (`three@0.169.0`) ve **ayrı parça** olarak yüklenir (509 kB, gzip 130 kB); ilk açılış paketi
