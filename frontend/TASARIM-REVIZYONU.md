@@ -480,6 +480,37 @@ ikisi (`02-pano-detay-alarm.png` → `/pano/ADM-00014`, "Ön görünüş"; `02-p
 yeniden çekildi. Diğer 6 dosya (Filo, Alarm konsolu, Trend, Kara kutu, Cihaz sağlığı, Bölge) pano
 iç görünümünü göstermediğinden dokunulmadı — gereksiz yeniden çekim yapılmadı.
 
+## 16. Bölge haritasına gerçek konum ekleme (15 Eylül, "bölge haritasına gerçekten harita ekleyebilir miyiz")
+
+Önceki yanıtım (§15'ten sonraki turda) "kontrat değişikliği onayı gerekiyor" demişti — bu yanlış
+çıktı. Kullanıcı `main`'i çekip Kişi B'nin kulvarını (backend) entegre ettikten sonra kontrolü
+tekrarladığımda görüldü ki `PanelSummary.lat`/`lon` zaten **onaylı, yayında olan** bir sözleşme
+alanı (`contracts/openapi.yaml`, `backend/app/api/views.py:98-99` zaten dolduruyor); bekleyen
+`2026-09-14-fleet-health-bulk.md` önerisi bambaşka bir şey öneriyor (il/ilçe + toplu sağlık ucu),
+lat/lon kullanmak için o onaya ihtiyaç yok.
+
+Gerçek engel veri eksikliğiydi: `frontend/src/api/mock.ts` her pano için `lat: null, lon: null`
+yazıyordu. Ama mock'taki 20 pano adının **hepsi zaten gerçek bir ilçe/semt adı** (Efeler, Nazilli,
+Söke, Bodrum, Selçuk, Bornova, Karşıyaka, Yunusemre... — ADM=Aydın/Denizli/Muğla, GDZ=İzmir/Manisa
+hizmet bölgesiyle tutarlı). Bu ilçelerin gerçek merkez koordinatları (`DISTRICT_COORDS`, kod içi
+yorumla "ilçe merkezi hassasiyetinde, gerçek trafo GPS pini değil" diye işaretli) eklendi.
+
+`pages/BolgeHaritasi.tsx` yeniden yazıldı: en az 2 panoda koordinat varsa (`GeoHarita`)
+enlem/boylamdan yerel, ölçek-korumalı bir izdüşümle (boylam, ortalama enlemin kosinüsüyle
+düzeltiliyor) SVG üzerine gerçek konumlarına yerleştiriliyor; yoksa eski dağıtım-şirketi
+gruplaması (`SirketGruplari`) korunuyor — gerçek backend'den koordinat gelmezse (alan opsiyonel)
+olmayan veri asla olmuş gibi gösterilmiyor. Gerçek harita karosu (Google/Mapbox/OSM) kullanılmadı
+— GK4 tamamen offline çalışmalı; yalnızca pusula işareti ve kesikli çerçeve var, uydurma bir
+kıyı şeridi/sınır çizimi eklenmedi (elimde gerçek bir offline vektör sınır verisi yok, hayalden
+kıyı şekli çizmek dürüstlük kuralına aykırı olurdu).
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. `/bolge` rotası
+chrome-devtools ile 1440px ve 390px (mobil) genişlikte kontrol edildi — yatay taşma yok, konsolda
+hata yok. Sonuç görsel olarak da anlamlı: GDZ panoları (İzmir/Manisa) ve ADM panoları
+(Aydın/Denizli/Muğla) haritada kendiliğinden iki ayrı coğrafi kümeye ayrılıyor, çünkü bu gerçek
+hizmet bölgeleri gerçekten ayrık. Ekran görüntüsü kullanıcıya gönderildi (SendUserFile),
+`assets/ekran/07-bolge-haritasi.png` ve `docs/16-ux-tasarim.md` §3/§6 güncellendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>
