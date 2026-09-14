@@ -767,7 +767,7 @@ git checkout -b c/faz1-ui-iskelet && git push -u origin c/faz1-ui-iskelet && git
 - Üretir (B ve C buna güvenir): `panoalgo.physics.dew_point(t_c: float, rh_pct: float) -> float` · `panoalgo.profiles.load_profile(kind: Literal["konut","ticari","karma"], ts: datetime) -> float` (0–1 normalize yük) · `panoalgo.generator.PanelSimulator(pano_id: str, seed: int, profile: str).step(dt_s: float) -> dict` (dönen sözlük **`contracts/mqtt-telemetry.schema.json`**'a uyar)
 - Tüketir: `contracts/mqtt-telemetry.schema.json`
 
-- [ ] **Adım 1: Başarısız testi yaz** — `libs/panoalgo/tests/test_dewpoint.py`
+- [x] **Adım 1: Başarısız testi yaz** — `libs/panoalgo/tests/test_dewpoint.py`
 
 ```python
 import pytest
@@ -788,12 +788,12 @@ def test_dew_point_rejects_invalid_humidity():
         dew_point(20.0, 0.0)
 ```
 
-- [ ] **Adım 2: Testi koştur, başarısız olduğunu gör**
+- [x] **Adım 2: Testi koştur, başarısız olduğunu gör**
 
 Komut: `cd libs/panoalgo && pytest tests/test_dewpoint.py -v`
 Beklenen: `ModuleNotFoundError: No module named 'panoalgo.physics'`
 
-- [ ] **Adım 3: Minimum implementasyonu yaz** — `libs/panoalgo/panoalgo/physics.py`
+- [x] **Adım 3: Minimum implementasyonu yaz** — `libs/panoalgo/panoalgo/physics.py`
 
 ```python
 """Fiziksel donusumler. Kaynak: HACKATHON_ANALIZ_RAPORU.md 15.1."""
@@ -816,11 +816,11 @@ def dew_point_margin(surface_t_c: float, air_t_c: float, rh_pct: float) -> float
     return surface_t_c - dew_point(air_t_c, rh_pct)
 ```
 
-- [ ] **Adım 4: Testi koştur, geçtiğini gör** — `pytest tests/test_dewpoint.py -v` → 5 passed
-- [ ] **Adım 5: Isıl modeli ve yük profilini yaz** — `profiles.py`: 168 kutulu (saat-of-hafta) konut/ticari/karma profil + mevsim katsayısı + AR(1) gürültü (rapor §15.2). `generator.py`: nokta başına `ΔT[k+1] = a·ΔT[k] + (1-a)·K·I²` ayrık ısıl model (`a = exp(-Ts/τ)`, τ = 10–30 dk), ortam sıcaklığı günlük sinüs, nem ters ilişkili, MPR türevli elektriksel büyüklükler, TVOC-2 durum makinesi (başlangıçta sakin).
-- [ ] **Adım 6: Üreteç testi yaz ve geçir** — `tests/test_generator.py`: (a) üretilen sözlük şemaya uyuyor (`jsonschema` ile), (b) aynı `seed` aynı diziyi veriyor, (c) lag-1 otokorelasyon > 0.9 (verilen Excel'in 0,00'ına karşıt — **bu testin kendisi bir sunum slaytı**).
-- [ ] **Adım 7: `sim/panosim.py`** — `python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883` → her 10 s'de (hızlandırılmış) `gridup/pano/{id}/tel` yayınlar.
-- [ ] **Adım 8: Commit**
+- [x] **Adım 4: Testi koştur, geçtiğini gör** — `pytest tests/test_dewpoint.py -v` → 5 passed
+- [x] **Adım 5: Isıl modeli ve yük profilini yaz** — `profiles.py`: 168 kutulu (saat-of-hafta) konut/ticari/karma profil + mevsim katsayısı + AR(1) gürültü (rapor §15.2). `generator.py`: nokta başına `ΔT[k+1] = a·ΔT[k] + (1-a)·K·I²` ayrık ısıl model (`a = exp(-Ts/τ)`, τ = 10–30 dk), ortam sıcaklığı günlük sinüs, nem ters ilişkili, MPR türevli elektriksel büyüklükler, TVOC-2 durum makinesi (başlangıçta sakin).
+- [x] **Adım 6: Üreteç testi yaz ve geçir** — `tests/test_generator.py`: (a) üretilen sözlük şemaya uyuyor (`jsonschema` ile), (b) aynı `seed` aynı diziyi veriyor, (c) lag-1 otokorelasyon > 0.9 (verilen Excel'in 0,00'ına karşıt — **bu testin kendisi bir sunum slaytı**).
+- [x] **Adım 7: `sim/panosim.py`** — `python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883` → her 10 s'de (hızlandırılmış) `gridup/pano/{id}/tel` yayınlar.
+- [x] **Adım 8: Commit**
 
 ```bash
 git add libs/panoalgo sim/panosim.py sim/Dockerfile
@@ -1184,3 +1184,4 @@ GitHub handle'ları: `@_____` (A), `@ahmetkrkyn0` (B), `@_____` (C) → `CODEOWN
 | 12 Eyl (gece) | B (Ahmet) | VT-x açıldı → `docker compose up`: 6 servis ayakta (backend/timescaledb/mosquitto `healthy`); uçtan uca sim → mosquitto → ingest → TimescaleDB 2.30 hypertable → API/WS doğrulandı (TB1 Adım 7 ✅); karantina gerçek broker üzerinden doğrulandı; 8 DB testi TimescaleDB'de yeşil (63/63). Flaky `test_stream` kök nedeni bulundu (WS teardown'da `asyncio.gather` anyio iptalini etiketsiz `CancelledError` ile değiştiriyordu) → anyio görev grubuna geçildi + yarış testi | — | — |
 | 13 Eyl | | | | |
 | 13 Eyl | B (Ahmet) | TB2 `b/alarm-manager`'da (TB1 dalının üstünde, 10 commit): ISA-18.2 alarm yöneticisi (histerezis, P1 mandallama, raf, bakım modu, kök neden gruplama, eskalasyon 5/15/30 dk), risk motoru (kenar alarmlarına Neden/Ne yapmalı/Ne kadar acil), alarm API (liste/ack/shelve + WS + `active_alarms`), merkezde `ALM-COMMS-LOST`, kalıcılık + denetim izi (`003_alarms.sql`), SMS PDU kodlayıcı + üretim modem sürücüsü + sanal GSM modem (compose `gsm-modem`), WhatsApp Cloud API istemcisi, bildirim ağ geçidi (çift yönlü SMS onayı), `docs/06` (tablolar sözleşmeden üretilir). 215 test (152 TB2); 107 mutasyonun tamamı testlerce yakalandı. Canlı yığın: P1/P2 → iki alıcıya SMS, alarmdan modemin kabulüne 0,29 sn (PDU dökümü), kayıtlı numaradan "1 5" onayladı / kayıtsız numara yok sayıldı, sessiz pano 5,1 dk'da COMMS-LOST, onaysız P1 5. dk'da iki alıcıya arama, 15. dk'da üst amire eskalasyon SMS'i (seviye 2), yeniden başlatmada alarmlar aynı kimlikle geri geldi | TB2 Adım 4: `panoalgo` yok → merkez dedektör kancası hazır, şimdilik kenarın `alarms` alanı kullanılıyor (A) · WhatsApp'ın gerçek telefona gitmesi için Meta test numarası + token + doğrulanmış alıcı gerekiyor (Ahmet) · `b/faz1-ingest` 13:00 penceresinde main'e alınmadı · `/panels/{id}/series`, `/events/{id}/blackbox`, `/fleet/kpi` hiçbir göreve atanmamış (TC3 bekliyor) | Plandan sapma: SMS kaydı `demo/sms-log.txt` yerine git dışı `deploy/runtime/sms-log.txt` (PDU numara taşır, GK9); PTY yerine TCP (`socket://`, konteynerler arası PTY yok; sahadaki karşılığı ser2net). Karar gerekiyor: M2 metni "P3 → telefon" diyor, sözleşmede P3'ün SMS/WhatsApp'ı kapalı → S1 telefonu P2'de (K/K₀ > 1,6) çaldırır |
+| 14 Eyl | A (Tuna) | TA1 `tuna/veri-ureteci`'nde: `libs/panoalgo` paketi kuruldu (physics: Magnus ciy noktasi + yogusma marji; profiles: 168 kutulu saat-of-hafta konut/ticari/karma profil + mevsim katsayisi + AR(1) gurultu; generator: ayrik isil model dT[k+1]=a*dT[k]+(1-a)*K*I^2, ortam sinusu, ters iliskili nem, faz dengesizligi %2-15, notr akimi dengesizlik+3.harmonik, TVOC-2 sakin durumu) ve `sim/panosim.py` MQTT yayincisi. Sozlesmeden okuma (kural 10): nokta adlari modbus-map, esikler alarm-codes, pano_id deseni + topic/QoS/retain telemetri semasi. 146 test; 27/27 mutasyon yakalandi. Canli yigin: 3 pano -> mosquitto -> ingest -> TimescaleDB -> API, received 9 / rejected 0 / dropped 0, karantina bos, 189 etiket/mesaj. sim imaji artik repo kokunden derleniyor (panoalgo imaja kuruluyor), Faz 0'in hello_publisher.py'si kaldirildi | — | Karar gerekiyor: yayinlanan `ts` SIMULE zamandir, --speed 60 ile duvar saatinin onune gecer (Grafana/arayuz zaman ekseni etkilenir); duvar saatiyle hizali demo icin --speed 1. TA2'ye bulgu: ALM-DQ-BELOW-AMBIENT kurali olu bant istiyor (hafif yuklu GIRIS_N fiziksel olarak ortamda oturur, sigma 0,2 K gurultu ile dt_c ara ara negatife duser) |
