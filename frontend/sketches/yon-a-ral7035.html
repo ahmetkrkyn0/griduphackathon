@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yön A: RAL 7035</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Yon A — pano govdesinin kendi rengi (RAL 7035 acik gri) zemin olur.
+     Renk yalnizca anormal durumda. Oncelik = renk + sekil + numara (renk korlugu). */
+  :root {
+    --bg: #E2E4DF;
+    --surface: #F4F5F1;
+    --plate: #2A2F33;
+    --ink: #212629;
+    --dim: #5F666B;
+    --line: #C7CAC3;
+    --p1: #C62828;
+    --p2: #DD6418;
+    --p3: #C99700;
+    --sys: #56688A;
+    --ours: #2C63C9;
+    --sans: "Barlow", system-ui, sans-serif;
+    --cond: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--sans); }
+  button { font: inherit; }
+  :focus-visible { outline: 3px solid var(--ours); outline-offset: 2px; }
+
+  .top { display: flex; align-items: center; gap: 28px; padding: 10px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .brand { font: 600 17px var(--cond); }
+  .fleet { display: flex; gap: 28px; margin-left: auto; color: var(--dim); font-size: 14px; }
+  .fleet b { color: var(--ink); font: 600 16px var(--cond); font-variant-numeric: tabular-nums; margin-right: 4px; }
+
+  .app { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; min-height: calc(100vh - 49px); }
+
+  /* Is listesi */
+  .work { border-right: 1px solid var(--line); padding: 20px 0; }
+  .work h2 { font: 600 15px var(--cond); color: var(--dim); margin: 0 24px 12px; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; padding: 14px 24px; border: 0; border-top: 1px solid var(--line); cursor: pointer; background: none; width: 100%; text-align: left; color: inherit; }
+  .row:hover { background: #EAEBE6; }
+  .row[aria-current="true"] { background: var(--surface); box-shadow: inset 4px 0 0 var(--ink); }
+  .row .name { font: 600 16px var(--cond); }
+  .row .id { color: var(--dim); font-size: 13px; margin-left: 6px; }
+  .row .head { margin: 2px 0 4px; }
+  .row .meta { color: var(--dim); font-size: 13px; }
+  .row .ttl { font: 600 20px var(--cond); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .row .ttl small { display: block; font: 400 12px var(--sans); color: var(--dim); }
+  .normal-note { margin: 16px 24px 0; color: var(--dim); font-size: 14px; }
+
+  /* ISA-101 tarzi oncelik isaretleri */
+  .mark { width: 30px; height: 30px; display: grid; place-items: center; font: 700 14px var(--cond); color: #fff; }
+  .mark.P1 { background: var(--p1); }
+  .mark.P2 { background: var(--p2); clip-path: polygon(50% 0, 100% 100%, 0 100%); padding-top: 9px; }
+  .mark.P3 { background: var(--p3); border-radius: 50%; color: var(--ink); }
+  .mark.SYS { border: 2px solid var(--sys); color: var(--sys); }
+  .mark.acked { opacity: .45; }
+
+  /* Detay */
+  .detail { padding: 24px 32px 40px; max-width: 1280px; }
+  .ident { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .plate { background: var(--plate); color: #F2F2EE; font: 600 15px var(--cond); padding: 4px 10px; border-radius: 3px; letter-spacing: .04em; }
+  .ident h1 { font: 600 24px var(--cond); margin: 0; }
+  .ident .sub { color: var(--dim); }
+  .statement { font: 500 34px/1.15 var(--cond); margin: 18px 0 24px; max-width: 30ch; }
+
+  .split { display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: 32px; align-items: start; }
+  .front { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 12px; margin: 0; }
+  .front svg { width: 100%; height: auto; display: block; }
+  .front .cap { color: var(--dim); font-size: 13px; margin: 8px 4px 0; }
+  .pt-halo { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .pt-halo { animation: none; } }
+
+  .qa { border-top: 2px solid var(--ink); }
+  .qa section { padding: 14px 0 16px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 130px 1fr; gap: 16px; }
+  .qa h3 { font: 600 16px var(--cond); margin: 0; }
+  .sig { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-variant-numeric: tabular-nums; }
+  .sig .val { font: 600 16px var(--cond); }
+  .sig .thr { color: var(--dim); }
+  .basis { color: var(--dim); font-size: 13px; margin-top: 4px; }
+  .spark { width: 100%; height: 44px; margin-top: 6px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 3px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); }
+
+  .phases { margin-top: 28px; }
+  .phases h3 { font: 600 16px var(--cond); margin: 0 0 10px; }
+  .ph { display: grid; grid-template-columns: 90px 1fr 70px; gap: 12px; align-items: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
+  .ph .track { height: 12px; background: #D7D9D3; border-radius: 2px; position: relative; }
+  .ph .fill { position: absolute; inset: 0 auto 0 0; background: #8F969A; border-radius: 2px; }
+  .ph.bad .fill { background: var(--p2); }
+  .ph .v { font: 600 16px var(--cond); text-align: right; }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-top: 32px; border-top: 1px solid var(--line); }
+  .fact { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); }
+  .fact .k { color: var(--dim); font-size: 13px; }
+  .fact .v { font: 600 18px var(--cond); font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .work { border-right: 0; border-bottom: 1px solid var(--line); }
+    .split { grid-template-columns: 1fr; }
+    .qa section { grid-template-columns: 1fr; gap: 6px; }
+    .fleet { display: none; }
+    .statement { font-size: 26px; }
+    .detail { padding: 20px 16px 32px; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">Grid Up Pano İzleme</div>
+    <div class="fleet" id="fleet"></div>
+  </header>
+
+  <div class="app">
+    <nav class="work" aria-label="Şimdi yapılacaklar">
+      <h2>Şimdi yapılacaklar</h2>
+      <div id="rows"></div>
+      <p class="normal-note" id="normalNote"></p>
+    </nav>
+
+    <main class="detail">
+      <div class="ident">
+        <span class="plate" id="plate"></span>
+        <h1 id="pname"></h1>
+        <span class="sub" id="psub"></span>
+      </div>
+      <p class="statement">DSYA-3 L2 bağlantısı, yük değişmezse yaklaşık 6 gün sonra 70 K sınırını aşacak.</p>
+
+      <div class="split">
+        <figure class="front">
+          <svg id="front" role="img" aria-label="Panonun ön görünüşü ve ölçüm noktaları"></svg>
+          <figcaption class="cap">Ön görünüş, kapaklar açık. Renkli noktalar normal dışı ölçüm noktası, mavi kutu Pano Beyni.</figcaption>
+        </figure>
+
+        <div>
+          <div class="qa">
+            <section>
+              <h3>Neden?</h3>
+              <div id="why"></div>
+            </section>
+            <section>
+              <h3>Ne yapmalı?</h3>
+              <div id="advice"></div>
+            </section>
+            <section>
+              <h3>Ne kadar acil?</h3>
+              <div>
+                <div class="sig"><span>70 K sınırına tahmini</span><span class="val">6 gün</span></div>
+                <div class="sig"><span>K/K₀, son 14 gün</span><span class="val">1,01 → 1,64</span></div>
+                <svg class="spark" id="spark" viewBox="0 0 280 44" preserveAspectRatio="none" aria-hidden="true"></svg>
+              </div>
+            </section>
+          </div>
+          <div class="actions">
+            <button class="btn">Onayla</button>
+            <button class="btn ghost">İş emri oluştur</button>
+            <button class="btn ghost">Rafa al</button>
+          </div>
+
+          <div class="phases">
+            <h3>DSYA-3 faz karşılaştırması, ortam üstü sıcaklık artışı</h3>
+            <div id="phases"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="facts" id="facts"></div>
+    </main>
+  </div>
+
+<script src="data.js"></script>
+<script src="onden.js"></script>
+<script>
+  const M = window.MOCK, D = M.detail;
+  const css = getComputedStyle(document.documentElement);
+  const v = (n) => css.getPropertyValue(n).trim();
+
+  document.getElementById("fleet").innerHTML = `
+    <span><b>${M.kpi.panels_total.toLocaleString("tr-TR")}</b>pano</span>
+    <span><b>%${M.num(M.kpi.comms_ok_pct)}</b>haberleşiyor</span>
+    <span><b>${M.num(M.kpi.alarms_per_100_panels_per_day)}</b>alarm / 100 pano / gün</span>
+    <span><b>${M.kpi.p95_end_to_end_ms} ms</b>alarmdan telefona (p95)</span>`;
+
+  const prioName = { P1: "Kritik", P2: "Alarm", P3: "Uyarı", SYS: "Sistem" };
+  document.getElementById("rows").innerHTML = M.worklist.map((w) => `
+    <button class="row" aria-current="${w.pano_id === D.pano_id}">
+      <span class="mark ${w.prio} ${w.acked ? "acked" : ""}" title="${prioName[w.prio]}${w.acked ? ", onaylandı" : ""}">${w.prio === "SYS" ? "S" : w.prio[1]}</span>
+      <span>
+        <span class="name">${w.name}</span><span class="id">${w.pano_id}</span>
+        <div class="head">${w.headline}</div>
+        <div class="meta">${M.fmtSince(w.since_min)}, ${w.next}</div>
+      </span>
+      <span class="ttl">${w.ttl_h ? M.fmtTtl(w.ttl_h) + "<small>sınıra</small>" : ""}</span>
+    </button>`).join("");
+  document.getElementById("normalNote").textContent = `${M.kpi.normal_count} pano normal çalışıyor.`;
+
+  document.getElementById("plate").textContent = D.pano_id;
+  document.getElementById("pname").textContent = D.name;
+  document.getElementById("psub").textContent = `${D.il}, ${D.pano_type}, son veri ${D.ts_age_s} sn önce`;
+
+  renderFront(document.getElementById("front"), D.points, {
+    tokens: { enclosure: v("--surface"), zone: "#E9EAE5", dot: "#A7ACAF", ours: v("--ours"), ink: v("--ink"), warn: v("--p3"), alarm: v("--p2"), critical: v("--p1"), font: "Barlow Semi Condensed" },
+    highlight: { pt: "DSYA3_L2", text: "K/K₀ 1,64" },
+  });
+
+  document.getElementById("why").innerHTML = D.alarm.reason.signals.map((s) => `
+    <div class="sig"><span>${s.tag}</span>
+    <span><span class="val">${M.num(s.value, s.value < 10 ? 2 : 1)} ${s.unit}</span> <span class="thr">eşik ${M.num(s.threshold, s.threshold < 10 ? 1 : 0)}</span></span></div>`).join("")
+    + `<div class="basis">${D.alarm.reason.basis}. Mutlak sıcaklık 58,4 °C ile henüz sınırın altında; sabit eşik bu bağlantıyı görmezdi.</div>`;
+  document.getElementById("advice").textContent = D.alarm.advice;
+
+  const kh = D.k_history, max = 1.7, min = 1.0;
+  const pts = kh.map((k, i) => `${(i / (kh.length - 1)) * 280},${44 - ((k - min) / (max - min)) * 40}`).join(" ");
+  document.getElementById("spark").innerHTML = `<polyline points="${pts}" fill="none" stroke="${v("--ink")}" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+
+  const ph = D.points.filter((p) => p.pt.startsWith("DSYA3_"));
+  document.getElementById("phases").innerHTML = ph.map((p) => `
+    <div class="ph ${p.state !== "normal" ? "bad" : ""}"><span>${p.label}</span>
+    <span class="track"><span class="fill" style="width:${(p.dt_c / 70) * 100}%"></span></span>
+    <span class="v">${M.num(p.dt_c)} K</span></div>`).join("");
+
+  const e = D.env, el = D.elec, h = D.health;
+  document.getElementById("facts").innerHTML = [
+    ["Faz akımları", `${el.i_ph.join(" / ")} A`],
+    ["Nötr akımı", `${el.i_n} A`],
+    ["Akım THD", `%${M.num(Math.max(...el.thd_i))}`],
+    ["Çiy noktası marjı", `${M.num(e.td_margin_k)} K`],
+    ["Alt / üst ortam", `${M.num(e.t_low_c)} / ${M.num(e.t_up_c)} °C`],
+    ["Ark koruması", D.tvoc.prot_health_ok ? "Sağlam, 0 trip" : "Arızalı"],
+    ["Sensör düğümleri", `${h.nodes_ok} / ${h.nodes_total}`],
+    ["Taban öğrenme", `${D.baseline_day}. gün, tamam`],
+  ].map(([k, val]) => `<div class="fact"><div class="k">${k}</div><div class="v">${val}</div></div>`).join("");
+</script>
+</body>
+</html>

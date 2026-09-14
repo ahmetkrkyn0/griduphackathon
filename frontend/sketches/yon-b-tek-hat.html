@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yön B: Tek hat şeması</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap" rel="stylesheet" />
+<style>
+  /* Yon B — muhendislik cizim kagidi. Secili pano canli bir tek hat semasi olarak cizilir;
+     anormallik cizim geleneginden gelen "revizyon bulutu" ile isaretlenir. */
+  :root {
+    --paper: #F8F9F7;
+    --grid: #E7EAE5;
+    --ink: #1F2B38;
+    --dim: #5A6774;
+    --rule: #A9B2BB;
+    --pencil: #2F5D8A;
+    --p1: #C62828;
+    --p2: #D9621A;
+    --p3: #C39200;
+    --sys: #56688A;
+    --font: "Archivo", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink); font: 15px/1.45 var(--font);
+    background-color: var(--paper);
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--pencil); outline-offset: 2px; }
+
+  .sheet { display: grid; grid-template-columns: 1fr minmax(300px, 380px); min-height: 100vh; }
+  .draw { padding: 28px 36px 140px; position: relative; }
+  .draw header { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  .draw h1 { font-stretch: 75%; font-weight: 700; font-size: 30px; margin: 0; }
+  .draw .sub { color: var(--dim); }
+  .lead { font-stretch: 87%; font-size: 22px; max-width: 46ch; margin: 10px 0 0; }
+
+  svg.sld { width: 100%; height: auto; display: block; margin-top: 8px; }
+  .sld text { font-family: var(--font); fill: var(--ink); }
+  .sld .dim { fill: var(--dim); }
+  .cloud { animation: draw 1.4s ease-out both; stroke-dasharray: 2600; }
+  @keyframes draw { from { stroke-dashoffset: 2600; } to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cloud { animation: none; } }
+
+  /* Antet (title block) */
+  .titleblock { position: absolute; right: 36px; bottom: 28px; display: grid; grid-template-columns: repeat(3, auto); border: 2px solid var(--ink); background: var(--paper); font-size: 13px; }
+  .titleblock div { padding: 6px 12px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+  .titleblock div:nth-child(3n) { border-right: 0; }
+  .titleblock div:nth-last-child(-n+3) { border-bottom: 0; }
+  .titleblock span { display: block; color: var(--dim); font-size: 11px; }
+  .titleblock b { font-stretch: 87%; font-size: 15px; }
+
+  /* Sag sutun: notlar + is listesi */
+  aside { border-left: 2px solid var(--ink); background: rgba(248, 249, 247, .94); padding: 28px 24px; }
+  aside h2 { font-stretch: 75%; font-size: 20px; margin: 0 0 12px; }
+  .note { border: 1px solid var(--ink); padding: 14px 16px; margin-bottom: 26px; background: var(--paper); }
+  .note .n { font-stretch: 75%; font-weight: 700; font-size: 17px; }
+  .note p { margin: 6px 0; }
+  .note .sig { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; border-top: 1px dashed var(--rule); padding: 5px 0; }
+  .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn { border: 1.5px solid var(--ink); background: var(--ink); color: var(--paper); padding: 8px 14px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); }
+
+  .item { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; padding: 11px 0; border: 0; border-top: 1px solid var(--rule); width: 100%; background: none; text-align: left; cursor: pointer; color: inherit; }
+  .item[aria-current="true"] .nm { text-decoration: underline 2px var(--pencil); text-underline-offset: 4px; }
+  .item .nm { font-stretch: 87%; font-weight: 600; }
+  .item .hd { font-size: 14px; }
+  .item .ttl { font-stretch: 75%; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .tag { width: 22px; height: 22px; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #fff; margin-top: 2px; }
+  .tag.P1 { background: var(--p1); }
+  .tag.P2 { background: var(--p2); clip-path: polygon(50% 0, 100% 100%, 0 100%); padding-top: 7px; }
+  .tag.P3 { background: var(--p3); border-radius: 50%; }
+  .tag.SYS { border: 1.5px solid var(--sys); color: var(--sys); }
+  .ok { color: var(--dim); margin-top: 14px; font-size: 14px; }
+
+  @media (max-width: 980px) {
+    .sheet { grid-template-columns: 1fr; }
+    aside { border-left: 0; border-top: 2px solid var(--ink); }
+    .draw { padding: 20px 16px; }
+    .titleblock { position: static; margin-top: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <main class="draw">
+    <header>
+      <h1>Efeler TM-14</h1>
+      <span class="sub">ADM-00014, Aydın, 1600 kVA dahili pano</span>
+    </header>
+    <p class="lead">DSYA-3 çıkışının L2 bağlantısı gevşiyor; yük değişmezse 6 gün sonra 70 K sınırı aşılacak.</p>
+    <svg class="sld" id="sld" viewBox="0 0 1000 640" role="img" aria-label="Panonun canlı tek hat şeması"></svg>
+
+    <div class="titleblock" aria-label="Pano künyesi">
+      <div><span>Pano</span><b>ADM-00014</b></div>
+      <div><span>Risk</span><b>72 / 100</b></div>
+      <div><span>Baskın hipotez</span><b>Gevşek bağlantı</b></div>
+      <div><span>Son veri</span><b>10 sn önce</b></div>
+      <div><span>Ark koruması</span><b>Sağlam</b></div>
+      <div><span>Taban öğrenme</span><b>42. gün</b></div>
+    </div>
+  </main>
+
+  <aside>
+    <h2>Not 1</h2>
+    <div class="note">
+      <div class="n">DSYA-3 L2, ısıl direnç indeksi yükseliyor</div>
+      <p id="adv"></p>
+      <div class="sig"><span>K/K₀</span><b>1,64 (eşik 1,6)</b></div>
+      <div class="sig"><span>ΔT, L1 / L2 / L3</span><b>22,5 / 34,3 / 21,5 K</b></div>
+      <div class="sig"><span>Mutlak sıcaklık</span><b>58,4 °C, sınırın altında</b></div>
+      <div class="sig"><span>Bildirim</span><b>SMS ve WhatsApp, 41 dk önce</b></div>
+      <div class="actions">
+        <button class="btn">Onayla</button>
+        <button class="btn ghost">İş emri oluştur</button>
+      </div>
+    </div>
+
+    <h2>Filo, aciliyet sırasıyla</h2>
+    <div id="list"></div>
+    <p class="ok">994 pano normal çalışıyor, %99,4'ü haberleşiyor.</p>
+  </aside>
+</div>
+
+<script src="data.js"></script>
+<script>
+  const M = window.MOCK, D = M.detail;
+  document.getElementById("adv").textContent = D.alarm.advice;
+  document.getElementById("list").innerHTML = M.worklist.map((w) => `
+    <button class="item" aria-current="${w.pano_id === D.pano_id}">
+      <span class="tag ${w.prio}">${w.prio === "SYS" ? "S" : w.prio[1]}</span>
+      <span><div class="nm">${w.name}</div><div class="hd">${w.headline}</div></span>
+      <span class="ttl">${w.ttl_h ? M.fmtTtl(w.ttl_h) : ""}</span>
+    </button>`).join("");
+
+  // Tek hat semasi (IEC sembol diline yakin, sade)
+  const ink = "var(--ink)", p2 = "var(--p2)";
+  let g = "";
+  // Trafo (iki daire)
+  g += `<circle cx="500" cy="52" r="26" fill="none" stroke="${ink}" stroke-width="2.5"/><circle cx="500" cy="86" r="26" fill="none" stroke="${ink}" stroke-width="2.5"/>`;
+  g += `<text x="540" y="62" font-size="17" font-weight="600">TR 1600 kVA</text><text x="540" y="84" font-size="14" class="dim">34,5 / 0,4 kV</text>`;
+  // Giris hatti, AT, EO
+  g += `<line x1="500" y1="112" x2="500" y2="210" stroke="${ink}" stroke-width="3"/>`;
+  g += `<circle cx="500" cy="150" r="11" fill="none" stroke="${ink}" stroke-width="2"/><text x="522" y="146" font-size="14">AT 2500/5</text><text x="522" y="164" font-size="14" class="dim">MPR-53CS: 612 / 655 / 598 A</text>`;
+  g += `<text x="470" y="146" font-size="14" text-anchor="end">Giriş bağlantıları</text><text x="470" y="164" font-size="14" text-anchor="end" class="dim">ΔT 28,4 / 29,1 / 27,6 K</text>`;
+  // Ana bara
+  g += `<line x1="70" y1="210" x2="930" y2="210" stroke="${ink}" stroke-width="7"/><text x="70" y="198" font-size="14" class="dim">Ana bara 2312 A</text>`;
+  g += `<text x="930" y="198" font-size="14" text-anchor="end" class="dim">Ark koruması TVOC-2, 10 dedektör sağlam</text>`;
+  // DSYA cikislari
+  const load = [212, 268, 247, 184, 161, 0, 0];
+  for (let i = 0; i < 7; i++) {
+    const x = 130 + i * 123, spare = i >= 5, bad = i === 2;
+    const c = bad ? p2 : ink;
+    const dash = spare ? 'stroke-dasharray="6 5"' : "";
+    g += `<line x1="${x}" y1="210" x2="${x}" y2="280" stroke="${c}" stroke-width="2.5" ${dash}/>`;
+    g += `<rect x="${x - 12}" y="280" width="24" height="54" fill="none" stroke="${c}" stroke-width="2.5"/><line x1="${x}" y1="280" x2="${x}" y2="334" stroke="${c}" stroke-width="1.5"/>`;
+    g += `<line x1="${x}" y1="334" x2="${x}" y2="470" stroke="${c}" stroke-width="2.5" ${dash}/>`;
+    g += `<path d="M${x - 10} 470 L${x} 488 L${x + 10} 470" fill="none" stroke="${c}" stroke-width="2.5"/>`;
+    g += `<text x="${x}" y="514" font-size="16" font-weight="600" text-anchor="middle">DSYA-${i + 1}</text>`;
+    g += `<text x="${x}" y="534" font-size="13" text-anchor="middle" class="dim">${spare ? "yedek" : (i < 3 ? "400 A" : "250 A")}</text>`;
+    if (!spare) g += `<text x="${x + 18}" y="410" font-size="14" class="dim">${load[i]} A</text>`;
+    g += `<circle cx="${x}" cy="440" r="${bad ? 8 : 5}" fill="${bad ? p2 : "var(--rule)"}"/>`;
+  }
+  // Revizyon bulutu DSYA-3 cevresinde
+  // Not: "top" global window.top ile cakisir, bu yuzden yTop/yBot.
+  const cx = 130 + 2 * 123, yTop = 262, yBot = 546, l = cx - 58, r = cx + 58;
+  const arcs = (x1, y1, x2, y2, n) => {
+    let out = "";
+    for (let k = 1; k <= n; k++) out += ` A 13 13 0 0 1 ${x1 + ((x2 - x1) * k) / n} ${y1 + ((y2 - y1) * k) / n}`;
+    return out;
+  };
+  const d = `M${l} ${yTop}` + arcs(l, yTop, r, yTop, 5) + arcs(r, yTop, r, yBot, 12) + arcs(r, yBot, l, yBot, 5) + arcs(l, yBot, l, yTop, 12);
+  g += `<path class="cloud" d="${d}" fill="none" stroke="${p2}" stroke-width="2.5"/>`;
+  // Not balonu
+  // Not balonu bulutun hemen altinda; cizgi baska etiketin ustunden gecmez
+  g += `<line x1="${cx}" y1="${yBot + 2}" x2="${cx}" y2="570" stroke="${p2}" stroke-width="2"/>`;
+  g += `<polygon points="${cx},570 ${cx + 22},590 ${cx},610 ${cx - 22},590" fill="var(--paper)" stroke="${p2}" stroke-width="2"/><text x="${cx}" y="596" font-size="16" font-weight="700" text-anchor="middle" fill="${p2}">1</text>`;
+  g += `<text x="${cx + 34}" y="586" font-size="15" font-weight="600">L2 bağlantısı, K/K₀ 1,64</text><text x="${cx + 34}" y="606" font-size="14" class="dim">70 K sınırına tahmini 6 gün</text>`;
+  document.getElementById("sld").innerHTML = g;
+</script>
+</body>
+</html>

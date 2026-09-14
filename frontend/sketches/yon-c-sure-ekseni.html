@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yön C: Sınıra kalan süre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Yon C — acilisin kahramani 14 gunluk zaman ekseni. Panolar "ne zaman sorun olacak"a gore yerlesir.
+     Altta secili panonun ikiz sahnesi (burada 2D; 3D spike ayri dosyada). */
+  :root {
+    --bg: #F2F4F6;
+    --stage: #FFFFFF;
+    --ink: #17202A;
+    --dim: #5F6C7A;
+    --line: #D8DEE4;
+    --soft: #E7EBEF;
+    --p1: #C62828;
+    --p2: #DD6418;
+    --p3: #C99700;
+    --sys: #56688A;
+    --ours: #2C63C9;
+    --font: "Instrument Sans", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font); }
+  button { font: inherit; }
+  :focus-visible { outline: 3px solid var(--ours); outline-offset: 2px; }
+
+  .top { display: flex; gap: 24px; align-items: center; padding: 14px 32px; flex-wrap: wrap; }
+  .top .brand { font-weight: 700; }
+  .top .kpi { margin-left: auto; display: flex; gap: 24px; color: var(--dim); font-size: 14px; }
+  .top .kpi b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .hero { padding: 8px 32px 28px; }
+  .hero h1 { font-size: 30px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 4px; max-width: 40ch; }
+  .hero p { color: var(--dim); margin: 0; }
+
+  .axis-wrap { position: relative; margin-top: 26px; height: 250px; }
+  .axis { position: absolute; left: 0; right: 0; top: 190px; height: 2px; background: var(--ink); }
+  .tick { position: absolute; top: 182px; width: 2px; height: 18px; background: var(--ink); }
+  .tick span { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--dim); font-size: 13px; }
+  .now-zone { position: absolute; left: 0; top: 0; height: 180px; width: 236px; background: var(--soft); border-radius: 10px; }
+
+  .pin { position: absolute; transform: translateX(-12px); display: flex; gap: 8px; align-items: flex-start; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; color: inherit; }
+  .pin .card { background: var(--stage); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 196px; }
+  .pin[aria-current="true"] .card { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .pin .nm { font-weight: 600; font-size: 14px; }
+  .pin .hd { font-size: 13px; color: var(--dim); line-height: 1.35; }
+  .stem { position: absolute; width: 2px; background: var(--line); }
+
+  .mk { flex: none; width: 24px; height: 24px; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #fff; margin-top: 4px; }
+  .mk.P1 { background: var(--p1); border-radius: 3px; }
+  .mk.P2 { background: var(--p2); clip-path: polygon(50% 0, 100% 100%, 0 100%); padding-top: 8px; }
+  .mk.P3 { background: var(--p3); border-radius: 50%; color: var(--ink); }
+  .mk.SYS { border: 2px solid var(--sys); color: var(--sys); border-radius: 3px; }
+
+  .stack { position: absolute; left: 10px; top: 10px; display: grid; gap: 8px; }
+  .stack .pin { position: static; transform: none; }
+  .stack .more { font-size: 13px; color: var(--dim); padding-left: 32px; }
+
+  .detail { display: grid; grid-template-columns: 1.15fr 1fr; margin: 0 32px 32px; background: var(--stage); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+  .stagebox { position: relative; background: radial-gradient(ellipse at 50% 92%, #E3E8ED 0, #F7F9FA 55%); padding: 64px 40px 28px; }
+  .stagebox svg { width: 100%; max-width: 440px; display: block; margin: 0 auto; filter: drop-shadow(0 18px 20px rgba(23, 32, 42, .10)); }
+  .views { position: absolute; top: 18px; left: 20px; display: flex; gap: 4px; background: var(--stage); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .views button { border: 0; background: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; color: var(--dim); }
+  .views button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .pt-halo { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .pt-halo { animation: none; } }
+
+  .info { padding: 28px 32px; }
+  .info .nm { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .info h2 { font-size: 24px; margin: 0; }
+  .info .id { color: var(--dim); }
+  .big { display: flex; align-items: baseline; gap: 14px; margin: 16px 0 10px; }
+  .big .n { font-size: 64px; font-weight: 600; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .big .u { font-size: 18px; color: var(--dim); max-width: 20ch; line-height: 1.3; }
+  .blk { border-top: 1px solid var(--line); padding: 14px 0; }
+  .blk h3 { margin: 0 0 6px; font-size: 15px; }
+  .row2 { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; padding: 2px 0; }
+  .row2 .d, .d { color: var(--dim); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 8px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); }
+
+  @media (max-width: 960px) {
+    .detail { grid-template-columns: 1fr; margin: 0 16px 24px; }
+    .axis-wrap { display: none; }
+    .top, .hero { padding-left: 16px; padding-right: 16px; }
+    .top .kpi { margin-left: 0; flex-wrap: wrap; }
+    .big .n { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <span class="brand">Grid Up Pano İzleme</span>
+    <span class="kpi"><span><b>1.000</b> pano</span><span><b>%99,4</b> haberleşiyor</span><span><b>606 ms</b> alarmdan telefona</span></span>
+  </header>
+
+  <section class="hero">
+    <h1>Önümüzdeki 14 günde 2 pano sınıra ulaşıyor, 4 pano şimdi ilgi bekliyor.</h1>
+    <p>Panolar sorunun ne zaman kritik hale geleceğine göre dizilir. 994 pano normal çalışıyor.</p>
+    <div class="axis-wrap" id="axis">
+      <div class="now-zone"></div>
+      <div class="axis"></div>
+    </div>
+  </section>
+
+  <section class="detail">
+    <div class="stagebox">
+      <div class="views" role="group" aria-label="Görünüm">
+        <button aria-pressed="true">Ön görünüş</button>
+        <button aria-pressed="false" title="3D denemesi: ikiz-3d.html">3D</button>
+      </div>
+      <svg id="front" role="img" aria-label="Panonun ön görünüşü"></svg>
+    </div>
+    <div class="info">
+      <div class="nm"><h2>Efeler TM-14</h2><span class="id">ADM-00014, Aydın</span></div>
+      <div class="big"><span class="n">6 gün</span><span class="u">DSYA-3 L2 bağlantısı 70 K sınırına ulaşana kadar</span></div>
+      <div class="blk">
+        <h3>Neden?</h3>
+        <div class="row2"><span>Isıl direnç indeksi K/K₀</span><span>1,64 <span class="d">eşik 1,6</span></span></div>
+        <div class="row2"><span>ΔT, L1 / L2 / L3</span><span>22,5 / 34,3 / 21,5 K</span></div>
+        <div class="d">Mutlak sıcaklık 58,4 °C; sabit eşik bu bağlantıyı henüz görmezdi.</div>
+      </div>
+      <div class="blk">
+        <h3>Ne yapmalı?</h3>
+        <div id="adv"></div>
+        <div class="actions"><button class="btn">Onayla</button><button class="btn ghost">İş emri oluştur</button><button class="btn ghost">Rafa al</button></div>
+      </div>
+    </div>
+  </section>
+
+<script src="data.js"></script>
+<script src="onden.js"></script>
+<script>
+  const M = window.MOCK, D = M.detail;
+  document.getElementById("adv").textContent = D.alarm.advice;
+
+  const axis = document.getElementById("axis");
+  const H_MAX = 14 * 24, X0 = 300;
+  // logaritmik eksen: yakin gelecek genis, uzak gelecek sikisik
+  const xFor = (h) => `calc(${X0}px + (100% - ${X0 + 230}px) * ${Math.log1p(h) / Math.log1p(H_MAX)})`;
+  for (const [h, lbl] of [[0, "bugün"], [24, "1 gün"], [72, "3 gün"], [168, "7 gün"], [336, "14 gün"]]) {
+    const t = document.createElement("div");
+    t.className = "tick"; t.style.left = xFor(h); t.innerHTML = `<span>${lbl}</span>`;
+    axis.appendChild(t);
+  }
+
+  const pinHtml = (w) => `
+    <span class="mk ${w.prio}">${w.prio === "SYS" ? "S" : w.prio[1]}</span>
+    <span class="card"><div class="nm">${w.name}</div><div class="hd">${w.headline}</div></span>`;
+
+  const stack = document.createElement("div");
+  stack.className = "stack";
+  const now = M.worklist.filter((w) => !w.ttl_h);
+  now.slice(0, 2).forEach((w) => {
+    const b = document.createElement("button");
+    b.className = "pin"; b.innerHTML = pinHtml(w);
+    stack.appendChild(b);
+  });
+  const more = document.createElement("div");
+  more.className = "more";
+  more.textContent = `Şimdi: ${now.length - 2} pano daha`;
+  stack.appendChild(more);
+  axis.appendChild(stack);
+
+  M.worklist.filter((w) => w.ttl_h).forEach((w, i) => {
+    const b = document.createElement("button");
+    b.className = "pin";
+    b.setAttribute("aria-current", w.pano_id === D.pano_id);
+    b.style.left = xFor(w.ttl_h);
+    b.style.top = i % 2 ? "80px" : "0px";
+    b.innerHTML = pinHtml(w);
+    const stem = document.createElement("div");
+    stem.className = "stem"; stem.style.left = xFor(w.ttl_h);
+    stem.style.top = (i % 2 ? 140 : 60) + "px"; stem.style.height = (i % 2 ? 50 : 130) + "px";
+    axis.appendChild(stem);
+    axis.appendChild(b);
+  });
+
+  const css = getComputedStyle(document.documentElement), v = (n) => css.getPropertyValue(n).trim();
+  renderFront(document.getElementById("front"), D.points, {
+    tokens: { enclosure: "#FBFCFC", zone: "#F0F3F5", stroke: "#9AA5AF", dot: "#B3BCC4", dsya: "#56606A", ours: v("--ours"), ink: v("--ink"), warn: v("--p3"), alarm: v("--p2"), critical: v("--p1"), font: "Instrument Sans" },
+  });
+</script>
+</body>
+</html>
