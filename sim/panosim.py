@@ -11,6 +11,11 @@ Kullanim:
 Topic, QoS ve retain degerleri contracts/mqtt-telemetry.schema.json icindeki
 x-topics blogundan okunur; bu dosyada topic metni YAZILI DEGILDIR (PLAN.md kural 10).
 
+TA2'den itibaren yayinlanan yuk, kenar tespit boru hattindan (panoalgo.edge) gecer:
+K/K0, tau, sinira kalan sure, veri kalitesi bitleri ve risk skoru gercek hesaplanir.
+Taban ogrenme suresi (sozlesme: baseline_learning_days) SIMULE zamanda dolunca K0
+sabitlenir; o ana kadar K/K0 = 1.0 doner ve devreye alma gununde sahte alarm olmaz.
+
 ZAMAN NOTU (13:00 entegrasyon penceresinde ekibe sorulacak): yayinlanan `ts`
 SIMULE ZAMANDIR. --speed 60 ile simulasyon saati gercek zamandan 60 kat hizli
 akar, yani zaman damgalari duvar saatinin ONUNE gecer. Fizigin anlamli hizda
@@ -30,8 +35,10 @@ from pathlib import Path
 from types import FrameType
 
 import paho.mqtt.client as mqtt
+import yaml
 from jsonschema import Draft202012Validator
 
+from panoalgo.edge import EdgePipeline
 from panoalgo.generator import PanelSimulator, default_contracts_dir, format_pano_id
 
 TEL_TOPIC_KIND = "tel"
@@ -108,6 +115,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--prefix", default=os.getenv("SIM_PREFIX", "ADM"), help="pano_id oneki (3 harf)")
     parser.add_argument("--start", default=os.getenv("SIM_START"), help="simulasyon baslangici (ISO 8601, ofsetli)")
     parser.add_argument("--max-messages", type=int, default=0, help="0 = sinirsiz (test icin)")
+    parser.add_argument("--profile", default=os.getenv("SIM_PROFILE", "karma"),
+                        help="ttl tahmininde kullanilan yuk profili")
     parser.add_argument("--dry-run", action="store_true", help="broker'a baglanma, ekrana yaz")
     return parser.parse_args(argv)
 
@@ -129,21 +138,30 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[panosim] sema: {schema['title']} | topic: {topic_template} (qos={qos}, retain={retain})", flush=True)
 
     sims = build_simulators(args, contracts_dir)
+    pipeline = EdgePipeline(profile=args.profile, contracts_dir=contracts_dir)
+    baseline_h = _baseline_hours(contracts_dir)
     print(
         f"[panosim] {len(sims)} pano | periyot {args.period} s | hiz x{args.speed} | seed {args.seed}",
         flush=True,
     )
+    print(f"[panosim] taban ogrenme: {baseline_h:.0f} simule saat sonra K0 sabitlenir", flush=True)
 
     client = None if args.dry_run else connect(*_split_host_port(args.mqtt))
     sim_step_s = args.period * args.speed
     published = 0
     rounds = 0
+    sim_hours = 0.0
 
     try:
         while not _stop:
             rounds += 1
+            sim_hours += sim_step_s / 3600.0
+            if not pipeline.baseline_frozen and sim_hours >= baseline_h:
+                pipeline.freeze_baselines()
+                print(f"[panosim] taban ogrenme tamamlandi ({sim_hours:.0f} simule saat)", flush=True)
+
             for sim in sims:
-                payload = sim.step(sim_step_s)
+                payload = pipeline.process(sim.step(sim_step_s))
 
                 # SOZLESME KAPISI: gecersiz mesaj yayinlanmaz.
                 errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
@@ -174,6 +192,12 @@ def main(argv: list[str] | None = None) -> int:
             client.disconnect()
     print(f"[panosim] durduruldu; {published} mesaj yayinlandi", flush=True)
     return 0
+
+
+def _baseline_hours(contracts_dir: Path) -> float:
+    """Taban ogrenme suresi sozlesmeden okunur (baseline_learning_days)."""
+    data = yaml.safe_load((contracts_dir / "alarm-codes.yaml").read_text(encoding="utf-8"))
+    return float(data["thresholds"]["baseline_learning_days"]) * 24.0
 
 
 def _split_host_port(value: str) -> tuple[str, int]:

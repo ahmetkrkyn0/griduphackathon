@@ -1,4 +1,4 @@
-# Sozlesme degisiklik onerisi — esigi olmayan uc alarm kodu
+# Sozlesme degisiklik onerisi — esigi olmayan uc alarm kodu + uyarim olcutu
 
 - **Tarih:** 14 Eylul 2026
 - **Oneren:** Kisi A (Tuna)
@@ -20,6 +20,7 @@ kural 10'un onlemek istedigi tam olarak bu.
 | `ALM-DQ-BELOW-AMBIENT` | L-1 | esik yok, olu bant gerekiyor |
 | `ALM-NEUTRAL-THD` | L1 | esik yok, iki kosullu kural gerekiyor |
 | `ALM-PD-TREND` | L1 | esik yok (OG eklentisi, AG panoda `pd: null`) |
+| `excitation_min_var_i2` | RLS | esik var ama OLCEGE BAGIMLI — notr nokta hicbir zaman gecemiyor |
 
 ## 1. `ALM-DQ-BELOW-AMBIENT` — olu bant
 
@@ -81,11 +82,48 @@ semasinda `pd` blogu AG panoda `null`.
 MoSCoW'da PD zaten **Could** kumesinde (PLAN.md). Esik, PD donanimi kapsama girerse
 (Faz 3 sonrasi) ayri bir degisiklik dosyasiyla tanimlanmali.
 
+## 4. `excitation_min_var_i2` — mutlak esik olcege bagimli
+
+**Sorun.** Kalici uyarim kosulu su an MUTLAK bir esiktir: `var(I^2) >= 1.0e7`.
+Ama `I^2`'nin buyuklugu iletkenin tasidigi akima baglidir. Notr iletken faz akiminin
+yaklasik alti'da birini tasir; `I^2` ~36 kat, `var(I^2)` ~1000 kat kucuk olur.
+Sonuc: `GIRIS_N` noktasi yuk gun boyunca fazlarla AYNI GORELI oranda degisse bile
+hicbir zaman "uyarilmis" sayilmaz, K kestirimi hic guncellenmez ve o nokta izlemesiz
+kalir. Harmonik kaynakli notr isinmasi (`ALM-NEUTRAL-THD`, `HYP-HARMONIC`) tam da bu
+noktada aranan bir ariza oldugu icin bu bosluk onemlidir.
+
+**Olculen kanit.** TA1 ureteci, karma profil, 25 saat, 30 ornek (30 dk) pencere:
+
+| Nokta | `var(I^2)` medyan | degisim katsayisi (cv) | 1.0e7 esigini geciyor mu |
+|---|---|---|---|
+| `GIRIS_L1` | 1,67e9 | 0,022 | evet |
+| `GIRIS_N` | 1,24e6 | 0,028 | **hayir** |
+
+Iki nokta ayni goreli yuk degisimini gormesine ragmen (cv 0,022 ve 0,028) mutlak
+esik yalnizca fazi geciriyor. Yani esik "uyarim var mi" sorusunu degil, "iletken
+kalin mi" sorusunu olcuyor.
+
+**Oneri.** Mutlak esigi KALDIRMADAN, olcekten bagimsiz bir ikinci olcut eklensin;
+ikisinden biri saglanirsa uyarim var sayilsin.
+
+```yaml
+  # RLS / kestirim
+  excitation_min_cv_i2: 0.02   # var(I^2) degisim katsayisi; olcege bagimsiz olcut
+```
+
+Kural: `var(I^2) >= excitation_min_var_i2` **VEYA**
+`std(I^2) / ort(I^2) >= excitation_min_cv_i2`.
+
+0,02 degeri yukaridaki olcumden secildi: hem fazin hem notrun 30 dakikalik normal
+yuk dalgalanmasini geciriyor, sabit yuk (cv = 0) kosulunu ise gecirmiyor —
+PLAN.md TA2 Adim 1'deki `test_k_index_not_updated_without_excitation` testi gecerli
+kalir. **Bu sayi turetilmistir.**
+
 ## Kabul edilmezse ne olur
 
 `libs/panoalgo` calismaya devam eder; turetilmis varsayilanlar
-`panoalgo/quality.py` (`DEFAULT_BELOW_AMBIENT_DEADBAND_K`) ve `panoalgo/fusion.py`
-icinde isaretli olarak kalir. Risk sudur: merkez tarafi ayni kurali kendi sayisiyla
+`panoalgo/quality.py` (`DEFAULT_BELOW_AMBIENT_DEADBAND_K`), `panoalgo/detect.py`
+(`DEFAULT_EXCITATION_MIN_CV`) ve `panoalgo/fusion.py` icinde isaretli olarak kalir. Risk sudur: merkez tarafi ayni kurali kendi sayisiyla
 uygularsa kenar ile merkez farkli karar verir ve demo sirasinda bir alarm bir yerde
 gorunup digerinde gorunmez.
 

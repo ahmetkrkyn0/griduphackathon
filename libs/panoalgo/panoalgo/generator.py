@@ -101,6 +101,14 @@ H3_SHARE_OF_THD = 0.7  # 3. harmonigin THD icindeki payi (rapor kapali form verm
 U_PHASE_NOMINAL_V, U_PHASE_DROP_V, U_PHASE_SIGMA_V = 231.0, 6.0, 0.3
 COSPHI_NO_LOAD, COSPHI_SPAN, COSPHI_MAX = 0.93, 0.05, 0.99
 
+# --- Senaryo enjeksiyonu (TA2) --------------------------------------------------
+# Uretec, ariza enjeksiyonunu FIZIKSEL PARAMETRE uzerinden yapar: "alarm uret" demez,
+# K'yi buyutur / yuku artirir / sensoru bozar ve sonucu tespit katmanlarina biraktir.
+# Boylece senaryolar tespit algoritmasini gercekten sinar, ona cevabi fisildamaz.
+LOAD_MULTIPLIER_MAX = 1.5     # asiri yuk senaryosunda anma akiminin ustune cikilabilir
+SENSOR_DRIFT_K_PER_H = 2.0    # suruklenen sensorun saatlik kaymasi (TURETILMIS)
+SENSOR_DROPPED_BELOW_AMBIENT_K = 8.0  # yerinden dusmus sensor ortamin altini olcer
+
 # DSYA cikislarinin boy dagilimi (EK-I/8'de 7 cikis var; boy dagilimi TURETILMIS).
 _TWO_BOY_FEEDERS = (1, 2, 3)
 
@@ -183,6 +191,17 @@ class PanelSimulator:
         self._dt_c: dict[str, float] = {spec.name: 0.0 for spec in self._points}
         self._current_a: dict[str, float] = {spec.name: 0.0 for spec in self._points}
         self._i2_window: deque[float] = deque(maxlen=EXCITATION_WINDOW)
+
+        # Senaryo enjeksiyonlari (TA2); varsayilan = saglikli pano (S0).
+        self._k_multiplier: dict[str, float] = {}
+        self._load_multiplier = 1.0
+        self._humidity_offset_pct = 0.0
+        self._thd_multiplier = 1.0
+        self._tvoc_trips = 0
+        self._prot_health_ok = True
+        self._sensor_faults: dict[str, str] = {}
+        self._fault_age_h: dict[str, float] = {}
+        self._last_reported_t_c: dict[str, float] = {}
 
         self._heaviest_phase = rng.randrange(3)
         self._load_noise = Ar1Noise(phi=ar1_phi(10.0, TAU_LOAD_S), sigma=LOAD_NOISE_SIGMA, seed=seed + 1)
@@ -275,6 +294,64 @@ class PanelSimulator:
             raise ValueError(f"fraction [0,1] araliginda olmali: {fraction}")
         self._frozen_load = fraction
 
+    # ------------------------------------------------- senaryo enjeksiyonu (TA2)
+
+    def set_k_multiplier(self, pt: str, multiplier: float) -> None:
+        """Bir noktanin isil direnc indeksini K0'in katina cikarir (gevsek baglanti).
+
+        Rapor 15.2: "K, 7-30 gun boyunca %0 -> %200 artis". multiplier=3.0 tam olarak
+        bu ust siniri temsil eder.
+        """
+        if multiplier <= 0.0:
+            raise ValueError(f"multiplier pozitif olmali: {multiplier}")
+        self._spec(pt)  # bilinmeyen nokta adi burada patlasin
+        self._k_multiplier[pt] = multiplier
+
+    def set_load_multiplier(self, multiplier: float) -> None:
+        """Yuku olcekler (asiri yuk senaryosu). K'ye DOKUNMAZ — ariza degil."""
+        if not 0.0 <= multiplier <= LOAD_MULTIPLIER_MAX:
+            raise ValueError(f"multiplier [0,{LOAD_MULTIPLIER_MAX}] araliginda olmali: {multiplier}")
+        self._load_multiplier = multiplier
+
+    def set_humidity_offset(self, percent: float) -> None:
+        """Bagil nemi kaydirir (yogusma senaryosu)."""
+        self._humidity_offset_pct = percent
+
+    def set_thd_multiplier(self, multiplier: float) -> None:
+        """Akim THD'sini olcekler; notr akimi da formul geregi birlikte artar."""
+        if multiplier <= 0.0:
+            raise ValueError(f"multiplier pozitif olmali: {multiplier}")
+        self._thd_multiplier = multiplier
+
+    def trigger_arc_trip(self) -> None:
+        """TVOC-2 trip sayacini artirir (PDU 149). Sayac geri sayilmaz."""
+        self._tvoc_trips += 1
+
+    def set_protection_health(self, healthy: bool) -> None:
+        """Ark korumasi dedektor sagligi: False = pano sessizce korumasiz."""
+        self._prot_health_ok = healthy
+
+    def set_sensor_fault(self, pt: str, kind: str | None) -> None:
+        """Sensor arizasi enjekte eder: frozen | drift | dropped; None = temizle."""
+        if kind not in (None, "frozen", "drift", "dropped"):
+            raise ValueError(f"bilinmeyen sensor arizasi: {kind!r}")
+        self._spec(pt)
+        if kind is None:
+            self._sensor_faults.pop(pt, None)
+            self._fault_age_h.pop(pt, None)
+        else:
+            self._sensor_faults[pt] = kind
+            self._fault_age_h[pt] = 0.0
+
+    def clear_injections(self) -> None:
+        """Tum enjeksiyonlari kaldirir (senaryo penceresi bitince)."""
+        self._k_multiplier.clear()
+        self._sensor_faults.clear()
+        self._fault_age_h.clear()
+        self._load_multiplier = 1.0
+        self._humidity_offset_pct = 0.0
+        self._thd_multiplier = 1.0
+
     def _spec(self, name: str) -> PointSpec:
         for spec in self._points:
             if spec.name == name:
@@ -321,11 +398,11 @@ class PanelSimulator:
     def _load_fraction(self) -> float:
         """Anma akiminin kullanilan orani (0-1)."""
         if self._frozen_load is not None:
-            return self._frozen_load
+            return self._frozen_load * self._load_multiplier
         shape = load_profile(self.profile, self._ts)
         scale = PEAK_UTILISATION / (self._profile_peak() * (1.0 + SEASON_AMPLITUDE))
         raw = shape * scale * season_factor(self._ts) * (1.0 + self._load_noise.step())
-        return min(1.0, max(0.0, raw))
+        return min(LOAD_MULTIPLIER_MAX, max(0.0, raw * self._load_multiplier))
 
     def _profile_peak(self) -> float:
         from .profiles import _TABLES  # tek kaynak: tablolar profiles.py'de yasar
@@ -348,7 +425,8 @@ class PanelSimulator:
         """Hafif yukte THD yuksektir (dogrusal olmayan yukun payi buyur)."""
         rated = float(self._thresholds["rated_current_a"]["main_input"])
         light = 1.0 - min(1.0, sum(i_ph) / (3.0 * rated))
-        return [round(THD_BASE_PCT + THD_LIGHT_LOAD_SPAN_PCT * light + 0.2 * k, 2) for k in range(3)]
+        base = THD_BASE_PCT + THD_LIGHT_LOAD_SPAN_PCT * light
+        return [round((base + 0.2 * k) * self._thd_multiplier, 2) for k in range(3)]
 
     def _neutral_current(self, i_ph: list[float], thd_i: list[float]) -> float:
         """Dengesizlik fazor toplami + triplen harmoniklerin aritmetik toplami."""
@@ -369,10 +447,12 @@ class PanelSimulator:
             self._current_a[spec.name] = current
 
             a = math.exp(-dt_s / spec.tau_s)
-            steady = spec.k0 * current**2
+            steady = spec.k0 * self._k_multiplier.get(spec.name, 1.0) * current**2
             self._dt_c[spec.name] = a * self._dt_c[spec.name] + (1.0 - a) * steady
 
         self._i2_window.append(sum(i**2 for i in i_ph) / 3.0)
+        for pt in self._fault_age_h:
+            self._fault_age_h[pt] += dt_s / 3600.0
         return dict(self._dt_c)
 
     def _excited(self) -> bool:
@@ -392,10 +472,9 @@ class PanelSimulator:
         hour = self._ts.hour + self._ts.minute / 60.0 + self._ts.second / 3600.0
         return mean + amp * math.cos(2.0 * math.pi * (hour - AMBIENT_PEAK_HOUR) / 24.0)
 
-    @staticmethod
-    def _humidity_pct(t_c: float) -> float:
+    def _humidity_pct(self, t_c: float) -> float:
         """Nem sicaklikla ters iliskili (sartname Tablo 1'den turetilmis egim)."""
-        rh = RH_AT_REF_PCT + RH_SLOPE_PCT_PER_K * (RH_REF_T_C - t_c)
+        rh = RH_AT_REF_PCT + RH_SLOPE_PCT_PER_K * (RH_REF_T_C - t_c) + self._humidity_offset_pct
         return min(RH_MAX_PCT, max(RH_MIN_PCT, rh))
 
     # ------------------------------------------------------------------ bloklar
@@ -405,11 +484,13 @@ class PanelSimulator:
         block = []
         for spec in self._points:
             measured_rise = rises[spec.name] + self._sensor_rng.gauss(0.0, TEMP_SENSOR_SIGMA_K)
+            t_c = self._apply_sensor_fault(spec.name, t_low_c + measured_rise, t_low_c)
+            self._last_reported_t_c[spec.name] = t_c
             block.append(
                 {
                     "pt": spec.name,
-                    "t_c": round(t_low_c + measured_rise, 2),
-                    "dt_c": round(measured_rise, 2),
+                    "t_c": round(t_c, 2),
+                    "dt_c": round(t_c - t_low_c, 2),
                     "k": round(spec.k0, 12),
                     "k_ratio": 1.0,  # TA1: saglikli taban; RLS kestirimi TA2'de
                     "tau_s": round(spec.tau_s, 1),
@@ -419,6 +500,21 @@ class PanelSimulator:
                 }
             )
         return block
+
+    def _apply_sensor_fault(self, pt: str, t_c: float, ambient_c: float) -> float:
+        """Sensor arizasini OLCUME uygular; fiziksel sicaklik degismez.
+
+        Ayrim onemli: ariza sensorde, panoda degil. L-1 katmani bunu ayirt edebilmeli,
+        yoksa bozuk sensor sahte bir pano arizasi gibi gorunur (rapor 6.5 L-1).
+        """
+        kind = self._sensor_faults.get(pt)
+        if kind is None:
+            return t_c
+        if kind == "frozen":
+            return self._last_reported_t_c.get(pt, t_c)
+        if kind == "drift":
+            return t_c + SENSOR_DRIFT_K_PER_H * self._fault_age_h.get(pt, 0.0)
+        return ambient_c - SENSOR_DROPPED_BELOW_AMBIENT_K  # dropped
 
     def _elec_block(self, i_ph: list[float], i_n: float, thd_i: list[float], unbal: float) -> dict:
         rated = float(self._thresholds["rated_current_a"]["main_input"])
@@ -459,19 +555,18 @@ class PanelSimulator:
             "door_open": False,
         }
 
-    @staticmethod
-    def _tvoc_block() -> dict:
+    def _tvoc_block(self) -> dict:
         """Baslangicta sakin ark korumasi (PLAN.md TA1 Adim 5). SALT OKUNUR (GK6)."""
         return {
-            "state": 0,
-            "trips": 0,
+            "state": 0 if self._prot_health_ok else 2,  # bit1 = aktif hata (PDU 1300)
+            "trips": self._tvoc_trips,
             "det_bits_low": 0,
             "det_bits_high": 0,
             "sensor_x2": 0xFFFF,
             "sensor_x3": 0xFFFF,
             "amb_light_x2": 0,
             "amb_light_x3": 0,
-            "prot_health_ok": True,
+            "prot_health_ok": self._prot_health_ok,
             "comm_ok": True,
         }
 
