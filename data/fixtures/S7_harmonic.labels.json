@@ -1,0 +1,31 @@
+{
+  "scenario_id": "S7_harmonic",
+  "seed": 1304,
+  "pano_id": "SIM-00001",
+  "pano_type": "1600kVA-dahili",
+  "duration_h": 168.0,
+  "sample_period_s": 900.0,
+  "generated_at": "2026-09-14T14:29:17+00:00",
+  "profile": "karma",
+  "season": "gecis",
+  "data_file": "S7_harmonic.csv",
+  "labels": [
+    {
+      "t_start": "2026-04-08T08:00:00+00:00",
+      "t_end": "2026-04-13T00:00:00+00:00",
+      "type": "harmonic",
+      "point": "GIRIS_N",
+      "expect": [
+        "ALM-NEUTRAL-THD"
+      ],
+      "severity": "P3",
+      "not_expect": [
+        "ALM-K-ALM"
+      ],
+      "params": {
+        "thd_multiplier": 3.5
+      },
+      "l0_breach_at": null
+    }
+  ]
+}

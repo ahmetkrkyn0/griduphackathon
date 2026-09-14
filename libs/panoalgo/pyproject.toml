@@ -1,0 +1,40 @@
+# Kisi A'nin kilit dosyasi — PLAN.md kural 5: baskasi DOKUNMAZ.
+# Bir bagimliliga ihtiyacin varsa A'dan rica et, o ekleyip commit etsin.
+#
+# Bagimlilik notu: panoalgo bilerek YALNIZCA PyYAML'a bagimlidir. Fizik ve
+# gurultu modeli saf stdlib ile yazildi; boylece (a) surum catismasi olmaz,
+# (b) ayni matematik TA3'te firmware/core/ altinda C'ye birebir tasinabilir.
+# numpy/pandas yalnizca TA2'nin CSV/Parquet disa aktarimi icin gerekirse eklenir.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "panoalgo"
+version = "0.1.0"
+description = "Pano ici anomali tespiti: fizik modeli, sentetik veri ureteci ve tespit katmanlari (Kisi A)."
+requires-python = ">=3.12"
+dependencies = [
+  "PyYAML==6.0.*",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest==8.3.*",
+  "jsonschema==4.23.*",
+  # numpy yalnizca TESTLERDE: PLAN.md TA2 Adim 1 test vektoru numpy ile yazilmis.
+  # Uretim kodu (detect.py dahil) saf stdlib kalir — bkz. detect.py modul notu.
+  "numpy==2.1.*",
+]
+
+[tool.setuptools.packages.find]
+include = ["panoalgo*"]
+
+[tool.pytest.ini_options]
+# Hem `cd libs/panoalgo && pytest` hem de repo kokunden `pytest libs/panoalgo`
+# calisir: rootdir = libs/panoalgo/, `panoalgo` paketi buradan import edilir.
+# (backend/pytest.ini ile ayni desen; orasi ayri bir dosya, burasi kilit dosyanin icinde.)
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"

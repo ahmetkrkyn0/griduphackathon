@@ -767,7 +767,7 @@ git checkout -b c/faz1-ui-iskelet && git push -u origin c/faz1-ui-iskelet && git
 - Üretir (B ve C buna güvenir): `panoalgo.physics.dew_point(t_c: float, rh_pct: float) -> float` · `panoalgo.profiles.load_profile(kind: Literal["konut","ticari","karma"], ts: datetime) -> float` (0–1 normalize yük) · `panoalgo.generator.PanelSimulator(pano_id: str, seed: int, profile: str).step(dt_s: float) -> dict` (dönen sözlük **`contracts/mqtt-telemetry.schema.json`**'a uyar)
 - Tüketir: `contracts/mqtt-telemetry.schema.json`
 
-- [ ] **Adım 1: Başarısız testi yaz** — `libs/panoalgo/tests/test_dewpoint.py`
+- [x] **Adım 1: Başarısız testi yaz** — `libs/panoalgo/tests/test_dewpoint.py`
 
 ```python
 import pytest
@@ -788,12 +788,12 @@ def test_dew_point_rejects_invalid_humidity():
         dew_point(20.0, 0.0)
 ```
 
-- [ ] **Adım 2: Testi koştur, başarısız olduğunu gör**
+- [x] **Adım 2: Testi koştur, başarısız olduğunu gör**
 
 Komut: `cd libs/panoalgo && pytest tests/test_dewpoint.py -v`
 Beklenen: `ModuleNotFoundError: No module named 'panoalgo.physics'`
 
-- [ ] **Adım 3: Minimum implementasyonu yaz** — `libs/panoalgo/panoalgo/physics.py`
+- [x] **Adım 3: Minimum implementasyonu yaz** — `libs/panoalgo/panoalgo/physics.py`
 
 ```python
 """Fiziksel donusumler. Kaynak: HACKATHON_ANALIZ_RAPORU.md 15.1."""
@@ -816,11 +816,11 @@ def dew_point_margin(surface_t_c: float, air_t_c: float, rh_pct: float) -> float
     return surface_t_c - dew_point(air_t_c, rh_pct)
 ```
 
-- [ ] **Adım 4: Testi koştur, geçtiğini gör** — `pytest tests/test_dewpoint.py -v` → 5 passed
-- [ ] **Adım 5: Isıl modeli ve yük profilini yaz** — `profiles.py`: 168 kutulu (saat-of-hafta) konut/ticari/karma profil + mevsim katsayısı + AR(1) gürültü (rapor §15.2). `generator.py`: nokta başına `ΔT[k+1] = a·ΔT[k] + (1-a)·K·I²` ayrık ısıl model (`a = exp(-Ts/τ)`, τ = 10–30 dk), ortam sıcaklığı günlük sinüs, nem ters ilişkili, MPR türevli elektriksel büyüklükler, TVOC-2 durum makinesi (başlangıçta sakin).
-- [ ] **Adım 6: Üreteç testi yaz ve geçir** — `tests/test_generator.py`: (a) üretilen sözlük şemaya uyuyor (`jsonschema` ile), (b) aynı `seed` aynı diziyi veriyor, (c) lag-1 otokorelasyon > 0.9 (verilen Excel'in 0,00'ına karşıt — **bu testin kendisi bir sunum slaytı**).
-- [ ] **Adım 7: `sim/panosim.py`** — `python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883` → her 10 s'de (hızlandırılmış) `gridup/pano/{id}/tel` yayınlar.
-- [ ] **Adım 8: Commit**
+- [x] **Adım 4: Testi koştur, geçtiğini gör** — `pytest tests/test_dewpoint.py -v` → 5 passed
+- [x] **Adım 5: Isıl modeli ve yük profilini yaz** — `profiles.py`: 168 kutulu (saat-of-hafta) konut/ticari/karma profil + mevsim katsayısı + AR(1) gürültü (rapor §15.2). `generator.py`: nokta başına `ΔT[k+1] = a·ΔT[k] + (1-a)·K·I²` ayrık ısıl model (`a = exp(-Ts/τ)`, τ = 10–30 dk), ortam sıcaklığı günlük sinüs, nem ters ilişkili, MPR türevli elektriksel büyüklükler, TVOC-2 durum makinesi (başlangıçta sakin).
+- [x] **Adım 6: Üreteç testi yaz ve geçir** — `tests/test_generator.py`: (a) üretilen sözlük şemaya uyuyor (`jsonschema` ile), (b) aynı `seed` aynı diziyi veriyor, (c) lag-1 otokorelasyon > 0.9 (verilen Excel'in 0,00'ına karşıt — **bu testin kendisi bir sunum slaytı**).
+- [x] **Adım 7: `sim/panosim.py`** — `python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883` → her 10 s'de (hızlandırılmış) `gridup/pano/{id}/tel` yayınlar.
+- [x] **Adım 8: Commit**
 
 ```bash
 git add libs/panoalgo sim/panosim.py sim/Dockerfile
@@ -905,7 +905,7 @@ git commit -m "feat(frontend): filo listesi ve pano detay ekranlari, HMI paleti"
   - `panoalgo.fusion.score(alarm_codes: list[str], features: dict) -> RiskResult` · `RiskResult = NamedTuple(score: int, mode: str, ttl_h: float | None, contributions: dict[str, float])`
   - `panoalgo.scenarios.build(scenario_id: str, seed: int, duration_h: float) -> tuple[pandas.DataFrame, dict]` (ikinci dönen değer `contracts/scenario-labels.schema.json`'a uyar)
 
-- [ ] **Adım 1: K indeksi için başarısız testi yaz** — `libs/panoalgo/tests/test_k_index.py`
+- [x] **Adım 1: K indeksi için başarısız testi yaz** — `libs/panoalgo/tests/test_k_index.py`
 
 ```python
 import numpy as np
@@ -949,14 +949,14 @@ def test_k_index_not_updated_without_excitation():
     assert state.excited is False
 ```
 
-- [ ] **Adım 2: Testi koştur, başarısız gör.** Beklenen: `ImportError: cannot import name 'KIndexEstimator'`.
-- [ ] **Adım 3: RLS kestirimcisini yaz** — `detect.py`, rapor §15.1'deki unutma faktörlü RLS (θ = [a, β]ᵀ, φ = [ΔT, I²]ᵀ); `K = β/(1−a)`, `τ = −Ts/ln(a)`; uyarım kontrolü: son pencerede `var(I²)` eşiğin altındaysa güncelleme yapılmaz (`excited=False`).
-- [ ] **Adım 4: Testi geçir.**
-- [ ] **Adım 5: L-1 veri kalitesi + L0 limitleri** — `quality.py` (donmuş değer, fiziksel olmayan değişim hızı, bağlantı sıcaklığı ortamın altı, zaman damgası kayması) ve `limits.py` (eşikler **yalnızca** `contracts/alarm-codes.yaml`'dan). Her biri için test.
-- [ ] **Adım 6: Sınıra kalan süre + faz karşılaştırması + füzyon** — `ttl_h`: `K(t) ≈ K_now + K̇·t` (EWMA eğim) ve saat-of-hafta yük profiliyle ΔT tahmini, 70 K'yı ilk aşma anı. `fusion.score()`: hipotez kanıt örüntüleri `contracts/alarm-codes.yaml`'dan, ciddiyet ağırlığıyla 0–100.
-- [ ] **Adım 7: Etiketli senaryo üreteci** — `scenarios.py`: S0–S9 (rapor §15.2 tablosu). Her biri CSV + etiket JSON olarak `data/fixtures/`'a yazılır (≤1 MB, seed'li). Test: her senaryo şemaya uyan etiket üretiyor ve `S1`'de `l0_breach_at` dolu.
-- [ ] **Adım 8: `docs/05` ve `docs/14`'ü yaz** (formüller, eşikler, senaryo kataloğu).
-- [ ] **Adım 9: Commit** (her adım sonunda ayrı commit; son commit mesajı: `feat(algo): L-1/L0/L1 tespit katmanlari + etiketli senaryo seti`)
+- [x] **Adım 2: Testi koştur, başarısız gör.** Beklenen: `ImportError: cannot import name 'KIndexEstimator'`.
+- [x] **Adım 3: RLS kestirimcisini yaz** — `detect.py`, rapor §15.1'deki unutma faktörlü RLS (θ = [a, β]ᵀ, φ = [ΔT, I²]ᵀ); `K = β/(1−a)`, `τ = −Ts/ln(a)`; uyarım kontrolü: son pencerede `var(I²)` eşiğin altındaysa güncelleme yapılmaz (`excited=False`).
+- [x] **Adım 4: Testi geçir.**
+- [x] **Adım 5: L-1 veri kalitesi + L0 limitleri** — `quality.py` (donmuş değer, fiziksel olmayan değişim hızı, bağlantı sıcaklığı ortamın altı, zaman damgası kayması) ve `limits.py` (eşikler **yalnızca** `contracts/alarm-codes.yaml`'dan). Her biri için test.
+- [x] **Adım 6: Sınıra kalan süre + faz karşılaştırması + füzyon** — `ttl_h`: `K(t) ≈ K_now + K̇·t` (EWMA eğim) ve saat-of-hafta yük profiliyle ΔT tahmini, 70 K'yı ilk aşma anı. `fusion.score()`: hipotez kanıt örüntüleri `contracts/alarm-codes.yaml`'dan, ciddiyet ağırlığıyla 0–100.
+- [x] **Adım 7: Etiketli senaryo üreteci** — `scenarios.py`: S0–S9 (rapor §15.2 tablosu). Her biri CSV + etiket JSON olarak `data/fixtures/`'a yazılır (≤1 MB, seed'li). Test: her senaryo şemaya uyan etiket üretiyor ve `S1`'de `l0_breach_at` dolu.
+- [x] **Adım 8: `docs/05` ve `docs/14`'ü yaz** (formüller, eşikler, senaryo kataloğu).
+- [x] **Adım 9: Commit** (her adım sonunda ayrı commit; son commit mesajı: `feat(algo): L-1/L0/L1 tespit katmanlari + etiketli senaryo seti`)
 
 **Kabul:** `pytest libs/panoalgo -v` yeşil (≥20 test) · `python -m panoalgo.scenarios --list` 10 senaryo listeliyor · `S1` fixture'ında K/K₀ 1,6'yı L0 ihlalinden **en az 48 saat önce** geçiyor (bu sayı `docs/12`'nin ana kanıtı).
 
@@ -1019,15 +1019,15 @@ def test_k_index_not_updated_without_excitation():
 - Üretir: `mpr53cs_sim` ve `tvoc2_sim` RS485/TCP Modbus slave'leri **gerçek register adreslerinde** (MPR-53CS kılavuzu; TVOC-2 PDU 100–149, 222–225, 1300–1306 — rapor §3.5)
 - Üretir: `panobeyni-sim` ikilisi — sanal seri port üzerinden Modbus master (cihazları okur) + Modbus slave (bizim haritamızı sunar) + MQTT yayını
 
-- [ ] **Adım 1: TVOC-2 simülatörü** — pymodbus slave; fabrika ayarı **ID 248 = haberleşme kapalı** davranışını taklit eder (ID 1–247'ye alınmadan cevap vermez — bu detay sunumda gösterilecek), 19200/8E1; trip sayacı (149), dedektör bitleri (100/101), tarih/saat kodlaması (1970'ten gün; HHMM = MSB saat/LSB dakika), sensör durumu (222/223). Test: `modpoll`/pymodbus istemcisiyle okuma.
-- [ ] **Adım 2: MPR-53CS simülatörü** — register haritasından faz/nötr akımı, gerilim, THD, cosφ, min/max; `I_primer = ham × 0,001 × CT` (CT = 500) dönüşümü doğru.
-- [ ] **Adım 3: Firmware çekirdek testini yaz (Unity/CTest)** — `firmware/tests/test_rls.c`: Python tarafındaki `test_k_index` ile **aynı test vektörü** (`data/fixtures/rls_vectors.csv`), C ve Python çıktısı ≤1e-6 farkla aynı. Bu "kenarda ve merkezde aynı algoritma" iddiasının kanıtı.
-- [ ] **Adım 4: Testi koştur, başarısız gör** — `cmake -S firmware -B firmware/build && cmake --build firmware/build && ctest --test-dir firmware/build` → FAIL.
-- [ ] **Adım 5: C çekirdeğini yaz** — dinamik bellek yok, float sabit boyutlu durum (nokta başına ~48 bayt), `malloc` yok, standart kütüphane dışı bağımlılık yok. Testi geçir.
-- [ ] **Adım 6: `firmware/host/main.c`** — `panobeyni-sim`: sanal seri porttan Modbus master döngüsü (1 s), çekirdek algoritmaları, Modbus slave sunumu (`contracts/modbus-map.yaml`'dan üretilen tablo), MQTT yayını, 7 günlük halka tampon (dosya).
+- [x] **Adım 1: TVOC-2 simülatörü** — pymodbus slave; fabrika ayarı **ID 248 = haberleşme kapalı** davranışını taklit eder (ID 1–247'ye alınmadan cevap vermez — bu detay sunumda gösterilecek), 19200/8E1; trip sayacı (149), dedektör bitleri (100/101), tarih/saat kodlaması (1970'ten gün; HHMM = MSB saat/LSB dakika), sensör durumu (222/223). Test: `modpoll`/pymodbus istemcisiyle okuma.
+- [x] **Adım 2: MPR-53CS simülatörü** — register haritasından faz/nötr akımı, gerilim, THD, cosφ, min/max; `I_primer = ham × 0,001 × CT` (CT = 500) dönüşümü doğru.
+- [x] **Adım 3: Firmware çekirdek testini yaz (Unity/CTest)** — `firmware/tests/test_rls.c`: Python tarafındaki `test_k_index` ile **aynı test vektörü** (`data/fixtures/rls_vectors.csv`), C ve Python çıktısı ≤1e-6 farkla aynı. Bu "kenarda ve merkezde aynı algoritma" iddiasının kanıtı.
+- [x] **Adım 4: Testi koştur, başarısız gör** — `cmake -S firmware -B firmware/build && cmake --build firmware/build && ctest --test-dir firmware/build` → FAIL.
+- [x] **Adım 5: C çekirdeğini yaz** — dinamik bellek yok, float sabit boyutlu durum (nokta başına ~48 bayt), `malloc` yok, standart kütüphane dışı bağımlılık yok. Testi geçir.
+- [x] **Adım 6: `firmware/host/main.c`** — `panobeyni-sim`: sanal seri porttan Modbus master döngüsü (1 s), çekirdek algoritmaları, Modbus slave sunumu (`contracts/modbus-map.yaml`'dan üretilen tablo), MQTT yayını, 7 günlük halka tampon (dosya).
 - [ ] **Adım 7: (Should) Renode/Wokwi hedefi** — aynı çekirdek bir MCU hedefinde derlenip emülatörde koşar, UART'ı host'un sanal portuna bağlanır. **Zaman kalmazsa atla**, host ikilisi yeterli.
-- [ ] **Adım 8: `akis-diyagramlari/ana-dongu.md`** — mermaid state diyagramı: boot → selftest → taban öğrenme (7 gün) → normal döngü → olay → son nefes.
-- [ ] **Adım 9: Commit** — `feat(sim): MPR-53CS ve TVOC-2 Modbus simulatorleri (gercek adresler)` + `feat(fw): tasinabilir C cekirdegi, host ikilisi ve ortak test vektorleri`
+- [x] **Adım 8: `akis-diyagramlari/ana-dongu.md`** — mermaid state diyagramı: boot → selftest → taban öğrenme (7 gün) → normal döngü → olay → son nefes.
+- [x] **Adım 9: Commit** — `feat(sim): MPR-53CS ve TVOC-2 Modbus simulatorleri (gercek adresler)` + `feat(fw): tasinabilir C cekirdegi, host ikilisi ve ortak test vektorleri`
 
 **Kabul:** `ctest` yeşil · QModMaster ile `tvoc2_sim`'e bağlanıp PDU 1300 okunuyor · ID 248'de cevap **yok**, 1'e alınınca cevap **var** · `panobeyni-sim` çalışırken MQTT'de telemetri akıyor.
 
@@ -1077,8 +1077,8 @@ def test_k_index_not_updated_without_excitation():
 
 > Kod yazılmaz; yazılan = kanıt. Herkes kendi dokümanını bitirir, sonra **çapraz okuma** yapılır (A → B'nin dokümanlarını, B → C'nin, C → A'nın okur; bulduğu hatayı sahibine bildirir, kendisi düzeltmez — kural 2).
 
-- [ ] **T4.1 (A): `docs/12-dogrulama-sonuclari.md`** — 10 senaryo × metrik tablosu: recall, precision, **öne alma süresi (saat)**, yanlış alarm/100 pano/gün. Ve **sabit 70 K eşiği vs L0+L1+L2+L3 karşılaştırması**: aynı veride kaç saat önce, kaç yanlış alarmla. Her sayı `scripts/validate.py` ile yeniden üretilebilir olmalı.
-- [ ] **T4.2 (A): Doğrulama betiğini tekrarlanabilir yap** — `python scripts/validate.py --out docs/12-dogrulama-sonuclari.md` aynı sayıları üretiyor (seed'li).
+- [x] **T4.1 (A): `docs/12-dogrulama-sonuclari.md`** — 10 senaryo × metrik tablosu: recall, precision, **öne alma süresi (saat)**, yanlış alarm/100 pano/gün. Ve **sabit 70 K eşiği vs L0+L1+L2+L3 karşılaştırması**: aynı veride kaç saat önce, kaç yanlış alarmla. Her sayı `scripts/validate.py` ile yeniden üretilebilir olmalı.
+- [x] **T4.2 (A): Doğrulama betiğini tekrarlanabilir yap** — `python scripts/validate.py --out docs/12-dogrulama-sonuclari.md` aynı sayıları üretiyor (seed'li).
 - [x] **T4.3 (B): `docs/02-mimari.md`** — mermaid bileşen + veri akışı + sıralama diyagramı (sensör → kenar → broker → ingest → risk → alarm → SMS, gecikme damgalarıyla).
 - [ ] **T4.4 (B): Temiz makine testi** — sıfırdan `git clone` + `cp deploy/.env.example deploy/.env` + `docker compose up` → 5 dakikada çalışan sistem. Çalışmayan her adım README'ye yazılmaz, **düzeltilir**.
 - [x] **T4.5 (C): `README.md`'yi bitir** — amaç, mimari görseli, tek komutla kurulum, demo senaryoları, **"beklenen 7 teknik çıktı → dosya/klasör" eşleme tablosu** (rapor §11 teslim listesi), ekip, gizlilik notu.
@@ -1188,3 +1188,6 @@ GitHub handle'ları: `@_____` (A), `@ahmetkrkyn0` (B), `@_____` (C) → `CODEOWN
 | 13–14 Eyl (gece) | B (Ahmet) | TB3 Adım 8 (Could) `ahmet/backend`'de: **IEC 60870-5-104 kontrollü istasyon** (TCP 2404, kendi asyncio sunucusu): genel sorgulama, yayın adresi, saat senkronu, ölü bantlı ve zaman etiketli kendiliğinden gönderim, t1/t2/t3 ve k/w akış denetimi; **salt okunur** (kontrol komutları COT 44 ile reddedilir, GK6). Modbus ile aynı kodlayıcı ve birim eşlemesi (ortak adres = birim, IOA = 1000 + PDU); `docs/04` tabloları koddan üretiliyor. Canlı yığında baytları elle kuran bağımsız istemciyle IEC 104 = API (87 kontrol) = Modbus (139 adres), **0 fark**. İlk canlı koşu gerçek bir uyumsuzluk yakaladı: yayın sorgusuna tek bir `0xFFFF` ACTCON/ACTTERM dönülüyordu (standart 7.2.4: her istasyon kendi adresiyle cevaplar) → önce test, sonra düzeltme. Test: `TEST_DB_DSN` ile 580 geçti; mutasyon: sunucu 37/37, kodek 12/12, nokta planı 9/9. `docs/02`, `15`, `17` güncellendi | B'nin kalan işleri başkasına bağlı: TB2 Adım 4 `panoalgo` (A), T4.4 temiz makine testi birleşmeden sonra | Bilinen sınır: kendiliğinden gönderimin zaman etiketi merkezin değişikliği gördüğü an, kenarın ölçüm anı değil (docs/04 §4). Demo'da 2404 düz TCP; sahada SCADA ön-ucunun /32 adresi + IEC 62351-3 (TLS) veya VPN (docs/15) |
 | 14 Eyl | C (Berke) | `berke/frontend` dalında: **TC1** (önceki oturumda commit edildi, log unutulmuş — burada telafi edildi): Vite+React+TS iskeleti, "RAL 7035" tema yönü (3 denenen yön arasından, `frontend/sketches/`), Filo listesi (14 günlük logaritmik "sınıra kalan süre" ekseni) + Pano detay (EK-II/14 on gorunus dijital ikizi, faz karşılaştırma), WebSocket akışı + geri çekilmeli yeniden bağlanma, örnek-veri modu (`npm run dev:mock`), 60 birim testi. **Entegrasyon:** `int/pull-ahmet-backend` dalı açılıp `origin/ahmet/backend` (insights uçları: series/blackbox/fleet-kpi + scada + docs) çakışmasız merge edildi, `berke/frontend`'e geri alındı. **TC2:** Alarm konsolu (`/alarmlar`, onay/raf/yorum/eskalasyon), dijital ikizde nokta tıklanınca gerçek zaman serisi trendi (yeni `GET .../series` istemcisi), `assets/ek2-14-pano.svg`, `hardware/pano-beyni/` (blok diyagramı + I/O tablosu + BOM), `docs/16`. **TC3:** Trend/korelasyon (I²–ΔT dağılımı — aynı bağlantının ilk/son 7 gününü karşılaştırıp iki farklı eğim gösteriyor, gevşek bağlantı senaryosu için ısıl model önce sadece K/K₀ alanında rampa idi, ΔT=K·I² olarak fiziksel tutarlı hale getirildi), Olay analizi/kara kutu (yeni ark tripi senaryosu + zaman çizelgesi), Cihaz sağlığı, Bölge haritası, `hardware/yerlesim/ek2-14-yerlesim.svg`, `hardware/mekanik/din-kutu.scad`, `docs/01/07/08/10/11/13`. 9 ekranın 7'si çalışıyor. Toplam 68 birim testi, `tsc`/`vitest`/`npm run build` yeşil, tüm yeni ekranlar tarayıcıda (masaüstü + 400 px mobil) görsel doğrulandı, konsol hatasız | Bu makinede `openscad` ve `kicad` kurulu değil, internet yok → STL üretilemedi, `.kicad_sch` bilinçli olarak üretilmedi (dürüstlük kuralı, bkz. `hardware/pano-beyni/README.md`); bu makinede global `starlette` sürümü `fastapi==0.115.*` ile uyumsuz olduğu için backend testleri toplanamıyor (main'de de var, B'ye iletilmeli) | KiCad şeması yerine blok diyagramı + I/O tablosu + BOM (STATUS.md karar #1); Bölge haritası il/ilçe yerine dağıtım şirketi bazlı, Cihaz sağlığı toplu uç yerine pano-başına istekle (STATUS.md karar #2–3, `contracts/changes/2026-09-14-fleet-health-bulk.md` önerisi açıldı, 3 onay bekliyor) |
 | 14 Eyl | C (Berke) | Faz 4/5: kök `README.md` bitirildi (7-çıktı tablosu, ekip, hızlı başlangıç); `assets/ekran/`'a 7 ekranın ekran görüntüsü alındı (`npm run dev:mock`, masaüstü) ve `docs/16` §5'e gömüldü; `demo/senaryo/_ortak.sh` + `s0.sh`…`s8.sh` yazıldı (`s7`/`s8` gerçek araçlara karşı çalışıyor — `loadtest/fleet.py`, Modbus/IEC104 — `s0`–`s6` A'nın simülatörünü bekliyor, çalıştırılınca bunu açıkça söylüyor); `demo/sunum/sunum-taslagi.md` (rapor §8.2 iskeleti, donanımsızlık slayt 3'te güçlü konumlandırıldı); T4.7 sır taraması (C'nin payı) temiz bulundu | — | **Ekip riski, öneri seçilerek not düşüldü:** Bu tarih itibarıyla A kulvarı (`libs/panoalgo/`, `firmware/`, `sim/panosim.py`, `mpr53cs_sim.py`, `tvoc2_sim.py`, `docs/05`, `docs/12`) depoda hâlâ yok (`sim/` yalnızca yer tutucu `hello_publisher.py` içeriyor). B ve C tamamlandı, örnek veriyle uçtan uca çalışıyor; gerçek yığında "uçtan uca" ve S0–S6 demo senaryoları A'nın işine bağlı kilitli kaldı. Özellik dondurmaya (17 Eylül 23:59) 3 gün kaldı — Bölüm F'deki M1/M2 kapısı kaçırma senaryosu şu an M3 için de geçerli olabilir; ekibin bugün A'nın durumunu netleştirmesi önerilir. |
+| 14 Eyl | A (Tuna) | TA1 `tuna/veri-ureteci`'nde: `libs/panoalgo` paketi kuruldu (physics: Magnus ciy noktasi + yogusma marji; profiles: 168 kutulu saat-of-hafta konut/ticari/karma profil + mevsim katsayisi + AR(1) gurultu; generator: ayrik isil model dT[k+1]=a*dT[k]+(1-a)*K*I^2, ortam sinusu, ters iliskili nem, faz dengesizligi %2-15, notr akimi dengesizlik+3.harmonik, TVOC-2 sakin durumu) ve `sim/panosim.py` MQTT yayincisi. Sozlesmeden okuma (kural 10): nokta adlari modbus-map, esikler alarm-codes, pano_id deseni + topic/QoS/retain telemetri semasi. 146 test; 27/27 mutasyon yakalandi. Canli yigin: 3 pano -> mosquitto -> ingest -> TimescaleDB -> API, received 9 / rejected 0 / dropped 0, karantina bos, 189 etiket/mesaj. sim imaji artik repo kokunden derleniyor (panoalgo imaja kuruluyor), Faz 0'in hello_publisher.py'si kaldirildi | — | Karar gerekiyor: yayinlanan `ts` SIMULE zamandir, --speed 60 ile duvar saatinin onune gecer (Grafana/arayuz zaman ekseni etkilenir); duvar saatiyle hizali demo icin --speed 1. TA2'ye bulgu: ALM-DQ-BELOW-AMBIENT kurali olu bant istiyor (hafif yuklu GIRIS_N fiziksel olarak ortamda oturur, sigma 0,2 K gurultu ile dt_c ara ara negatife duser) |
+| 14 Eyl (aksam) | A (Tuna) | TA2 TAMAM + TA3 kismen. Tespit katmanlari: `detect.py` (RLS K indeksi, sinira kalan sure, faz karsilastirmasi), `quality.py` (L-1), `limits.py` (L0/L1 esik karari), `fusion.py` (hipotez fuzyonu), `edge.py` (kenar boru hatti), `central.py` (B'nin CentralDetector kancasina takilan adaptor), `scenarios.py` (S0-S9 + 10 fixture), `validate.py` + `scripts/validate.py`. Dokumanlar: docs/05, docs/12 (betikle uretilir), docs/14. C firmware cekirdegi: `firmware/core/rls.c|thermal.c|dewpoint.c`, CMake/CTest, akis diyagramlari. OLCUMLER: 300 Python testi + 3 C testi yesil; 27/27 Python ve 11/11 C mutasyonu yakalandi; S1'de K/K0 1.6 esigi sabit 70 K esiginden 209 SAAT once asiliyor (kriter 48 saatti); tum senaryolarda recall 1.00, yasakli alarm yok, S0'da yanlis alarm 71,4/100 pano/gun (sozlesme kabul siniri 150); C ile Python farki K 1.36e-8 / tau 1.42e-8 (PLAN esigi 1e-6) | TA3 Adim 1-2 (TVOC-2 ve MPR-53CS simulatorleri) ve Adim 6 (host ikilisi) suruyor | Adim 7 (Renode/Wokwi) Should — atlanacak. Bellek butcesi PLAN'daki ~48 B yerine 320 B/nokta: kalici uyarim penceresi C ile Python'un ayni `excited` kararini vermesi icin gerekli (gerekce firmware/akis-diyagramlari/ana-dongu.md). B'ye: `scripts/validate.py` CODEOWNERS'ta senin dizininde ama PLAN T4.2 A'ya atiyor — ince bir giris dosyasi, itirazin varsa 13:00'te konusalim |
+| 14 Eyl (gece) | A (Tuna) | TA3 TAMAM (Adim 7 haric — Should, atlandi). Cihaz simulatorleri: `sim/tvoc2_sim.py` ve `sim/mpr53cs_sim.py`, register mantigi `panoalgo/devices.py` icinde testli. Firmware: `modbus_map.c` (GK6 yazma korumasi), `limits.c`, `host/main.c` (panobeyni-sim). Modbus harita basligi sozlesmeden URETILIYOR (`panoalgo/genmap.py`). CANLI DOGRULAMA (gercek pymodbus istemcisi): TVOC-2 ID 248'de hicbir isteme cevap yok, ID 10'a alininca PDU 1300 = 0; ark tripi sonrasi 149 = 1, tarih/saat kilavuz kodlamasiyla dogru; bos trip slotu 0xFFFF. MPR-53CS: CT 0x8001 = 500, L1 ham 4618 -> 2309,0 A (rapor 15.1 ornegi). C/PYTHON ESITLIGI: sentetik vektorde fark K 1,36e-8 / tau 1,42e-8 (esik 1e-6); GERCEK uretec verisinde 25 noktada K/K0 farki 0,0004 (register kuantizasyonunun kendisi). 331 Python + 5 C testi yesil. | — | TA3 Adim 7 (Renode/Wokwi) atlandi: Should, host ikilisi yeterli. Adim 6'nin tasima kismi (seri Modbus master, MQTT) C yerine Python katmaninda — gerekce firmware/host/main.c basinda. Yol boyunca bulunan ve duzeltilen dort sapma: lam ornekleme periyoduna tasinmiyordu, taban medyani iki tarafta farkli hesaplaniyordu, bir orneklik kayma vardi ve URETECIN GERCEK K'si kestirim yokken yukte kaliyordu (kenar olcemeyecegi bir dogruyu yayinliyordu). B'ye hatirlatma: contracts/changes/2026-09-14-eksik-esikler.md hala 3 onay bekliyor |

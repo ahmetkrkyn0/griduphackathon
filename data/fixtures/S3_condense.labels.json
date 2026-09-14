@@ -1,0 +1,32 @@
+{
+  "scenario_id": "S3_condense",
+  "seed": 1304,
+  "pano_id": "SIM-00001",
+  "pano_type": "1600kVA-dahili",
+  "duration_h": 168.0,
+  "sample_period_s": 900.0,
+  "generated_at": "2026-09-14T14:28:49+00:00",
+  "profile": "karma",
+  "season": "kis",
+  "data_file": "S3_condense.csv",
+  "labels": [
+    {
+      "t_start": "2026-01-07T08:00:00+00:00",
+      "t_end": "2026-01-12T00:00:00+00:00",
+      "type": "condensation",
+      "point": "PANEL",
+      "expect": [
+        "ALM-DEW-WARN",
+        "ALM-DEW-ALM"
+      ],
+      "severity": "P2",
+      "not_expect": [
+        "ALM-K-ALM"
+      ],
+      "params": {
+        "humidity_offset_pct": 25
+      },
+      "l0_breach_at": null
+    }
+  ]
+}

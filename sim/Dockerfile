@@ -5,11 +5,20 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /srv
 
-COPY requirements.txt .
+# DIKKAT: build context repo KOKUDUR (deploy/compose.sim.yaml: context: ..).
+# Sebep: fizik ureteci libs/panoalgo icinde yasar, sim/ disindadir ve imaja kurulur.
+COPY sim/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY libs/panoalgo /srv/libs/panoalgo
+RUN pip install --no-cache-dir --no-deps /srv/libs/panoalgo
 
+COPY sim/ /srv/
+
+# Sozlesmeler calisma aninda /contracts'a salt okunur baglanir, imaja KOPYALANMAZ:
+# esik/adres degisince yeniden build gerekmesin (backend/Dockerfile ile ayni gerekce).
 ENV CONTRACTS_DIR=/contracts
 
-CMD ["python", "hello_publisher.py"]
+# Varsayilan servis panosim; cihaz simulatorleri compose icinde `command:`
+# ile secilir (deploy/compose.sim.yaml).
+CMD ["python", "panosim.py"]
