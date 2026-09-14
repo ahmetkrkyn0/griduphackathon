@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { PanelSummary } from "../api/types";
 import { PrioMark } from "../components/PrioMark";
+import { RiskMatrisi } from "../components/RiskMatrisi";
 import { SureEkseni } from "../components/SureEkseni";
 import { ago, ttlText } from "../lib/format";
 import { hypText } from "../lib/labels";
@@ -9,8 +10,17 @@ import { useNow } from "../lib/useNow";
 import { effectivePrio, fleetHeadline, needsAttention, panelHeadline, sortWorklist } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
 
+type HeroView = "eksen" | "risk";
+
+// SureEkseni (zaman ekseni) dar ekranda gizlenir (bkz. app.css @media 960px, sabit piksel
+// duzeni dar ekrana uymuyor). Risk matrisi SVG'si olcekli oldugu icin mobilde de calisiyor;
+// mobil kullanici ilk acilista bos alanla karsilasmasin diye varsayilan gorunum ona gore secilir.
+const initialHeroView = (): HeroView =>
+  typeof window !== "undefined" && window.matchMedia("(max-width: 960px)").matches ? "risk" : "eksen";
+
 export function FiloListesi() {
   const { panels, loaded, error } = useFleet();
+  const [heroView, setHeroView] = useState<HeroView>(initialHeroView);
   useNow(5000);
 
   const worklist = useMemo(() => sortWorklist(panels), [panels]);
@@ -55,7 +65,19 @@ export function FiloListesi() {
       <section className="hero" aria-labelledby="filo-baslik">
         <h1 id="filo-baslik">{fleetHeadline(worklist)}</h1>
         <p>Panolar sorunun ne zaman kritik hale geleceğine göre dizilir. {normal.length} pano normal çalışıyor.</p>
-        {worklist.length > 0 && <SureEkseni worklist={worklist} />}
+        {worklist.length > 0 && (
+          <>
+            <div className="chart-range" role="group" aria-label="Filo görünümü">
+              <button type="button" aria-pressed={heroView === "eksen"} onClick={() => setHeroView("eksen")}>
+                Zaman ekseni
+              </button>
+              <button type="button" aria-pressed={heroView === "risk"} onClick={() => setHeroView("risk")}>
+                Risk matrisi
+              </button>
+            </div>
+            {heroView === "eksen" ? <SureEkseni worklist={worklist} /> : <RiskMatrisi panels={worklist} />}
+          </>
+        )}
       </section>
 
       {worklist.length > 0 && (

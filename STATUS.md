@@ -9,8 +9,36 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 öğleden sonra (tasarım revizyonu R1–R3 uygulandı, §9).
-**Son commit:** Tasarım revizyonu R1–R3 (marka paleti, tipografi, 3D zaman kaydırıcı) — bkz. §9.
+**Son güncelleme:** 14 Eylül 2026 öğleden sonra (tasarım revizyonu R1–R4 uygulandı, §10).
+**Son commit:** Tasarım revizyonu R4 (olay modu, risk matrisi, mock kara kutu düzeltmesi) — bkz. §10.
+
+## 10. Oturum 4 — Tasarım revizyonu uygulaması: R4 (14 Eylül, "Devam et")
+
+Kullanıcı "Devam et" dedi; planın §5'inde R3'ten sonra sıradaki adım olan R4 (Y2 olay modu, Y3 risk
+matrisi) uygulandı.
+
+| İş | Durum |
+|---|---|
+| Y2 — Olay modu | ✅ `AlarmNedeni.tsx` (P1+onaysızda kırmızı kart kenarı, kalın kırmızı geçen süre, kara kutu kısayolu), `PanoDetay.tsx` (`.quiet` ile destekleyici bölümler soluklaşır) |
+| Y3 — Risk matrisi | ✅ Yeni `components/RiskMatrisi.tsx`, Filo ekranında "Zaman ekseni / Risk matrisi" geçişi |
+| Mock veri düzeltmesi (yan bulgu) | ✅ `mock.ts` `EVENTS`'e eksik olan `EVT-51` (GDZ-00231 P1 koruma sağlığı) eklendi |
+
+**Kararlar (öneri seçilerek, dürüstlük kuralı gereği plan metninden sapma):**
+1. **Y3'te "etki" ekseni `pano_type` (kVA) değil `risk_score`.** Uygulama sırasında fark edildi:
+   sözleşmede filodaki **tüm panolar aynı `pano_type`** değerine sahip (1600 kVA, tek ürün kapsamı).
+   Sabit bir alanı değişken bir "etki" ekseni gibi göstermek yanıltıcı olurdu; bunun yerine gerçekten
+   panodan panoya değişen ve API'nin ürettiği `risk_score` (0–100) kullanıldı. Ayrıntı:
+   `frontend/TASARIM-REVIZYONU.md` §7.
+2. **"Sağ üst köşe" → "sol üst köşe" düzeltmesi.** İlk plan taslağında bir yön hatası vardı (x ekseni
+   soldan sağa zaman arttığı için en acil+riskli köşe sol üsttür, sağ üst değil); uygulama sırasında
+   düzeltildi.
+3. **Y2, ayrı bir bileşen yerine mevcut `AlarmNedeni.tsx`'e gömüldü** — "olay kartı" zaten oydu,
+   yeni bir kart eklemek yinelenme yaratırdı.
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Tarayıcıda: Filo risk
+matrisinde noktaya tıklayınca doğru panoya gidiyor; GDZ-00231 ve Alarm konsolunda P1 kartının kırmızı
+kenarı + "Kara kutuyu aç" bağlantısı (artık gerçek EVT-51 verisine gidiyor) doğrulandı; 390 px mobilde
+risk matrisi görünümü (varsayılan) yatay taşmasız çalışıyor.
 
 ## 9. Oturum 3 — Tasarım revizyonu uygulaması: R1–R3 (14 Eylül, kullanıcı onayı sonrası)
 

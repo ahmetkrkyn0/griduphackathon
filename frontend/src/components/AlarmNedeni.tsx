@@ -51,9 +51,11 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
   const advice = adviceText(alarm.advice);
   const notified = (alarm.notified ?? []).map((channel) => CHANNEL_TEXT[channel] ?? channel);
   const canShelve = onShelve && alarm.prio !== "P1" && (alarm.state === "active" || alarm.state === "acked");
+  // Y2 (olay modu, TASARIM-REVIZYONU.md §4): P1 + onaysizken bu kart gorsel olarak one cikar.
+  const eventMode = alarm.prio === "P1" && alarm.state === "active";
 
   return (
-    <div className="qa">
+    <div className={eventMode ? "qa qa-event" : "qa"}>
       <div className="qa-head">
         <PrioMark prio={alarm.prio} acked={alarm.state === "acked"} />
         <strong>{alarmText(alarm.code, alarm.text)}</strong>
@@ -62,8 +64,13 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
             {panoName} <span className="dim">{alarm.pano_id}</span>
           </Link>
         )}
-        <span className="dim">{ago(alarm.raised_at)}</span>
+        <span className={eventMode ? "event-elapsed" : "dim"}>{ago(alarm.raised_at)}</span>
         {alarm.state === "shelved" && <span className="badge-shelved">rafta{alarm.shelved_until ? `, ${ago(alarm.shelved_until)} bitiyor` : ""}</span>}
+        {alarm.prio === "P1" && alarm.event_id && (
+          <Link className="event-link" to={`/olay/${alarm.event_id}`}>
+            Kara kutuyu aç →
+          </Link>
+        )}
       </div>
 
       <section>

@@ -177,6 +177,10 @@ export function PanoDetay() {
   const focus = selected ?? primary?.reason?.point ?? null;
   // Y6 (calm technology): onaylanmis alarma bagli noktalarda halka animasyonu durur.
   const ackedPoints = new Set(alarms.filter((a) => a.state === "acked" && a.reason?.point).map((a) => a.reason!.point!));
+  // Y2 (olay modu): P1 aktif ve onaysizken destekleyici bolumler soluklasir, karar bilgisi (AlarmNedeni)
+  // ve dijital ikiz (konumsal farkindalik) tam gorunur kalir.
+  const eventMode = primary?.prio === "P1" && primary.state === "active";
+  const quiet = eventMode ? "quiet" : undefined;
   const group = focus ? phaseGroup(detail.points, focus) : [];
   const summary = panels.find((p) => p.pano_id === panoId);
   const subtitle = [panoTypeText(detail.pano_type), hypText(detail.risk_mode), `risk ${detail.risk_score ?? 0}`, `son veri ${ago(detail.ts)}`]
@@ -242,28 +246,32 @@ export function PanoDetay() {
             <p className="calm">Aktif alarm yok.</p>
           )}
 
-          {others.length > 0 && (
-            <section className="others">
-              <h3>Diğer aktif alarmlar</h3>
-              <ul>
-                {others.map((a) => (
-                  <li key={a.id}>
-                    <PrioMark prio={a.prio} acked={a.state === "acked"} small />
-                    <span>{alarmText(a.code, a.text)}</span>
-                    <span className="dim">{ago(a.raised_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <div className={quiet}>
+            {others.length > 0 && (
+              <section className="others">
+                <h3>Diğer aktif alarmlar</h3>
+                <ul>
+                  {others.map((a) => (
+                    <li key={a.id}>
+                      <PrioMark prio={a.prio} acked={a.state === "acked"} small />
+                      <span>{alarmText(a.code, a.text)}</span>
+                      <span className="dim">{ago(a.raised_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-          {group.length > 0 && <FazKarsilastirma points={group} focus={focus} />}
-          {focus && <NoktaTrendi panoId={panoId} point={focus} label={group.find((p) => p.pt === focus)?.label ?? pointLabel(focus)} />}
+            {group.length > 0 && <FazKarsilastirma points={group} focus={focus} />}
+            {focus && <NoktaTrendi panoId={panoId} point={focus} label={group.find((p) => p.pt === focus)?.label ?? pointLabel(focus)} />}
+          </div>
         </div>
       </div>
 
-      <PanoOzeti detail={detail} />
-      <OlcumTablosu points={detail.points} selected={focus} onSelect={setSelected} />
+      <div className={quiet}>
+        <PanoOzeti detail={detail} />
+        <OlcumTablosu points={detail.points} selected={focus} onSelect={setSelected} />
+      </div>
     </main>
   );
 }

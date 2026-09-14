@@ -1,7 +1,7 @@
 # Tasarım Revizyonu Planı — "RAL 7035 + Aydem kimliği"
 
-> **Sahip:** Kişi C (Berke) · **Tarih:** 14 Eylül 2026 · **Durum:** kullanıcı onayladı, **R1–R3 uygulandı**
-> (§7). R4 (olay modu, risk matrisi) ve R5 (ekran görüntülerini yenileme) zaman kalırsa yapılacak.
+> **Sahip:** Kişi C (Berke) · **Tarih:** 14 Eylül 2026 · **Durum:** kullanıcı onayladı, **R1–R4 uygulandı**
+> (§6, §8). R5 (ekran görüntülerini yenileme) zaman kalırsa yapılacak.
 > Bağlantılı: [`docs/16-ux-tasarim.md`](../docs/16-ux-tasarim.md) (mevcut tasarım gerekçesi).
 
 ## 0. Tek paragrafta öneri
@@ -170,7 +170,7 @@ SVG'leri (tarayıcıda okundu, 14 Eylül 2026), Aydem Enerji logo kılavuzu sayf
 | R1 | Token'lar + Nunito (§3.3, §3.4) | `theme.css`, `app.css`, `main.tsx`, `package.json` | ✅ Uygulandı |
 | R2 | Marka katmanı: kimlik bandı, ürün işareti, plakalar, boş durumlar (§3.5) | `App.tsx`, `app.css`, `index.html` (favicon) | ✅ Uygulandı |
 | R3 | Y6 (onaylanınca duran hareket) + Y1 (3D zaman kaydırıcı) | `Ikiz3D.tsx`, `OnGorunus.tsx`, `PanoDetay.tsx` | ✅ Uygulandı |
-| R4 | Y2 (olay modu) + Y3 (risk matrisi) | `PanoDetay.tsx`, `FiloListesi.tsx`, yeni `RiskMatrisi.tsx` | ⏳ Zaman kalırsa |
+| R4 | Y2 (olay modu) + Y3 (risk matrisi) | `PanoDetay.tsx`, `AlarmNedeni.tsx`, `FiloListesi.tsx`, yeni `RiskMatrisi.tsx`, `mock.ts` düzeltmesi | ✅ Uygulandı |
 | R5 | Ekran görüntülerini yeniden al, `docs/16` §1 ve §5'i güncelle | `assets/ekran/`, `docs/16-ux-tasarim.md` | ⏳ Zaman kalırsa |
 
 **Kabul ölçütleri:** tüm testler yeşil; kontrast (metin ≥ 4,5:1, grafik ≥ 3:1) token bazında
@@ -206,9 +206,42 @@ gerektirmez; Y3'teki "etki" yalnızca mevcut `pano_type` alanından gelir.
   ADM-00301/GDZ-00088 sayfalarında görsel + konsol kontrolü yapıldı (hata yok), 390 px mobil genişlikte
   yatay taşma yok.
 
+## 7. Yapıldı: R4 — Y2 (olay modu) + Y3 (risk matrisi)
+
+- **Y2 (olay modu).** `AlarmNedeni.tsx` içine gömüldü (ayrı bileşen yerine "olay kartı"nın kendisi
+  güçlendirildi): P1 + onaysız alarmda kart üst kenarı `--p1` kırmızısına döner (`qa-event`), geçen
+  süre (`ago()`, zaten canlı güncelleniyordu) kırmızı/kalın olur, ve `event_id` varsa "Kara kutuyu
+  aç →" kısayolu belirir. `PanoDetay.tsx`'te bu durumda (`eventMode`) destekleyici bölümler (diğer
+  alarmlar, faz karşılaştırması, trend, ölçüm özeti/tablosu) `.quiet` sınıfıyla soluklaşır (hover/
+  focus'ta tam görünürlüğe döner) — dijital ikiz ve karar bilgisi (Neden/Ne yapmalı/Ne kadar acil)
+  tam opaklıkta kalır.
+- **Y3 (risk matrisi).** Yeni `components/RiskMatrisi.tsx`, Filo ekranında "Zaman ekseni / Risk
+  matrisi" geçişiyle. **Plan metninden bir sapma yapıldı:** ilk taslak y eksenini "trafo gücü
+  (`pano_type`)" olarak öneriyordu, ama sözleşmede filodaki **tüm panolar aynı `pano_type`**
+  değerine sahip (1600 kVA, tek ürün kapsamı — `docs/10-bom-maliyet-roi.md`) — bu alanı "etki" gibi
+  göstermek sabit bir sayıyı değişkenmiş gibi sunmak olurdu (dürüstlük kuralı ihlali). Bunun yerine
+  gerçekten panodan panoya değişen ve API'nin ürettiği `risk_score` (0–100) kullanıldı. Ayrıca ilk
+  taslaktaki "sağ üst köşe = önce buraya git" ifadesi de düzeltildi: x ekseni soldan sağa zaman
+  arttığı için en acil+riskli köşe **sol üst**tür; kod ve arayüz buna göre yazıldı. Süre tahmini
+  olmayan P1/P2 alarmlar (ark, koruma sağlığı kaybı) x=0 ("şimdi") ucuna yerleşir — yeni bir eşik
+  icat edilmedi, yalnızca "geri sayımı yok" durumu en acil uca haritalandı.
+- **Mobil varsayılan görünüm.** Zaman ekseni (`SureEkseni`) dar ekranda halihazırda gizliydi (sabit
+  piksel düzeni, `app.css` @media 960px). Risk matrisi SVG'si ölçekli olduğu için mobilde çalışıyor;
+  mobil kullanıcı boş alanla karşılaşmasın diye `matchMedia` ile ilk açılış görünümü mobilde "risk
+  matrisi" olacak şekilde ayarlandı (masaüstünde değişiklik yok).
+- **Mock veri düzeltmesi (yan bulgu).** Y2'nin "Kara kutuyu aç" kısayolu test edilirken, GDZ-00231'in
+  P1 alarmının (`ALM-PROT-HEALTH`, `event_id: "EVT-51"`) kara kutu verisi hiç yoktu (`mock.ts`
+  `EVENTS` sabitinde yalnızca `EVT-60`/`EVT-42` tanımlıydı) — bu, yeni özellik olmadan gizli kalan
+  önceden var olan bir eksiklikti. `EVENTS`'e `EVT-51` girdisi eklendi (üç adımlık gerçekçi zaman
+  çizelgesiyle); artık depodaki her iki P1 senaryosu da kara kutuya sahip.
+- **Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Tarayıcıda: Filo'da
+  risk matrisi noktasına tıklayınca doğru panoya gidiyor; GDZ-00231/Alarm konsolunda P1 kartının
+  kırmızı üst kenarı ve kara kutu kısayolu (EVT-51 → gerçek zaman çizelgesi) doğrulandı; 390 px
+  mobilde hem risk matrisi hem Filo listesi yatay taşmasız.
+
 ---
 
-## 7. Yapıldı: 3D dijital ikiz entegrasyonu (14 Eylül, önceki oturum)
+## 8. Yapıldı: 3D dijital ikiz entegrasyonu (14 Eylül, önceki oturum)
 
 - `frontend/src/components/Ikiz3D.tsx`: spike'taki sahnenin üretim hali. three.js npm'den
   (`three@0.169.0`) ve **ayrı parça** olarak yüklenir (509 kB, gzip 130 kB); ilk açılış paketi

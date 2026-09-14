@@ -41,6 +41,17 @@ kritikleşeceğine göre dizilir (`components/SureEkseni.tsx`). Eksen logaritmik
 `lib/worklist.ts`) — yakın gelecek geniş, uzak gelecek sıkışık — çünkü operatör için "6 gün" ile
 "7 gün" arasındaki fark, "60 gün" ile "61 gün" arasındakinden çok daha önemlidir. Kartlar aynı
 zaman diliminde çakışırsa `layoutAxisRows` satırlara dağıtır (birim testli, `worklist.test.ts`).
+"Zaman ekseni / Risk matrisi" geçişiyle ikinci bir görünüm de var (`components/RiskMatrisi.tsx`,
+Y3): x = sınıra kalan süre, y = API'nin `risk_score`'u — bkz. `frontend/TASARIM-REVIZYONU.md` §7.
+
+## 2.2 Pano detay: olay modu
+
+Bir pano'da onaylanmamış bir P1 alarmı varken ekran "olay moduna" geçer: alarm kartının üst kenarı
+kırmızıya döner, geçen süre kalınlaşır, bir "Kara kutuyu aç" kısayolu belirir; diğer bölümler
+(faz karşılaştırması, trend, ölçüm özeti) soluklaşır ama kaybolmaz (Y2, `PanoDetay.tsx`, `.quiet`
+sınıfı). Dijital ikiz ve karar bilgisi ("Neden? Ne yapmalı? Ne kadar acil?") her zaman tam görünür
+kalır — bu, operatörün konum ve eylem bilgisini kaybetmeden dikkatinin en kritik olaya yönlenmesini
+sağlar.
 
 ## 3. Bilinçli kapsam sınırları (dürüstlük kuralı, Bölüm C)
 

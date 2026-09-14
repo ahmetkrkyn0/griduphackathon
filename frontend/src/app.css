@@ -182,6 +182,14 @@
 .qa { border-top: 2px solid var(--ink); }
 .qa-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .qa-head strong { font: 600 18px var(--cond); }
+/* Y2 olay modu: P1 + onaysiz alarmda kart one cikar (TASARIM-REVIZYONU.md §4). */
+.qa-event { border-top-color: var(--p1); }
+.event-elapsed { color: var(--p1); font: 600 14px var(--sans); }
+.event-link { margin-left: auto; color: var(--p1); font: 600 14px var(--sans); text-decoration: none; }
+.event-link:hover { text-decoration: underline; }
+/* Olay modunda destekleyici bolumler soluklasir; karar bilgisi ve ikiz tam gorunur kalir. */
+.quiet { opacity: 0.55; transition: opacity 0.2s ease; }
+.quiet:hover, .quiet:focus-within { opacity: 1; }
 .qa section { display: grid; grid-template-columns: 130px 1fr; gap: 16px; padding: 12px 0 14px; border-bottom: 1px solid var(--line); }
 .qa h3 { font: 600 16px var(--cond); margin: 0; }
 .qa p { margin: 0; }
@@ -227,6 +235,20 @@
 .state.st-alarm::before { background: var(--p2); }
 .state.st-critical::before { background: var(--p1); }
 .state.st-stale::before { background: transparent; border: 2px dashed var(--dot); }
+
+/* ---------- Risk matrisi (Y3, components/RiskMatrisi.tsx) ---------- */
+.riskmx-quad { fill: var(--p1); opacity: 0.05; }
+.riskmx-caption { margin-top: 6px; }
+.riskmx-pt { cursor: pointer; outline: none; }
+.riskmx-hit { fill: transparent; }
+.riskmx-pt:focus-visible .riskmx-hit { stroke: var(--ours); stroke-width: 3; fill: none; }
+.riskmx-dot { fill: var(--dot); stroke: #fff; stroke-width: 2; }
+.riskmx-pt.p-P1 .riskmx-dot { fill: var(--p1); }
+.riskmx-pt.p-P2 .riskmx-dot { fill: var(--p2); }
+.riskmx-pt.p-P3 .riskmx-dot { fill: var(--p3); }
+.riskmx-pt.p-SYS .riskmx-dot { fill: var(--sys); }
+.riskmx-label { font: 500 12px var(--sans); fill: var(--ink); }
+.riskmx-pt:hover .riskmx-label, .riskmx-pt:focus-visible .riskmx-label { font-weight: 700; }
 
 /* ---------- Grafikler (CizgiGrafik, SacilimGrafik) ---------- */
 .chart { margin-top: 4px; }

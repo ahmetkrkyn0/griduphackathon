@@ -251,6 +251,17 @@ const EVENTS: Record<string, MockEvent> = {
       { ts: isoAgo(minutes(40)), kind: "action", text: "ALM-K-ALM (P2, DSYA-3 L2) bildirim iletildi: sms, whatsapp" },
     ],
   },
+  // Y2 (olay modu) P1 kartindaki "Kara kutuyu ac" kisayolu her P1 alarm icin calissin diye eklendi;
+  // eskiden yalnizca EVT-60/EVT-42 vardi, ALM-PROT-HEALTH (id "51") 404 veriyordu.
+  "EVT-51": {
+    event_id: "EVT-51", pano_id: PROT_HEALTH.panoId, occurred_at: isoAgo(minutes(3)),
+    code: "ALM-PROT-HEALTH", point: null, det_label: "X2:4",
+    timeline: [
+      { ts: isoAgo(minutes(4)), kind: "note", text: "TVOC-2 PDU 222/223 sensör durumu hata bitini işaretledi (dedektör X2:4)" },
+      { ts: isoAgo(minutes(3)), kind: "alarm", text: "ALM-PROT-HEALTH (P1) oluştu: Ark koruması sağlık durumu arızalı — pano sessizce korumasız" },
+      { ts: isoAgo(minutes(2)), kind: "action", text: "ALM-PROT-HEALTH (P1) bildirim iletildi: sms, whatsapp" },
+    ],
+  },
 };
 
 export const mockApi: Api = {
