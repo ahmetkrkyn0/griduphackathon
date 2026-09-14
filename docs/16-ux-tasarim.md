@@ -69,7 +69,20 @@ Gerçek harita karosu hiçbir ekranda kullanılmaz (GK4: yığın internetten ba
 
 ## 5. Ekran görüntüleri
 
-`assets/ekran/` altında, her ana ekranın normal ve alarm halleri (T4.6, Faz 4'te eklenecek).
+`assets/ekran/` altında, örnek veri modunda (`npm run dev:mock`) alınmış ekran görüntüleri:
+
+| Ekran | Normal | Alarm / dolu |
+|---|---|---|
+| Pano detay | ![Normal](../assets/ekran/02-pano-detay-normal.png) | ![Alarm](../assets/ekran/02-pano-detay-alarm.png) |
+| Filo listesi | — | ![Filo](../assets/ekran/01-filo-listesi.png) |
+| Alarm konsolu | — | ![Alarm konsolu](../assets/ekran/03-alarm-konsolu.png) |
+| Trend & korelasyon | — | ![Trend](../assets/ekran/04-trend-korelasyon.png) |
+| Olay analizi (kara kutu) | — | ![Kara kutu](../assets/ekran/05-olay-analizi-kara-kutu.png) |
+| Cihaz sağlığı | — | ![Cihaz sağlığı](../assets/ekran/06-cihaz-sagligi.png) |
+| Bölge haritası | — | ![Bölge](../assets/ekran/07-bolge-haritasi.png) |
+
+Filo/Alarm konsolu/Bölge gibi filo-genelindeki ekranlarda tek bir "normal" hali anlamlı değildir
+(zaten yalnızca ilgi bekleyenler öne çıkar); bu yüzden yalnızca dolu (gerçek veriyle) hali verildi.
 
 ## 6. Sonraki adım
 
