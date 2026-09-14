@@ -36,7 +36,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import fusion, limits, quality
-from .detect import KIndexEstimator
+from .detect import KIndexEstimator, lambda_for_period, load_thresholds
 from .profiles import ProfileKind, load_profile
 
 # Beklenen yuk profili icin gecmis I^2 ortalamasinin penceresi (ornek sayisi).
@@ -58,6 +58,7 @@ class EdgePipeline:
         self._contracts_dir = contracts_dir
         self._profile: ProfileKind = profile
         self._quality = quality.QualityTracker(contracts_dir)
+        self._reference_lam = float(load_thresholds(contracts_dir)["rls_lambda"])
         self._estimators: dict[tuple[str, str], KIndexEstimator] = {}
         self._i2_mean: dict[tuple[str, str], list[float]] = {}
         self._previous: dict[str, dict] = {}
@@ -125,6 +126,9 @@ class EdgePipeline:
                     continue  # ilk ornek: periyot henuz bilinmiyor
                 estimator = KIndexEstimator(
                     ts=period_s,
+                    # Unutma faktoru ornekleme periyoduna tasinir: ayni lam farkli
+                    # periyotta farkli ZAMAN hafizasi demektir (bkz. detect.py notu).
+                    lam=lambda_for_period(period_s, self._reference_lam),
                     contracts_dir=self._contracts_dir,
                     expected_i2=self._expected_i2(key, ts),
                 )

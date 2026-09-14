@@ -71,3 +71,25 @@ def sample() -> dict:
     for _ in range(400):
         payload = sim.step(10.0)
     return payload
+
+
+@pytest.fixture(scope="session")
+def label_schema() -> dict:
+    """contracts/scenario-labels.schema.json — DONMUS sozlesme."""
+    return json.loads((CONTRACTS_DIR / "scenario-labels.schema.json").read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="session")
+def assert_valid_labels(label_schema: dict):
+    """Etiket nesnesinin donmus semaya uydugunu dogrular."""
+    from jsonschema import Draft202012Validator
+
+    validator = Draft202012Validator(label_schema)
+
+    def check(labels: dict) -> None:
+        errors = sorted(validator.iter_errors(labels), key=lambda e: list(e.absolute_path))
+        assert not errors, "etiket sozlesme ihlali:\n" + "\n".join(
+            f"  {list(e.absolute_path)}: {e.message}" for e in errors[:5]
+        )
+
+    return check

@@ -1,0 +1,35 @@
+{
+  "scenario_id": "S1_loose_conn",
+  "seed": 1304,
+  "pano_id": "SIM-00001",
+  "pano_type": "1600kVA-dahili",
+  "duration_h": 720.0,
+  "sample_period_s": 900.0,
+  "generated_at": "2026-09-14T13:01:31+00:00",
+  "profile": "karma",
+  "season": "yaz",
+  "data_file": "S1_loose_conn.csv",
+  "labels": [
+    {
+      "t_start": "2026-07-13T00:00:00+00:00",
+      "t_end": "2026-08-05T00:00:00+00:00",
+      "type": "loose_connection",
+      "point": "DSYA3_L2",
+      "expect": [
+        "ALM-K-WARN",
+        "ALM-K-ALM",
+        "ALM-THR-TERM-WARN",
+        "ALM-THR-TERM-ALM"
+      ],
+      "severity": "P2",
+      "not_expect": [
+        "ALM-I-OVER"
+      ],
+      "params": {
+        "k_growth_pct": 200,
+        "load_multiplier": 0.8
+      },
+      "l0_breach_at": "2026-08-03T11:15:00+00:00"
+    }
+  ]
+}

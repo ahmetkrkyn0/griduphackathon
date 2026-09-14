@@ -59,11 +59,30 @@ SECONDS_PER_HOUR = 3600.0
 EXCITATION_MIN_CV_KEY = "excitation_min_cv_i2"
 DEFAULT_EXCITATION_MIN_CV = 0.02
 
+# Sozlesmedeki rls_lambda = 0.998 tek basina ANLAMSIZDIR: unutma faktoru ornekleme
+# periyoduna baglidir. lam'in etkin hafizasi T = -Ts / ln(lam) saniyedir; ayni lam
+# 10 s ornekleme ile 1,4 saatlik, 15 dk ornekleme ile 125 saatlik hafiza demektir.
+# Sozlesme referans periyodu YAZMIYOR; kenar periyodu (10 s) referans alindi.
+REFERENCE_PERIOD_S = 10.0
+
+# Hafiza yalnizca ZAMAN olarak degil, ORNEK SAYISI olarak da yeterli olmalidir:
+# iki parametreli (a, beta) bir kestirim birkac ornekle tanimlanamaz. Olculdu —
+# 15 dk ornekleme icin zaman-esdegeri lam 0.835 cikiyor (6,1 ornek hafiza) ve RLS
+# kovaryans matrisi POZITIF TANIMLILIGINI KAYBEDIYOR (P izi negatife dusuyor,
+# K/K0 12.000'e firliyor). Alt sinir bunu engeller.
+MIN_MEMORY_SAMPLES = 100
+
 _PHASE_POINT = re.compile(r"^(?P<group>GIRIS|DSYA\d)_L(?P<phase>[123])$")
 
-# a = exp(-Ts/tau) fiziksel olarak (0,1) araligindadir. RLS gurultude bu araligin
-# disina tasabilir; tau ve K raporlanirken guvenli araliga kirpilir.
-A_MIN, A_MAX = 1.0e-6, 1.0 - 1.0e-6
+# a = exp(-Ts/tau) fiziksel olarak (0,1) araligindadir, ama SAYISAL olarak yeterli
+# degil: K = beta/(1-a) oldugu icin a 1'e yaklastikca K patlar. Olculdu — asiri yuk
+# senaryosunda yuk basamagi RLS'i zorlayinca K/K0 81.000'e ciktigi gorulmustur.
+# Gercek kisit tau'nun FIZIKSEL araligidir: bir baglanti noktasi ne bir saniyede
+# isinir ne de gunlerce isinmaya devam eder. Rapor 15.2 saglikli araligi 10-30 dk
+# verir; asagidaki sinirlar onun cok disinda, yalnizca patlamayi engelleyecek
+# genislikte secildi (TURETILMIS).
+TAU_REPORT_MIN_S = 60.0        # 1 dakika
+TAU_REPORT_MAX_S = 6 * 3600.0  # 6 saat
 
 
 class KState(NamedTuple):
@@ -83,6 +102,24 @@ def default_contracts_dir() -> Path:
         return Path(env)
     in_repo = Path(__file__).resolve().parents[3] / "contracts"
     return in_repo if in_repo.is_dir() else Path("/contracts")
+
+
+def lambda_for_period(ts_s: float, reference_lam: float, reference_ts_s: float = REFERENCE_PERIOD_S) -> float:
+    """Unutma faktorunu farkli bir ornekleme periyoduna tasir (ayni ZAMAN hafizasi).
+
+        T    = -reference_ts / ln(reference_lam)      (saniye cinsinden hafiza)
+        lam' = exp(-ts / T)
+
+    Sozlesmedeki 0.998 degeri 10 s ornekleme icin ~1,4 saatlik hafiza demektir.
+    Ayni sayi 15 dakikalik disa aktarimda 125 saatlik hafizaya karsilik gelir ve
+    kestirim bozulmanin cok gerisinde kalir — one alma suresi sahte olarak kisalir.
+    """
+    if not 0.0 < reference_lam < 1.0:
+        raise ValueError(f"reference_lam (0,1) araliginda olmali: {reference_lam}")
+    memory_s = -reference_ts_s / math.log(reference_lam)
+    derived = math.exp(-ts_s / memory_s)
+    floor = 1.0 - 1.0 / MIN_MEMORY_SAMPLES
+    return min(reference_lam, max(derived, floor))
 
 
 def load_thresholds(contracts_dir: Path | None = None) -> dict:
@@ -122,6 +159,10 @@ class KIndexEstimator:
         self._expected_i2 = expected_i2
         tau_init = float(thresholds["tau_init_s"])
 
+        # a'nin izin verilen araligi ornekleme periyoduna baglidir (a = exp(-Ts/tau)).
+        self._a_min = math.exp(-ts / TAU_REPORT_MIN_S)
+        self._a_max = math.exp(-ts / TAU_REPORT_MAX_S)
+
         a0 = math.exp(-ts / tau_init)
         self._theta = [a0, 0.0]                       # [a, beta*I2_SCALE]
         self._p = [[P0, 0.0], [0.0, P0]]
@@ -137,17 +178,20 @@ class KIndexEstimator:
     # ------------------------------------------------------------------ durum
 
     @property
+    def _a(self) -> float:
+        """Fiziksel araliga kirpilmis a kestirimi."""
+        return min(self._a_max, max(self._a_min, self._theta[0]))
+
+    @property
     def k(self) -> float:
-        """Anlik K kestirimi."""
-        a = min(A_MAX, max(A_MIN, self._theta[0]))
+        """Anlik K kestirimi. Negatif kestirim fiziksel degildir, sifira kirpilir."""
         beta = self._theta[1] / I2_SCALE
-        return beta / (1.0 - a)
+        return max(0.0, beta / (1.0 - self._a))
 
     @property
     def tau_s(self) -> float:
-        """Anlik tau kestirimi (s)."""
-        a = min(A_MAX, max(A_MIN, self._theta[0]))
-        return -self.ts / math.log(a)
+        """Anlik tau kestirimi (s); fiziksel araligin disina cikmaz."""
+        return -self.ts / math.log(self._a)
 
     @property
     def k0(self) -> float | None:
@@ -281,10 +325,21 @@ class KIndexEstimator:
         self._theta[1] += g1 * error
 
         # P <- (P - g (P phi)^T) / lam   (P simetrik oldugu icin phi^T P = (P phi)^T)
-        self._p = [
+        updated = [
             [(p[0][0] - g0 * pf0) / self.lam, (p[0][1] - g0 * pf1) / self.lam],
             [(p[1][0] - g1 * pf0) / self.lam, (p[1][1] - g1 * pf1) / self.lam],
         ]
+
+        # KOVARYANS SIFIRLAMA: P bir kovaryans matrisidir, pozitif tanimli kalmali.
+        # Unutma faktoru her adimda P'yi buyuttugu icin zayif uyarimda yuvarlama
+        # hatalari kosegeni negatife dusurebilir; bu noktadan sonra kestirim
+        # anlamsizdir (olculdu: K/K0 12.000). Boyle bir durumda P baslangic
+        # degerine dondurulur — parametreler korunur, yalnizca guven sifirlanir.
+        # Gomulu surumde de (TA3, firmware/core/rls.c) ayni koruma gerekir.
+        if updated[0][0] <= 0.0 or updated[1][1] <= 0.0:
+            self._p = [[P0, 0.0], [0.0, P0]]
+            return
+        self._p = updated
 
 
 def _median(values) -> float:

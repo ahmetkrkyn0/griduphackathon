@@ -1,0 +1,25 @@
+{
+  "scenario_id": "S9_pd_trend",
+  "seed": 1304,
+  "pano_id": "SIM-00001",
+  "pano_type": "OG-hucre",
+  "duration_h": 168.0,
+  "sample_period_s": 900.0,
+  "generated_at": "2026-09-14T13:02:18+00:00",
+  "profile": "karma",
+  "season": "yaz",
+  "data_file": "S9_pd_trend.csv",
+  "labels": [
+    {
+      "t_start": "2026-07-08T08:00:00+00:00",
+      "t_end": "2026-07-13T00:00:00+00:00",
+      "type": "pd_trend",
+      "point": "PANEL",
+      "expect": [
+        "ALM-PD-TREND"
+      ],
+      "severity": "P3",
+      "l0_breach_at": null
+    }
+  ]
+}

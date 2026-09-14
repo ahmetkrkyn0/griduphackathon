@@ -109,6 +109,14 @@ LOAD_MULTIPLIER_MAX = 1.5     # asiri yuk senaryosunda anma akiminin ustune ciki
 SENSOR_DRIFT_K_PER_H = 2.0    # suruklenen sensorun saatlik kaymasi (TURETILMIS)
 SENSOR_DROPPED_BELOW_AMBIENT_K = 8.0  # yerinden dusmus sensor ortamin altini olcer
 
+# Kismi desarj (PD) yalnizca OG icin anlamlidir: rapor 3.7'ye gore 400 V AG panoda
+# Paschen minimumunun (~327 V) altinda kalindigi icin PD BEKLENMEZ ve sema pd blogunu
+# AG panoda null tanimlar. OG panolarda blok doldurulur.
+PD_BASE_PPS = 2.0
+PD_BASE_AMP_DBMV = 3.0
+PD_NOISE_PHASE_CLUSTER = 0.15   # gurultude faz DUZGUN dagilir -> kumelenme dusuk
+PD_FAULT_PHASE_CLUSTER = 0.85   # gercek PD'de faz kumelenir (PRPD imzasi)
+
 # DSYA cikislarinin boy dagilimi (EK-I/8'de 7 cikis var; boy dagilimi TURETILMIS).
 _TWO_BOY_FEEDERS = (1, 2, 3)
 
@@ -167,6 +175,7 @@ class PanelSimulator:
         profile: ProfileKind = "karma",
         start: datetime | None = None,
         contracts_dir: Path | None = None,
+        medium_voltage: bool = False,
     ) -> None:
         self._contracts_dir = contracts_dir or default_contracts_dir()
         self._thresholds = self._load_thresholds()
@@ -177,6 +186,7 @@ class PanelSimulator:
         self.pano_id = pano_id
         self.profile: ProfileKind = profile
         self.seed = seed
+        self.medium_voltage = medium_voltage
 
         start_ts = start or datetime.now(timezone.utc)
         if start_ts.tzinfo is None:
@@ -190,6 +200,7 @@ class PanelSimulator:
         self._points = self._build_points(rng)
         self._dt_c: dict[str, float] = {spec.name: 0.0 for spec in self._points}
         self._current_a: dict[str, float] = {spec.name: 0.0 for spec in self._points}
+        self._held_current_a: dict[str, float] = {}
         self._i2_window: deque[float] = deque(maxlen=EXCITATION_WINDOW)
 
         # Senaryo enjeksiyonlari (TA2); varsayilan = saglikli pano (S0).
@@ -200,6 +211,7 @@ class PanelSimulator:
         self._tvoc_trips = 0
         self._prot_health_ok = True
         self._sensor_faults: dict[str, str] = {}
+        self._pd_activity = 0.0   # 0 = taban gurultusu, 1 = belirgin PD
         self._fault_age_h: dict[str, float] = {}
         self._last_reported_t_c: dict[str, float] = {}
 
@@ -331,6 +343,15 @@ class PanelSimulator:
         """Ark korumasi dedektor sagligi: False = pano sessizce korumasiz."""
         self._prot_health_ok = healthy
 
+    def set_pd_activity(self, level: float) -> None:
+        """Kismi desarj etkinligi (0 = taban gurultusu, 1 = belirgin PD).
+
+        Yalnizca OG panosunda anlamlidir; AG panoda pd blogu null kalir.
+        """
+        if not 0.0 <= level <= 1.0:
+            raise ValueError(f"level [0,1] araliginda olmali: {level}")
+        self._pd_activity = level
+
     def set_sensor_fault(self, pt: str, kind: str | None) -> None:
         """Sensor arizasi enjekte eder: frozen | drift | dropped; None = temizle."""
         if kind not in (None, "frozen", "drift", "dropped"):
@@ -387,7 +408,7 @@ class PanelSimulator:
             "elec": self._elec_block(i_ph, i_n, thd_i, unbal),
             "env": env,
             "tvoc": self._tvoc_block(),
-            "pd": None,  # AG pano: 400 V'ta PD beklenmez (rapor 3.7)
+            "pd": self._pd_block(),
             "risk": self._risk_block(t_conn),
             "alarms": [],
             "health": self._health_block(),
@@ -440,14 +461,26 @@ class PanelSimulator:
         return round(math.hypot(fundamental, h3), 1)
 
     def _advance_points(self, dt_s: float, i_ph: list[float], i_n: float) -> dict[str, float]:
-        """Nokta basina ayrik isil model: dT[k+1] = a*dT[k] + (1-a)*K*I^2."""
+        """Nokta basina ayrik isil model: dT[k+1] = a*dT[k] + (1-a)*K*I^2[k].
+
+        SIFIRINCI DERECE TUTUCU: [k, k+1) araliginda etkiyen akim I[k]'dir, yani
+        BIR ONCEKI ornegin akimi. Rapor 15.1 de ayni indisi kullanir
+        (phi[k] = [dT[k], I^2[k]], hedef dT[k+1]).
+
+        Indis bir kaysaydi (I[k+1] kullanilsaydi) uretec ile kestirimci farkli iki
+        modeli cozerdi. 10 s ornekte fark gozle gorulmez ama 15 dakikalik disa
+        aktarimda yuk ornekler arasinda cok degistigi icin K kestirimi belirgin
+        sapar — olculdu: S1 senaryosunda K/K0 buyumesi gerekirken 0,47'ye dustu.
+        """
         for spec in self._points:
             source = i_n if spec.phase is None else i_ph[spec.phase]
             current = source * spec.share
+            held = self._held_current_a.get(spec.name, current)
             self._current_a[spec.name] = current
+            self._held_current_a[spec.name] = current
 
             a = math.exp(-dt_s / spec.tau_s)
-            steady = spec.k0 * self._k_multiplier.get(spec.name, 1.0) * current**2
+            steady = spec.k0 * self._k_multiplier.get(spec.name, 1.0) * held**2
             self._dt_c[spec.name] = a * self._dt_c[spec.name] + (1.0 - a) * steady
 
         self._i2_window.append(sum(i**2 for i in i_ph) / 3.0)
@@ -568,6 +601,24 @@ class PanelSimulator:
             "amb_light_x3": 0,
             "prot_health_ok": self._prot_health_ok,
             "comm_ok": True,
+        }
+
+    def _pd_block(self) -> dict | None:
+        """HFCT kismi desarj olcumu; AG panoda None (rapor 3.7).
+
+        Ayirt edici, mutlak genlik DEGIL faz kumelenmesidir: gercek PD belirli faz
+        acilarinda toplanir (PRPD imzasi), gurultu ise faza duzgun dagilir.
+        """
+        if not self.medium_voltage:
+            return None
+        level = self._pd_activity
+        return {
+            "pps": round(PD_BASE_PPS * (1.0 + 40.0 * level) + abs(self._sensor_rng.gauss(0.0, 0.3)), 2),
+            "amp_dbmv": round(PD_BASE_AMP_DBMV + 18.0 * level + self._sensor_rng.gauss(0.0, 0.4), 2),
+            "trend": round(level, 3),
+            "phase_cluster": round(
+                PD_NOISE_PHASE_CLUSTER + (PD_FAULT_PHASE_CLUSTER - PD_NOISE_PHASE_CLUSTER) * level, 3
+            ),
         }
 
     def _risk_block(self, t_conn: list[dict]) -> dict:

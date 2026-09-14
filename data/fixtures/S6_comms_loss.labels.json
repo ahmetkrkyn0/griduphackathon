@@ -1,0 +1,28 @@
+{
+  "scenario_id": "S6_comms_loss",
+  "seed": 1304,
+  "pano_id": "SIM-00001",
+  "pano_type": "1600kVA-dahili",
+  "duration_h": 168.0,
+  "sample_period_s": 900.0,
+  "generated_at": "2026-09-14T13:01:57+00:00",
+  "profile": "karma",
+  "season": "yaz",
+  "data_file": "S6_comms_loss.csv",
+  "labels": [
+    {
+      "t_start": "2026-07-08T08:00:00+00:00",
+      "t_end": "2026-07-13T00:00:00+00:00",
+      "type": "comms_loss",
+      "point": "SYSTEM",
+      "expect": [
+        "ALM-COMMS-LOST"
+      ],
+      "severity": "SYS",
+      "params": {
+        "gap_h": 6
+      },
+      "l0_breach_at": null
+    }
+  ]
+}
