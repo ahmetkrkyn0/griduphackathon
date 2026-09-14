@@ -1,5 +1,10 @@
 # Kişi C — Durum Takibi (Arayüz, Donanım Tasarımı, Teslim)
 
+> **OTURUM SONUCU:** PLAN.md'de Kişi C'ye açıkça atanmış tüm kutucuklar işaretlendi
+> (TC1–TC3, T4.5–T4.7, T5.1–T5.2). Tüm değişiklikler `berke/frontend` dalına commit edilip
+> `origin`'e push edildi (son commit `5314e10`). Kalan tek açık uç, C'nin kontrolü dışında:
+> Kişi A'nın kulvarı (§0.1).
+
 > Bu dosya yalnızca C'nin (Berke) kendi ilerleme takibi içindir; PLAN.md'nin yerine geçmez.
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
