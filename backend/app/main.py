@@ -40,6 +40,33 @@ from .scada.service import GatewayStations, ScadaService
 log = logging.getLogger("gridup")
 
 
+def _central_detector(settings: Settings):
+    """panoalgo merkez dedektorunu yukler (TB2 Adim 4); yoksa GURULTULU sekilde gecer.
+
+    Neden servisi durdurmuyoruz: merkez dedektor bir EMNIYET AGIDIR, birincil yol degil.
+    Asil tespit kenarda calisir ve sonucu telemetri yukunun `alarms` alanindadir; o yol
+    bu import olmadan da isler. Kutuphane gelmediginde sessizce devam etmek ise kabul
+    edilemez — o yuzden hata seviyesinde loglanir (PLAN.md: sessiz basarisizlik yok).
+
+    Imaj kurulumu: backend/Dockerfile libs/panoalgo'yu kopyalar ve kurar.
+    Testler: backend/pytest.ini pythonpath'e ../libs/panoalgo ekler.
+    """
+    if not settings.central_detector_enabled:
+        log.info("merkez dedektor bilinerek kapali (CENTRAL_DETECTOR=0)")
+        return None
+    try:
+        from panoalgo.central import CentralDetector
+    except ImportError as exc:
+        log.error(
+            "merkez dedektor YUKLENEMEDI, emniyet agi olmadan devam ediliyor "
+            "(kenar tespiti calismaya devam eder): %s",
+            exc,
+        )
+        return None
+    log.info("merkez dedektor etkin: panoalgo.central.CentralDetector")
+    return CentralDetector(contracts_dir=settings.contracts_dir)
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -69,7 +96,9 @@ def create_app(
             active_store = store
         hub = StreamHub()
         pipeline = IngestPipeline(contracts, active_store, clock=clock)
-        alarm_service = AlarmService(contracts, active_store, hub, clock=clock)
+        alarm_service = AlarmService(
+            contracts, active_store, hub, clock=clock, detector=_central_detector(settings)
+        )
         try:
             alarm_service.load()
         except StoreError as exc:  # TB1 davranisi: DB kapaliyken de ayaga kalk, DB gelince yukle

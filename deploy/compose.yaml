@@ -59,7 +59,9 @@ services:
 
   backend:
     build:
-      context: ../backend
+      # Context repo koku: imaj hem backend/app'i hem libs/panoalgo'yu icerir (TB2 Adim 4).
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: gridup-backend
     restart: unless-stopped
     environment:

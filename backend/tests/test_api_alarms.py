@@ -30,8 +30,23 @@ PANELS = [
 EDGE_CODES = {"ALM-THR-TERM-WARN", "ALM-K-WARN"}  # tel_valid.json alarms alani
 
 
-def make_app(store: MemoryStore, clock: Clock):
-    return create_app(Settings(contracts_dir=CONTRACTS_DIR, ingest_enabled=False), store=store, clock=clock)
+def make_app(store: MemoryStore, clock: Clock, *, safety_net: bool = False):
+    """Bu dosyadaki testler KENAR -> KONSOL yolunu olcer, o yuzden emniyet agi KAPALI.
+
+    Merkez dedektor (panoalgo, TB2 Adim 4) uretimde ACIKTIR ve tel_valid.json'da
+    kenarin bildirmedigi iki gercek esik ihlalini daha bulur: GIRIS_L2 diger iki fazdan
+    37 K sicak (phase_diff_warn_k = 4) ve ttl_h 150,5 saat (ALM-TTL-14D siniri 336).
+    Fixture'in `alarms` alani elle yazilmis bir KENAR ciktisidir, fiziksel olarak eksiktir.
+
+    Ikisini ayni testte olcmek "hangi katman buldu" sorusunu bulanik birakirdi. Emniyet
+    aginin kendi testleri tests/test_central_detector.py'de; uctan uca kaniti da
+    asagidaki test_the_central_safety_net_adds_codes_the_edge_missed.
+    """
+    return create_app(
+        Settings(contracts_dir=CONTRACTS_DIR, ingest_enabled=False, central_detector_enabled=safety_net),
+        store=store,
+        clock=clock,
+    )
 
 
 @pytest.fixture
@@ -94,6 +109,22 @@ def hypothesis_advice(contracts, code: str) -> str:
 
 
 # ------------------------------------------------------------------ liste
+def test_the_central_safety_net_adds_codes_the_edge_missed(store, clock, api_contract, tel_payload):
+    """Uretim yapilandirmasi (merkez dedektor ACIK) uctan uca: konsolda iki kod DAHA.
+
+    Ikisi de tel_valid.json'da gercekten ihlal edilmis esiklerdir; kenarin bildirmemesi
+    eksikliktir. Sahada bu, kenar tespitini yapamayan eski bir firmware demektir.
+    """
+    app = make_app(store, clock, safety_net=True)
+
+    with TestClient(app) as client:  # lifespan: ingest boru hattini kurar
+        send(app, tel_payload)
+        body = list_alarms(client)
+
+    api_contract(body, "Alarm", many=True)
+    assert set(by_code(body)) == EDGE_CODES | {"ALM-THR-PHASE-DIF", "ALM-TTL-14D"}
+
+
 def test_edge_alarms_become_explained_console_alarms(client, app, api_contract, contracts, tel_payload):
     send(app, tel_payload)
 
