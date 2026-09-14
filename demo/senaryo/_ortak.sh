@@ -8,6 +8,7 @@ REPO_ROOT="$(cd "$DEMO_DIR/../.." && pwd)"
 COMPOSE_FILE="$REPO_ROOT/deploy/compose.yaml"
 API_BASE="${GRIDUP_API:-http://localhost:8000}"
 FRONTEND_BASE="${GRIDUP_FRONTEND:-http://localhost:3000}"
+MQTT_TARGET="${GRIDUP_MQTT:-localhost:1883}"
 
 renk_baslik() { printf '\n\033[1;34m== %s ==\033[0m\n' "$1"; }
 renk_ok()     { printf '\033[1;32m✓ %s\033[0m\n' "$1"; }
@@ -24,18 +25,73 @@ yigin_kontrol() {
   renk_ok "Backend ayakta ($API_BASE)"
 }
 
-# A'nın sentetik veri üreteci/senaryo modülünün bu depoda henüz var olup olmadığını kontrol eder.
-# PLAN.md TA1/TA2 tamamlanmadan bu betikler senaryo OYNATAMAZ; bunu sessizce geçmek yerine
-# açıkça söyler (STATUS.md karar #6 — dürüstlük kuralı, sessiz başarısızlık yok).
-panoalgo_var_mi() {
-  [ -f "$REPO_ROOT/sim/panosim.py" ] && [ -d "$REPO_ROOT/libs/panoalgo/panoalgo" ]
+# ---------------------------------------------------------------- Python bulma
+#
+# Ekibin üçü de Windows'ta. Orada `python3` çoğu zaman Microsoft Store kısayoludur:
+# vardır, çalıştırılır, hiçbir şey yapmadan çıkar. Bu yüzden "komut var mı" değil
+# "gerçekten Python mu" diye bakıyoruz (Y7).
+PYTHON=""
+python_bul() {
+  [ -n "$PYTHON" ] && return 0
+  local aday
+  for aday in "${GRIDUP_PYTHON:-}" python3 python py; do
+    [ -z "$aday" ] && continue
+    if [ "$aday" = "py" ]; then
+      if command -v py >/dev/null 2>&1 && py -3 -c "import sys" >/dev/null 2>&1; then
+        PYTHON="py -3"; return 0
+      fi
+    elif command -v "$aday" >/dev/null 2>&1 && "$aday" -c "import sys" >/dev/null 2>&1; then
+      PYTHON="$aday"; return 0
+    fi
+  done
+  return 1
+}
+
+# panoalgo repoda yaşıyor; kurulum ZORUNLU DEĞİL, yola eklemek yeterli.
+export PYTHONPATH="$REPO_ROOT/libs/panoalgo${PYTHONPATH:+:$PYTHONPATH}"
+
+# Senaryo oynatma bu makinede host Python'ıyla mümkün mü?
+host_senaryo_hazir_mi() {
+  python_bul || return 1
+  # shellcheck disable=SC2086  # PYTHON "py -3" olabilir, bölünmesi gerekiyor
+  $PYTHON -c "import paho.mqtt.client, yaml, jsonschema, panoalgo.scenarios" >/dev/null 2>&1 || return 1
+  # shellcheck disable=SC2086
+  $PYTHON "$REPO_ROOT/sim/panosim.py" --help 2>/dev/null | grep -q -- "--scenario"
+}
+
+# Host uygun değilse aynı senaryo, yığının kendi imajında koşturulabilir.
+docker_senaryo_hazir_mi() {
+  command -v docker >/dev/null 2>&1 && docker compose -f "$COMPOSE_FILE" ps panosim >/dev/null 2>&1
 }
 
 senaryo_engelli_uyarisi() {
   local kod="$1" ad="$2" rota="$3"
-  renk_uyari "$kod ($ad) oynatılamıyor: sim/panosim.py ve libs/panoalgo/ (Kişi A, TA1/TA2) bu depoda henüz yok."
-  echo "  Bu betik PLAN.md'de tanımlanan arayüze göre yazıldı ve A'nın simülatörü eklenince"
-  echo "  çalışır hale gelecek (bkz. STATUS.md §6 madde 6). Şimdilik alternatif:"
-  echo "  frontend'i örnek veriyle açıp aynı senaryoyu gözlemleyin:"
+  renk_uyari "$kod ($ad) bu makinede oynatılamıyor: ne host Python'ı ne de Docker hazır."
+  echo "  Gerekenlerden biri:"
+  echo "    a) Host Python 3.12+: pip install -r '$REPO_ROOT/sim/requirements.txt'"
+  echo "       (panoalgo'yu kurmanıza gerek yok, betik PYTHONPATH ile ekliyor)"
+  echo "    b) Docker: docker compose -f '$COMPOSE_FILE' up -d --build"
+  echo "  Alternatif — örnek veriyle aynı senaryoyu gözleyin:"
   echo "    cd frontend && npm run dev:mock   # sonra $rota adresine gidin"
+}
+
+# senaryo_oynat S1_loose_conn SIM-00001 90 --point DSYA3_L2
+#   $1 senaryo kimliği · $2 pano · $3 duvar saati süresi (sn) · kalanlar ek bayraklar
+senaryo_oynat() {
+  local senaryo="$1" pano="$2" sure="$3"; shift 3
+  if host_senaryo_hazir_mi; then
+    renk_ok "Senaryo oynatılıyor (host Python): $pano, $senaryo, ${sure} sn"
+    # shellcheck disable=SC2086
+    $PYTHON "$REPO_ROOT/sim/panosim.py" \
+      --scenario "$senaryo" --pano "$pano" --duration "$sure" \
+      --mqtt "$MQTT_TARGET" "$@"
+  elif docker_senaryo_hazir_mi; then
+    renk_ok "Senaryo oynatılıyor (docker): $pano, $senaryo, ${sure} sn"
+    docker compose -f "$COMPOSE_FILE" run --rm --no-deps panosim \
+      python panosim.py \
+      --scenario "$senaryo" --pano "$pano" --duration "$sure" \
+      --mqtt "mosquitto:1883" "$@"
+  else
+    return 2
+  fi
 }

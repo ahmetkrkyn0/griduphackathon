@@ -8,6 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/_ortak.sh"
 renk_baslik "S8 — Entegrasyon (SCADA)"
 yigin_kontrol
 
+python_bul || PYTHON="python3"   # yalnızca yazdırılan örnek komut için
+
 MODBUS_HOST="${GRIDUP_MODBUS_HOST:-localhost}"
 MODBUS_PORT="${GRIDUP_MODBUS_PORT:-502}"
 IEC104_PORT="${GRIDUP_IEC104_PORT:-2404}"
@@ -17,7 +19,7 @@ cat <<EOF
 1) Modbus TCP (harita: contracts/modbus-map.yaml, doküman: docs/03-modbus-haritasi.md)
    QModMaster / Modbus Poll ile bağlanın: $MODBUS_HOST:$MODBUS_PORT
    Hızlı doğrulama (pymodbus kurulu bir Python ile):
-     python3 -c "
+     $PYTHON -c "
 from pymodbus.client import ModbusTcpClient
 c = ModbusTcpClient('$MODBUS_HOST', port=$MODBUS_PORT)
 c.connect()

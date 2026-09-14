@@ -4,9 +4,19 @@ Faz 0'daki hello_publisher.py'nin yerini alir. Fark: yuk artik sabit bir sinus
 degil, libs/panoalgo icindeki fizik modelidir (saat-of-hafta profili x mevsim x
 AR(1) gurultu -> faz akimlari -> nokta basina isil model).
 
-Kullanim:
-    python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883
-    python panosim.py --dry-run --panels 1 --max-messages 2     # broker olmadan
+IKI KIP VARDIR:
+
+  1. SUREKLI KIP (varsayilan) — saglikli filo trafigi, sonsuza kadar.
+        python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883
+        python panosim.py --dry-run --panels 1 --max-messages 2     # broker olmadan
+
+  2. SENARYO KIPI (--scenario) — etiketli bir ariza senaryosunu CANLI oynatir.
+        python -m sim.panosim --scenario S1_loose_conn --point DSYA3_L2 \
+               --pano SIM-00001 --duration 90
+     Oynatilan fizik, data/fixtures/ altindaki etiketli CSV'leri ve docs/12
+     dogrulama tablosunu ureten fizikle BIREBIR AYNIDIR: ikisi de
+     panoalgo.scenarios.iter_samples() yurutucusunu kullanir. "Demoda baska,
+     raporda baska" olmasi mumkun degildir. Senaryo katalogu: --list-scenarios.
 
 Topic, QoS ve retain degerleri contracts/mqtt-telemetry.schema.json icindeki
 x-topics blogundan okunur; bu dosyada topic metni YAZILI DEGILDIR (PLAN.md kural 10).
@@ -16,10 +26,21 @@ K/K0, tau, sinira kalan sure, veri kalitesi bitleri ve risk skoru gercek hesapla
 Taban ogrenme suresi (sozlesme: baseline_learning_days) SIMULE zamanda dolunca K0
 sabitlenir; o ana kadar K/K0 = 1.0 doner ve devreye alma gununde sahte alarm olmaz.
 
-ZAMAN NOTU (13:00 entegrasyon penceresinde ekibe sorulacak): yayinlanan `ts`
-SIMULE ZAMANDIR. --speed 60 ile simulasyon saati gercek zamandan 60 kat hizli
-akar, yani zaman damgalari duvar saatinin ONUNE gecer. Fizigin anlamli hizda
-evrilmesi icin boyle; duvar saatiyle hizali demo isteniyorsa --speed 1 kullanin.
+ZAMAN DAMGASI KARARI (K3, 15 Eylul — daha once "ekibe sorulacak" diye asili duruyordu)
+--------------------------------------------------------------------------------------
+Fizik HIZLANDIRILMIS kalir, yayinlanan `ts` DUVAR SAATIDIR (--wall-clock, varsayilan).
+
+Neden: --speed 60 ile simulasyon saati gercek zamandan 60 kat hizli akar. Eskiden
+`ts` de simule zamandi, yani zaman damgalari duvar saatinin onune geciyordu —
+11 dakikalik bir kosuda 10,5 saat ileri, 11.757 satir gelecege tarihli. Arayuzdeki
+trend/K trendi/ciy grafikleri `to = new Date()` penceresi kullandigi icin yeni veri
+grafige HIC girmiyordu (frontend/src/pages/TrendKorelasyon.tsx:52).
+
+Sonuc: kenar alanlari (K/K0, tau, ttl_h) SIMULE zamanda hesaplanir — fizik dogrudur —
+ama yayin ani duvar saatiyle damgalanir. Grafikte x ekseni gercek zamandir ve egri
+60 kat sikistirilmistir. Bu bilincli bir sunum secimidir ve docs/14 §7'de yazilidir.
+
+Eski davranis gerekiyorsa (or. uzun vadeli veri uretimi): --sim-clock.
 """
 
 from __future__ import annotations
@@ -30,7 +51,7 @@ import os
 import signal
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import FrameType
 
@@ -38,6 +59,7 @@ import paho.mqtt.client as mqtt
 import yaml
 from jsonschema import Draft202012Validator
 
+from panoalgo import scenarios
 from panoalgo.edge import EdgePipeline
 from panoalgo.generator import PanelSimulator, default_contracts_dir, format_pano_id
 
@@ -46,6 +68,18 @@ PROFILE_ROTATION = ("konut", "ticari", "karma")
 CONNECT_RETRY_S = 2.0
 CONNECT_MAX_RETRIES = 30
 STATS_EVERY = 6
+
+# Senaryo kipi: iki yayin arasindaki duvar saati suresi. 1 s'den kisa olmamali,
+# cunku `ts` saniye cozunurlugundedir (timespec="seconds") ve ayni saniyeye iki
+# ornek dusmesi trend grafiginde ust uste biner.
+REPLAY_MIN_PERIOD_S = 1.0
+REPLAY_PERIOD_S = 1.0
+DEFAULT_REPLAY_DURATION_S = 60.0
+
+# Kenarin ASLA basmadigi, MERKEZDE uretilen kodlar. S6'nin etiketi bunu bekler ama
+# alarmi backend/app/alarm_service.py:41 uretir (kenar sussa bile). Oynatma raporu
+# "kacirildi" demesin diye ayri gosterilir; panoalgo/central.py ayni ayrimi yapar.
+CENTRAL_ONLY_CODES = frozenset({"ALM-COMMS-LOST"})
 
 _stop = False
 
@@ -107,8 +141,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fizik tabanli pano telemetri simulatoru")
     parser.add_argument("--mqtt", default=host_port, metavar="HOST:PORT")
     parser.add_argument("--panels", type=int, default=int(os.getenv("SIM_PANELS", "3")))
-    parser.add_argument("--period", type=float, default=float(os.getenv("SIM_PERIOD_S", "10")),
-                        help="iki yayin arasindaki GERCEK sure (s)")
+    parser.add_argument("--period", type=float, default=None,
+                        help="iki yayin arasindaki GERCEK sure (s); surekli kipte varsayilan "
+                             "SIM_PERIOD_S (10), senaryo kipinde 1")
     parser.add_argument("--speed", type=float, default=float(os.getenv("SIM_SPEED", "60")),
                         help="simulasyon hiz carpani; 60 = 1 gercek saniye 1 simule dakika")
     parser.add_argument("--seed", type=int, default=int(os.getenv("SIM_SEED", "1000")))
@@ -118,80 +153,295 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--profile", default=os.getenv("SIM_PROFILE", "karma"),
                         help="ttl tahmininde kullanilan yuk profili")
     parser.add_argument("--dry-run", action="store_true", help="broker'a baglanma, ekrana yaz")
+
+    clock = parser.add_mutually_exclusive_group()
+    clock.add_argument("--wall-clock", dest="wall_clock", action="store_true", default=None,
+                       help="yayinlanan ts duvar saati olsun (VARSAYILAN, bkz. K3 notu)")
+    clock.add_argument("--sim-clock", dest="wall_clock", action="store_false",
+                       help="eski davranis: yayinlanan ts SIMULE zaman (duvar saatinin onune gecer)")
+
+    replay = parser.add_argument_group(
+        "senaryo kipi",
+        "Etiketli bir ariza senaryosunu canli oynatir (demo/senaryo/s*.sh bunu cagirir).",
+    )
+    replay.add_argument("--scenario", metavar="SCENARIO_ID",
+                        help="oynatilacak senaryo; katalog icin --list-scenarios")
+    replay.add_argument("--list-scenarios", action="store_true", help="senaryo katalogunu yaz ve cik")
+    replay.add_argument("--pano", metavar="PANO_ID", help="senaryonun yayinlanacagi pano (or. SIM-00001)")
+    replay.add_argument("--duration", type=float, default=DEFAULT_REPLAY_DURATION_S,
+                        help="oynatmanin DUVAR SAATI suresi (s); varsayilan 60")
+    replay.add_argument("--scenario-hours", type=float, default=None,
+                        help="senaryonun SIMULE suresi (s); varsayilan senaryonun kendi degeri")
+    replay.add_argument("--point", help="enjeksiyon noktasi (or. DSYA3_L2); senaryonunkini gecersiz kilar")
+    replay.add_argument("--detector", help="S5 icin arizali TVOC-2 dedektoru (or. X2:4)")
+    replay.add_argument("--baseline-hours", type=float, default=None,
+                        help="taban ogrenme suresini KISALT (canli demo; sozlesme degeri 168 h)")
     return parser.parse_args(argv)
+
+
+class Stamper:
+    """Yayinlanan `ts`i duvar saatine hizalar (K3); kip kapaliysa hicbir sey yapmaz.
+
+    Saniye cozunurlugunde KESIN ARTAN damga uretir: ayni saniyede iki ornek
+    yayinlanirsa ikincisi bir saniye ileri kaydirilir. Aksi halde trend grafiginde
+    ust uste binerler ve TimescaleDB'de (ts, pano_id, tag) tekrar eder.
+    """
+
+    def __init__(self, enabled: bool) -> None:
+        self.enabled = enabled
+        self._last: dict[str, datetime] = {}
+
+    def stamp(self, payload: dict) -> dict:
+        if not self.enabled:
+            return payload
+        pano_id = payload["pano_id"]
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        previous = self._last.get(pano_id)
+        if previous is not None and now <= previous:
+            now = previous + timedelta(seconds=1)
+        self._last[pano_id] = now
+        payload["ts"] = now.isoformat(timespec="seconds")
+        return payload
+
+
+class Publisher:
+    """Sozlesme kapisi + topic cozumu + yayin. Iki kip de bunu kullanir."""
+
+    def __init__(self, schema: dict, client: mqtt.Client | None, stamper: Stamper) -> None:
+        self._validator = Draft202012Validator(schema)
+        self._template, self._qos, self._retain = telemetry_topic_spec(schema)
+        self._client = client
+        self._stamper = stamper
+        self.published = 0
+
+    @property
+    def topic_template(self) -> str:
+        return self._template
+
+    @property
+    def qos_retain(self) -> tuple[int, bool]:
+        return self._qos, self._retain
+
+    def send(self, payload: dict) -> bool:
+        """Yayinlar; sema ihlalinde False doner (ve mesaj YAYINLANMAZ)."""
+        payload = self._stamper.stamp(payload)
+        errors = sorted(self._validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
+        if errors:
+            for err in errors[:3]:
+                print(f"[panosim] SEMA HATASI {list(err.absolute_path)}: {err.message}", flush=True)
+            return False
+
+        topic = self._template.format(pano_id=payload["pano_id"])
+        # allow_nan=False: NaN/Infinity backend'de karantinaya duser (ingest.py:252).
+        body = json.dumps(payload, allow_nan=False)
+        if self._client is None:
+            print(f"[panosim] {topic} {body}", flush=True)
+        else:
+            self._client.publish(topic, body, qos=self._qos, retain=self._retain)
+        self.published += 1
+        return True
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.list_scenarios:
+        for entry in scenarios.list_scenarios():
+            print(f"{entry['scenario_id']:<16} {entry['default_duration_h']:>7.0f} h  {entry['text']}")
+        return 0
     if args.panels < 1:
         raise SystemExit("--panels en az 1 olmali")
-    if args.speed <= 0 or args.period <= 0:
-        raise SystemExit("--speed ve --period pozitif olmali")
+    if args.period is not None and args.period <= 0:
+        raise SystemExit("--period pozitif olmali")
+    if args.speed <= 0:
+        raise SystemExit("--speed pozitif olmali")
 
     signal.signal(signal.SIGINT, _request_stop)
     signal.signal(signal.SIGTERM, _request_stop)
 
     contracts_dir = default_contracts_dir()
     schema = load_schema(contracts_dir)
-    validator = Draft202012Validator(schema)
-    topic_template, qos, retain = telemetry_topic_spec(schema)
-    print(f"[panosim] sema: {schema['title']} | topic: {topic_template} (qos={qos}, retain={retain})", flush=True)
+    # Varsayilan duvar saati (K3). --sim-clock ile eski davranisa donulur.
+    stamper = Stamper(_wants_wall_clock(args))
+    client = None if args.dry_run else connect(*_split_host_port(args.mqtt))
+    publisher = Publisher(schema, client, stamper)
+    print(
+        f"[panosim] sema: {schema['title']} | topic: {publisher.topic_template} "
+        f"(qos={publisher.qos_retain[0]}, retain={publisher.qos_retain[1]})",
+        flush=True,
+    )
+    print(f"[panosim] zaman damgasi: {'DUVAR SAATI' if stamper.enabled else 'SIMULE ZAMAN'}", flush=True)
 
+    try:
+        if args.scenario:
+            return _run_scenario(args, publisher, contracts_dir)
+        return _run_stream(args, publisher, contracts_dir)
+    finally:
+        if client is not None:
+            client.loop_stop()
+            client.disconnect()
+
+
+def _wants_wall_clock(args: argparse.Namespace) -> bool:
+    if args.wall_clock is not None:
+        return args.wall_clock
+    return os.getenv("SIM_WALL_CLOCK", "1").strip().lower() not in ("0", "false", "hayir", "no")
+
+
+# ------------------------------------------------------------------ surekli kip
+
+
+def _run_stream(args: argparse.Namespace, publisher: Publisher, contracts_dir: Path) -> int:
+    period = args.period if args.period is not None else float(os.getenv("SIM_PERIOD_S", "10"))
+    if period <= 0:
+        raise SystemExit("SIM_PERIOD_S pozitif olmali")
+    args.period = period
     sims = build_simulators(args, contracts_dir)
     pipeline = EdgePipeline(profile=args.profile, contracts_dir=contracts_dir)
-    baseline_h = _baseline_hours(contracts_dir)
+    baseline_h = args.baseline_hours if args.baseline_hours is not None else _baseline_hours(contracts_dir)
     print(
         f"[panosim] {len(sims)} pano | periyot {args.period} s | hiz x{args.speed} | seed {args.seed}",
         flush=True,
     )
     print(f"[panosim] taban ogrenme: {baseline_h:.0f} simule saat sonra K0 sabitlenir", flush=True)
 
-    client = None if args.dry_run else connect(*_split_host_port(args.mqtt))
     sim_step_s = args.period * args.speed
-    published = 0
     rounds = 0
     sim_hours = 0.0
 
-    try:
-        while not _stop:
-            rounds += 1
-            sim_hours += sim_step_s / 3600.0
-            if not pipeline.baseline_frozen and sim_hours >= baseline_h:
-                pipeline.freeze_baselines()
-                print(f"[panosim] taban ogrenme tamamlandi ({sim_hours:.0f} simule saat)", flush=True)
+    while not _stop:
+        rounds += 1
+        sim_hours += sim_step_s / 3600.0
+        if not pipeline.baseline_frozen and sim_hours >= baseline_h:
+            pipeline.freeze_baselines()
+            print(f"[panosim] taban ogrenme tamamlandi ({sim_hours:.0f} simule saat)", flush=True)
 
-            for sim in sims:
-                payload = pipeline.process(sim.step(sim_step_s))
+        for sim in sims:
+            if not publisher.send(pipeline.process(sim.step(sim_step_s))):
+                return 1
+            if args.max_messages and publisher.published >= args.max_messages:
+                _report(sims, publisher.published)
+                return 0
 
-                # SOZLESME KAPISI: gecersiz mesaj yayinlanmaz.
-                errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
-                if errors:
-                    for err in errors[:3]:
-                        print(f"[panosim] SEMA HATASI {list(err.absolute_path)}: {err.message}", flush=True)
-                    return 1
+        if rounds % STATS_EVERY == 1:
+            _report(sims, publisher.published)
+        time.sleep(args.period)
 
-                topic = topic_template.format(pano_id=payload["pano_id"])
-                # allow_nan=False: NaN/Infinity backend'de karantinaya duser (ingest.py:252).
-                body = json.dumps(payload, allow_nan=False)
-                if client is None:
-                    print(f"[panosim] {topic} {body}", flush=True)
-                else:
-                    client.publish(topic, body, qos=qos, retain=retain)
-                published += 1
-
-                if args.max_messages and published >= args.max_messages:
-                    _report(sims, published)
-                    return 0
-
-            if rounds % STATS_EVERY == 1:
-                _report(sims, published)
-            time.sleep(args.period)
-    finally:
-        if client is not None:
-            client.loop_stop()
-            client.disconnect()
-    print(f"[panosim] durduruldu; {published} mesaj yayinlandi", flush=True)
+    print(f"[panosim] durduruldu; {publisher.published} mesaj yayinlandi", flush=True)
     return 0
+
+
+# ------------------------------------------------------------------ senaryo kipi
+
+
+def _run_scenario(args: argparse.Namespace, publisher: Publisher, contracts_dir: Path) -> int:
+    """Etiketli senaryoyu duvar saatine yayarak canli oynatir."""
+    try:
+        plan = scenarios.plan(
+            args.scenario,
+            seed=args.seed,
+            duration_h=args.scenario_hours,
+            contracts_dir=contracts_dir,
+            pano_id=args.pano,
+            point=args.point,
+            detector=args.detector,
+            baseline_h=args.baseline_hours,
+        )
+    except ValueError as exc:
+        raise SystemExit(f"[panosim] {exc}") from exc
+
+    if args.duration <= 0.0:
+        raise SystemExit("--duration pozitif olmali")
+
+    # Senaryo kipi SIM_PERIOD_S'i (surekli kipin 10 s'i) MIRAS ALMAZ: 60 sn'lik bir
+    # demoda 10 s'lik periyot yalnizca 6 nokta cizerdi. Acikca --period verilirse o gecerlidir.
+    period = max(args.period if args.period is not None else REPLAY_PERIOD_S, REPLAY_MIN_PERIOD_S)
+    wanted = max(1, round(args.duration / period))
+    # SEYRELTME: fizik 15 dakikalik adimlarla kosar (gercek kenar da boyle ozetler),
+    # ama hepsini yayinlamayiz. Gercek kenarin "1 s isle, 10 s'de bir ozet gonder"
+    # davranisinin ta kendisi; yalnizca oran demo suresine gore secilir.
+    every = max(1, round(plan.steps / wanted))
+    emits = len(range(0, plan.steps, every))
+
+    print(
+        f"[panosim] SENARYO {plan.scenario_id} | pano {plan.pano_id} | nokta {plan.spec.point}"
+        + (f" | dedektor {args.detector}" if args.detector else ""),
+        flush=True,
+    )
+    print(f"[panosim] {plan.spec.text}", flush=True)
+    print(
+        f"[panosim] {plan.duration_h:.0f} simule saat -> ~{emits * period:.0f} s duvar saati "
+        f"({emits} mesaj, her {every}. ornek, {period:.0f} s arayla)",
+        flush=True,
+    )
+    print(
+        f"[panosim] taban ogrenme {plan.baseline_h:.1f} simule saat, sonra enjeksiyon baslar; "
+        f"beklenen alarmlar: {', '.join(plan.spec.expect) or '(yok — S0 tabani)'}",
+        flush=True,
+    )
+
+    seen: dict[str, float] = {}
+    silent = 0
+    slots = 0
+    # HIZ AYARI son teslim tarihine gore: fizik hesabi ne kadar surerse sursun
+    # oynatma --duration'da biter. Sabit sleep(period) olsaydi 2880 adimlik S1
+    # istenen 90 s yerine 100 s'nin uzerine tasardi (demo suresi tutmazdi).
+    began = time.monotonic()
+    for sample in scenarios.iter_samples(plan):
+        if _stop:
+            break
+        if sample.index % every:
+            continue
+        if sample.payload is None:
+            # Haberlesme boslugu: sahte deger URETILMEZ, hicbir sey yayinlanmaz.
+            silent += 1
+        else:
+            for code in sample.payload["alarms"]:
+                if code not in seen:
+                    seen[code] = sample.hours
+                    print(f"[panosim]   -> {code} ({sample.hours:.1f}. simule saat)", flush=True)
+            if not publisher.send(sample.payload):
+                return 1
+            if args.max_messages and publisher.published >= args.max_messages:
+                break
+        slots += 1
+        time.sleep(max(0.0, began + slots * period - time.monotonic()))
+
+    print(f"[panosim] senaryo bitti; {publisher.published} mesaj yayinlandi", flush=True)
+    if silent:
+        print(f"[panosim] {silent} ornek haberlesme boslugunda YAYINLANMADI (bilincli)", flush=True)
+    _report_scenario(plan, seen)
+    return 0
+
+
+def _report_scenario(plan: scenarios.ScenarioPlan, seen: dict[str, float]) -> None:
+    """Beklenen / cikan alarm karsilastirmasi — demoda ekrana okunur sekilde."""
+    expected = set(plan.spec.expect)
+    forbidden = set(plan.spec.not_expect)
+    if seen:
+        print("[panosim] cikan alarmlar: " + ", ".join(
+            f"{code} ({hours:.1f} h)" for code, hours in sorted(seen.items(), key=lambda kv: kv[1])
+        ), flush=True)
+    else:
+        print("[panosim] hic alarm cikmadi", flush=True)
+
+    central = sorted(expected & CENTRAL_ONLY_CODES)
+    if central:
+        print(
+            f"[panosim] {', '.join(central)} kenarda URETILMEZ; merkez heartbeat denetimi basar "
+            f"(backend, heartbeat_timeout_min) — arayuzun alarm konsolunda gorunur",
+            flush=True,
+        )
+    edge_expected = expected - CENTRAL_ONLY_CODES
+    if edge_expected:
+        missing = sorted(edge_expected - set(seen))
+        print(
+            f"[panosim] beklenenlerden {len(edge_expected) - len(missing)}/{len(edge_expected)} gorundu"
+            + (f"; kisa oynatmada gorunmeyen: {', '.join(missing)}" if missing else ""),
+            flush=True,
+        )
+    fired = sorted(forbidden & set(seen))
+    if fired:
+        print(f"[panosim] DIKKAT — cikmamasi gereken alarm cikti: {', '.join(fired)}", flush=True)
 
 
 def _baseline_hours(contracts_dir: Path) -> float:

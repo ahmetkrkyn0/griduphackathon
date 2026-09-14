@@ -20,6 +20,12 @@ services:
       SIM_SPEED: ${SIM_SPEED:-60}
       SIM_SEED: ${SIM_SEED:-1000}
       SIM_PREFIX: ${SIM_PREFIX:-ADM}
+      # K3 karari (15 Eylul): fizik HIZLANDIRILMIS kalir, yayinlanan ts DUVAR SAATIDIR.
+      # Eskiden ts de simule zamandi ve SIM_SPEED=60 ile duvar saatinin onune geciyordu
+      # (11 dk kosuda 10,5 saat ileri). Arayuzun trend grafikleri `to = new Date()`
+      # penceresi kullandigi icin yeni veri grafige hic girmiyordu. Gerekce: docs/14 §7.
+      # 0 = eski davranis (simule zaman damgasi).
+      SIM_WALL_CLOCK: ${SIM_WALL_CLOCK:-1}
     volumes:
       - ../contracts:/contracts:ro
       - ../data:/data

@@ -186,6 +186,10 @@ python scripts/validate.py --out docs/12-dogrulama-sonuclari.md
 
 ## 7. Canlı yayın
 
+`sim/panosim.py` iki kipte çalışır.
+
+### 7.1 Sürekli kip — sağlıklı filo trafiği
+
 ```bash
 python -m sim.panosim --panels 3 --speed 60 --mqtt mosquitto:1883
 ```
@@ -194,6 +198,69 @@ Her mesaj yayınlanmadan önce telemetri şemasına karşı doğrulanır (sözle
 geçersiz mesaj yayınlanmaz. Yük `json.dumps(..., allow_nan=False)` ile serileştirilir —
 NaN/Infinity backend'de karantinaya düşer.
 
-**Zaman notu:** `--speed 60` ile yayınlanan `ts` **simüle zamandır** ve duvar saatinin
-önüne geçer. Fiziğin anlamlı hızda evrilmesi için böyledir; duvar saatiyle hizalı demo
-isteniyorsa `--speed 1`. Bu, 13:00 entegrasyon penceresinde ekibe sorulacak açık maddedir.
+### 7.2 Senaryo kipi — etiketli arızanın canlı oynatılması
+
+```bash
+python -m sim.panosim --list-scenarios
+python -m sim.panosim --scenario S1_loose_conn --point DSYA3_L2        --pano SIM-00001 --duration 90 --mqtt mosquitto:1883
+```
+
+Oynatılan fizik, §6'daki fixture'ları ve `docs/12` doğrulama tablosunu üreten fiziğin
+**birebir aynısıdır**: ikisi de `panoalgo.scenarios.iter_samples()` yürütücüsünden geçer.
+Demoda gösterilen eğri ile raporda savunulan sayı aynı koddan gelir; ayrışmaları mümkün
+değildir (`sim/tests/test_panosim_scenario.py`).
+
+Yürütücü fiziği **15 dakikalık adımlarla** koşturur ve bunların yalnızca her *N*'incisini
+yayınlar. *N*, `--duration` (duvar saati süresi) ve `--period` (yayınlar arası süre,
+varsayılan 1 s) değerlerinden hesaplanır. Bu, gerçek kenarın "1 s işle, 10 s'de bir özet
+gönder" davranışının aynısıdır; seyreltme fiziği değil yalnızca raporlama sıklığını etkiler.
+
+| Bayrak | Anlamı |
+|---|---|
+| `--scenario` | S0–S9 kimliği (`--list-scenarios`) |
+| `--pano` | yayının yapılacağı pano kimliği |
+| `--duration` | oynatmanın **duvar saati** süresi (sn) |
+| `--scenario-hours` | senaryonun **simüle** süresi; varsayılan senaryonun kendi değeri |
+| `--point` | enjeksiyon noktası (S1: `DSYA3_L2`) |
+| `--detector` | S5'te arızalanan TVOC-2 dedektörü (`X2:4`) — PDU 222'de o bit düşer |
+| `--baseline-hours` | taban öğrenmeyi kısaltır (aşağıda) |
+
+Oynatma bitince hangi alarmın kaçıncı simüle saatte çıktığı ve etiketin beklediğiyle
+karşılaştırması ekrana yazılır. S1'de sıralama şöyle görünür: `ALM-K-WARN` → `ALM-K-ALM`
+→ (çok sonra) sabit 70 K eşiğinin ihlali `ALM-THR-TERM-ALM`. Ekrandaki saatlerin
+**çözünürlüğü seyreltme adımı kadardır**; öne alma süresinin ölçülmüş değeri seyreltilmemiş
+veriden hesaplanır ve `docs/12`'dedir: **209 saat** (kabul kriteri 48 saat).
+
+### 7.3 Zaman damgası kararı (K3, 15 Eylül)
+
+**Fizik hızlandırılmış kalır, yayınlanan `ts` duvar saatidir.** Varsayılan budur;
+`SIM_WALL_CLOCK=0` ya da `--sim-clock` eski davranışı geri verir.
+
+Neden değiştirildi: `--speed 60` ile simülasyon saati gerçek zamandan 60 kat hızlı akar.
+Eskiden `ts` de simüle zamandı, dolayısıyla zaman damgaları duvar saatinin önüne geçiyordu
+— ölçüm: yığın 11 dakika çalıştıktan sonra en yeni `ts` duvar saatinden **10,5 saat**
+ileride, **11.757 satır** geleceğe tarihliydi. Arayüzün trend, K trendi ve çiy noktası
+grafikleri `to = new Date()` penceresi kullandığı için yeni veri grafiğe **hiç girmiyordu**
+(`frontend/src/pages/TrendKorelasyon.tsx:52`).
+
+Sonuç ve sınırı açıkça: kenar alanları (K/K₀, τ, `ttl_h`) **simüle zamanda** hesaplanır —
+fizik doğrudur — ama yayın anı duvar saatiyle damgalanır. Grafikte x ekseni gerçek zamandır
+ve eğri 60 kat sıkıştırılmıştır. Bu bilinçli bir sunum seçimidir; sunumda böyle anlatılır.
+
+Damgalar pano başına **kesin artandır**: aynı saniyeye iki örnek düşerse ikincisi bir saniye
+ileri kaydırılır (aksi halde trend grafiğinde üst üste binerler).
+
+### 7.4 Taban öğrenme ve canlı demo (Y1)
+
+Sözleşme `baseline_learning_days: 7` der; bu 168 simüle saattir ve o ana kadar K/K₀ = 1,0
+döner (devreye alma gününde sahte alarm olmaması için). Sürekli kipte `--speed 60
+--period 10` ile bu **≈2,8 gerçek saat** eder — canlı demoda K/K₀ alarmını görmek
+imkânsızdır.
+
+İki çözüm vardır ve ikisi de dürüsttür:
+
+1. **Senaryo kipini kullanın** (önerilen). Oynatma taban öğrenmeyi simüle zamanda geçer;
+   S1 90 saniyede 720 simüle saat akıtır ve K/K₀ alarmı demonun içinde çıkar.
+2. `--baseline-hours` ile taban öğrenmeyi kısaltın. Bu **sözleşme eşiğini değiştirmez**,
+   yalnızca o koşudaki öğrenme penceresini kısaltır; fixture üretimi bu bayrağı asla
+   kullanmaz (`docs/12`'nin sayıları sözleşme değeriyle hesaplanmıştır).
