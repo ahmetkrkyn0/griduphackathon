@@ -1027,7 +1027,7 @@ def test_k_index_not_updated_without_excitation():
 - [x] **Adım 6: `firmware/host/main.c`** — `panobeyni-sim`: sanal seri porttan Modbus master döngüsü (1 s), çekirdek algoritmaları, Modbus slave sunumu (`contracts/modbus-map.yaml`'dan üretilen tablo), MQTT yayını, 7 günlük halka tampon (dosya).
 - [ ] **Adım 7: (Should) Renode/Wokwi hedefi** — aynı çekirdek bir MCU hedefinde derlenip emülatörde koşar, UART'ı host'un sanal portuna bağlanır. **Zaman kalmazsa atla**, host ikilisi yeterli.
 - [x] **Adım 8: `akis-diyagramlari/ana-dongu.md`** — mermaid state diyagramı: boot → selftest → taban öğrenme (7 gün) → normal döngü → olay → son nefes.
-- [ ] **Adım 9: Commit** — `feat(sim): MPR-53CS ve TVOC-2 Modbus simulatorleri (gercek adresler)` + `feat(fw): tasinabilir C cekirdegi, host ikilisi ve ortak test vektorleri`
+- [x] **Adım 9: Commit** — `feat(sim): MPR-53CS ve TVOC-2 Modbus simulatorleri (gercek adresler)` + `feat(fw): tasinabilir C cekirdegi, host ikilisi ve ortak test vektorleri`
 
 **Kabul:** `ctest` yeşil · QModMaster ile `tvoc2_sim`'e bağlanıp PDU 1300 okunuyor · ID 248'de cevap **yok**, 1'e alınınca cevap **var** · `panobeyni-sim` çalışırken MQTT'de telemetri akıyor.
 
