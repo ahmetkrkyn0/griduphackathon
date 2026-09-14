@@ -5,7 +5,7 @@
   "pano_type": "1600kVA-dahili",
   "duration_h": 168.0,
   "sample_period_s": 900.0,
-  "generated_at": "2026-09-14T13:31:27+00:00",
+  "generated_at": "2026-09-14T14:28:49+00:00",
   "profile": "karma",
   "season": "kis",
   "data_file": "S3_condense.csv",
