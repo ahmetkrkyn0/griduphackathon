@@ -55,15 +55,23 @@ sağlar.
 
 ## 3. Bilinçli kapsam sınırları (dürüstlük kuralı, Bölüm C)
 
-İki ekran, sözleşmede eksik bir alan yüzünden tam istenen granülerlikte değil. İkisi de
+Bir ekran, sözleşmede eksik bir uç yüzünden tam istenen granülerlikte değil. Bu,
 `contracts/changes/2026-09-14-fleet-health-bulk.md` önerisiyle çözülebilir:
 
-1. **Bölge haritası**, il/ilçe bazlı değil **dağıtım şirketi bazlı** (ADM/GDZ) gruplanır. Sözleşmede
-   yalnızca opsiyonel `lat`/`lon` var (çoğu zaman boş); coğrafi olarak yanlış bir kırılımı "harita"
-   diye sunmak yerine, gerçekten pano kimliğinden çıkarılabilen tek yapısal ayrımı gösteriyoruz.
-2. **Cihaz sağlığı**, toplu bir "filo sağlığı" ucu olmadığı için görünen panoları tek tek
+1. **Cihaz sağlığı**, toplu bir "filo sağlığı" ucu olmadığı için görünen panoları tek tek
    (sınırlı eşzamanlılıkla, 6) çeker. 20 panoda görünmez, 1.000 panoda yavaşlar; ekranın altında
    bu açıkça yazar.
+
+**Bölge haritası** (15 Eylül güncellemesi): sözleşmede `lat`/`lon` zaten onaylı bir alan (bu,
+yukarıdaki bekleyen öneriden farklı — o öneri bunun yerine/ek olarak il/ilçe eklemeyi öneriyor,
+ama lat/lon'u kullanmak için o onaya gerek yok). Mock veride (`api/mock.ts`) her panonun adı
+zaten gerçek bir ilçe/semt (Efeler, Bornova, Söke...) olduğundan, bu ilçelerin gerçek merkez
+koordinatları dolduruldu ve panolar artık gerçek enlem/boylamına göre yerel ölçekli bir konum
+grafiğine yerleştiriliyor (`pages/BolgeHaritasi.tsx`). Konum, ilçe merkezi hassasiyetindedir
+(gerçek trafo GPS pini değil) — bu ekranda açıkça belirtilir. Gerçek backend'den `lat`/`lon`
+gelmeyen panolar (alan opsiyonel) otomatik olarak eski dağıtım-şirketi gruplamasına düşer,
+böylece olmayan veri hiçbir zaman olmuş gibi gösterilmez. Ayrıntı:
+[`frontend/TASARIM-REVIZYONU.md`](../frontend/TASARIM-REVIZYONU.md) §16.
 
 Gerçek harita karosu hiçbir ekranda kullanılmaz (GK4: yığın internetten bağımsız çalışır).
 
@@ -108,4 +116,5 @@ uygulandı — bkz. [`frontend/TASARIM-REVIZYONU.md`](../frontend/TASARIM-REVIZY
 ## 6. Sonraki adım
 
 KiCad şeması gibi, "toplu cihaz sağlığı" ucu da bir sonraki iterasyonun ilk maddesidir — üç onay
-alırsa Bölge haritası gerçek il/ilçe kırılımına, Cihaz sağlığı tek bir isteğe düşer.
+alırsa Cihaz sağlığı tek bir isteğe düşer (Bölge haritası zaten §3'te anlatıldığı gibi gerçek
+`lat`/`lon` kullanıyor; üç onay gelirse yalnızca ilçe merkezi yerine gerçek pano konumuna geçer).

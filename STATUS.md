@@ -9,10 +9,25 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 akşam (gerçek ürün araştırması: DSYA/kondansatör/TVOC-2/
-MPR-53CS doğruluk düzeltmeleri, §17).
-**Son commit:** Kompanzasyon kondansatörü rengi koyulaştırıldı, TVOC-2 ve MPR-53CS'e gerçek
-cihaz yüzü (ekran + tuş) detayı eklendi (2D + 3D).
+**Son güncelleme:** 15 Eylül 2026 (Bölge haritasına gerçek konum eklendi, §18).
+**Son commit:** `BolgeHaritasi.tsx` artık gerçek enlem/boylama göre konum grafiği çiziyor;
+mock verideki ilçe adlarına gerçek merkez koordinatları eklendi (`api/mock.ts`).
+
+## 18. Bölge haritasına gerçek konum (main'den sonra, "bölge haritasına gerçekten harita ekleyebilir miyiz")
+
+Bir önceki turda "kontrat onayı gerekiyor" demiştim — `main`'i çekip Kişi B'nin backend'ini
+kontrol edince bunun yanlış olduğu ortaya çıktı: `lat`/`lon` zaten onaylı, yayında bir sözleşme
+alanı (`backend/app/api/views.py` zaten dolduruyor). Gerçek eksik, kendi mock verimdi. Mock'taki
+20 pano adının hepsi zaten gerçek bir ilçe adı olduğundan (Efeler, Bornova, Söke...), bu ilçelerin
+gerçek merkez koordinatlarını ekleyip `BolgeHaritasi.tsx`'i gerçek bir enlem/boylam izdüşümüne
+(harita karosu yok, GK4) yeniden yazdım; koordinatı olmayan panolar eski şirket-gruplu görünüme
+düşüyor. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §16, `docs/16-ux-tasarim.md` §3/§6.
+
+Doğrulama: tsc temiz, 71/71 test yeşil, build başarılı. `/bolge` 1440px ve 390px'de kontrol
+edildi, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi. Ekran görüntüsü
+kullanıcıya gönderildi (SendUserFile). **Dal notu:** bu değişiklik `main` üzerinde başladı
+(kullanıcı üç kulvarı `main`'de birleştirmişti); `berke/frontend`'e geçip oradan commitledim,
+sonra `berke/frontend`'i tekrar `main`'e mergeledim (ayrıntı: bu bölümün sonundaki commit).
 
 ## 17. Oturum 6 devamı — "neredeyse birebir gerçeğe benzemesin" (gerçek ürün araştırması)
 

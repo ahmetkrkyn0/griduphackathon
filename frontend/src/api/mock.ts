@@ -195,10 +195,44 @@ function buildDetail(seed: Seed): PanelDetail {
 
 const details = new Map(SEEDS.map((seed) => [seed.pano_id, buildDetail(seed)]));
 
+// Panonun adindaki ilk kelime gercek bir ilce/semt adi (Efeler, Bornova, Soke...) — ADM/GDZ'nin
+// gercek hizmet bolgesindeki (Aydin/Denizli/Mugla + Izmir/Manisa) ilce merkezlerinin yaklasik
+// enlem/boylami. Sozlesmede PanelSummary.lat/lon zaten onayli bir alan (contracts/openapi.yaml);
+// bu yalnizca demo/mock verisine gercek koordinat doldurmak — dogrusal olcek/GK4 uyumlu bir
+// "gercek konum" gorunumu (bkz. BolgeHaritasi.tsx) icin. Ilce MERKEZI hassasiyetinde (birkac km),
+// gercek trafo/pano GPS pini degil — bu, kod ici yorumla ve ekrandaki metinle acikca belirtilir.
+const DISTRICT_COORDS: Record<string, [number, number]> = {
+  Efeler: [37.856, 27.8416],
+  Nazilli: [37.9145, 28.32],
+  Söke: [37.7328, 27.4058],
+  Didim: [37.4165, 27.2633],
+  Kuşadası: [37.8579, 27.261],
+  Merkezefendi: [37.7765, 29.0864],
+  Pamukkale: [37.92, 29.125],
+  Tavas: [37.5667, 29.0833],
+  Bodrum: [37.0343, 27.4305],
+  Menteşe: [37.2153, 28.3636],
+  Fethiye: [36.6217, 29.1164],
+  Bornova: [38.467, 27.22],
+  Karşıyaka: [38.461, 27.1189],
+  Selçuk: [37.95, 27.3667],
+  Buca: [38.3667, 27.1667],
+  Çiğli: [38.495, 27.07],
+  Yunusemre: [38.617, 27.44],
+  Turgutlu: [38.5, 27.7],
+  Alaşehir: [38.35, 28.5167],
+  Salihli: [38.4833, 28.1333],
+};
+
+function districtCoords(name: string): [number, number] | null {
+  return DISTRICT_COORDS[name.split(" ")[0]] ?? null;
+}
+
 function summary(seed: Seed): PanelSummary {
   const detail = details.get(seed.pano_id);
+  const coords = districtCoords(seed.name);
   return {
-    pano_id: seed.pano_id, name: seed.name, lat: null, lon: null, pano_type: PANO_TYPE,
+    pano_id: seed.pano_id, name: seed.name, lat: coords?.[0] ?? null, lon: coords?.[1] ?? null, pano_type: PANO_TYPE,
     risk_score: seed.risk, risk_mode: seed.mode, top_alarm: seed.code, top_prio: seed.prio, ttl_h: seed.ttl_h,
     last_seen: detail?.ts ?? isoAgo(5000), comms_ok: seed.comms_ok, baseline_day: seed.baseline_day,
   };
