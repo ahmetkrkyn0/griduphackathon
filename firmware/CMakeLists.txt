@@ -19,6 +19,8 @@ add_library(panocore STATIC
     core/rls.c
     core/thermal.c
     core/dewpoint.c
+    core/limits.c
+    core/modbus_map.c
 )
 target_include_directories(panocore PUBLIC core)
 if(PANO_USE_FLOAT)
@@ -40,9 +42,17 @@ target_link_libraries(test_dewpoint PRIVATE panocore)
 add_executable(test_rls_robustness tests/test_rls_robustness.c)
 target_link_libraries(test_rls_robustness PRIVATE panocore)
 
+add_executable(test_limits tests/test_limits.c)
+target_link_libraries(test_limits PRIVATE panocore)
+
+add_executable(test_modbus_map tests/test_modbus_map.c)
+target_link_libraries(test_modbus_map PRIVATE panocore)
+
 # Ortak test vektoru Python tarafinda uretilir; yolu teste argüman olarak gecirilir.
 set(PANO_VECTORS "${CMAKE_CURRENT_SOURCE_DIR}/../data/fixtures/rls_vectors.csv")
 
 add_test(NAME rls_matches_python COMMAND test_rls "${PANO_VECTORS}")
 add_test(NAME dewpoint_reference_values COMMAND test_dewpoint)
 add_test(NAME rls_survives_covariance_windup COMMAND test_rls_robustness)
+add_test(NAME limits_match_the_contract COMMAND test_limits)
+add_test(NAME modbus_write_protection COMMAND test_modbus_map)

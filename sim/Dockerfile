@@ -19,4 +19,6 @@ COPY sim/ /srv/
 # esik/adres degisince yeniden build gerekmesin (backend/Dockerfile ile ayni gerekce).
 ENV CONTRACTS_DIR=/contracts
 
+# Varsayilan servis panosim; cihaz simulatorleri compose icinde `command:`
+# ile secilir (deploy/compose.sim.yaml).
 CMD ["python", "panosim.py"]
