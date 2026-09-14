@@ -25,6 +25,23 @@
 #define PANO_TAU_MIN_S PANO_REAL_C(60.0)
 #define PANO_TAU_MAX_S PANO_REAL_C(21600.0)
 
+/* Unutma faktorunun REFERANS periyodu ve hafiza alt siniri.
+ * Sozlesmedeki rls_lambda = 0.998 tek basina anlamsizdir: etkin hafiza
+ * T = -Ts/ln(lam) SANIYEDIR, yani ayni sayi farkli ornekleme hizinda farkli hafiza
+ * demektir. Python tarafi (detect.py lambda_for_period) ayni donusumu yapar; iki
+ * uygulama ayni lam'i secmezse ayni veriden farkli K/K0 cikar. Olculdu: C 0.998'i
+ * sabitledigi icin gercek uretec verisinde 0.12'ye varan K/K0 sapmasi olusuyordu.
+ */
+#define PANO_RLS_REFERENCE_PERIOD_S PANO_REAL_C(10.0)
+#define PANO_RLS_MIN_MEMORY_SAMPLES 100
+
+/* Unutma faktorunu baska bir ornekleme periyoduna tasir (ayni ZAMAN hafizasi),
+ * ama hafizayi ornek sayisi olarak da alt sinirda tutar: iki parametreli bir
+ * kestirim birkac ornekle tanimlanamaz. */
+pano_real_t pano_rls_lambda_for_period(pano_real_t ts_s,
+                                       pano_real_t reference_lam,
+                                       pano_real_t reference_ts_s);
+
 /* Tek bir olcum noktasinin kestirim durumu. Sabit boyutlu, isaretci tasimaz;
  * dizi olarak statik ayrilabilir. */
 typedef struct {

@@ -103,6 +103,22 @@ static void rls_step(pano_rls_t *self, pano_real_t f0, pano_real_t f1, pano_real
     self->p[1][1] = p11;
 }
 
+pano_real_t pano_rls_lambda_for_period(pano_real_t ts_s,
+                                       pano_real_t reference_lam,
+                                       pano_real_t reference_ts_s)
+{
+    if (!(reference_lam > PANO_REAL_C(0.0)) || reference_lam >= PANO_REAL_C(1.0)) {
+        return reference_lam;
+    }
+    const pano_real_t memory_s = -reference_ts_s / log(reference_lam);
+    const pano_real_t derived = exp(-ts_s / memory_s);
+    const pano_real_t floor_lam =
+        PANO_REAL_C(1.0) - PANO_REAL_C(1.0) / (pano_real_t)PANO_RLS_MIN_MEMORY_SAMPLES;
+
+    pano_real_t lam = (derived > floor_lam) ? derived : floor_lam;
+    return (lam < reference_lam) ? lam : reference_lam;
+}
+
 pano_status_t pano_rls_init(pano_rls_t *self,
                             pano_real_t ts_s,
                             pano_real_t lam,

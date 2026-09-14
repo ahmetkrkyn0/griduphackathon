@@ -42,6 +42,15 @@ from .profiles import ProfileKind, load_profile
 # Beklenen yuk profili icin gecmis I^2 ortalamasinin penceresi (ornek sayisi).
 I2_MEAN_WINDOW = 720
 
+# Kestirime AIT alanlar. Kestirim yoksa bunlar yukten silinir; uretecin kendi
+# gercek degerleri orada kalirsa kenar, olcemeyecegi bir dogruyu yayinlamis olur.
+ESTIMATED_FIELDS = ("k", "k_ratio", "tau_s", "ttl_h")
+
+
+def _forget_estimates(point: dict) -> None:
+    for name in ESTIMATED_FIELDS:
+        point.pop(name, None)
+
 
 class EdgePipeline:
     """Bir veya daha cok panonun telemetrisini zenginlestirir.
@@ -54,8 +63,17 @@ class EdgePipeline:
         self,
         profile: ProfileKind = "karma",
         contracts_dir: Path | None = None,
+        period_s: float | None = None,
     ) -> None:
+        """period_s verilirse ornekleme periyodu zaman damgalarindan TURETILMEZ.
+
+        Kenar kendi periyodunu bilir; damgalardan cikarmak (a) ilk ornegi harcar,
+        (b) titreme ve backfill'de yanlis periyot verir. Firmware tarafi periyodu
+        konfigurasyondan alir; iki uygulamanin ayni sonucu vermesi icin Python da
+        alabilmeli — olculdu: bir orneklik kayma K/K0'da 0,03'e varan fark yapiyordu.
+        """
         self._contracts_dir = contracts_dir
+        self._fixed_period_s = period_s
         self._profile: ProfileKind = profile
         self._quality = quality.QualityTracker(contracts_dir)
         self._reference_lam = float(load_thresholds(contracts_dir)["rls_lambda"])
@@ -109,6 +127,8 @@ class EdgePipeline:
         """Ornekleme periyodunu ardisik zaman damgalarindan cikarir."""
         last = self._last_ts.get(pano_id)
         self._last_ts[pano_id] = ts
+        if self._fixed_period_s is not None:
+            return self._fixed_period_s
         if last is None:
             return 0.0
         seconds = (ts - last).total_seconds()
@@ -123,7 +143,12 @@ class EdgePipeline:
             estimator = self._estimators.get(key)
             if estimator is None:
                 if period_s <= 0.0:
-                    continue  # ilk ornek: periyot henuz bilinmiyor
+                    # Ilk ornek: periyot henuz bilinmiyor, kestirim yapilamaz.
+                    # Alanlari SILMEK sart: uretec kendi GERCEK K'sini yaza yaza
+                    # gelir ve burada birakilirsa kenar, bilemeyecegi bir dogruyu
+                    # yayinlamis olur. Demo icin de savunma icin de kabul edilemez.
+                    _forget_estimates(point)
+                    continue
                 estimator = KIndexEstimator(
                     ts=period_s,
                     # Unutma faktoru ornekleme periyoduna tasinir: ayni lam farkli
@@ -139,6 +164,7 @@ class EdgePipeline:
                 # Henuz hicbir RLS guncellemesi olmadi. "K = 0" fiziksel olarak
                 # "sifir isil direnc" demek olurdu; sema bu alanlari opsiyonel
                 # tanimladigi icin dogrusu HIC YAZMAMAK.
+                _forget_estimates(point)
                 continue
             point["k"] = round(state.k, 12)
             point["k_ratio"] = round(state.k_ratio, 4)

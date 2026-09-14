@@ -31,6 +31,10 @@ if(NOT MSVC)
     target_link_libraries(panocore PUBLIC m)
 endif()
 
+# --- host ikilisi: ayni cekirdek, etrafinda G/C kabugu ----------------------
+add_executable(panobeyni-sim host/main.c)
+target_link_libraries(panobeyni-sim PRIVATE panocore)
+
 enable_testing()
 
 add_executable(test_rls tests/test_rls.c)

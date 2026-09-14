@@ -143,3 +143,35 @@ def test_payload_remains_json_serialisable_without_nan():
 
     payload = _run(EdgePipeline(), _sim(), 300)
     json.dumps(payload, allow_nan=False)
+
+
+def test_pipeline_can_be_told_its_sampling_period():
+    """Kenar kendi periyodunu bilir; damgalardan cikarmak titreme ve backfill'de
+    yanlis periyot verir.
+
+    Periyodun gercekten KULLANILDIGI, tau uzerinden olculur: tau = -Ts/ln(a), yani
+    ayni veriye farkli periyot denirse tau orantili olarak degisir.
+
+    Bu, C host ikilisiyle esitligin de sartidir — firmware periyodu konfigurasyondan
+    alir, damgadan cikarmaz. Olculdu: hizalanmadan once gercek uretec verisinde 25
+    noktada K/K0 farki 0,033'e cikiyordu, hizalandiktan sonra 0,0004 (register
+    kuantizasyonunun kendisi).
+    """
+    def tau_after(period_s: float) -> float:
+        pipeline = EdgePipeline(period_s=period_s)
+        sim = _sim(seed=5)
+        for _ in range(200):
+            payload = pipeline.process(sim.step(STEP_S))
+        return payload["t_conn"][0]["tau_s"]
+
+    assert tau_after(STEP_S * 10.0) > tau_after(STEP_S) * 5.0
+
+
+def test_pipeline_never_publishes_the_generator_ground_truth():
+    """Uretec kendi GERCEK K'sini yuke yazar; kestirim yokken bu deger yukte
+    KALMAMALI. Aksi halde kenar, olcemeyecegi bir dogruyu yayinlamis olur —
+    demoda da savunmada da kabul edilemez."""
+    payload = EdgePipeline().process(_sim().step(STEP_S))
+    for point in payload["t_conn"]:
+        assert "k" not in point
+        assert "k_ratio" not in point
