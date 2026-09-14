@@ -88,9 +88,11 @@ Filo/Alarm konsolu/Bölge gibi filo-genelindeki ekranlarda tek bir "normal" hali
 
 Pano detay ekranında ön görünüşün yanında **3D ikiz** görünümü var (`components/Ikiz3D.tsx`,
 three.js npm'den ayrı parça olarak yüklenir, CDN yok). Aynı geometri kaynağını (`lib/panelGeometry.ts`)
-ve aynı API durumlarını kullanır. ADM/GDZ marka analizi, dünyadaki benzer ürünlerin incelemesi ve
-revize görsel sistem önerisi: [`frontend/TASARIM-REVIZYONU.md`](../frontend/TASARIM-REVIZYONU.md)
-(onay bekliyor).
+ve aynı API durumlarını kullanır; seçili nokta anormalse altında 14 günlük bir zaman kaydırıcı çıkar
+(geçmiş K/K₀ değerini API'nin bugünkü durum rengiyle taban grisi arasında interpolasyonla gösterir).
+ADM/GDZ marka analizi, dünyadaki benzer ürünlerin incelemesi ve revize görsel sistem (RAL 7035 +
+ADM/GDZ turuncu-grafit-mavi paleti, Nunito başlık tipografisi): kullanıcı tarafından onaylandı ve
+uygulandı — bkz. [`frontend/TASARIM-REVIZYONU.md`](../frontend/TASARIM-REVIZYONU.md) §6.
 
 ## 6. Sonraki adım
 

@@ -5,6 +5,8 @@ import "@fontsource/barlow/600.css";
 import "@fontsource/barlow-semi-condensed/500.css";
 import "@fontsource/barlow-semi-condensed/600.css";
 import "@fontsource/barlow-semi-condensed/700.css";
+import "@fontsource/nunito/700.css";
+import "@fontsource/nunito/800.css";
 import "./theme.css";
 import "./app.css";
 

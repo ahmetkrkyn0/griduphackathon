@@ -20,6 +20,8 @@ interface Props {
   points: ConnPoint[];
   selected?: string | null;
   onSelect?: (pt: string) => void;
+  /** Onaylanmis alarma bagli noktalar: halka animasyonu durur (Y6, calm technology). */
+  ackedPoints?: ReadonlySet<string>;
 }
 
 const { width: W, height: H } = PANEL_MM;
@@ -27,7 +29,7 @@ const PHASES = ["L1", "L2", "L3"] as const;
 const DSYA_NUMBERS = Array.from({ length: DSYA_COUNT }, (_, i) => i + 1);
 
 /** EK-II/14 olculerine gore 2D on gorunus. Nokta rengi yalnizca API'nin ConnPoint.state alanindan gelir. */
-export function OnGorunus({ points, selected = null, onSelect }: Props) {
+export function OnGorunus({ points, selected = null, onSelect, ackedPoints }: Props) {
   const choose = (pt: string) => onSelect?.(pt);
   const onKey = (event: KeyboardEvent, pt: string) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -109,7 +111,9 @@ export function OnGorunus({ points, selected = null, onSelect }: Props) {
             onKeyDown={(event) => onKey(event, p.pt)}
           >
             <circle className="og-hit" cx={pos.x} cy={pos.y} r={18} />
-            {state !== "normal" && state !== "stale" && <circle className="og-halo" cx={pos.x} cy={pos.y} r={46} />}
+            {state !== "normal" && state !== "stale" && !ackedPoints?.has(p.pt) && (
+              <circle className="og-halo" cx={pos.x} cy={pos.y} r={46} />
+            )}
             {isSelected && <circle className="og-sel" cx={pos.x} cy={pos.y} r={30} />}
             <circle className="og-dot" cx={pos.x} cy={pos.y} r={15} />
           </g>

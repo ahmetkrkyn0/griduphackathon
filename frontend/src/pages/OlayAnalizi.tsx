@@ -160,8 +160,8 @@ function KaraKutu({ eventId }: { eventId: string }) {
             <CizgiGrafik
               markers={markers}
               series={[
-                { key: "i0", label: "L1", color: "#2C63C9", points: data.series["elec.i_ph.0"] ?? [] },
-                { key: "i1", label: "L2", color: "#DD6418", points: data.series["elec.i_ph.1"] ?? [] },
+                { key: "i0", label: "L1", color: "#003DA5", points: data.series["elec.i_ph.0"] ?? [] },
+                { key: "i1", label: "L2", color: "#D9530F", points: data.series["elec.i_ph.1"] ?? [] },
                 { key: "i2", label: "L3", color: "#1F8A70", points: data.series["elec.i_ph.2"] ?? [] },
               ]}
               yLabelLeft="A"

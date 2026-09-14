@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
+import { api } from "../api/client";
 import type { ConnPoint, PointState, Tvoc } from "../api/types";
 import { num } from "../lib/format";
 import { STATE_TEXT, pointLabel } from "../lib/labels";
@@ -11,12 +12,19 @@ import { BAR_Y, DSYA_COUNT, FIRST_SPARE_DSYA, GIRIS_N_X, N_BAR_Y, PANEL_MM, dsya
 // Panonun 3D dijital ikizi (TC2 spike'inin uretim hali, frontend/sketches/ikiz-3d.html).
 // three.js npm'den paketlenir (GK4: CDN yok). Geometri 2D on gorunusle ayni kaynaktan gelir
 // (lib/panelGeometry.ts). Renkler tema token'larindan okunur; durum API'den (kural 10).
+// Zaman kaydirici (Y1, TASARIM-REVIZYONU.md §4): gecmis K/K0 degerini, API'nin BUGUN verdigi
+// durum rengiyle 1.0 taban grisi arasinda interpolasyonla gosterir. Yeni bir esik UYDURULMAZ —
+// yalnizca "bu nokta o zamandan bu zamana ne kadar yol almis" oranini, zaten API'nin belirledigi
+// iki uc nokta (taban 1.0 ve suanki durum) arasinda gosterir (kural 10 ile catismaz).
 
 interface Props {
   points: ConnPoint[];
   selected: string | null;
   onSelect: (pt: string) => void;
   tvoc?: Tvoc | null;
+  panoId: string;
+  /** Onaylanmis alarma bagli noktalar: halka animasyonu durur (Y6, calm technology). */
+  ackedPoints?: ReadonlySet<string>;
 }
 
 interface Toggles {
@@ -27,11 +35,13 @@ interface Toggles {
 
 interface SceneApi {
   /** Veriyi sahneye yansitir; arizali dedektor bulunursa true doner. */
-  update: (points: ConnPoint[], selected: string | null, tvoc: Tvoc | null) => boolean;
+  update: (points: ConnPoint[], selected: string | null, tvoc: Tvoc | null, ackedPoints?: ReadonlySet<string>) => boolean;
   setToggles: (t: Toggles) => void;
   focusOn: (pt: string) => void;
   home: () => void;
   front: () => void;
+  /** Zaman kaydirici onizlemesi: t=null canli veriye doner, 0..1 gecmisteki ilerlemeyi gosterir. */
+  previewPoint: (pt: string, t: number | null) => void;
 }
 
 const H = PANEL_MM.height;
@@ -232,6 +242,9 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     edge: THREE.LineSegments;
     state: PointState;
     point: ConnPoint | null;
+    acked: boolean;
+    /** null = canli; 0..1 = zaman kaydiricisinin gosterdigi gecmis ilerleme (Y1). */
+    previewT: number | null;
   }
   const nodes = new Map<string, Node>();
   const nodeByMesh = new Map<THREE.Object3D, Node>();
@@ -247,9 +260,30 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     edge.visible = false;
     mesh.add(halo, edge);
     root.add(mesh);
-    const node: Node = { pt, mesh, halo, edge, state: "stale", point: null };
+    const node: Node = { pt, mesh, halo, edge, state: "stale", point: null, acked: false, previewT: null };
     nodes.set(pt, node);
     nodeByMesh.set(mesh, node);
+  }
+  const previewColor = new THREE.Color();
+  /** Bir dugumun rengini/halkasini canli duruma veya zaman kaydirici onizlemesine gore boyar. */
+  function paintNode(n: Node) {
+    const stateColor = colors[n.state];
+    const abnormal = isAbnormal(n.state);
+    if (n.previewT != null && abnormal) {
+      previewColor.set(colors.normal).lerp(new THREE.Color(stateColor), n.previewT);
+      n.mesh.material.color.copy(previewColor);
+      n.mesh.material.emissive.copy(previewColor);
+      n.mesh.material.emissiveIntensity = 0.3 * n.previewT;
+      n.halo.visible = false;
+      return;
+    }
+    n.mesh.material.color.set(stateColor);
+    n.mesh.material.emissive.set(abnormal ? stateColor : "#000000");
+    n.mesh.material.emissiveIntensity = abnormal ? 0.35 : 0;
+    n.halo.material.color.set(stateColor);
+    n.halo.visible = abnormal && !n.acked;
+    n.halo.material.opacity = abnormal && !n.acked ? 0.22 : 0;
+    n.halo.scale.setScalar(1);
   }
   const selectedLabel = label("", 0, 0, 0, "ours");
   selectedLabel.visible = false;
@@ -320,7 +354,7 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     if (!reduced) {
       const s = Math.sin(t * 4);
       for (const n of nodes.values()) {
-        if (!isAbnormal(n.state)) continue;
+        if (!isAbnormal(n.state) || n.acked || n.previewT != null) continue;
         pulsing = true;
         n.halo.material.opacity = 0.14 + 0.12 * s;
         n.halo.scale.setScalar(n.state === "warn" ? 0.85 : 1 + 0.15 * s);
@@ -395,21 +429,14 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   canvas.addEventListener("pointerleave", onLeave);
 
   const api: SceneApi = {
-    update(points, selected, tvoc) {
+    update(points, selected, tvoc, ackedPoints) {
       const byPt = new Map(points.map((p) => [p.pt, p]));
       for (const n of nodes.values()) {
         const p = byPt.get(n.pt) ?? null;
         n.point = p;
         n.state = p ? (p.state ?? "normal") : "stale";
-        const c = colors[n.state];
-        const abnormal = isAbnormal(n.state);
-        n.mesh.material.color.set(c);
-        n.mesh.material.emissive.set(abnormal ? c : "#000000");
-        n.mesh.material.emissiveIntensity = abnormal ? 0.35 : 0;
-        n.halo.material.color.set(c);
-        n.halo.visible = abnormal;
-        n.halo.material.opacity = abnormal ? 0.22 : 0;
-        n.halo.scale.setScalar(1);
+        n.acked = ackedPoints?.has(n.pt) ?? false;
+        paintNode(n);
         const sel = n.pt === selected;
         n.edge.visible = sel;
         n.mesh.scale.setScalar(sel ? 1.25 : 1);
@@ -455,6 +482,13 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     front() {
       flyTo(new THREE.Vector3(0, 750, 4200 * fit()), new THREE.Vector3(0, 750, 0));
     },
+    previewPoint(pt, t) {
+      const n = nodes.get(pt);
+      if (!n) return;
+      n.previewT = t;
+      paintNode(n);
+      dirty = true;
+    },
   };
 
   const dispose = () => {
@@ -482,16 +516,26 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   return { api, dispose };
 }
 
-export function Ikiz3D({ points, selected, onSelect, tvoc }: Props) {
+interface HistorySample {
+  t: number;
+  k: number;
+}
+
+const HISTORY_DAYS = 14;
+
+export function Ikiz3D({ points, selected, onSelect, tvoc, panoId, ackedPoints }: Props) {
   const stageRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneApi | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const lastFocus = useRef<string | null>(null);
+  const previewedPt = useRef<string | null>(null);
   const autoCoverage = useRef(false);
   const [failed, setFailed] = useState(false);
   const [toggles, setToggles] = useState<Toggles>({ cover: true, coverage: false, labels: true });
+  const [history, setHistory] = useState<HistorySample[]>([]);
+  const [sliderPos, setSliderPos] = useState(1);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -508,6 +552,7 @@ export function Ikiz3D({ points, selected, onSelect, tvoc }: Props) {
     return () => {
       sceneRef.current = null;
       lastFocus.current = null;
+      previewedPt.current = null;
       built.dispose();
     };
   }, []);
@@ -515,20 +560,78 @@ export function Ikiz3D({ points, selected, onSelect, tvoc }: Props) {
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
-    const broken = scene.update(points, selected, tvoc ?? null);
+    const broken = scene.update(points, selected, tvoc ?? null, ackedPoints);
     if (broken && !autoCoverage.current) {
       autoCoverage.current = true;
       setToggles((t) => ({ ...t, coverage: true }));
     }
     if (selected && selected !== lastFocus.current) scene.focusOn(selected);
     lastFocus.current = selected;
-  }, [points, selected, tvoc]);
+  }, [points, selected, tvoc, ackedPoints]);
 
   useEffect(() => {
     sceneRef.current?.setToggles(toggles);
   }, [toggles]);
 
+  // Y1: secili noktanin 14 gunluk K/K0 gecmisini cek. Yeni nokta secilince kaydirici "simdi"ye doner.
+  useEffect(() => {
+    setHistory([]);
+    setSliderPos(1);
+    if (!selected) return;
+    const controller = new AbortController();
+    const to = new Date();
+    const from = new Date(to.getTime() - HISTORY_DAYS * 86_400_000);
+    api
+      .series(panoId, [`t_conn.${selected}.k_ratio`], from, to, "1h", controller.signal)
+      .then((data) => {
+        const tag = `t_conn.${selected}.k_ratio`;
+        const samples = (data[tag] ?? [])
+          .filter((p): p is [number, number] => p[1] != null)
+          .map(([t, k]) => ({ t, k }));
+        setHistory(samples);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setHistory([]);
+      });
+    return () => controller.abort();
+  }, [panoId, selected]);
+
+  const focusPoint = selected ? (points.find((p) => p.pt === selected) ?? null) : null;
+  const liveK = focusPoint?.k_ratio ?? null;
+  const liveAbnormal = !!focusPoint?.state && isAbnormal(focusPoint.state);
+  const showSlider = !!selected && liveAbnormal && liveK != null && liveK > 1.02 && history.length >= 2;
+  const activeIdx = history.length > 0 ? Math.round(sliderPos * (history.length - 1)) : -1;
+  const activeSample = activeIdx >= 0 ? history[activeIdx] : null;
+
+  // Onizleme rengini sahneye yansit: t=null -> canli, aksi halde gecmis/canli oranini gonder.
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    if (previewedPt.current && previewedPt.current !== selected) {
+      scene.previewPoint(previewedPt.current, null);
+      previewedPt.current = null;
+    }
+    if (!selected) return;
+    if (!showSlider || sliderPos >= 0.999 || !activeSample || liveK == null) {
+      scene.previewPoint(selected, null);
+      previewedPt.current = null;
+      return;
+    }
+    const t = Math.min(1, Math.max(0, (activeSample.k - 1) / (liveK - 1)));
+    scene.previewPoint(selected, t);
+    previewedPt.current = selected;
+  }, [selected, showSlider, sliderPos, activeSample, liveK]);
+
   const flip = (key: keyof Toggles) => setToggles((t) => ({ ...t, [key]: !t[key] }));
+
+  const timeReadout = !showSlider
+    ? ""
+    : sliderPos >= 0.999 || !activeSample
+      ? `Şimdi · K/K₀ ${liveK != null ? num(liveK, 2) : "—"}`
+      : (() => {
+          const daysAgo = Math.max(0, Math.round((Date.now() - activeSample.t) / 86_400_000));
+          return `${daysAgo > 0 ? `${daysAgo} gün önce` : "Bugün"} · K/K₀ ${num(activeSample.k, 2)}`;
+        })();
 
   return (
     <div className="i3">
@@ -537,23 +640,41 @@ export function Ikiz3D({ points, selected, onSelect, tvoc }: Props) {
       {failed ? (
         <p className="i3-fail">Bu tarayıcıda 3D görünüm (WebGL) açılamadı. Ön görünüş aynı bilgiyi gösterir.</p>
       ) : (
-        <div className="i3-bar" role="toolbar" aria-label="3D ikiz kontrolleri">
-          <button type="button" aria-pressed={toggles.cover} onClick={() => flip("cover")}>
-            Saydam kapak
-          </button>
-          <button type="button" aria-pressed={toggles.coverage} onClick={() => flip("coverage")}>
-            Ark koruma kapsaması
-          </button>
-          <button type="button" aria-pressed={toggles.labels} onClick={() => flip("labels")}>
-            Etiketler
-          </button>
-          <span className="i3-sep" />
-          <button type="button" onClick={() => sceneRef.current?.home()}>
-            3/4 görünüş
-          </button>
-          <button type="button" onClick={() => sceneRef.current?.front()}>
-            Önden
-          </button>
+        <div className="i3-controls">
+          {showSlider && (
+            <div className="i3-time" role="group" aria-label={`${pointLabel(selected!)} zaman kaydırıcısı`}>
+              <span className="i3-time-edge">{HISTORY_DAYS} gün önce</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.001}
+                value={sliderPos}
+                onChange={(e) => setSliderPos(Number(e.target.value))}
+                aria-label={`Zaman: ${timeReadout}`}
+              />
+              <span className="i3-time-edge">Şimdi</span>
+              <span className="i3-time-readout">{timeReadout}</span>
+            </div>
+          )}
+          <div className="i3-bar" role="toolbar" aria-label="3D ikiz kontrolleri">
+            <button type="button" aria-pressed={toggles.cover} onClick={() => flip("cover")}>
+              Saydam kapak
+            </button>
+            <button type="button" aria-pressed={toggles.coverage} onClick={() => flip("coverage")}>
+              Ark koruma kapsaması
+            </button>
+            <button type="button" aria-pressed={toggles.labels} onClick={() => flip("labels")}>
+              Etiketler
+            </button>
+            <span className="i3-sep" />
+            <button type="button" onClick={() => sceneRef.current?.home()}>
+              3/4 görünüş
+            </button>
+            <button type="button" onClick={() => sceneRef.current?.front()}>
+              Önden
+            </button>
+          </div>
         </div>
       )}
     </div>

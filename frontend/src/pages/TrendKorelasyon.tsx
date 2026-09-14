@@ -168,8 +168,8 @@ export function TrendKorelasyon() {
         {series ? (
           <CizgiGrafik
             series={[
-              { key: "k", label: "K/K₀", color: "#2C63C9", points: series[`t_conn.${point}.k_ratio`] ?? [] },
-              { key: "dt", label: "ΔT (K)", color: "#DD6418", points: series[`t_conn.${point}.dt_c`] ?? [], axis: "right" },
+              { key: "k", label: "K/K₀", color: "#003DA5", points: series[`t_conn.${point}.k_ratio`] ?? [] },
+              { key: "dt", label: "ΔT (K)", color: "#D9530F", points: series[`t_conn.${point}.dt_c`] ?? [], axis: "right" },
             ]}
             yLabelLeft="K/K₀"
             yLabelRight="ΔT (K)"

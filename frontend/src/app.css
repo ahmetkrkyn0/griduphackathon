@@ -8,10 +8,12 @@
   gap: 24px;
   padding: 10px 24px;
   background: var(--surface);
+  border-top: 4px solid var(--brand); /* marka katmani: ADM/GDZ kimlik bandi, plan §3.5 */
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-.brand { font: 600 17px var(--cond); text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font: 800 18px var(--display); text-decoration: none; }
+.brand-mark { flex: none; }
 .nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav-link { color: var(--dim); text-decoration: none; padding: 6px 10px; border-radius: 3px; font-size: 14px; }
 .nav-link:hover { background: var(--well); color: var(--ink); }
@@ -45,7 +47,7 @@
 .prio.acked { opacity: 0.45; }
 
 /* ---------- Filo: baslik ve sure ekseni ---------- */
-.hero h1 { font: 500 32px/1.15 var(--cond); margin: 0 0 6px; max-width: 44ch; }
+.hero h1 { font: 800 32px/1.15 var(--display); margin: 0 0 6px; max-width: 44ch; }
 .hero > p { margin: 0; color: var(--dim); }
 
 /* --x0/--xr SureEkseni.tsx'ten gelir; --line eksen cizgisinin yuksekligi, --row-h satir araligi */
@@ -110,7 +112,7 @@
 .plate { background: var(--plate); color: #f2f2ee; font: 600 15px var(--cond); padding: 4px 10px; border-radius: 3px; letter-spacing: 0.04em; }
 .ident h1 { font: 600 24px var(--cond); margin: 0; }
 .tag-bad { background: var(--p1); color: #fff; font-size: 13px; padding: 2px 8px; border-radius: 3px; }
-.statement { font: 500 34px/1.15 var(--cond); margin: 18px 0 24px; max-width: 34ch; }
+.statement { font: 800 34px/1.15 var(--display); margin: 18px 0 24px; max-width: 34ch; }
 
 .split { display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: 32px; align-items: start; }
 .front { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 12px; }
@@ -125,10 +127,20 @@
 .i3-lbl.ours { background: var(--ours); color: #fff; }
 .i3-lbl.bad { background: var(--p1); color: #fff; }
 .i3-tip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; padding: 3px 8px; border-radius: 3px; font-size: 12px; white-space: nowrap; z-index: 2; }
-.i3-bar { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px; z-index: 1; }
+.i3-controls { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 6px; z-index: 1; }
+.i3-bar { display: flex; flex-wrap: wrap; gap: 4px; }
 .i3-bar button { border: 1px solid var(--line); background: rgba(244, 245, 241, 0.94); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
 .i3-bar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
 .i3-sep { width: 1px; background: var(--line); margin: 3px 2px; }
+/* Zaman kaydirici (Y1): gecmis K/K0 degerini canli durum rengine dogru interpolasyonla gosterir. */
+.i3-time { display: flex; align-items: center; gap: 8px; background: rgba(246, 246, 244, 0.95); border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; font-size: 12px; }
+.i3-time input[type="range"] { flex: 1; accent-color: var(--ours); min-width: 60px; }
+.i3-time-edge { color: var(--dim); white-space: nowrap; }
+.i3-time-readout { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; min-width: 150px; text-align: right; }
+@media (max-width: 500px) {
+  .i3-time-edge { display: none; }
+  .i3-time-readout { min-width: 0; }
+}
 .i3-fail { height: 540px; display: grid; place-items: center; color: var(--dim); text-align: center; padding: 16px; margin: 0; position: relative; }
 @media (max-width: 960px) {
   .i3, .i3-fail { height: 400px; }
@@ -177,10 +189,11 @@
 .sig b { font: 600 16px var(--cond); }
 .qa .basis { color: var(--dim); font-size: 13px; margin-top: 4px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
-.btn { border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 3px; cursor: pointer; }
-.btn:hover { background: #3a4146; }
+.btn { border: 1px solid var(--plate); background: var(--plate); color: #fff; padding: 9px 16px; border-radius: 3px; cursor: pointer; }
+.btn:hover { background: #3d3d3d; }
 .btn:disabled { opacity: 0.55; cursor: default; }
-.calm { font: 500 18px var(--cond); color: var(--dim); border-top: 2px solid var(--ink); padding-top: 14px; margin: 0; }
+/* Bos/sakin durum: ince marka cizgisi + Nunito cumle (plan §3.5, "sakin anlar marka anlari olur"). */
+.calm { font: 700 20px var(--display); color: var(--dim); border-top: 2px solid var(--brand); padding-top: 14px; margin: 0; }
 
 .others { margin-top: 24px; }
 .others h3,

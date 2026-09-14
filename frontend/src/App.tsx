@@ -26,6 +26,7 @@ export function App() {
       <FleetProvider>
         <header className="topbar">
           <Link to="/" className="brand">
+            <BrandMark />
             Grid Up Pano İzleme
           </Link>
           <nav className="nav" aria-label="Ana gezinme">
@@ -52,6 +53,16 @@ export function App() {
         </Routes>
       </FleetProvider>
     </BrowserRouter>
+  );
+}
+
+/** Kendi urun isaretimiz: grafit ucgen, turuncu kenar (plan §3.5). ADM/GDZ'nin
+ *  "kivilcim" isaretine gonderme yapar, kopyalamaz — logo dosyalari gomulmez. */
+function BrandMark() {
+  return (
+    <svg className="brand-mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <polygon points="2,15 9,2 16,15" fill="var(--plate)" stroke="var(--brand)" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
   );
 }
 

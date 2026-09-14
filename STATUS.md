@@ -9,8 +9,33 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 öğleden sonra (3D ikiz entegrasyonu + tasarım revizyonu planı, §8).
-**Son commit:** 3D ikiz entegrasyonu ve tasarım revizyonu planı (bkz. §8).
+**Son güncelleme:** 14 Eylül 2026 öğleden sonra (tasarım revizyonu R1–R3 uygulandı, §9).
+**Son commit:** Tasarım revizyonu R1–R3 (marka paleti, tipografi, 3D zaman kaydırıcı) — bkz. §9.
+
+## 9. Oturum 3 — Tasarım revizyonu uygulaması: R1–R3 (14 Eylül, kullanıcı onayı sonrası)
+
+Kullanıcı `TASARIM-REVIZYONU.md`'yi onayladı ("Onaylıyorum"). Planın §5'inde tanımlanan sırayla R1–R3
+uygulandı; R4 (olay modu, risk matrisi) ve R5 (ekran görüntüsü yenileme) özellik dondurmaya kadar
+zaman kalırsa yapılacak.
+
+| İş | Durum |
+|---|---|
+| R1 — Token'lar + Nunito | ✅ `theme.css` (`--brand`, `--brand-deep`, güncellenmiş `--plate`/`--ours`/`--p2`/`--sys`/`--bg`/`--surface`/`--ink`), `@fontsource/nunito` |
+| R2 — Marka katmanı (kimlik bandı, ürün işareti, plakalar, boş durumlar) | ✅ `App.tsx` (`BrandMark`), `app.css`, favicon |
+| R3 — Y6 (onaylanınca duran hareket) + Y1 (3D zaman kaydırıcı) | ✅ `OnGorunus.tsx`, `Ikiz3D.tsx`, `PanoDetay.tsx` |
+| Sabit kodlanmış eski palet renkleri (grafikler) | ✅ `PanoDetay.tsx`, `TrendKorelasyon.tsx`, `OlayAnalizi.tsx` güncellendi |
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Tarayıcıda ADM-00014
+(3D zaman kaydırıcı sürüklenerek gri↔turuncu interpolasyonu doğrulandı), GDZ-00231, ADM-00301 (boş
+durum/`.calm`), GDZ-00088 sayfaları görsel + konsol kontrolünden geçti; 390 px mobil genişlikte yatay
+taşma yok. Onayla butonuna basılıp Y6 canlı test edildi: alarm onaylandıktan sonra hem 2D
+(`og-halo`) hem 3D halka animasyonu durdu, nokta rengi (durum) değişmeden kaldı.
+
+**Karar (öneri seçilerek):** Y1'in "geçmişte griden turuncuya" görselleştirmesi, yeni bir eşik
+icat etmeden yapıldı — geçmiş `k_ratio` değeri, API'nin BUGÜN verdiği durum rengi ile 1.0 taban
+grisi arasında **oran olarak** interpolasyona tabi tutuluyor (iki ucu da API belirliyor, aradaki
+oranı biz hesaplıyoruz). Ayrıntı ve gerekçe: `frontend/TASARIM-REVIZYONU.md` §6, kod içi yorum
+(`components/Ikiz3D.tsx` başlığı).
 
 ## 8. Oturum 2 — 3D ikiz entegrasyonu ve tasarım revizyonu (14 Eylül öğleden sonra)
 

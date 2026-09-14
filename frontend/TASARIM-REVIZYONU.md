@@ -1,8 +1,7 @@
 # Tasarım Revizyonu Planı — "RAL 7035 + Aydem kimliği"
 
-> **Sahip:** Kişi C (Berke) · **Tarih:** 14 Eylül 2026 · **Durum:** öneri, onay bekliyor.
-> Görsel sistem değişikliği bu plan onaylanınca yapılır. Şimdiye kadar yapılan tek şey 3D ikizin
-> uygulamaya entegrasyonu (§6, ✅).
+> **Sahip:** Kişi C (Berke) · **Tarih:** 14 Eylül 2026 · **Durum:** kullanıcı onayladı, **R1–R3 uygulandı**
+> (§7). R4 (olay modu, risk matrisi) ve R5 (ekran görüntülerini yenileme) zaman kalırsa yapılacak.
 > Bağlantılı: [`docs/16-ux-tasarim.md`](../docs/16-ux-tasarim.md) (mevcut tasarım gerekçesi).
 
 ## 0. Tek paragrafta öneri
@@ -164,15 +163,15 @@ SVG'leri (tarayıcıda okundu, 14 Eylül 2026), Aydem Enerji logo kılavuzu sayf
 
 ---
 
-## 5. Uygulama sırası (onay sonrası)
+## 5. Uygulama sırası
 
-| Adım | İçerik | Dosyalar | Süre |
+| Adım | İçerik | Dosyalar | Durum |
 |---|---|---|---|
-| R1 | Token'lar + Nunito (§3.3, §3.4) | `theme.css`, `app.css`, `main.tsx`, `package.json` | 0,5 gün |
-| R2 | Marka katmanı: kimlik bandı, ürün işareti, plakalar, boş durumlar (§3.5) | `App.tsx`, `app.css`, `index.html` (favicon) | 0,5 gün |
-| R3 | Y6 + Y1 (zaman kaydırıcı) | `Ikiz3D.tsx`, `PanoDetay.tsx` | 1 gün |
-| R4 | Y2 + Y3 | `PanoDetay.tsx`, `FiloListesi.tsx`, yeni `RiskMatrisi.tsx` | 1 gün |
-| R5 | Ekran görüntülerini yeniden al, `docs/16` §1 ve §5'i güncelle | `assets/ekran/`, `docs/16-ux-tasarim.md` | 0,5 gün |
+| R1 | Token'lar + Nunito (§3.3, §3.4) | `theme.css`, `app.css`, `main.tsx`, `package.json` | ✅ Uygulandı |
+| R2 | Marka katmanı: kimlik bandı, ürün işareti, plakalar, boş durumlar (§3.5) | `App.tsx`, `app.css`, `index.html` (favicon) | ✅ Uygulandı |
+| R3 | Y6 (onaylanınca duran hareket) + Y1 (3D zaman kaydırıcı) | `Ikiz3D.tsx`, `OnGorunus.tsx`, `PanoDetay.tsx` | ✅ Uygulandı |
+| R4 | Y2 (olay modu) + Y3 (risk matrisi) | `PanoDetay.tsx`, `FiloListesi.tsx`, yeni `RiskMatrisi.tsx` | ⏳ Zaman kalırsa |
+| R5 | Ekran görüntülerini yeniden al, `docs/16` §1 ve §5'i güncelle | `assets/ekran/`, `docs/16-ux-tasarim.md` | ⏳ Zaman kalırsa |
 
 **Kabul ölçütleri:** tüm testler yeşil; kontrast (metin ≥ 4,5:1, grafik ≥ 3:1) token bazında
 doğrulanmış; veri alanı stillerinde `--brand` kullanımı sıfır (grep); 400 px genişlikte yatay taşma yok.
@@ -180,9 +179,36 @@ doğrulanmış; veri alanı stillerinde `--brand` kullanımı sıfır (grep); 40
 **Kapsam sınırı:** R1–R3 dondurmadan önce kesin, R4 zaman kalırsa. Hiçbiri sözleşme değişikliği
 gerektirmez; Y3'teki "etki" yalnızca mevcut `pano_type` alanından gelir.
 
+## 6. Yapıldı: R1–R3 (14 Eylül, aynı oturum)
+
+- **R1 — Token'lar + Nunito.** `theme.css` §1 tablosundaki tüm değerler uygulandı (`--brand`,
+  `--brand-deep`, güncellenmiş `--plate`/`--ours`/`--p2`/`--sys`/`--bg`/`--surface`/`--ink`).
+  `@fontsource/nunito` npm'den eklendi (700/800), `--display` token'ı ürün adı, sayfa başlıkları
+  (`.hero h1`) ve büyük durum cümlesinde (`.statement`) kullanılıyor.
+- **R2 — Marka katmanı.** `.topbar`'a 4px `--brand` üst bant (`border-top`, sticky ile birlikte
+  kayar); `App.tsx`'e kendi ürün işaretimiz (`BrandMark`, grafit üçgen + turuncu kenar — logo dosyası
+  gömülmedi); favicon `--plate`/`--ours` token'larıyla güncellendi; `.calm` (boş/sakin durum, ör.
+  "Aktif alarm yok.") ince turuncu çizgi + Nunito cümleye geçti; `.btn` (Onayla/Rafa al) `--plate`
+  grafitine geçti.
+- **R3 — Y6 + Y1.**
+  - **Y6:** `OnGorunus.tsx` ve `Ikiz3D.tsx`'e `ackedPoints` prop'u eklendi (`PanoDetay.tsx`'te
+    `active_alarms`'tan türetilir); onaylanmış alarma bağlı noktada halka/pulse animasyonu durur,
+    nokta rengi (durum) değişmez. Tarayıcıda doğrulandı: ack sonrası `og-halo`/3D halo kayboluyor.
+  - **Y1:** `Ikiz3D.tsx`'e 14 günlük zaman kaydırıcı eklendi. Seçili nokta anormalse (`k_ratio>1.02`
+    ve durum warn/alarm/critical), `GET /panels/{id}/series` ile geçmiş `k_ratio` çekilir; kaydırıcı
+    geçmiş değeri **API'nin bugün verdiği durum rengi ile 1.0 taban grisi arasında** interpolasyonla
+    gösterir — yeni bir eşik icat edilmez, yalnızca zaten API'nin belirlediği iki uç nokta arasında
+    oran gösterilir (kural 10 ile çatışmaz, kod içinde gerekçelendirildi). Tarayıcıda doğrulandı:
+    "14 gün önce" ucunda düğüm griye dönüyor, ara noktalarda kademeli turuncuya geçiyor.
+  - Sabit kodlanmış eski palet renkleri (`#2C63C9`, `#DD6418`) grafik serilerinde (`PanoDetay.tsx`,
+    `TrendKorelasyon.tsx`, `OlayAnalizi.tsx`) yeni token değerlerine (`#003DA5`, `#D9530F`) güncellendi.
+- **Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı, ADM-00014/GDZ-00231/
+  ADM-00301/GDZ-00088 sayfalarında görsel + konsol kontrolü yapıldı (hata yok), 390 px mobil genişlikte
+  yatay taşma yok.
+
 ---
 
-## 6. Yapıldı: 3D dijital ikiz entegrasyonu (14 Eylül)
+## 7. Yapıldı: 3D dijital ikiz entegrasyonu (14 Eylül, önceki oturum)
 
 - `frontend/src/components/Ikiz3D.tsx`: spike'taki sahnenin üretim hali. three.js npm'den
   (`three@0.169.0`) ve **ayrı parça** olarak yüklenir (509 kB, gzip 130 kB); ilk açılış paketi

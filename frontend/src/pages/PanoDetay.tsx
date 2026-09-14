@@ -175,6 +175,8 @@ export function PanoDetay() {
   const primary = primaryAlarm(alarms);
   const others = alarms.filter((a) => a !== primary && a.state !== "cleared");
   const focus = selected ?? primary?.reason?.point ?? null;
+  // Y6 (calm technology): onaylanmis alarma bagli noktalarda halka animasyonu durur.
+  const ackedPoints = new Set(alarms.filter((a) => a.state === "acked" && a.reason?.point).map((a) => a.reason!.point!));
   const group = focus ? phaseGroup(detail.points, focus) : [];
   const summary = panels.find((p) => p.pano_id === panoId);
   const subtitle = [panoTypeText(detail.pano_type), hypText(detail.risk_mode), `risk ${detail.risk_score ?? 0}`, `son veri ${ago(detail.ts)}`]
@@ -211,11 +213,18 @@ export function PanoDetay() {
             </button>
           </div>
           {view === "2d" ? (
-            <OnGorunus points={detail.points} selected={focus} onSelect={setSelected} />
+            <OnGorunus points={detail.points} selected={focus} onSelect={setSelected} ackedPoints={ackedPoints} />
           ) : (
             <GorunumSiniri fallback={<p className="i3-fail">3D görünüm yüklenemedi. Ön görünüşü kullanın.</p>}>
               <Suspense fallback={<p className="i3-fail">3D sahne yükleniyor…</p>}>
-                <Ikiz3D points={detail.points} selected={focus} onSelect={setSelected} tvoc={detail.tvoc} />
+                <Ikiz3D
+                  points={detail.points}
+                  selected={focus}
+                  onSelect={setSelected}
+                  tvoc={detail.tvoc}
+                  panoId={panoId}
+                  ackedPoints={ackedPoints}
+                />
               </Suspense>
             </GorunumSiniri>
           )}
@@ -323,8 +332,8 @@ function NoktaTrendi({ panoId, point, label }: { panoId: string; point: string; 
       {data && (
         <CizgiGrafik
           series={[
-            { key: "k", label: "K/K₀", color: "#2C63C9", points: data[`t_conn.${point}.k_ratio`] ?? [] },
-            { key: "dt", label: "Ortam üstü artış (K)", color: "#DD6418", points: data[`t_conn.${point}.dt_c`] ?? [], axis: "right" },
+            { key: "k", label: "K/K₀", color: "#003DA5", points: data[`t_conn.${point}.k_ratio`] ?? [] },
+            { key: "dt", label: "Ortam üstü artış (K)", color: "#D9530F", points: data[`t_conn.${point}.dt_c`] ?? [], axis: "right" },
           ]}
           yLabelLeft="K/K₀"
           yLabelRight="ΔT (K)"

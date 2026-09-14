@@ -1,20 +1,27 @@
-/* Tasarim token'lari — Yon A "RAL 7035": pano govdesinin acik grisi zemin olur.
-   ISA-101 yuksek performansli HMI: renk YALNIZCA anormal durumda.
-   Oncelik her yerde renk + sekil + karakterle gosterilir (renk korlugu). */
+/* Tasarim token'lari — Yon A "RAL 7035" + ADM/GDZ (Aydem) kurumsal kimligi.
+   Revizyon gerekcesi: frontend/TASARIM-REVIZYONU.md (14 Eylul 2026, onaylandi).
+   ISA-101 yuksek performansli HMI: renk YALNIZCA anormal durumda; bu kural
+   VERI ALANI icin gecerliligini korur. Marka turuncusu (--brand) yalnizca
+   MARKA KATMANINDA kullanilir (ust bant, urun isareti, bos durumlar) —
+   veri alaninda, grafiklerde ve 3D sahnede asla kullanilmaz (plan §3.2).
+   Kaynak: admelektrik.com.tr ve gdzelektrik.com.tr hesaplanmis CSS token'lari. */
 :root {
-  --bg: #e2e4df;
-  --surface: #f4f5f1;
+  --bg: #e4e5e2;
+  --surface: #f6f6f4;
   --well: #d9dbd5;
-  --plate: #2a2f33;
-  --ink: #212629;
+  --plate: #4d4d4d; /* ADM/GDZ ikincil rengi: kimlik plakalari, birincil dugmeler */
+  --ink: #1f2224;
   --dim: #5f666b;
   --line: #c7cac3;
 
   --p1: #c62828;
-  --p2: #dd6418;
+  --p2: #d9530f; /* marka turuncusundan (#FF671D) kasitli olarak ayristirilmis ton, plan §3.2 */
   --p3: #c99700;
-  --sys: #56688a;
-  --ours: #2c63c9; /* yalnizca bizim donanimimiz ve odak halkasi */
+  --sys: #5a6275;
+  --ours: #003da5; /* ADM/GDZ mavisi: bizim donanimimiz, secim, odak halkasi */
+
+  --brand: #ff671d; /* ADM/GDZ birincil rengi — YALNIZCA marka katmani */
+  --brand-deep: #e2520c; /* acik zeminde grafik oge (3,9:1) */
 
   --dot: #a3a9ad;
   --bar: #b9b4a6;
@@ -22,6 +29,7 @@
 
   --sans: "Barlow", system-ui, sans-serif;
   --cond: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  --display: "Nunito", "Barlow", system-ui, sans-serif; /* marka yazi tipi: urun adi, sayfa basliklari, durum cumlesi */
 
   color-scheme: light;
 }
