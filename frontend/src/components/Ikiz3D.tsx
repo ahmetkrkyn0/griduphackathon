@@ -128,7 +128,7 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     copper: new THREE.MeshStandardMaterial({ color: "#B97A4D", roughness: 0.3, metalness: 0.9 }),
     dsya: new THREE.MeshStandardMaterial({ color: "#454C53", roughness: 0.6 }),
     face: new THREE.MeshStandardMaterial({ color: "#D9DCDD", roughness: 0.7 }),
-    toggle: new THREE.MeshStandardMaterial({ color: "#1B1E20", roughness: 0.4 }),
+    fuseCap: new THREE.MeshStandardMaterial({ color: "#1B1E20", roughness: 0.4 }),
     insul: new THREE.MeshStandardMaterial({ color: "#3A4046", roughness: 0.7 }),
     cable: new THREE.MeshStandardMaterial({ color: "#23272B", roughness: 0.8 }),
     device: new THREE.MeshStandardMaterial({ color: device, roughness: 0.6 }),
@@ -241,9 +241,20 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
       const fy = H - BAR_Y[p] - 60;
       box(80, 120, 8, mat.face, x - 40, fy, 320, 3);
       if (!spare) {
-        // Devre kesici anahtar kolu + acik/kapali penceresi — gercek MCB gorunumu.
-        box(24, 34, 9, mat.toggle, x - 12, fy + 66, 328, 3);
-        box(20, 12, 3, mat.insul, x - 10, fy + 22, 328);
+        // Sigorta govdesi + tutamak: DSYA bir MCB degil, NH bicak sigortali dikey yuk ayiricidir
+        // (arastirma sonrasi duzeltildi — Etien DSYA urun sayfasi, TASARIM-REVIZYONU.md §15).
+        // Yuzeyden disari dogru cikan silindirik sigorta govdesi + ucundaki cekme tutamagi.
+        const fuseY = fy + 80;
+        const fuseBody = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 38, 16), mat.face);
+        fuseBody.rotation.x = Math.PI / 2;
+        fuseBody.position.set(x, fuseY, 328 + 19);
+        fuseBody.castShadow = true;
+        root.add(fuseBody);
+        const fuseCap = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 10, 16), mat.fuseCap);
+        fuseCap.rotation.x = Math.PI / 2;
+        fuseCap.position.set(x, fuseY, 328 + 43);
+        fuseCap.castShadow = true;
+        root.add(fuseCap);
       }
     }
     staticLabels.push(label(spare ? `${n} yedek` : `DSYA-${n}`, x, lugY + 720, 330));

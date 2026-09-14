@@ -108,9 +108,10 @@ export function OnGorunus({ points, selected = null, onSelect, ackedPoints, tvoc
             <rect className={spare ? "og-dsya spare" : "og-dsya"} x={x - 50} y={420} width={100} height={620} rx={10} />
             {!spare && (
               <>
-                {/* Devre kesici anahtar kolu + acik/kapali penceresi — 3D ikizdeki ayni detay. */}
-                <rect className="og-toggle" x={x - 15} y={445} width={30} height={42} rx={3} />
-                <rect className="og-toggle-window" x={x - 12} y={500} width={24} height={14} rx={2} />
+                {/* Sigorta tutamagi: DSYA bir MCB degil, NH bicak sigortali yuk ayiricidir —
+                    arastirma sonrasi duzeltildi (Etien DSYA urun sayfasi, TASARIM-REVIZYONU.md §15). */}
+                <circle className="og-fusecap" cx={x} cy={470} r={16} />
+                <circle className="og-fusecap-hi" cx={x - 5} cy={465} r={4} />
               </>
             )}
             <text className="og-label" x={x} y={405} textAnchor="middle">

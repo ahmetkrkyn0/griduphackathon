@@ -201,8 +201,8 @@
 .og-led { stroke: #fff; stroke-width: 1.5; }
 .og-led.ok { fill: #2ecc71; }
 .og-led.bad { fill: var(--p1); }
-.og-toggle { fill: #1b1e20; }
-.og-toggle-window { fill: #d9dcdd; stroke: #8e958f; stroke-width: 2; }
+.og-fusecap { fill: #1b1e20; stroke: #454c53; stroke-width: 2; }
+.og-fusecap-hi { fill: #565c60; opacity: 0.6; } /* tutamak uzerindeki hafif isik yansimasi */
 .og-cable { stroke: var(--device); stroke-width: 12; opacity: 0.35; }
 .og-label { font: 500 40px var(--cond); fill: var(--ink); }
 .og-pt { cursor: pointer; outline: none; }
