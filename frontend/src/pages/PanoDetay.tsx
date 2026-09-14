@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, errorText } from "../api/errors";
@@ -18,6 +18,30 @@ import { useFleet } from "../state/fleet";
 const OPERATOR = "kontrol-odasi";
 const DETAIL_REFRESH_MS = 30_000;
 
+// three.js yalnizca 3D secilince yuklenir; ilk acilis paketine girmez.
+const Ikiz3D = lazy(() => import("../components/Ikiz3D").then((m) => ({ default: m.Ikiz3D })));
+type View = "2d" | "3d";
+const VIEW_KEY = "gridup.panoGorunus";
+
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "3d" ? "3d" : "2d";
+  } catch {
+    return "2d";
+  }
+}
+
+/** 3D paketi yuklenemezse sayfa cokmesin; 2D'ye donulebilsin. */
+class GorunumSiniri extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
 interface LoadError {
   status: number | null;
   text: string;
@@ -34,6 +58,16 @@ export function PanoDetay() {
   const [ackBusy, setAckBusy] = useState(false);
   const [shelveBusy, setShelveBusy] = useState(false);
   const [alarmMessage, setAlarmMessage] = useState<string | null>(null);
+  const [view, setViewState] = useState<View>(readView);
+
+  const setView = (next: View) => {
+    setViewState(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Tarayici depolamasi kapaliysa secim yalnizca bu oturumda gecerli.
+    }
+  };
 
   useEffect(() => {
     setDetail(null);
@@ -166,12 +200,29 @@ export function PanoDetay() {
         </p>
       )}
 
-      <div className="split">
+      <div className={view === "3d" ? "split split-3d" : "split"}>
         <figure className="front">
-          <OnGorunus points={detail.points} selected={focus} onSelect={setSelected} />
+          <div className="chart-range" role="group" aria-label="Pano görünümü">
+            <button type="button" aria-pressed={view === "2d"} onClick={() => setView("2d")}>
+              Ön görünüş
+            </button>
+            <button type="button" aria-pressed={view === "3d"} onClick={() => setView("3d")}>
+              3D ikiz
+            </button>
+          </div>
+          {view === "2d" ? (
+            <OnGorunus points={detail.points} selected={focus} onSelect={setSelected} />
+          ) : (
+            <GorunumSiniri fallback={<p className="i3-fail">3D görünüm yüklenemedi. Ön görünüşü kullanın.</p>}>
+              <Suspense fallback={<p className="i3-fail">3D sahne yükleniyor…</p>}>
+                <Ikiz3D points={detail.points} selected={focus} onSelect={setSelected} tvoc={detail.tvoc} />
+              </Suspense>
+            </GorunumSiniri>
+          )}
           <figcaption>
-            Ön görünüş, kapaklar açık. Renkli noktalar normal dışı bağlantılar, mavi kutu Pano Beyni. Fazlarını
-            karşılaştırmak için bir nokta seçin.
+            {view === "2d"
+              ? "Ön görünüş, kapaklar açık. Renkli noktalar normal dışı bağlantılar, mavi kutu Pano Beyni. Fazlarını karşılaştırmak için bir nokta seçin."
+              : "Sürükleyerek döndürün, tekerlekle yakınlaştırın. Renkli düğümler normal dışı bağlantılar, mavi kutular bizim donanımımız. Düğüme tıklayınca fazları ve trendi yanda açılır."}
           </figcaption>
         </figure>
 

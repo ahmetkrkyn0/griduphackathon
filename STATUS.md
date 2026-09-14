@@ -9,8 +9,33 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026, devam ediyor (oturum: otonom `/goal` çalışması).
-**Son commit:** Faz 4/5 (README, ekran görüntüleri, demo betikleri, sunum taslağı) — bkz. §1.
+**Son güncelleme:** 14 Eylül 2026 öğleden sonra (3D ikiz entegrasyonu + tasarım revizyonu planı, §8).
+**Son commit:** 3D ikiz entegrasyonu ve tasarım revizyonu planı (bkz. §8).
+
+## 8. Oturum 2 — 3D ikiz entegrasyonu ve tasarım revizyonu (14 Eylül öğleden sonra)
+
+Kullanıcı talebi: 3D ikizi uygulamaya entegre et; ADM/GDZ marka tasarımını ve dünyadaki benzer
+ürünleri (yenilikçi olanlar dahil) araştır; revize bir tasarım planı çıkar.
+
+| İş | Durum |
+|---|---|
+| 3D ikiz, Pano detayda "Ön görünüş / 3D ikiz" geçişi (`components/Ikiz3D.tsx`) | ✅ tsc temiz, 71/71 test, build OK, tarayıcıda ADM-00014 ve GDZ-00231 ile doğrulandı, konsol temiz |
+| ADM/GDZ marka analizi (canlı sitelerin CSS token'ları ve logo SVG'leri) | ✅ `frontend/TASARIM-REVIZYONU.md` §1 |
+| Global araştırma (ISA-101, ABB, Schneider, Siemens, Hitachi, GE Vernova, Emerson, Honeywell, Cognite, Tesla…) | ✅ aynı dosya §2 |
+| Revize tasarım planı (token'lar, tipografi, marka katmanı, 7 yenilik, uygulama sırası) | ✅ yazıldı, **kullanıcı onayı bekliyor**; görsel sistem henüz değiştirilmedi |
+
+**Kararlar (öneri seçilerek):**
+1. **React Three Fiber yerine doğrudan three.js.** Spike kodu doğrudan taşınabildi; ek bağımlılık
+   (R3F + drei) gerekmedi. Sahne tek bir `buildScene` fonksiyonunda, React yalnızca veri ve düğmeleri
+   yönetiyor.
+2. **3D tembel yüklenen ayrı parça.** `Ikiz3D` parçası 509 kB (gzip 130 kB); ana paket 229 kB'de kaldı.
+   Vite'in 500 kB parça uyarısı bu parça için bilinçli olarak kabul edildi (yalnızca 3D açılınca iner).
+3. **Varsayılan görünüm 2D**, seçim `localStorage`'da hatırlanır. WebGL/paket hatasında sayfa çökmez.
+4. **3D geometri 2D ile aynı kaynaktan** (`pointPos3d`, birim testli). Spike'taki ayrı koordinatlar atıldı.
+5. **Marka logoları uygulamaya gömülmeyecek** (kullanım izni bizde değil); kimlik renk, Nunito ve şirket
+   adı metniyle taşınacak.
+6. **Marka turuncusu (#FF671D) ile P2 alarm turuncusu çakışıyor** → plan "mekânsal ayrım + şekil + ton
+   farkı" öneriyor (turuncu yalnızca marka katmanında, P2 `#D9530F`). Ayrıntı plan §3.2.
 
 ## 0.1 ⚠️ Ekip riski (öneri seçilerek not düşüldü, aksiyon ekipte)
 

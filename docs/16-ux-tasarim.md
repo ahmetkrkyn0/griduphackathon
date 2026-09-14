@@ -84,6 +84,14 @@ Gerçek harita karosu hiçbir ekranda kullanılmaz (GK4: yığın internetten ba
 Filo/Alarm konsolu/Bölge gibi filo-genelindeki ekranlarda tek bir "normal" hali anlamlı değildir
 (zaten yalnızca ilgi bekleyenler öne çıkar); bu yüzden yalnızca dolu (gerçek veriyle) hali verildi.
 
+## 5.1 3D dijital ikiz ve tasarım revizyonu (14 Eylül)
+
+Pano detay ekranında ön görünüşün yanında **3D ikiz** görünümü var (`components/Ikiz3D.tsx`,
+three.js npm'den ayrı parça olarak yüklenir, CDN yok). Aynı geometri kaynağını (`lib/panelGeometry.ts`)
+ve aynı API durumlarını kullanır. ADM/GDZ marka analizi, dünyadaki benzer ürünlerin incelemesi ve
+revize görsel sistem önerisi: [`frontend/TASARIM-REVIZYONU.md`](../frontend/TASARIM-REVIZYONU.md)
+(onay bekliyor).
+
 ## 6. Sonraki adım
 
 KiCad şeması gibi, "toplu cihaz sağlığı" ucu da bir sonraki iterasyonun ilk maddesidir — üç onay

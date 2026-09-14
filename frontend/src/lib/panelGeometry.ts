@@ -28,6 +28,16 @@ export function pointPos(pt: string): { x: number; y: number } | null {
   return null;
 }
 
+// 3D ikiz: 2D ile ayni x; y yukari artar (three.js), z arka duvardan on yuze (0..450).
+export const LUG_Z = 280; // DSYA kablo pabuclari
+export const BAR_TAP_Z = 200; // giris baralari
+
+export function pointPos3d(pt: string): { x: number; y: number; z: number } | null {
+  const pos = pointPos(pt);
+  if (!pos) return null;
+  return { x: pos.x, y: PANEL_MM.height - pos.y, z: pt.startsWith("DSYA") ? LUG_Z : BAR_TAP_Z };
+}
+
 const PHASE_ORDER = ["L1", "L2", "L3", "N"];
 
 /** Ayni cikisin (DSYA-n) veya girisin tum fazlari, L1-L2-L3-N sirasiyla. */

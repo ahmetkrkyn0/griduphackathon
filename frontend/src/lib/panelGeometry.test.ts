@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { ConnPoint } from "../api/types";
-import { PANEL_MM, phaseGroup, pointPos } from "./panelGeometry";
+import { PANEL_MM, phaseGroup, pointPos, pointPos3d } from "./panelGeometry";
 
 // Cizim sozlesmedeki nokta listesinden kopmasin.
 const modbusMap = readFileSync(new URL("../../../contracts/modbus-map.yaml", import.meta.url), "utf8");
@@ -26,6 +26,26 @@ describe("pointPos", () => {
   });
 
   it("bilinmeyen nokta için null", () => expect(pointPos("DSYA3_L4")).toBeNull());
+});
+
+describe("pointPos3d", () => {
+  it("25 noktanın hepsi gövdenin içinde, 2D ile aynı x", () => {
+    for (const pt of contractPoints) {
+      const p3 = pointPos3d(pt)!;
+      expect(p3.x).toBe(pointPos(pt)!.x);
+      expect(p3.y).toBeGreaterThan(0);
+      expect(p3.y).toBeLessThan(PANEL_MM.height);
+      expect(p3.z).toBeGreaterThan(0);
+      expect(p3.z).toBeLessThan(PANEL_MM.depth);
+    }
+  });
+
+  it("y yukarı artar: L1 barası L3'ün, baralar kablo pabuçlarının üstünde", () => {
+    expect(pointPos3d("GIRIS_L1")!.y).toBeGreaterThan(pointPos3d("GIRIS_L3")!.y);
+    expect(pointPos3d("GIRIS_L3")!.y).toBeGreaterThan(pointPos3d("DSYA1_L1")!.y);
+  });
+
+  it("bilinmeyen nokta için null", () => expect(pointPos3d("X")).toBeNull());
 });
 
 describe("phaseGroup", () => {
