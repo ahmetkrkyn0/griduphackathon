@@ -7,6 +7,7 @@ esikleri ve semalari koda gommez (PLAN.md kural 10).
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 import pytest
 import yaml
@@ -49,3 +50,24 @@ def assert_valid_telemetry(telemetry_schema: dict):
         )
 
     return check
+
+
+@pytest.fixture
+def sample() -> dict:
+    """TA1 uretecinden gelen sema-gecerli, saglikli bir telemetri yuku.
+
+    Testler bunu yerinde degistirir, bu yuzden fonksiyon kapsamli (her testte taze).
+    Isinma bitmis olsun diye birkac yuz adim atilir: soguk baslangicta dt_c ~ 0'dir
+    ve L0 testleri anlamsizlasir.
+    """
+    from panoalgo.generator import PanelSimulator
+
+    sim = PanelSimulator(
+        pano_id="SIM-00001",
+        seed=42,
+        profile="karma",
+        start=datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc),
+    )
+    for _ in range(400):
+        payload = sim.step(10.0)
+    return payload
