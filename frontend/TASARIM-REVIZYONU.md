@@ -386,6 +386,28 @@ metinle anlatılmadı (bkz. §12'nin dersi).
 
 ---
 
+## 14. 2D Ön görünüşte de gerçekçilik: 3D ile eş düzey (kullanıcı sordu: "2D'ler de gerçekçi mi")
+
+§13'te yalnızca 3D dijital ikiz güncellenmişti; kullanıcı 2D "Ön görünüş"ün (`components/
+OnGorunus.tsx`) durumunu sordu — haklı bir soruydu, dokunulmamıştı. Aynı detaylar SVG'ye de
+eklendi (yine yalnızca dekoratif geometri/renk, harici görsel yok):
+
+| Detay | 2D karşılığı |
+|---|---|
+| Durum LED'leri | TVOC-2/Pano Beyni/Modem üzerinde küçük yeşil noktalar. TVOC-2'ninki 3D'deki gibi `tvoc.prot_health_ok`'a bağlı (yeşil/kırmızı) — bunun için `OnGorunus`'a yeni `tvoc` prop'u eklendi, `PanoDetay.tsx`'ten `detail.tvoc` geçiliyor |
+| DSYA devre kesicileri | Her breaker gövdesinin üstüne siyah anahtar kolu + açık renkli pencere (yalnızca gerçek breaker'larda, yedeklerde değil) |
+| Kompanzasyon kondansatörleri | Dairenin merkezinden 3 yöne basınç tahliye izi (gerçek güç kondansatörlerinin üst yüzeyindeki çizik desen) — 3D'deki kıvrım bandının 2D karşılığı, çünkü önden bakışta gövde bantları değil üst yüzey izi görünür |
+| DIN ray | İnce bir "üst kenar parlaması" çizgisi eklendi (3D'deki 3 katmanlı profilin 2D karşılığı) |
+
+**Bilinçli sınır (3D ile aynı):** LED'ler ve anahtarlar dekoratif; hiçbiri yeni bir alarm/durum
+anlamı taşımıyor. Tek işlevsel bağlantı yine TVOC-2 LED'i — API'nin zaten verdiği
+`tvoc.prot_health_ok` alanını gösteriyor, yeni bir eşik icat edilmedi (kural 10).
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. ADM-00014 (yeşil
+TVOC-2 LED'i) ve GDZ-00231 (kırmızı TVOC-2 LED'i) ile görsel doğrulama yapıldı, 390 px mobilde
+yatay taşma yok. İki ekran görüntüsü (gerçek boyut + yakınlaştırılmış) kullanıcıya doğrudan
+gönderildi (SendUserFile).
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

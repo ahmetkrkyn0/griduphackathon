@@ -9,9 +9,23 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 akşam (3D dijital ikize gerçekçilik detayları eklendi, §15).
-**Son commit:** 3D ikize DIN ray profili, durum LED'leri, devre kesici anahtarları, sarkan
-kablolar, cıvata/bant detayları ve malzeme iyileştirmeleri eklendi.
+**Son güncelleme:** 14 Eylül 2026 akşam (2D Ön görünüşe de 3D ile eş düzey gerçekçilik, §16).
+**Son commit:** 2D SVG'ye durum LED'leri (TVOC-2 gerçek sağlık durumuna bağlı), devre kesici
+anahtar kolları, kondansatör tahliye izi eklendi.
+
+## 16. Oturum 6 devamı — "2D pano çizimleri için de bir şeyler yaptın mı"
+
+Kullanıcı §15'teki 3D gerçekçilik geçişinden sonra haklı bir soru sordu: 2D "Ön görünüş"
+(`components/OnGorunus.tsx`) hâlâ dokunulmamıştı. Aynı detaylar 3D ile eş düzeyde SVG'ye eklendi:
+
+- Durum LED'leri (TVOC-2/Pano Beyni/Modem) — TVOC-2'ninki `tvoc.prot_health_ok`'a bağlı, 3D'deki
+  gibi yeşil/kırmızı. `OnGorunus`'a yeni `tvoc` prop'u eklendi.
+- DSYA devre kesicilerine anahtar kolu + pencere (yalnızca gerçek breaker'larda).
+- Kompanzasyon kondansatörlerine basınç tahliye izi, DIN raya ince kenar parlaması.
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §14. Doğrulama: tsc temiz, 71/71 test yeşil, build
+başarılı; ADM-00014 (yeşil LED) ve GDZ-00231 (kırmızı LED) ile görsel kontrol, 390 px mobilde
+yatay taşma yok. İki ekran görüntüsü kullanıcıya doğrudan gönderildi (SendUserFile).
 
 ## 15. Oturum 6 devamı — "panoları daha gerçekçi yap"
 

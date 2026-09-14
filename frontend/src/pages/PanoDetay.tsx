@@ -220,7 +220,7 @@ export function PanoDetay() {
             </button>
           </div>
           {view === "2d" ? (
-            <OnGorunus points={detail.points} selected={focus} onSelect={setSelected} ackedPoints={ackedPoints} />
+            <OnGorunus points={detail.points} selected={focus} onSelect={setSelected} ackedPoints={ackedPoints} tvoc={detail.tvoc} />
           ) : (
             <GorunumSiniri fallback={<p className="i3-fail">3D görünüm yüklenemedi. Ön görünüşü kullanın.</p>}>
               <Suspense fallback={<p className="i3-fail">3D sahne yükleniyor…</p>}>

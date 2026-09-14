@@ -186,14 +186,23 @@
 .og-rule { stroke: #8e958f; stroke-width: 3; }
 .og-rule.dash { stroke-dasharray: 14 10; }
 .og-rail { stroke: #8e958f; stroke-width: 10; }
+.og-rail-lip { stroke: #ffffff; stroke-width: 2; opacity: 0.5; } /* DIN ray on kenar parlamasi (3D ray profiliyle es) */
 .og-bar { fill: var(--bar); }
 .og-dev { fill: var(--device); }
 .og-ours { fill: var(--ours); }
 .faint { opacity: 0.55; }
 .fainter { opacity: 0.4; }
 .og-comp { fill: none; stroke: var(--device); stroke-width: 8; opacity: 0.45; }
+.og-comp-vent { stroke: var(--device); stroke-width: 3; opacity: 0.5; } /* basinc tahliye izi */
 .og-dsya { fill: var(--device); }
 .og-dsya.spare { opacity: 0.45; }
+/* Gercekcilik detaylari (3D ikizle es duzeyde, TASARIM-REVIZYONU.md §14). Tumu dekoratif —
+   tek istisna og-led.bad/ok, API'nin tvoc.prot_health_ok alanini yansitir (kural 10 ile catismaz). */
+.og-led { stroke: #fff; stroke-width: 1.5; }
+.og-led.ok { fill: #2ecc71; }
+.og-led.bad { fill: var(--p1); }
+.og-toggle { fill: #1b1e20; }
+.og-toggle-window { fill: #d9dcdd; stroke: #8e958f; stroke-width: 2; }
 .og-cable { stroke: var(--device); stroke-width: 12; opacity: 0.35; }
 .og-label { font: 500 40px var(--cond); fill: var(--ink); }
 .og-pt { cursor: pointer; outline: none; }
