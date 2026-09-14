@@ -9,8 +9,28 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 akşam (zemin açıldı, tek font ailesine geçildi, §13).
-**Son commit:** Zemin RAL7035'ten beyaza yakın tona geçti + tek font ailesi (Nunito kaldırıldı).
+**Son güncelleme:** 14 Eylül 2026 akşam (zemin tam beyaza çekildi + Artifact senkronize edildi, §14).
+**Son commit:** `--bg` tam beyaz (`#FFFFFF`), turuncu parıltı güçlendirildi, karşılaştırma
+Artifact'ının kendi bayat CSS'i düzeltildi.
+
+## 14. Oturum 6 devamı — "hâlâ grimsi": iki kök neden
+
+Kullanıcı §13'ün hemen ardından: "arkaplanlarda hala o grimsi arkaplan var artifactta da öyle
+oraları istediğim gibi beyaz + turuncu detaylar yapmamışsın."
+
+1. `--bg` (`#F7F7F5`) yeterince beyaz değildi, `--surface` (tam beyaz) yanında hâlâ grimsi
+   okunuyordu → `--bg` de `#FFFFFF`'e çekildi; kartlar artık yalnızca kenarlık+gölgeyle ayrışıyor.
+   Turuncu parıltı iki katmana çıkarıldı (yakın+belirgin / geniş+soluk) ki tam beyazda kaybolmasın.
+2. **Karşılaştırma Artifact'ının kendi CSS'i hiç güncellenmemişti** — ilk yazıldığı andaki eski
+   token değerlerini (`#e4e5e2` vb.) sabit kopyalamıştı, uygulamanın `theme.css`'i sonra
+   değiştikçe bu kopya senkronize edilmemişti. Bu yüzden "artifactta da öyle" haklı bir tespitti.
+   Artifact'ın token'ları uygulamayla birebir eşitlendi, figür/chip kartlarına gölge eklendi.
+
+Ayrıntı ve alınan ders: `frontend/TASARIM-REVIZYONU.md` §12. Doğrulama: tsc temiz, 71/71 test
+yeşil, build başarılı, 1440px görsel kontrol. `assets/ekran/`'daki 8 dosya beşinci kez yeniden
+çekildi, Artifact tekrar yayınlandı (v4).
+
+## 13. Oturum 6 devamı — zemin ve tipografi: tek standart
 
 ## 13. Oturum 6 devamı — zemin ve tipografi: tek standart
 

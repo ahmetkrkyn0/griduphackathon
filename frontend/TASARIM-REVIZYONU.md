@@ -333,6 +333,28 @@ standarttan ilerleyelim."
   Alarm konsolu 1440px ve 390px'de görsel + konsol kontrolünden geçti. `assets/ekran/`'daki 8 dosya
   dördüncü kez yeniden çekildi; önce/sonra karşılaştırma Artifact'ı güncellendi.
 
+## 12. Düzeltme: "hâlâ grimsi" — iki kök neden (aynı oturum, hemen ardından)
+
+Kullanıcı: "arkaplanlarda hala o grimsi arkaplan var artifactta da öyle oraları istediğim gibi
+beyaz + turuncu detaylar yapmamışsın." İki ayrı kök neden bulundu:
+
+1. **Uygulamada `--bg` hâlâ beyazdan belirgin uzaktı.** §11'deki `#F7F7F5` yeterince beyaz
+   değildi — `--surface` (kartlar) tam beyazken `--bg` (sayfa zemini) hafif farklı kaldığı için
+   yan yana durunca "grimsi" okunuyordu. Düzeltme: `--bg` de tam beyaza (`#FFFFFF`) çekildi;
+   kartlar artık yalnızca kenarlık + gölge ile ayrışıyor (renk farkıyla değil). Turuncu parıltı
+   iki katmana çıkarıldı (üstte belirgin bir odak + altta geniş ve çok soluk bir yayılma) ki tam
+   beyaz zeminde görünür kalsın.
+2. **Karşılaştırma Artifact'ının KENDİ CSS'i hiç güncellenmemişti.** O sayfa, ilk yazıldığı anda
+   (§ kullanıcıya ilk gönderildiğinde) uygulamanın O ANKİ token'larını elle kopyalamıştı
+   (`--bg:#e4e5e2` vb.). Uygulamanın kendi `theme.css`'i sonraki turlarda değiştikçe, Artifact'ın
+   kopyası GÜNCELLENMEDİ — bu yüzden kullanıcı "artifactta da öyle" dedi, haklı olarak. Düzeltme:
+   Artifact'ın `:root` token'ları uygulamanın güncel `theme.css`'iyle birebir eşitlendi ve figür/
+   chip kartlarına da gölge eklendi (onlar da beyaz zeminde beyazdı, ayrışmıyordu).
+
+**Ders:** Bir HTML raporu/Artifact'ı uygulamanın tasarım sistemini "an itibarıyla" kopyalayarak
+yazmak, sistem sonra değiştiğinde sessizce bayatlıyor. Böyle bir rapor tekrar yayınlanacaksa,
+kaynak token'ların o anki halini yeniden okuyup senkronize etmek gerekiyor.
+
 ---
 
 ## Kaynaklar
