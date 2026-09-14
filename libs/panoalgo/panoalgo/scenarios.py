@@ -382,7 +382,10 @@ def write_fixture(
     labels_path = directory / f"{scenario_id}.labels.json"
 
     frame.to_csv(csv_path, index=False, lineterminator="\n", float_format="%.4g")
-    labels_path.write_text(json.dumps(labels, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # newline="\n": Windows'ta write_text varsayilani CRLF uretir, .gitattributes LF ister.
+    labels_path.write_text(
+        json.dumps(labels, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     return csv_path, labels_path
 
 
