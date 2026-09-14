@@ -77,21 +77,25 @@ function FleetKpis() {
   return (
     <ul className="kpis" aria-label="Filo özeti">
       <li>
-        <b>{num(total, 0)}</b>pano
+        <b>{num(total, 0)}</b>
+        <span>pano</span>
       </li>
       {commsPct != null && (
         <li>
-          <b>%{num(commsPct, 1)}</b>haberleşiyor
+          <b>%{num(commsPct, 1)}</b>
+          <span>haberleşiyor</span>
         </li>
       )}
       {kpi?.alarms_per_100_panels_per_day != null && (
         <li>
-          <b>{num(kpi.alarms_per_100_panels_per_day, 1)}</b>alarm / 100 pano / gün
+          <b>{num(kpi.alarms_per_100_panels_per_day, 1)}</b>
+          <span>alarm / 100 pano / gün</span>
         </li>
       )}
       {kpi?.p95_end_to_end_ms != null && (
         <li>
-          <b>{num(kpi.p95_end_to_end_ms, 0)} ms</b>alarmdan telefona (p95)
+          <b>{num(kpi.p95_end_to_end_ms, 0)} ms</b>
+          <span>alarmdan telefona (p95)</span>
         </li>
       )}
     </ul>

@@ -277,6 +277,42 @@ dosya adlarını kullandığı için görsel değişmiş haliyle otomatik günce
 
 ---
 
+## 10. Düzen revizyonu — kart sistemi (kullanıcı geri bildirimi sonrası, 14 Eylül)
+
+**Gerekçe.** R1–R5 yalnızca renk/tipografi token'larını değiştirdi; sayfa düzeni ve bileşen yapısı
+aynı kaldı. Kullanıcı bunu "her şeyi aynı bırakmışsın, global projelerden ilham al dedim" diye
+haklı olarak eleştirdi. Bu bölüm, §2'deki global araştırmadan (Hitachi Lumada APM, ABB SWICOM,
+GE Vernova, Cognite Industrial Canvas) doğrudan alınan somut düzen kalıplarını uygular.
+
+| Değişiklik | Kaynak ilham | Nerede |
+|---|---|---|
+| Kart + gölge sistemi (`--radius`, `--shadow-sm`, `--shadow` token'ları) | Hitachi APM, ABB SWICOM, Cognite — hepsi duz sinirlar yerine yukseltilmis kart kullanir | `theme.css`, tüm kart sınıfları |
+| KPI şeridi → büyük-sayı karoları | GE Vernova / ABB filo panolarının "big number" özet şeritleri | `App.tsx` `FleetKpis`, `app.css` `.kpis` |
+| "Şimdi yapılacaklar" → kart ızgarası (tek sütunlu yoğun liste değil) | Hitachi Lumada APM'in varlık sağlığı kartları | `app.css` `.work`/`.work-row` |
+| Pano detayda "sağlık şeridi": split'ten önce, her zaman görünür | ABB SWICOM'un durum özet bandı | `PanoDetay.tsx` (`PanoOzeti` split'ten önce taşındı, artık `quiet` değil) |
+| Birincil buton (Onayla) → dolgun marka turuncusu + koyu metin | Kullanıcı talebi: "GDZ'nin turuncusu kullanılan bir tasarım yok" | `app.css` `.btn` |
+| Aktif sekme/görünüm altına turuncu şerit (`box-shadow: inset 0 -3px 0 var(--brand)`) | Kullanıcı talebi (bkz. AskUserQuestion, "Daha belirgin yap" seçildi) | `.nav-link.active`, `.chart-range`/`.i3-bar` `[aria-pressed=true]` |
+| Kart kenarı vurgusu (hover/focus'ta turuncu sol kenar) | — | `.pin-card`, `.work-row` |
+
+**Bilinçli sınır — turuncu her yerde değil.** `.console-filters` (Açık/Rafta/Tümü/**Kritik/Alarm/
+Uyarı**/Sistem) düğmelerine turuncu EKLENMEDİ: bu düğmelerden biri kelimenin tam anlamıyla "Alarm"
+(P2'nin adı) — turuncu vurgu koysak, revizyonun tam önlemeye çalıştığı "turuncu = P2 alarmı"
+karışıklığını tam da orada yeniden yaratırdı. Bu, kullanıcının "daha belirgin yap" talebiyle
+çelişmez — talep genel görünürlük artışıydı, alarm etiketli düğmelere özel bir istisna değildi;
+karar öneri seçilerek verildi.
+
+**`.qa`/`.console-card` birleştirmesi.** Alarm konsolunda `AlarmNedeni` (`.qa`) `.console-card`
+içine gömülüydü — ikisi de kart kenarlığı çizdiği için "kart içinde kart" görünümü oluşuyordu.
+`.console-card` artık yalnızca liste aralığı veriyor; görsel kart her yerde (pano detay + alarm
+konsolu) tek başına `.qa`.
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Filo/Pano detay/
+Alarm konsolu/Bölge haritası 1440px ve 390px genişlikte görsel + konsol kontrolünden geçti, yatay
+taşma yok. `assets/ekran/`'daki 8 dosya bu düzenle üçüncü kez yeniden çekildi (bkz. §8 tablo, aynı
+dosya adları).
+
+---
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

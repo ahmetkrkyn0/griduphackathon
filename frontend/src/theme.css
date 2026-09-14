@@ -31,6 +31,13 @@
   --cond: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
   --display: "Nunito", "Barlow", system-ui, sans-serif; /* marka yazi tipi: urun adi, sayfa basliklari, durum cumlesi */
 
+  /* Kart sistemi: duz sinirlardan yukselti/derinlige (Hitachi APM, ABB SWICOM, Cognite Canvas
+     tarzi kart+golge dashboard'lari) — bkz. TASARIM-REVIZYONU.md §10 "Duzen revizyonu". */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px rgba(31, 34, 36, 0.05);
+  --shadow: 0 1px 2px rgba(31, 34, 36, 0.04), 0 8px 20px rgba(31, 34, 36, 0.08);
+
   color-scheme: light;
 }
 

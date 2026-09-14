@@ -15,11 +15,26 @@
 .brand { display: inline-flex; align-items: center; gap: 8px; font: 800 18px var(--display); text-decoration: none; }
 .brand-mark { flex: none; }
 .nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.nav-link { color: var(--dim); text-decoration: none; padding: 6px 10px; border-radius: 3px; font-size: 14px; }
+.nav-link { color: var(--dim); text-decoration: none; padding: 6px 10px; border-radius: var(--radius-sm); font-size: 14px; }
 .nav-link:hover { background: var(--well); color: var(--ink); }
-.nav-link.active { background: var(--ink); color: #fff; }
-.kpis { display: flex; gap: 24px; margin: 0 0 0 auto; padding: 0; list-style: none; color: var(--dim); font-size: 14px; }
-.kpis b { color: var(--ink); font: 600 16px var(--cond); font-variant-numeric: tabular-nums; margin-right: 4px; }
+/* Secili durum: grafit dolgu + turuncu alt serit (marka gorunurlugu, alarm rengiyle karismaz). */
+.nav-link.active { background: var(--plate); color: #fff; box-shadow: inset 0 -3px 0 var(--brand); }
+
+/* KPI seridi: duz metin yerine yukseltilmis "buyuk sayi" karolari (GE Vernova / ABB filo panolari). */
+.kpis { display: flex; gap: 8px; margin: 0 0 0 auto; padding: 0; list-style: none; }
+.kpis li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  line-height: 1.2;
+}
+.kpis b { color: var(--ink); font: 700 18px var(--display); font-variant-numeric: tabular-nums; }
+.kpis span { color: var(--dim); font: 600 10px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 
 .strip { padding: 7px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .strip.info { background: #e6eaf1; color: #2d3f63; }
@@ -65,26 +80,44 @@
 .axis-stem { position: absolute; z-index: 0; left: 13px; top: 28px; width: 2px; height: calc(var(--line) - var(--row) * var(--row-h) - 28px); background: var(--line); }
 
 .pin { position: relative; z-index: 1; display: flex; gap: 8px; align-items: flex-start; text-decoration: none; }
-.pin-card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; width: 200px; }
-.pin:hover .pin-card { border-color: var(--ink); }
+.pin-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: 5px 9px;
+  width: 200px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.pin:hover .pin-card, .pin:focus-visible .pin-card { border-left-color: var(--brand); box-shadow: var(--shadow); }
 .pin-name { display: flex; justify-content: space-between; gap: 8px; font: 600 15px var(--cond); }
 .pin-ttl { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pin-head { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 13px; color: var(--dim); line-height: 1.3; }
 
 /* ---------- Filo: is listesi ---------- */
+/* Yogun tek sutunlu tablo yerine kart izgarasi (Hitachi Lumada APM varlik sagligi kartlari):
+   her pano kendi karti, oncelik kenar rengiyle taranabilir, genis ekranda 2+ sutuna serbestce yerlesir. */
 .section-title { font: 600 15px var(--cond); color: var(--dim); margin: 28px 0 8px; }
-.work { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.work { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
 .work-row {
   display: grid;
-  grid-template-columns: 28px minmax(180px, 1fr) minmax(260px, 2.4fr) 100px;
-  grid-template-areas: "mark name body ttl";
-  gap: 16px;
+  grid-template-columns: 28px 1fr auto;
+  grid-template-areas: "mark name ttl" ". body body";
+  row-gap: 4px;
+  column-gap: 14px;
   align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid var(--line);
+  height: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
-.work-row:hover { background: var(--surface); }
+.work-row:hover { border-color: var(--brand); border-left-color: var(--brand); box-shadow: var(--shadow); transform: translateY(-1px); }
 .work-row > .prio { grid-area: mark; }
 .work-name-cell { grid-area: name; }
 .work-body { grid-area: body; }
@@ -115,12 +148,12 @@
 .statement { font: 800 34px/1.15 var(--display); margin: 18px 0 24px; max-width: 34ch; }
 
 .split { display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: 32px; align-items: start; }
-.front { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 12px; }
+.front { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 12px; }
 .front figcaption { color: var(--dim); font-size: 13px; margin: 8px 4px 0; }
 .split-3d { grid-template-columns: minmax(300px, 660px) 1fr; }
 
 /* 3D ikiz (components/Ikiz3D.tsx) */
-.i3 { position: relative; height: 540px; border-radius: 3px; overflow: hidden; background: var(--surface); }
+.i3 { position: relative; height: 540px; border-radius: var(--radius); overflow: hidden; background: var(--surface); }
 .i3-stage { position: absolute; inset: 0; }
 .i3-stage canvas { display: block; touch-action: none; }
 .i3-lbl { font: 500 11px var(--sans); color: var(--ink); background: rgba(244, 245, 241, 0.9); padding: 1px 5px; border-radius: 3px; white-space: nowrap; pointer-events: none; }
@@ -129,8 +162,8 @@
 .i3-tip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; padding: 3px 8px; border-radius: 3px; font-size: 12px; white-space: nowrap; z-index: 2; }
 .i3-controls { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 6px; z-index: 1; }
 .i3-bar { display: flex; flex-wrap: wrap; gap: 4px; }
-.i3-bar button { border: 1px solid var(--line); background: rgba(244, 245, 241, 0.94); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
-.i3-bar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.i3-bar button { border: 1px solid var(--line); background: rgba(244, 245, 241, 0.94); padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+.i3-bar button[aria-pressed="true"] { background: var(--plate); color: #fff; border-color: var(--plate); box-shadow: inset 0 -3px 0 var(--brand); }
 .i3-sep { width: 1px; background: var(--line); margin: 3px 2px; }
 /* Zaman kaydirici (Y1): gecmis K/K0 degerini canli durum rengine dogru interpolasyonla gosterir. */
 .i3-time { display: flex; align-items: center; gap: 8px; background: rgba(246, 246, 244, 0.95); border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; font-size: 12px; }
@@ -178,12 +211,20 @@
 .og-sel { fill: none; stroke: var(--ink); stroke-width: 6; }
 @keyframes og-pulse { 50% { opacity: 0.3; } }
 
-/* Neden / Ne yapmali / Ne kadar acil */
-.qa { border-top: 2px solid var(--ink); }
-.qa-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--line); }
+/* Neden / Ne yapmali / Ne kadar acil — pano detayda tek basina, alarm konsolunda .console-card
+   icinde: her iki yerde de goruntusel kart BUDUR (console-card yalnizca aralik/spacer, asagida). */
+.qa {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 4px 20px 20px;
+}
+.qa-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 0 12px; border-bottom: 1px solid var(--line); }
 .qa-head strong { font: 600 18px var(--cond); }
 /* Y2 olay modu: P1 + onaysiz alarmda kart one cikar (TASARIM-REVIZYONU.md §4). */
-.qa-event { border-top-color: var(--p1); }
+.qa-event { border-top-color: var(--p1); box-shadow: var(--shadow); }
 .event-elapsed { color: var(--p1); font: 600 14px var(--sans); }
 .event-link { margin-left: auto; color: var(--p1); font: 600 14px var(--sans); text-decoration: none; }
 .event-link:hover { text-decoration: underline; }
@@ -197,9 +238,13 @@
 .sig b { font: 600 16px var(--cond); }
 .qa .basis { color: var(--dim); font-size: 13px; margin-top: 4px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
-.btn { border: 1px solid var(--plate); background: var(--plate); color: #fff; padding: 9px 16px; border-radius: 3px; cursor: pointer; }
-.btn:hover { background: #3d3d3d; }
-.btn:disabled { opacity: 0.55; cursor: default; }
+/* Birincil eylem: marka turuncusu + koyu metin (5,5:1 kontrast) — "bu markanin butonu" ile
+   "bu bir alarm" ayrimi sekil/konumla (dikdortgen buton vs ucgen/kare oncelik isareti) korunur. */
+.btn { border: 1px solid var(--brand); background: var(--brand); color: var(--ink); font-weight: 600; padding: 9px 16px; border-radius: var(--radius-sm); cursor: pointer; }
+.btn:hover { filter: brightness(0.94); }
+.btn:disabled { opacity: 0.55; cursor: default; filter: none; }
+.btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.btn.ghost:hover { background: var(--well); filter: none; }
 /* Bos/sakin durum: ince marka cizgisi + Nunito cumle (plan §3.5, "sakin anlar marka anlari olur"). */
 .calm { font: 700 20px var(--display); color: var(--dim); border-top: 2px solid var(--brand); padding-top: 14px; margin: 0; }
 
@@ -221,10 +266,13 @@
 .ph.st-critical .ph-fill { background: var(--p1); }
 .ph-v { text-align: right; font: 600 16px var(--cond); }
 
-.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); margin-top: 32px; border-top: 1px solid var(--line); }
-.fact { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); }
-.fact .k { color: var(--dim); font-size: 13px; }
-.fact .v { font: 600 18px var(--cond); font-variant-numeric: tabular-nums; }
+/* Saglik seridi: ABB SWICOM/Hitachi APM'deki durum ozet baricci gibi, artik split'ten ONCE
+   ve daima tam gorunur (PanoDetay.tsx) — yukseltilmis karolar, buyuk Nunito rakamlar. */
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 18px 0 28px; }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); padding: 11px 14px; }
+.fact .k { color: var(--dim); font: 600 11px var(--cond); text-transform: uppercase; letter-spacing: 0.03em; }
+.fact .v { font: 700 20px var(--display); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.fact.bad { border-color: var(--p1); }
 .fact.bad .v { color: var(--p1); }
 
 .points { margin-top: 24px; }
@@ -269,19 +317,19 @@
 .chart-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .chart-empty { padding: 24px 0; text-align: center; }
 .chart-range { display: flex; gap: 6px; margin-bottom: 8px; }
-.chart-range button { border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: 3px; cursor: pointer; font-size: 13px; }
-.chart-range button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.chart-range button { border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
+/* Gorunum/zaman-araligi secimi (alarm siddeti degil) — aktif sekme vurgusuyla ayni dil. */
+.chart-range button[aria-pressed="true"] { background: var(--plate); color: #fff; border-color: var(--plate); box-shadow: inset 0 -3px 0 var(--brand); }
 
 /* ---------- Alarm konsolu ---------- */
 .console-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
-.console-filters button { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 13px; }
+.console-filters button { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
+/* Kasitli olarak turuncu vurgu YOK: bu dugmeler alarm siddetiyle ayni sozcukleri tasir
+   (Kritik/Alarm/Uyari) — marka turuncusu buraya tasarsa "turuncu = P2 alarm" izlenimini
+   guclendirir, tam da revizyonun onlemeye calistigi karisiklik (TASARIM-REVIZYONU.md §3.2). */
 .console-filters button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-.console-list { list-style: none; margin: 0; padding: 0; }
-.console-card { border: 1px solid var(--line); border-radius: 4px; margin-bottom: 14px; background: var(--surface); overflow: hidden; }
-.console-card-top { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.console-card-top .pano { font: 600 15px var(--cond); text-decoration: none; }
-.console-card-top .pano:hover { text-decoration: underline; }
-.console-card-body { padding: 4px 14px 12px; }
+.console-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+/* Kartin kendisi .qa'dir (AlarmNedeni); bu yalnizca listedeki araligi verir. */
 .console-empty { padding: 40px 0; text-align: center; color: var(--dim); }
 .shelf-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .shelf-form input, .shelf-form select { border: 1px solid var(--line); border-radius: 3px; padding: 6px 8px; font: inherit; }
@@ -298,7 +346,7 @@
 .timeline .tl-text { display: block; margin-top: 2px; }
 
 /* ---------- Cihaz sağlığı ---------- */
-.health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 4px; }
+.health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; margin-top: 4px; }
 .health-cell { background: var(--surface); padding: 8px; }
 .health-cell .v { font: 600 16px var(--cond); }
 .health-cell.bad { background: #fbe9e4; }
@@ -306,7 +354,7 @@
 
 /* ---------- Bölge haritası ---------- */
 .region-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 8px; }
-.region-col { border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 10px 12px; }
+.region-col { border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); background: var(--surface); padding: 12px 14px; }
 .region-col h3 { font: 600 15px var(--cond); margin: 0 0 8px; display: flex; justify-content: space-between; }
 .region-dots { display: flex; flex-wrap: wrap; gap: 6px; }
 .region-dot { width: 22px; height: 22px; border-radius: 4px; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; text-decoration: none; }
@@ -322,9 +370,5 @@
   .statement { font-size: 26px; }
   .split { grid-template-columns: 1fr; }
   .qa section { grid-template-columns: 1fr; gap: 4px; }
-  .work-row {
-    grid-template-columns: 28px 1fr auto;
-    grid-template-areas: "mark name ttl" ". body body";
-    row-gap: 4px;
-  }
+  .work { grid-template-columns: 1fr; }
 }

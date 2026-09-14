@@ -206,6 +206,9 @@ export function PanoDetay() {
         </p>
       )}
 
+      {/* Saglik seridi: split'ten once, olay modunda da tam gorunur (ABB SWICOM tarzi ozet bant). */}
+      <PanoOzeti detail={detail} />
+
       <div className={view === "3d" ? "split split-3d" : "split"}>
         <figure className="front">
           <div className="chart-range" role="group" aria-label="Pano görünümü">
@@ -269,7 +272,6 @@ export function PanoDetay() {
       </div>
 
       <div className={quiet}>
-        <PanoOzeti detail={detail} />
         <OlcumTablosu points={detail.points} selected={focus} onSelect={setSelected} />
       </div>
     </main>

@@ -9,8 +9,44 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 öğleden sonra (tasarım revizyonu R1–R5 tamamlandı, §11).
-**Son commit:** Tasarım revizyonu R5 (ekran görüntüleri yenilendi) — bkz. §11. Plan uçtan uca bitti.
+**Son güncelleme:** 14 Eylül 2026 akşam (kullanıcı geri bildirimi üzerine düzen revizyonu, §12).
+**Son commit:** Düzen revizyonu — kart sistemi, KPI/sağlık karoları, marka görünürlüğü artırıldı.
+
+## 12. Oturum 6 — Kullanıcı geri bildirimi: "tasarımda değişiklik göremiyorum" + düzen revizyonu
+
+Kullanıcı iki ayrı geri bildirim verdi:
+1. "Ben tasarımda bir değişiklik göremiyorum... GDZ'nin turuncusunun kullanıldığı bir tasarım yok
+   benim önümde." → **Kök neden: hiçbir görsel paylaşılmamıştı**, yalnızca metinle "doğrulandı"
+   denmişti. Düzeltme: önce/sonra karşılaştırma sayfası hazırlanıp Artifact olarak yayınlandı
+   (üç ekranın gerçek ekran görüntüleriyle), ardından turuncu kullanımını artırıp artırmama kararı
+   `AskUserQuestion` ile soruldu → **"Daha belirgin yap" seçildi.**
+2. Aynı mesajın hemen ardından (turuncu artırma işi sürerken): "sayfa düzeni renkleri falan her
+   şeyi aynı bırakmışsın sen... global projelerden ilham al dedim." → **Haklı bir eleştiri**: R1–R5
+   yalnızca CSS token'larını (renk/tipografi) değiştirmişti, sayfa düzenini ve bileşen yapısını hiç
+   değiştirmemişti.
+
+**Yapılan (tek geçişte, her iki geri bildirime birden yanıt):**
+
+| İş | Durum |
+|---|---|
+| Önce/sonra karşılaştırma Artifact'ı (3 ekran, gerçek görseller) | ✅ Yayınlandı, kullanıcıya link verildi |
+| Turuncuyu belirginleştirme (birincil buton, aktif sekme, kart kenarı) | ✅ Uygulandı |
+| **Kart + gölge sistemi** (`--radius`/`--shadow` token'ları, tüm kartlara uygulandı) | ✅ Uygulandı |
+| KPI şeridi → büyük-sayı karoları (GE Vernova/ABB tarzı) | ✅ Uygulandı |
+| İş listesi → kart ızgarası (Hitachi APM tarzı, tek sütunlu liste değil) | ✅ Uygulandı |
+| Pano detayda "sağlık şeridi" split'ten önce, her zaman görünür (ABB SWICOM tarzı) | ✅ Uygulandı |
+| `.qa`/`.console-card` "kart içinde kart" sorunu giderildi | ✅ Uygulandı |
+| Ekran görüntüleri 3. kez yeniden çekildi, karşılaştırma Artifact'ı güncellendi | ✅ Uygulandı |
+
+Ayrıntı, gerekçe tablosu ve bilinçli sınır (`.console-filters`'a turuncu eklenmedi, gerekçesi):
+`frontend/TASARIM-REVIZYONU.md` §10.
+
+**Ders (kendime not):** Görsel bir değişikliği yalnızca terminaldeki otomatik tarayıcı kontrolüyle
+"doğruladım" demek yetmez — kullanıcı hiçbir şey görmeden ikna olmasını beklemek doğru değildi.
+Bundan sonra görsel değişikliklerde ekran görüntüsünü veya Artifact linkini doğrudan paylaşmak
+gerekiyor.
+
+## 11. Oturum 5 — Tasarım revizyonu uygulaması: R5 (14 Eylül, "Devam et")
 
 ## 11. Oturum 5 — Tasarım revizyonu uygulaması: R5 (14 Eylül, "Devam et")
 
