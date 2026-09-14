@@ -474,6 +474,12 @@ kontrol edildi: kondansatörler artık koyu dolu daire + tahliye izi, MPR-53CS'd
 TVOC-2'de tek parça koyu ekran görünüyor; konsolda hata yok (yalnızca ilgisiz, önceden var olan
 bir form-alanı erişilebilirlik uyarısı).
 
+**Ekran görüntüleri:** `assets/ekran/`'daki 8 dosyadan yalnızca panonun iç görünümünü gösteren
+ikisi (`02-pano-detay-alarm.png` → `/pano/ADM-00014`, "Ön görünüş"; `02-pano-detay-normal.png` →
+`/pano/ADM-00301`, sakin durum) bu değişikliklerden etkileniyordu; aynı rota/sekme kombinasyonuyla
+yeniden çekildi. Diğer 6 dosya (Filo, Alarm konsolu, Trend, Kara kutu, Cihaz sağlığı, Bölge) pano
+iç görünümünü göstermediğinden dokunulmadı — gereksiz yeniden çekim yapılmadı.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

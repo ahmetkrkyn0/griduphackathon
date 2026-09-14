@@ -36,7 +36,9 @@ görüntülendi — projeye gömülmedi):
 Ayrıntı ve dürüst tavan değerlendirmesi: `frontend/TASARIM-REVIZYONU.md` §15. Doğrulama: tsc
 temiz, 71/71 test yeşil, build başarılı. ADM-00014'te 2D ve 3D chrome-devtools ile görsel
 kontrol yapıldı (kondansatörler koyu dolu daire, MPR-53CS ekran+tuş, TVOC-2 tek parça ekran
-görünüyor), konsolda hata yok.
+görünüyor), konsolda hata yok. `assets/ekran/`'daki 8 dosyadan yalnızca pano iç görünümünü
+gösteren ikisi (`02-pano-detay-alarm.png`, `02-pano-detay-normal.png`) aynı rota/sekmeyle
+yeniden çekildi; diğer 6'sı bu değişikliklerden etkilenmediği için dokunulmadı.
 
 ## 16. Oturum 6 devamı — "2D pano çizimleri için de bir şeyler yaptın mı"
 
