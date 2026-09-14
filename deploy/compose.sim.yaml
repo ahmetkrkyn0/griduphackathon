@@ -1,13 +1,14 @@
 # Kenar ve cihaz simulasyonu — KISI A'NIN DOSYASI.
 # Ana compose bunu `include` ile ceker (PLAN.md kural 6).
 #
-# Faz 0'da yalnizca `panosim` var ve sema-gecerli sabit telemetri yayinliyor.
-# Faz 1'de gercek fizik tabanli ureteci (libs/panoalgo) kullanacak.
+# Faz 1 (TA1): panosim artik libs/panoalgo fizik uretecini kullanir.
 # Faz 3'te mpr-sim ve tvoc-sim servisleri aktif edilecek (asagida hazir, yorumda).
 services:
   panosim:
     build:
-      context: ../sim
+      # Context repo koku: imaj hem sim/ hem libs/panoalgo'yu icerir.
+      context: ..
+      dockerfile: sim/Dockerfile
     container_name: gridup-panosim
     restart: unless-stopped
     environment:
@@ -17,6 +18,8 @@ services:
       SIM_PANELS: ${SIM_PANELS:-3}
       SIM_PERIOD_S: ${SIM_PERIOD_S:-10}
       SIM_SPEED: ${SIM_SPEED:-60}
+      SIM_SEED: ${SIM_SEED:-1000}
+      SIM_PREFIX: ${SIM_PREFIX:-ADM}
     volumes:
       - ../contracts:/contracts:ro
       - ../data:/data
