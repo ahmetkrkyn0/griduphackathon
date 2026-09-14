@@ -61,3 +61,6 @@ desktop.ini
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Firmware derleme ciktisi (Kisi A)
+firmware/build/
