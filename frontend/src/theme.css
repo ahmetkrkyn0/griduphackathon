@@ -26,6 +26,8 @@
   --dot: #a3a9ad;
   --bar: #b9b4a6;
   --device: #5d646a;
+  --cap-body: #26292b; /* gercek kompanzasyon kondansatoru govde rengi (referans foto, TASARIM-REVIZYONU.md §15) */
+  --screen: #0d1210; /* HMI ekranlarinin (TVOC-2, MPR-53CS) koyu cam yuzeyi */
 
   /* Tek font ailesi (Barlow) — kullanici talebi: "fontta tek bir standarttan ilerleyelim".
      --display artik --cond ile ayni yigin; ayri bir marka fontu (eskiden Nunito) yok. */

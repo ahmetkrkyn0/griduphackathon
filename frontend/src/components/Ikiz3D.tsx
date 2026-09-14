@@ -131,6 +131,8 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     fuseCap: new THREE.MeshStandardMaterial({ color: "#1B1E20", roughness: 0.4 }),
     insul: new THREE.MeshStandardMaterial({ color: "#3A4046", roughness: 0.7 }),
     cable: new THREE.MeshStandardMaterial({ color: "#23272B", roughness: 0.8 }),
+    capBody: new THREE.MeshStandardMaterial({ color: "#26292b", roughness: 0.35, metalness: 0.2 }), /* gercek kompanzasyon kondansatoru: koyu/siyah govde (referans foto) */
+    screen: new THREE.MeshStandardMaterial({ color: "#0d1210", roughness: 0.3, emissive: "#2ecc71", emissiveIntensity: 0.4 }),
     device: new THREE.MeshStandardMaterial({ color: device, roughness: 0.6 }),
     ours: new THREE.MeshStandardMaterial({ color: "#F4F6F8", roughness: 0.5 }),
     oursAccent: new THREE.MeshStandardMaterial({ color: ours, roughness: 0.4, emissive: ours, emissiveIntensity: 0.25 }),
@@ -188,6 +190,11 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   box(1480, 27, 7, mat.rail, 60, 1304, 40);
   box(1480, 4, 10, mat.rail, 60, 1327, 38);
   box(170, 95, 70, mat.device, 90, 1270, 48, 6);
+  // HMI dokunmatik ekran: ABB Arc Guard TVOC-2 govdesinin on yuzunun cogunu kaplayan
+  // gercek ekran alani (tam olcu dokumantasyonu erisilemedi — makul oran tahmini,
+  // TASARIM-REVIZYONU.md §15). Ekran + ince cerceve olarak modellendi, buton yok (dokunmatik).
+  box(120, 66, 3, mat.insul, 105, 1284, 118, 2);
+  box(112, 58, 2, mat.screen, 109, 1288, 121, 1);
   const tvocLed = led("#2ecc71", 250, 1350, 119);
   staticLabels.push(label("TVOC-2", 175, 1395, 90));
   box(150, 95, 64, mat.ours, 320, 1270, 48, 8);
@@ -200,7 +207,7 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   for (let i = 0; i < 5; i++) box(28, 75, 60, mat.face, 700 + i * 36, 1280, 48, 3);
   for (let i = 0; i < 3; i++) {
     const cx = 1030 + i * 110;
-    const c = new THREE.Mesh(new THREE.CylinderGeometry(42, 42, 230, 32), mat.face);
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(42, 42, 230, 32), mat.capBody);
     c.position.set(cx, 1277, 250);
     c.castShadow = true;
     root.add(c);
@@ -212,7 +219,13 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     }
   }
   staticLabels.push(label("Kompanzasyon", 1140, 1430, 250));
+  // ENTES MPR-53CS-DIN/96: dogrulanmis 96x96mm DIN panel format (urun sayfasi). On yuzde
+  // 3 satirlik LCD (L1/L2/L3 degerleri) + sag altta 4 gezinme tusu — gercek cihaz duzenine
+  // yakin sadelestirilmis temsil.
   box(96, 96, 30, mat.device, 1400, 1300, 420, 4);
+  box(70, 46, 3, mat.insul, 1413, 1330, 450, 1);
+  box(64, 40, 2, mat.screen, 1416, 1333, 453, 0);
+  for (let i = 0; i < 4; i++) box(8, 8, 3, mat.insul, 1413 + i * 12, 1306, 450, 1);
   staticLabels.push(label("MPR-53CS", 1448, 1425, 450));
 
   // Ana baralar ve giris

@@ -9,9 +9,34 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 akşam (2D Ön görünüşe de 3D ile eş düzey gerçekçilik, §16).
-**Son commit:** 2D SVG'ye durum LED'leri (TVOC-2 gerçek sağlık durumuna bağlı), devre kesici
-anahtar kolları, kondansatör tahliye izi eklendi.
+**Son güncelleme:** 14 Eylül 2026 akşam (gerçek ürün araştırması: DSYA/kondansatör/TVOC-2/
+MPR-53CS doğruluk düzeltmeleri, §17).
+**Son commit:** Kompanzasyon kondansatörü rengi koyulaştırıldı, TVOC-2 ve MPR-53CS'e gerçek
+cihaz yüzü (ekran + tuş) detayı eklendi (2D + 3D).
+
+## 17. Oturum 6 devamı — "neredeyse birebir gerçeğe benzemesin" (gerçek ürün araştırması)
+
+Kullanıcı önce gerçek foto/model kullanımını ve mevcut doğruluğu sordu, ardından hedefi
+netleştirdi: **"Ben bizimkilerin neredeyse birebir gerçeğe benzemesini istiyorum."** Adı geçen
+gerçek ürünler tek tek araştırıldı (WebSearch/WebFetch, indirilen referans fotoğraf yalnızca
+görüntülendi — projeye gömülmedi):
+
+- **DSYA düzeltmesi** (ayrı commit `3784cd7`, bu oturumda dokümante edildi): DSYA bir MCB değil,
+  Etien'in ürün sayfasında doğrulanan gerçek bir "Dikey Sigortalı Yük Ayırıcı" (NH bıçak
+  sigortalı). Anahtar+pencere geometrisi kaldırılıp silindirik sigorta gövdesi + çekme tutamağı
+  ile değiştirildi (`mat.fuseCap`, `.og-fusecap`).
+- **Kompanzasyon kondansatörü rengi:** gerçek panolarda koyu/siyah (referans fotoğrafta
+  doğrulandı), bizimki açık gri idi → yeni `mat.capBody`/`--cap-body` (#26292b) ile düzeltildi.
+- **MPR-53CS:** ürün sayfası 96×96mm DIN formatını doğruladı (bizim ölçümüz zaten doğruydu);
+  eksik olan ekran+tuş yüzü hem 3D'ye hem daha önce hiç olmayan 2D temsiline eklendi.
+- **TVOC-2:** tam ölçü dokümantasyonuna erişilemedi (ABB sayfası zaman aşımı, katalog PDF'i
+  görsel/metin çıkarılamaz, bu ortamda poppler-utils yok → PDF sayfa görüntüleme mümkün değil).
+  Makul oran tahminiyle tek parça dokunmatik ekran detayı eklendi, kesin spec olarak sunulmadı.
+
+Ayrıntı ve dürüst tavan değerlendirmesi: `frontend/TASARIM-REVIZYONU.md` §15. Doğrulama: tsc
+temiz, 71/71 test yeşil, build başarılı. ADM-00014'te 2D ve 3D chrome-devtools ile görsel
+kontrol yapıldı (kondansatörler koyu dolu daire, MPR-53CS ekran+tuş, TVOC-2 tek parça ekran
+görünüyor), konsolda hata yok.
 
 ## 16. Oturum 6 devamı — "2D pano çizimleri için de bir şeyler yaptın mı"
 

@@ -192,8 +192,10 @@
 .og-ours { fill: var(--ours); }
 .faint { opacity: 0.55; }
 .fainter { opacity: 0.4; }
-.og-comp { fill: none; stroke: var(--device); stroke-width: 8; opacity: 0.45; }
-.og-comp-vent { stroke: var(--device); stroke-width: 3; opacity: 0.5; } /* basinc tahliye izi */
+/* Kompanzasyon kondansatoru: gercek panolarda koyu/siyah silindirik govde — acik gri
+   ana hat degil dolu koyu daire (referans foto, TASARIM-REVIZYONU.md §15). */
+.og-comp { fill: var(--cap-body); stroke: #454c53; stroke-width: 2; }
+.og-comp-vent { stroke: #6a7178; stroke-width: 3; opacity: 0.7; } /* basinc tahliye izi */
 .og-dsya { fill: var(--device); }
 .og-dsya.spare { opacity: 0.45; }
 /* Gercekcilik detaylari (3D ikizle es duzeyde, TASARIM-REVIZYONU.md §14). Tumu dekoratif —
@@ -202,6 +204,10 @@
 .og-led.ok { fill: #2ecc71; }
 .og-led.bad { fill: var(--p1); }
 .og-fusecap { fill: #1b1e20; stroke: #454c53; stroke-width: 2; }
+/* HMI ekranlari: TVOC-2 dokunmatik ekrani + MPR-53CS LCD (3D ikizle es, TASARIM-REVIZYONU.md §15). */
+.og-screen-bezel { fill: #1b1e20; }
+.og-screen { fill: var(--screen); }
+.og-screen-btn { fill: #1b1e20; }
 .og-fusecap-hi { fill: #565c60; opacity: 0.6; } /* tutamak uzerindeki hafif isik yansimasi */
 .og-cable { stroke: var(--device); stroke-width: 12; opacity: 0.35; }
 .og-label { font: 500 40px var(--cond); fill: var(--ink); }

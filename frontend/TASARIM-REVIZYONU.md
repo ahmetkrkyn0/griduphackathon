@@ -408,6 +408,72 @@ TVOC-2 LED'i) ve GDZ-00231 (kırmızı TVOC-2 LED'i) ile görsel doğrulama yap�
 yatay taşma yok. İki ekran görüntüsü (gerçek boyut + yakınlaştırılmış) kullanıcıya doğrudan
 gönderildi (SendUserFile).
 
+## 15. "Neredeyse birebir gerçeğe benzemesin" isteği — gerçek ürün araştırması (14 Eylül, aynı oturum)
+
+Kullanıcı önce "gerçek görüntü/model kullansak olmaz mı, bizimki ne kadar benziyor gerçeğe"
+diye sordu; cevap üç ayrı soruya ayrıldı: (a) gerçek foto/CAD modelini doğrudan gömmek —
+telif/lisans riski + GK4 offline kural nedeniyle hayır; (b) mevcut temsilin doğruluğu — bunu
+gerçekten araştırıp ölçmek gerekiyordu, tahmin etmek yerine; (c) gerçek çizim şeması var mı —
+TEDAŞ şartnamesi kamuya açık genel referans, komitenin kendi EK-II/14 PDF'i ise gizli (yalnızca
+sayısal ölçüler yeniden kullanılabilir, görsel kopyalanamaz). Ardından kullanıcı işi netleştirdi:
+**"Ben bizimkilerin neredeyse birebir gerçeğe benzemesini istiyorum."** Bu, (b)'yi ciddiye alıp
+adı geçen gerçek ürünleri tek tek araştırmayı gerektirdi.
+
+### 15.1 DSYA: yanlış model düzeltmesi (ayrı commit `3784cd7`)
+
+Araştırma sırasında ortaya çıkan en önemli hata: DSYA ("Dikey Sigortalı Yük Ayırıcı") bir MCB
+(minyatür devre kesici) değil, **NH bıçak sigortalı dikey yük ayırıcıdır** — Etien'in DSYA ürün
+sayfası doğrulandı. Önceki modelde küçük bir anahtar kolu + durum penceresi vardı (MCB
+görünümü); bu factüel olarak yanlıştı. Düzeltme: hem `Ikiz3D.tsx` hem `OnGorunus.tsx`'te anahtar
++ pencere geometrisi kaldırıldı, yerine silindirik sigorta gövdesi + çekme tutamağı (puller cap)
+kondu. `mat.toggle` → `mat.fuseCap`, CSS `.og-toggle`/`.og-toggle-window` →
+`.og-fusecap`/`.og-fusecap-hi` olarak yeniden adlandırıldı.
+
+### 15.2 Kompanzasyon kondansatörü rengi
+
+`halitguner.com`'dan indirilen gerçek "1600 kVA Dahili Tip AG Pano TEDAŞ Tipi" ürün fotoğrafı
+incelendi (`pano-referans.jpg`, yalnızca referans amaçlı görüntülendi, projeye gömülmedi).
+Fotoğrafta güç kondansatörleri **koyu/siyah** gövdeli; bizim modelimiz açık gri (`#D9DCDD`,
+diğer birçok parçayla paylaşılan `mat.face`) kullanıyordu. Düzeltme: yeni özel malzeme
+`mat.capBody` (`#26292b`) 3D'de, `--cap-body` token'ı (aynı ton) 2D'de tanımlandı; `og-comp`
+artık dolu koyu daire (önceden yalnızca ince gri ana hattı), basınç tahliye izleri daha görünür
+kontrast için açık gri (`#6a7178`) yapıldı.
+
+### 15.3 TVOC-2 ve MPR-53CS: tanınabilir cihaz yüzü
+
+- **MPR-53CS** (ENTES MPR-53CS-DIN/96 şebeke analizörü): ürün sayfası **96×96 mm DIN panel
+  formatını doğruladı** — bizim ölçümüz (`box(96,96,...)`) zaten tesadüfen doğruydu. Eksik olan
+  gövdenin "meç yüzü": gerçek cihazda 3 satırlık LCD + gezinme tuşları var. Hem 3D'ye hem
+  (önceden hiç yoktu) 2D'ye ekran + 4 tuş detayı eklendi.
+- **TVOC-2** (ABB Arc Guard System TVOC-2): tam ölçü dokümantasyonuna erişilemedi — ABB ürün
+  sayfası `WebFetch` zaman aşımına uğradı, katalog PDF'i indirildi ama gömülü görsel PDF olduğu
+  için metin çıkarımı başarısız oldu; bu ortamda `pdftoppm`/poppler-utils kurulu olmadığından
+  PDF sayfalarını görsel olarak inceleme (Read ile) de mümkün olmadı. Doğrulanan tek şey: gerçek
+  cihazın dokunmatik HMI ekranı var, panel kapağına monte edilebiliyor (arama sonuçlarından).
+  Kesin piksel ölçüsü yerine **makul bir oran tahmini** kullanıldı: gövdenin çoğunu kaplayan tek
+  parça dokunmatik ekran (buton yok — gerçek cihaz dokunmatik), bu açıkça bir tahmin olarak
+  işaretleniyor, kesin spec olarak sunulmuyor.
+- Her iki cihaz için yeni paylaşılan malzeme/token: 3D'de `mat.screen` (koyu cam, hafif yeşil
+  emissive), 2D'de `--screen` + `.og-screen`/`.og-screen-bezel`/`.og-screen-btn`.
+
+### 15.4 Dürüst tavan (kullanıcıya aynen iletildi)
+
+"Neredeyse birebir" hedefi kısmen karşılanabilir: DSYA artık doğru **tür** bir bileşen (MCB
+değil, gerçek NH sigortalı ayırıcı formunda), MPR-53CS gerçek **ölçüsünde** (96×96mm) ve artık
+tanınabilir bir **yüze** sahip, kondansatörler gerçek **rengine** yakın. Ama şunlar hâlâ
+prosedürel bir kavramsal ikiz, ADM/GDZ'nin sahadaki gerçek donanımının CAD-birebir kopyası
+değil: (1) TVOC-2'nin tam ölçüsü/HMI düzeni doğrulanamadı, makul tahmin kullanıldı; (2) hiçbir
+gerçek fotoğraf/CAD modeli doğrudan gömülmedi (telif riski + GK4 offline kuralı); (3) boya
+dokusu, cıvata detayları, üretici logoları gibi ince yüzey detayları modellenmedi — bunlar
+maliyet/fayda açısından bu aşamada anlamlı değil. Bu sınırlar kullanıcıya açıkça anlatıldı,
+"artık fotogerçekçi/birebir" diye abartılmadı.
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı (three.js chunk
+uyarısı önceden var, bu değişiklikle ilgisiz). ADM-00014'te 2D ve 3D görünüm chrome-devtools ile
+kontrol edildi: kondansatörler artık koyu dolu daire + tahliye izi, MPR-53CS'de ekran+4 tuş,
+TVOC-2'de tek parça koyu ekran görünüyor; konsolda hata yok (yalnızca ilgisiz, önceden var olan
+bir form-alanı erişilebilirlik uyarısı).
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

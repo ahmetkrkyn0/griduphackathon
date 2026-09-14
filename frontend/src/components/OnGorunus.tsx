@@ -57,6 +57,9 @@ export function OnGorunus({ points, selected = null, onSelect, ackedPoints, tvoc
       <rect className="og-dev" x={90} y={158} width={120} height={94} rx={6}>
         <title>TVOC-2 ark koruma</title>
       </rect>
+      {/* HMI dokunmatik ekran: govdenin cogunu kaplayan tek parca ekran (buton yok — dokunmatik). */}
+      <rect className="og-screen-bezel" x={98} y={166} width={90} height={62} rx={3} />
+      <rect className="og-screen" x={101} y={169} width={84} height={56} rx={2} />
       <circle className={`og-led ${tvoc?.prot_health_ok === false ? "bad" : "ok"}`} cx={185} cy={172} r={5} />
       <rect className="og-ours" x={240} y={150} width={170} height={110} rx={8}>
         <title>Pano Beyni</title>
@@ -88,6 +91,16 @@ export function OnGorunus({ points, selected = null, onSelect, ackedPoints, tvoc
           </g>
         );
       })}
+      {/* ENTES MPR-53CS-DIN/96: dogrulanmis 96x96mm DIN panel format (urun sayfasi) —
+          LCD + 4 gezinme tusu, 3D ikizle es (TASARIM-REVIZYONU.md §15). */}
+      <rect className="og-dev" x={1440} y={160} width={96} height={94} rx={4}>
+        <title>MPR-53CS şebeke analizörü</title>
+      </rect>
+      <rect className="og-screen-bezel" x={1449} y={168} width={70} height={46} rx={2} />
+      <rect className="og-screen" x={1452} y={171} width={64} height={40} />
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={i} className="og-screen-btn" x={1449 + i * 12} y={222} width={8} height={8} rx={1} />
+      ))}
 
       {/* Ana baralar ve ustten gelen giris baralari */}
       {PHASES.map((phase, i) => (
