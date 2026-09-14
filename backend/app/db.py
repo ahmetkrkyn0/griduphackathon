@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import fields
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Protocol
 
 import psycopg
@@ -19,7 +19,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .alarm_manager import Alarm, Change
-from .models import PanelRecord, Rejection, Sample
+from .models import EventRecord, JournalEntry, PanelRecord, Rejection, Sample
 
 if TYPE_CHECKING:
     from .notify.dispatcher import Delivery
@@ -76,6 +76,31 @@ class Store(Protocol):
 
     def record_notification(self, delivery: Delivery) -> None:
         """Bildirim denetim izi (KVKK): kanal, maskeli alici, zaman, sonuc."""
+        ...
+
+    # ------------------------------------------------------------ analiz uclari (TB3)
+    def series(
+        self, pano_id: str, tags: Sequence[str], start: datetime, end: datetime, step: timedelta
+    ) -> dict[str, dict[datetime, float]]:
+        """[start, end) araligindaki TEMIZ (q = 0) olcumlerin `step` kovasi ortalamasi.
+
+        Kova baslangici Unix epoch'a hizalidir (SERIES_ORIGIN). Olcumu olmayan kova ve etiket sonuca girmez;
+        bosluklari API doldurur.
+        """
+        ...
+
+    def get_event(self, event_id: str) -> EventRecord | None: ...
+
+    def panel_journal(self, pano_id: str, start: datetime, end: datetime) -> list[JournalEntry]:
+        """Panonun alarm denetim izi, `at` [start, end] araliginda, zaman sirasiyla (esitlikte kayit sirasi)."""
+        ...
+
+    def alarm_counts(self, since: datetime) -> dict[str, int]:
+        """`since` ve sonrasinda olusan (raised_at, olay zamani) alarmlarin oncelik basina sayisi."""
+        ...
+
+    def delivery_latencies_ms(self, since: datetime) -> list[float]:
+        """`since` sonrasi olusan her alarm icin telefona (sms/whatsapp) ILK basarili teslimin olay zamanindan gecikmesi."""
         ...
 
 
@@ -148,6 +173,40 @@ _INSERT_NOTIFICATION = (
 )
 
 _SELECT_ALARMS = f"SELECT {', '.join(ALARM_COLUMNS)} FROM alarms"
+
+SERIES_ORIGIN = datetime(1970, 1, 1, tzinfo=timezone.utc)
+PHONE_CHANNELS = ("sms", "whatsapp")  # arama eskalasyondur; ilk bildirim gecikmesine girmez
+
+_SERIES = """
+SELECT tag, time_bucket(%(step)s, ts, %(origin)s) AS bucket, avg(value) AS value
+FROM telemetry
+WHERE pano_id = %(pano_id)s AND tag = ANY(%(tags)s) AND ts >= %(start)s AND ts < %(end)s
+  AND q = 0 AND value IS NOT NULL
+GROUP BY tag, bucket
+ORDER BY tag, bucket
+"""
+
+_GET_EVENT = """
+SELECT event_id, pano_id, occurred_at, code, det_label, payload ->> 'point' AS point, payload ->> 'prio' AS prio
+FROM events WHERE event_id = %s
+"""
+
+_PANEL_JOURNAL = """
+SELECT j.at, j.action, j.state, j.by_user, j.note, j.alarm_id, a.code, a.prio, a.point
+FROM alarm_journal j JOIN alarms a ON a.id = j.alarm_id
+WHERE a.pano_id = %(pano_id)s AND j.at >= %(start)s AND j.at <= %(end)s
+ORDER BY j.at, j.id
+"""
+
+_ALARM_COUNTS = "SELECT prio, count(*) FROM alarms WHERE raised_at >= %s GROUP BY prio"
+
+_DELIVERY_LATENCIES = """
+SELECT (EXTRACT(EPOCH FROM (min(n.sent_at) - a.raised_at)) * 1000.0)::float8
+FROM alarms a
+JOIN notifications n ON n.alarm_id = a.id AND n.ok AND n.channel = ANY(%(channels)s)
+WHERE a.raised_at >= %(since)s
+GROUP BY a.id, a.raised_at
+"""
 
 _LIST_ALARMS = f"""
 {_SELECT_ALARMS}
@@ -287,6 +346,34 @@ class PgStore:
                 _INSERT_NOTIFICATION,
                 (delivery.alarm_id, delivery.channel, delivery.recipient, delivery.sent_at, delivery.ok, delivery.detail),
             )
+
+    # ------------------------------------------------------------ analiz uclari (TB3)
+    def series(
+        self, pano_id: str, tags: Sequence[str], start: datetime, end: datetime, step: timedelta
+    ) -> dict[str, dict[datetime, float]]:
+        params = {"pano_id": pano_id, "tags": list(tags), "start": start, "end": end, "step": step, "origin": SERIES_ORIGIN}
+        result: dict[str, dict[datetime, float]] = {}
+        with self._connection() as conn:
+            for tag, bucket, value in conn.execute(_SERIES, params).fetchall():
+                result.setdefault(tag, {})[bucket] = float(value)
+        return result
+
+    def get_event(self, event_id: str) -> EventRecord | None:
+        with self._connection() as conn, conn.cursor(row_factory=class_row(EventRecord)) as cur:
+            return cur.execute(_GET_EVENT, (event_id,)).fetchone()
+
+    def panel_journal(self, pano_id: str, start: datetime, end: datetime) -> list[JournalEntry]:
+        with self._connection() as conn, conn.cursor(row_factory=class_row(JournalEntry)) as cur:
+            return cur.execute(_PANEL_JOURNAL, {"pano_id": pano_id, "start": start, "end": end}).fetchall()
+
+    def alarm_counts(self, since: datetime) -> dict[str, int]:
+        with self._connection() as conn:
+            return {prio: int(count) for prio, count in conn.execute(_ALARM_COUNTS, (since,)).fetchall()}
+
+    def delivery_latencies_ms(self, since: datetime) -> list[float]:
+        with self._connection() as conn:
+            rows = conn.execute(_DELIVERY_LATENCIES, {"since": since, "channels": list(PHONE_CHANNELS)}).fetchall()
+            return [float(latency) for (latency,) in rows]
 
     def _select_alarms(self, query: str, params: Any) -> list[Alarm]:
         with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:

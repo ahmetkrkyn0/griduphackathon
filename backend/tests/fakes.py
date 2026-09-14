@@ -15,8 +15,8 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 
-from app.db import StoreError
-from app.models import PanelRecord
+from app.db import PHONE_CHANNELS, SERIES_ORIGIN, StoreError
+from app.models import EventRecord, JournalEntry, PanelRecord
 
 DEFAULT_INSTALLED_AT = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
@@ -50,7 +50,7 @@ class MemoryStore:
         self.poison_pano: str | None = None  # bu panonun mesajini iceren her yazma veri hatasi verir
         self.unavailable = False  # True ise okumalar ve alarm yazimlari StoreError atar
         self.alarms: dict[int, object] = {}  # id -> Alarm
-        self.events: dict[str, tuple] = {}  # event_id -> (pano_id, occurred_at, code)
+        self.events: dict[str, EventRecord] = {}
         self.journal: list[tuple] = []  # (alarm_id, at, action, state, by, note)
         self.fail_alarm_saves = 0  # >0 ise siradaki N alarm yazimi StoreError atar
         self.notifications: list = []  # Delivery kayitlari
@@ -117,8 +117,11 @@ class MemoryStore:
             raise StoreError("yapay alarm yazma hatasi")
         for change in changes:
             alarm = change.alarm
-            if change.opened_event:
-                self.events.setdefault(alarm.event_id, (alarm.pano_id, alarm.raised_at, alarm.code))
+            if change.opened_event:  # PgStore: payload {prio, point}, det_label yazilmaz
+                self.events.setdefault(
+                    alarm.event_id,
+                    EventRecord(alarm.event_id, alarm.pano_id, alarm.raised_at, alarm.code, None, alarm.point, alarm.prio),
+                )
             stored = self.alarms.get(alarm.id)
             if stored is not None:  # PgStore gibi: aciklama olustugu anin kanitidir
                 alarm = replace(alarm, reason=stored.reason, advice=stored.advice, ttl_h=stored.ttl_h)
@@ -151,6 +154,50 @@ class MemoryStore:
     def record_notification(self, delivery) -> None:
         self._check()
         self.notifications.append(delivery)
+
+    # ------------------------------------------------------------ analiz uclari (TB3)
+    def series(self, pano_id, tags, start, end, step):
+        self._check()
+        wanted = set(tags)
+        buckets: dict[str, dict[datetime, list[float]]] = {}
+        for ts, pid, tag, value, q in self.telemetry:
+            if pid != pano_id or tag not in wanted or not start <= ts < end or q != 0 or value is None:
+                continue
+            bucket = SERIES_ORIGIN + ((ts - SERIES_ORIGIN) // step) * step
+            buckets.setdefault(tag, {}).setdefault(bucket, []).append(value)
+        return {tag: {b: sum(v) / len(v) for b, v in by_bucket.items()} for tag, by_bucket in buckets.items()}
+
+    def get_event(self, event_id):
+        self._check()
+        return self.events.get(event_id)
+
+    def panel_journal(self, pano_id, start, end):
+        self._check()
+        entries = []
+        for alarm_id, at, action, state, by, note in self.journal:
+            alarm = self.alarms[alarm_id]
+            if alarm.pano_id == pano_id and start <= at <= end:
+                entries.append(JournalEntry(at, action, state, by, note, alarm_id, alarm.code, alarm.prio, alarm.point))
+        return sorted(entries, key=lambda e: e.at)  # kararli: esitlikte kayit sirasi
+
+    def alarm_counts(self, since):
+        self._check()
+        counts: dict[str, int] = {}
+        for alarm in self.alarms.values():
+            if alarm.raised_at >= since:
+                counts[alarm.prio] = counts.get(alarm.prio, 0) + 1
+        return counts
+
+    def delivery_latencies_ms(self, since):
+        self._check()
+        latencies = []
+        for alarm in self.alarms.values():
+            if alarm.raised_at < since:
+                continue
+            sent = [d.sent_at for d in self.notifications if d.alarm_id == alarm.id and d.ok and d.channel in PHONE_CHANNELS]
+            if sent:
+                latencies.append((min(sent) - alarm.raised_at).total_seconds() * 1000.0)
+        return latencies
 
     # ------------------------------------------------------------ test yardimcilari
     def set_last_rx(self, pano_id: str, when: datetime) -> None:

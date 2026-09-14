@@ -1,0 +1,455 @@
+{
+  "uid": "gridup-alarm-kpi",
+  "title": "Grid Up — Alarm KPI (ISA-18.2 / EEMUA 191)",
+  "description": "Alarm performansı. Tanımlar docs/06-alarm-matrisi.md ve API /api/v1/fleet/kpi ile aynıdır.",
+  "tags": [
+    "gridup",
+    "TB3"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Günlük alarm (son 24 saat)",
+      "description": "EEMUA 191: operatör başına günde ≤150 kabul edilebilir, 300 yönetilebilir üst sınır.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 150
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"alarm\" FROM alarms WHERE raised_at >= now() - interval '24 hours'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Alarm / 100 pano / gün",
+      "description": "Filo büyüklüğünden bağımsız alarm yükü (API /fleet/kpi ile aynı tanım).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) * 100.0 / NULLIF((SELECT count(*) FROM panels), 0) AS \"alarm/100 pano\"\nFROM alarms WHERE raised_at >= now() - interval '24 hours'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Haberleşme sağlam (%, son 5 dk)",
+      "description": "Son 5 dakikada (heartbeat_timeout_min) veri gelen panoların oranı.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 95
+              },
+              {
+                "color": "green",
+                "value": 99
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE l.last_rx >= now() - interval '5 minutes') / NULLIF(count(*), 0) AS \"%\"\nFROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Uçtan uca bildirim p95 (ms, 24 saat)",
+      "description": "Olay zamanından (sensör) telefona ilk başarılı SMS/WhatsApp teslimine; en yakın sıra yöntemi.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5000
+              },
+              {
+                "color": "red",
+                "value": 30000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS \"p95 ms\"\nFROM (\n  SELECT extract(epoch FROM min(n.sent_at) - a.raised_at) * 1000.0 AS latency_ms\n  FROM alarms a JOIN notifications n ON n.alarm_id = a.id AND n.ok AND n.channel IN ('sms', 'whatsapp')\n  WHERE a.raised_at >= now() - interval '24 hours'\n  GROUP BY a.id, a.raised_at\n) t",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Öncelik dağılımı (7 gün) — hedefe göre",
+      "description": "EEMUA 191 hedef dağılımı (yüksek / orta / düşük). SYS ve INFO proses alarmı değildir.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT prio AS \"Öncelik\",\n       count(*) AS \"Alarm\",\n       round(100.0 * count(*) / NULLIF(sum(count(*)) OVER (), 0), 1) AS \"Gerçekleşen %\",\n       CASE prio WHEN 'P1' THEN 5 WHEN 'P2' THEN 15 WHEN 'P3' THEN 80 END AS \"Hedef %\"\nFROM alarms\nWHERE raised_at >= now() - interval '7 days' AND prio IN ('P1', 'P2', 'P3')\nGROUP BY prio\nORDER BY prio",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Etkin alarmlar (öncelik)",
+      "description": "Temizlenmemiş alarmlar. Rafta olanlar ekrana ve SCADA'ya duyurulmaz.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT prio AS \"Öncelik\", count(*) FILTER (WHERE state = 'active') AS \"Onaysız\",\n       count(*) FILTER (WHERE state = 'acked') AS \"Onaylı\", count(*) FILTER (WHERE state = 'shelved') AS \"Rafta\"\nFROM alarms WHERE state <> 'cleared'\nGROUP BY prio ORDER BY prio",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Oluşan alarmlar (saatlik)",
+      "description": "Alarm seli (flood) tespiti: ISA-18.2'de 10 dakikada 10'dan fazla alarm sel sayılır.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(raised_at, '1h'), prio AS metric, count(*) AS value\nFROM alarms\nWHERE $__timeFilter(raised_at)\nGROUP BY 1, prio\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "En çok alarm üreten panolar (7 gün)",
+      "description": "ISA-18.2 'kötü aktör' analizi: alarm yükünün çoğu genellikle birkaç panodan gelir.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT pano_id AS \"Pano\", count(*) AS \"Alarm\", string_agg(DISTINCT code, ', ') AS \"Kodlar\"\nFROM alarms WHERE raised_at >= now() - interval '7 days'\nGROUP BY pano_id ORDER BY count(*) DESC LIMIT 10",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

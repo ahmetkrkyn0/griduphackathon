@@ -282,3 +282,28 @@ def test_background_writer_flushes_without_explicit_call(contracts, store, tel_p
         pipeline.stop()
 
     assert len(store.telemetry) == 67
+
+
+def test_rate_meter_averages_the_last_window():
+    """/fleet/kpi ingest_msgs_per_s: son 60 s'de alinan mesaj / 60 (1 s kovalari, eskiyen kovalar duser)."""
+    from app.ingest import RateMeter
+
+    clock = [1000.0]
+    meter = RateMeter(window_s=60, clock=lambda: clock[0])
+    for second in range(30):  # 1000..1029 arasi saniyede bir mesaj
+        clock[0] = 1000.0 + second
+        meter.add()
+    assert meter.per_second() == 0.5
+    clock[0] = 1059.5  # hepsi hala son 60 s icinde
+    assert meter.per_second() == 0.5
+    clock[0] = 1075.0  # 1000..1015 dustu, 14 kova kaldi
+    assert meter.per_second() == pytest.approx(14 / 60)
+    clock[0] = 2000.0
+    assert meter.per_second() == 0.0
+
+
+def test_pipeline_reports_receive_rate(contracts, tel_payload):
+    pipeline = IngestPipeline(contracts, MemoryStore(), clock=lambda: RX)
+    for _ in range(3):
+        pipeline.handle_message("gridup/pano/ADM-00001/tel", encode(tel_payload))
+    assert pipeline.msgs_per_s() == pytest.approx(3 / 60)

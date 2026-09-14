@@ -1,0 +1,352 @@
+{
+  "uid": "gridup-olcek",
+  "title": "Grid Up — Ölçek ve yük testi",
+  "description": "loadtest/fleet.py ölçümleri (docs/09-olceklenebilirlik.md). Üstten koşu seçin, zaman aralığını koşuya göre ayarlayın.",
+  "tags": [
+    "gridup",
+    "TB3"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "run",
+        "label": "Yük testi",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "gridup-tsdb"
+        },
+        "definition": "SELECT DISTINCT run_id FROM loadtest_metrics ORDER BY run_id DESC",
+        "query": "SELECT DISTINCT run_id FROM loadtest_metrics ORDER BY run_id DESC",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 0,
+        "hide": 0,
+        "current": {},
+        "options": []
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Yayın ve yazma hızı (mesaj/s)",
+      "description": "Yük aracının yayın hızı ile backend'in veritabanına yazdığı mesaj hızı. İkisi örtüşüyorsa kuyruk birikmiyor.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '10s'), metric, avg(value) AS value\nFROM loadtest_metrics\nWHERE $__timeFilter(ts) AND run_id = '$run' AND metric IN ('publish_per_s', 'ingest_written_per_s')\nGROUP BY 1, metric\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Alım gecikmesi p95 (ms)",
+      "description": "Yayından backend'in mesajı aldığı ana (broker + ağ + ayrıştırma), 10 s pencerelerde p95. Saat farkı düzeltilmiş.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '10s'), metric, avg(value) AS value\nFROM loadtest_metrics\nWHERE $__timeFilter(ts) AND run_id = '$run' AND metric IN ('receive_p95_ms')\nGROUP BY 1, metric\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "CPU (%)",
+      "description": "docker stats; %100 = bir çekirdek.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '10s'), metric, avg(value) AS value\nFROM loadtest_metrics\nWHERE $__timeFilter(ts) AND run_id = '$run' AND metric IN ('backend_cpu_pct', 'timescaledb_cpu_pct', 'mosquitto_cpu_pct')\nGROUP BY 1, metric\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Bellek (MiB)",
+      "description": "docker stats kullanılan bellek.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decmbytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '10s'), metric, avg(value) AS value\nFROM loadtest_metrics\nWHERE $__timeFilter(ts) AND run_id = '$run' AND metric IN ('backend_mem_mib', 'timescaledb_mem_mib', 'mosquitto_mem_mib')\nGROUP BY 1, metric\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Telemetri tablosu (MB)",
+      "description": "hypertable_size('telemetry'): sıkıştırmasız, indeks dahil. Gün başına projeksiyon docs/09'da.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decmbytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '10s'), metric, avg(value) AS value\nFROM loadtest_metrics\nWHERE $__timeFilter(ts) AND run_id = '$run' AND metric IN ('telemetry_mb')\nGROUP BY 1, metric\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Canlı alım (mesaj/s, telemetry tablosundan)",
+      "description": "Yük testinden bağımsız: veritabanına yazılmış farklı (pano, zaman) sayısı. Kısa zaman aralığıyla kullanın.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '10s'), count(DISTINCT (pano_id, ts)) / 10.0 AS \"mesaj/s\"\nFROM telemetry\nWHERE $__timeFilter(ts)\nGROUP BY 1\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

@@ -115,7 +115,7 @@ def test_whatsapp_uses_its_own_verified_recipient_list_when_configured(contracts
     """Demo SMS alicilari hayali numaralardir (sanal modem); WhatsApp yalnizca Meta'da dogrulanmis numaraya gider."""
     notifier = Notifier(
         contracts,
-        NotifyConfig(recipients=FIELD_TEAM, whatsapp_recipients=("+905321112233",)),
+        NotifyConfig(recipients=FIELD_TEAM, whatsapp_recipients=("+905550000077",)),
         sms=None,
         whatsapp=WhatsAppClient("token", "123", transport=httpx.MockTransport(whatsapp_stub)),
         on_delivery=lambda d: None, on_reply=lambda *a: None, clock=lambda: T0,
@@ -124,7 +124,7 @@ def test_whatsapp_uses_its_own_verified_recipient_list_when_configured(contracts
     notifier([raise_alarm(manager, "ALM-THR-TERM-ALM", "DSYA3_L2")])
     notifier.run_once()
 
-    assert [r["to"] for r in whatsapp_stub.requests] == ["905321112233"]
+    assert [r["to"] for r in whatsapp_stub.requests] == ["905550000077"]
 
 
 @pytest.mark.parametrize("code", ["ALM-K-WARN", "ALM-COMMS-LOST"])
@@ -184,7 +184,7 @@ def test_reply_from_an_unregistered_number_is_ignored(gateway, manager, modem_se
     gateway.notifier([raise_alarm(manager, "ALM-THR-TERM-ALM", "DSYA3_L2")])
     gateway.notifier.run_once()
 
-    modem_server.inject("+905551234567", "1 42")
+    modem_server.inject("+905550000099", "1 42")  # kayitli olmayan demo numarasi
     gateway.notifier.run_once(wait_s=1.0)
 
     assert gateway.replies == []

@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections import deque
 from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
@@ -30,7 +31,7 @@ import paho.mqtt.client as mqtt
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
-from .config import Contracts, topic_filter, topic_regex
+from .config import PANO_ID_PLACEHOLDER, Contracts, topic_filter, topic_regex
 from .db import Store, StoreError
 from .models import Rejection, Sample, TelemetryRow
 
@@ -99,6 +100,39 @@ def _contains_nul(value: Any) -> bool:
     return False
 
 
+class RateMeter:
+    """Son `window_s` saniyedeki olay hizi (1 s kovalari); /fleet/kpi ingest_msgs_per_s. Ag thread'inden cagrilir.
+
+    Pencere ortalamasidir: acilistan sonraki ilk `window_s` saniyede gercek hizin altinda gosterir. Yuk testi
+    olcumleri bunun yerine veritabanindaki satir sayisindan ve Grafana panosundan alinir (docs/09).
+    """
+
+    def __init__(self, window_s: int = 60, clock: Callable[[], float] = time.monotonic) -> None:
+        self._window_s = window_s
+        self._clock = clock
+        self._buckets: deque[list[int]] = deque()  # [saniye, adet], eskiden yeniye
+        self._lock = threading.Lock()
+
+    def add(self, amount: int = 1) -> None:
+        second = int(self._clock())
+        with self._lock:
+            if self._buckets and self._buckets[-1][0] == second:
+                self._buckets[-1][1] += amount
+            else:
+                self._buckets.append([second, amount])
+            self._trim(second)
+
+    def per_second(self) -> float:
+        now = int(self._clock())
+        with self._lock:
+            self._trim(now)
+            return sum(count for _, count in self._buckets) / self._window_s
+
+    def _trim(self, now: int) -> None:
+        while self._buckets and self._buckets[0][0] <= now - self._window_s:
+            self._buckets.popleft()
+
+
 class IngestPipeline:
     def __init__(
         self,
@@ -126,6 +160,7 @@ class IngestPipeline:
         self._flush_lock = threading.Lock()
         self._listeners: list[Listener] = []
         self.stats = {"received": 0, "rejected": 0, "written": 0, "dropped": 0, "write_errors": 0}
+        self._rate = RateMeter()
 
         self._wake = threading.Event()
         self._stopping = threading.Event()
@@ -135,6 +170,7 @@ class IngestPipeline:
     def handle_message(self, topic: str, raw: bytes) -> None:
         """paho ag thread'inden cagrilir: yalnizca ayristirir ve kuyruga koyar, DB'yi beklemez."""
         item = self._parse(topic, raw, self._clock())
+        self._rate.add()
         with self._lock:
             self.stats["received"] += 1
             if isinstance(item, Rejection):
@@ -148,6 +184,10 @@ class IngestPipeline:
 
     def add_listener(self, listener: Listener) -> None:
         self._listeners.append(listener)
+
+    def msgs_per_s(self) -> float:
+        """Son 60 s'de alinan mesaj hizi (reddedilenler dahil: broker'dan gelen yuk)."""
+        return self._rate.per_second()
 
     # ----------------------------------------------------------------- yazma
     def flush(self) -> bool:
@@ -293,6 +333,8 @@ class MqttSubscriber:
 
     clean_session=False + sabit client_id: backend yeniden baslarken broker QoS 1 mesajlari
     bekletir (mosquitto.conf max_queued_messages), yeniden baslatma veri kaybettirmez.
+
+    Ayni baglanti merkez -> kenar komutlarini da yayinlar (x-topics cmd; SCADA ag gecidi kullanir).
     """
 
     def __init__(
@@ -308,6 +350,8 @@ class MqttSubscriber:
         self._host = host
         self._port = port
         self._subscriptions = [(topic_filter(t), qos) for t, qos in contracts.ingest_topics.items()]
+        self._command_topic = contracts.command_topic
+        self._command_qos = contracts.command_qos
         self._forward = on_message
         self.connected = False
         self._client = client or mqtt.Client(
@@ -325,6 +369,20 @@ class MqttSubscriber:
     def stop(self) -> None:
         self._client.disconnect()
         self._client.loop_stop()
+
+    def publish_command(self, pano_id: str, cmd: str, args: dict[str, Any], *, ts: datetime) -> bool:
+        """Kenara komut; True = broker'a teslim edilmek uzere paho'ya verildi.
+
+        Kopukken KUYRUGA ALINMAZ: saatler sonra teslim edilen eski bir komut (or. bakim modu) sahada
+        surpriz yaratir. Cagiran (SCADA ag gecidi) basarisizligi istemciye bildirir, operator tekrar dener.
+        """
+        if not self.connected:
+            log.warning("MQTT kopuk, kenar komutu gonderilmedi: %s -> %s", cmd, pano_id)
+            return False
+        topic = self._command_topic.replace(PANO_ID_PLACEHOLDER, pano_id)
+        body = json.dumps({"v": 1, "ts": ts.isoformat(), "cmd": cmd, "args": args}, ensure_ascii=False)
+        info = self._client.publish(topic, body, qos=self._command_qos, retain=False)
+        return info.rc == mqtt.MQTT_ERR_SUCCESS
 
     def _on_connect(self, client, userdata, flags, reason_code, properties) -> None:
         if reason_code.is_failure:
