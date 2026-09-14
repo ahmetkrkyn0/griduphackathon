@@ -245,7 +245,7 @@
 .btn:disabled { opacity: 0.55; cursor: default; filter: none; }
 .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .btn.ghost:hover { background: var(--well); filter: none; }
-/* Bos/sakin durum: ince marka cizgisi + Nunito cumle (plan §3.5, "sakin anlar marka anlari olur"). */
+/* Bos/sakin durum: ince marka cizgisi + kalin cumle (plan §3.5, "sakin anlar marka anlari olur"). */
 .calm { font: 700 20px var(--display); color: var(--dim); border-top: 2px solid var(--brand); padding-top: 14px; margin: 0; }
 
 .others { margin-top: 24px; }
@@ -267,7 +267,7 @@
 .ph-v { text-align: right; font: 600 16px var(--cond); }
 
 /* Saglik seridi: ABB SWICOM/Hitachi APM'deki durum ozet baricci gibi, artik split'ten ONCE
-   ve daima tam gorunur (PanoDetay.tsx) — yukseltilmis karolar, buyuk Nunito rakamlar. */
+   ve daima tam gorunur (PanoDetay.tsx) — yukseltilmis karolar, buyuk rakamlar. */
 .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 18px 0 28px; }
 .fact { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); padding: 11px 14px; }
 .fact .k { color: var(--dim); font: 600 11px var(--cond); text-transform: uppercase; letter-spacing: 0.03em; }

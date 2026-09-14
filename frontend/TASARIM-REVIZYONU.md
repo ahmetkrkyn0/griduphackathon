@@ -313,6 +313,28 @@ dosya adları).
 
 ---
 
+## 11. Zemin ve tipografi: tek standart (kullanıcı geri bildirimi, aynı oturum)
+
+Kullanıcı: "arkaplanı biraz daha aç beyaz tonları... şu grimsi renkten kurtul bir de fontta tek bir
+standarttan ilerleyelim."
+
+- **Zemin.** `--bg` RAL7035 grimsi tondan (`#E4E5E2`) açık/beyaza yakın bir tona (`#F7F7F5`) geçti;
+  `--surface` (kart zemini) tam beyaza (`#FFFFFF`); `--well` ve `--line` orantılı olarak açıldı.
+  `body`'ye üst banttan sarkan, %8 opaklıkta bir `radial-gradient` turuncu parıltı eklendi
+  (`theme.css`) — marka rengini zemine taşır ama veri alanındaki durum renkleriyle asla yarışmaz
+  (opaklık çok düşük, ISA-101 "renk = alarm" kuralını bozmaz).
+- **Tipografi — tek aile.** `--display` token'ı artık ayrı bir marka fontu (Nunito) değil,
+  `--cond` (Barlow Semi Condensed) ile aynı yığın; `@fontsource/nunito` paketten tamamen
+  kaldırıldı (`npm uninstall`). Ürün artık tek bir font ailesi kullanıyor: Barlow (gövde metni) +
+  Barlow Semi Condensed (başlıklar, etiketler, rakamlar) — ikisi aynı ailenin iki genişliği,
+  ayrı bir "marka sesi" fontu yok. `main.tsx`'e Barlow Semi Condensed 800 ağırlığı eklendi (büyük
+  başlıklarda kullanılan tek ağırlık).
+- **Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı; Filo/Pano detay/
+  Alarm konsolu 1440px ve 390px'de görsel + konsol kontrolünden geçti. `assets/ekran/`'daki 8 dosya
+  dördüncü kez yeniden çekildi; önce/sonra karşılaştırma Artifact'ı güncellendi.
+
+---
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

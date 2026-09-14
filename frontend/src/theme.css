@@ -6,13 +6,13 @@
    veri alaninda, grafiklerde ve 3D sahnede asla kullanilmaz (plan §3.2).
    Kaynak: admelektrik.com.tr ve gdzelektrik.com.tr hesaplanmis CSS token'lari. */
 :root {
-  --bg: #e4e5e2;
-  --surface: #f6f6f4;
-  --well: #d9dbd5;
+  --bg: #f7f7f5; /* acik, beyaza yakin zemin — RAL7035 grimsi tondan bilerek uzaklasildi */
+  --surface: #ffffff;
+  --well: #eeeeec;
   --plate: #4d4d4d; /* ADM/GDZ ikincil rengi: kimlik plakalari, birincil dugmeler */
   --ink: #1f2224;
   --dim: #5f666b;
-  --line: #c7cac3;
+  --line: #dcdcd8;
 
   --p1: #c62828;
   --p2: #d9530f; /* marka turuncusundan (#FF671D) kasitli olarak ayristirilmis ton, plan §3.2 */
@@ -27,9 +27,11 @@
   --bar: #b9b4a6;
   --device: #5d646a;
 
+  /* Tek font ailesi (Barlow) — kullanici talebi: "fontta tek bir standarttan ilerleyelim".
+     --display artik --cond ile ayni yigin; ayri bir marka fontu (eskiden Nunito) yok. */
   --sans: "Barlow", system-ui, sans-serif;
   --cond: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
-  --display: "Nunito", "Barlow", system-ui, sans-serif; /* marka yazi tipi: urun adi, sayfa basliklari, durum cumlesi */
+  --display: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
 
   /* Kart sistemi: duz sinirlardan yukselti/derinlige (Hitachi APM, ABB SWICOM, Cognite Canvas
      tarzi kart+golge dashboard'lari) — bkz. TASARIM-REVIZYONU.md §10 "Duzen revizyonu". */
@@ -53,7 +55,9 @@ body {
 }
 
 body {
-  background: var(--bg);
+  /* Ust banttan sarkan cok hafif turuncu parilti — marka rengini zemine tasir, ama
+     %8 opaklikta oldugu icin veri alanindaki durum renkleriyle asla yarismaz. */
+  background: radial-gradient(1100px 480px at 18% -120px, rgba(255, 103, 29, 0.08), transparent 60%), var(--bg);
   color: var(--ink);
   font: 15px/1.45 var(--sans);
   -webkit-font-smoothing: antialiased;

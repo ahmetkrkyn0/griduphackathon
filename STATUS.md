@@ -9,8 +9,27 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 14 Eylül 2026 akşam (kullanıcı geri bildirimi üzerine düzen revizyonu, §12).
-**Son commit:** Düzen revizyonu — kart sistemi, KPI/sağlık karoları, marka görünürlüğü artırıldı.
+**Son güncelleme:** 14 Eylül 2026 akşam (zemin açıldı, tek font ailesine geçildi, §13).
+**Son commit:** Zemin RAL7035'ten beyaza yakın tona geçti + tek font ailesi (Nunito kaldırıldı).
+
+## 13. Oturum 6 devamı — zemin ve tipografi: tek standart
+
+Kullanıcı §12'deki düzen revizyonunun hemen ardından: "arkaplanı biraz daha aç beyaz tonları belki
+turuncu hafif fade efekti olabilir backgroundda şu grimsi renkten kurtul bir de fontta tek bir
+standarttan ilerleyelim."
+
+- `--bg` `#E4E5E2` → `#F7F7F5`, `--surface` → `#FFFFFF`, `--well`/`--line` orantılı açıldı.
+- `body`'ye üst banttan sarkan %8 opaklıkta turuncu `radial-gradient` eklendi.
+- `--display` token'ı Nunito'dan Barlow Semi Condensed'e (yani `--cond` ile aynı) çevrildi;
+  `@fontsource/nunito` paketten kaldırıldı. Ürün artık tek font ailesi (Barlow ailesi, iki
+  genişlik) kullanıyor.
+- `assets/ekran/`'daki 8 dosya dördüncü kez yeniden çekildi; önce/sonra karşılaştırma Artifact'ı
+  (bkz. §12) güncellendi.
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §11. Doğrulama: tsc temiz, 71/71 test yeşil, build
+başarılı, 1440px/390px görsel kontrol.
+
+## 12. Oturum 6 — Kullanıcı geri bildirimi: "tasarımda değişiklik göremiyorum" + düzen revizyonu
 
 ## 12. Oturum 6 — Kullanıcı geri bildirimi: "tasarımda değişiklik göremiyorum" + düzen revizyonu
 
