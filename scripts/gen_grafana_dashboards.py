@@ -5,7 +5,8 @@ PLAN.md kural 7: Grafana JSON'u elle duzenlenmez, birlestirilemez; bu betik tek 
 esikleri, oncelik dagilimi hedefi ve haberlesme zaman asimi contracts/alarm-codes.yaml'dan okunur.
 
     olcek.json      yuk testi (loadtest/fleet.py -> loadtest_metrics) + canli alim hizi (telemetry)
-    alarm-kpi.json  ISA-18.2 / EEMUA 191 alarm performansi: gunluk alarm, dagilim, etkin alarm, bildirim gecikmesi
+    alarm-kpi.json  ISA-18.2 / EEMUA 191 alarm performansi: gunluk alarm, dagilim, etkin alarm, bildirim
+                    gecikmesi, sel (10 dk), bayat alarm (>24 sa), chattering, pano ve KOD bazinda kotu aktor
 
     backend/.venv/Scripts/python scripts/gen_grafana_dashboards.py            # yeniler
     backend/.venv/Scripts/python scripts/gen_grafana_dashboards.py --check    # guncel degilse 1 ile cikar
@@ -27,6 +28,23 @@ from app.config import Contracts, load_contracts  # noqa: E402
 OUT_DIR = ROOT / "deploy" / "grafana" / "dashboards"
 DS = {"type": "grafana-postgresql-datasource", "uid": "gridup-tsdb"}
 PHONE_CHANNELS = "('sms', 'whatsapp')"  # app/db.py PHONE_CHANNELS ile ayni tanim (API /fleet/kpi)
+
+# EEMUA 191 sayisal tanimlari. contracts/alarm-codes.yaml'da KARSILIGI YOKTUR (sozlesme donmus,
+# PLAN.md kural 3); bu yuzden burada tek yerde tanimlanir. Hem panel SQL'i hem panel aciklamasi
+# ayni sabitten yazilir: aciklamanin hesaplanmayan bir tanimi iddia etmesi (GK10) boylece imkansizlasir.
+FLOOD_WINDOW_MIN = 10        # sel penceresi: 10 dakika
+FLOOD_ALARM_COUNT = 10       # ... icinde 10'dan FAZLA yeni alarm sel sayilir
+STALE_ALARM_H = 24           # 24 saatten uzun duran alarm bayattir
+BAD_ACTOR_LIMIT = 10         # "ilk 10 alarm olusumlarin %60-80'ini uretir" listesi
+# Chatter indeksi: ardisik duyurular arasindaki sure (run-length) dagiliminda ortalama 1/n.
+# Kondaveeti ve ark. (2013); yerlesik esik 0,05 (yaklasik 20 s'de bir duyuru).
+CHATTER_INDEX_LIMIT = 0.05
+STALE_LIST_LIMIT = 20
+
+# Alarm DUYURUSU = operatorun yeni bir alarm olarak gordugu an. Iki denetim izi eylemi bunu verir
+# (backend/app/alarm_manager.py): ilk olusum ve mandalli P1'in onaylanmadan tekrar etkinlesmesi.
+ANNUNCIATIONS = "('raised', 'reactivated')"
+PROCESS_PRIOS = "('P1', 'P2', 'P3')"  # SYS ve INFO proses alarmi degildir (docs/06 §4)
 
 
 # ------------------------------------------------------------------ panel yapicilari
@@ -67,10 +85,17 @@ def _panel(layout: Layout, kind: str, title: str, sql: str, *, w: int, h: int, f
     }
 
 
-def timeseries(layout: Layout, title: str, sql: str, *, unit: str, description: str, w: int = 12, h: int = 8) -> dict[str, Any]:
+def timeseries(layout: Layout, title: str, sql: str, *, unit: str, description: str, w: int = 12, h: int = 8,
+               steps: list[tuple[str, float | None]] | None = None) -> dict[str, Any]:
+    """`steps` verilirse esik degeri grafige yatay cizgi olarak cizilir (sel sinirini gozle gormek icin)."""
+    custom: dict[str, Any] = {"lineWidth": 2, "fillOpacity": 10, "spanNulls": False}
+    defaults: dict[str, Any] = {"unit": unit, "custom": custom}
+    if steps is not None:
+        custom["thresholdsStyle"] = {"mode": "line"}
+        defaults["thresholds"] = {"mode": "absolute", "steps": [{"color": c, "value": v} for c, v in steps]}
     return _panel(
         layout, "timeseries", title, sql, w=w, h=h, fmt="time_series", description=description,
-        defaults={"unit": unit, "custom": {"lineWidth": 2, "fillOpacity": 10, "spanNulls": False}},
+        defaults=defaults,
         options={"legend": {"displayMode": "list", "placement": "bottom", "showLegend": True}, "tooltip": {"mode": "multi", "sort": "none"}},
     )
 
@@ -219,12 +244,76 @@ FROM alarms
 WHERE $__timeFilter(raised_at)
 GROUP BY 1, prio
 ORDER BY 1
-""", unit="short", description="Alarm seli (flood) tespiti: ISA-18.2'de 10 dakikada 10'dan fazla alarm sel sayılır."),
-        table(layout, "En çok alarm üreten panolar (7 gün)", """
+""", unit="short",
+                   description=f"Saatlik kovada oluşan alarm (alarms.raised_at), önceliğe göre: genel eğilim. "
+                               f"EEMUA 191'in {FLOOD_WINDOW_MIN} dakikalık sel tanımını bu panel HESAPLAMAZ, "
+                               f"yan paneldedir — saatlik kova o tanımı gizler."),
+        timeseries(layout, f"Alarm seli — {FLOOD_WINDOW_MIN} dakikalık pencere (EEMUA 191)", f"""
+SELECT $__timeGroupAlias(at, '{FLOOD_WINDOW_MIN}m'), count(*) AS "Yeni alarm"
+FROM (
+  SELECT j.at
+  FROM alarm_journal j JOIN alarms a ON a.id = j.alarm_id
+  WHERE j.action IN {ANNUNCIATIONS} AND a.prio IN {PROCESS_PRIOS}
+) annunciation
+WHERE $__timeFilter(at)
+GROUP BY 1
+ORDER BY 1
+""", unit="short", steps=[("green", None), ("red", FLOOD_ALARM_COUNT + 1)],
+                   description=f"EEMUA 191 sel tanımı, GERÇEK penceresiyle: {FLOOD_WINDOW_MIN} dakikalık kovada "
+                               f"{FLOOD_ALARM_COUNT}'dan fazla yeni alarm duyurusu sel sayılır. Duyuru = "
+                               f"alarm_journal'da raised + reactivated (operatörün yeni alarm olarak gördüğü an), "
+                               f"yalnızca P1/P2/P3. Kırmızı çizgi {FLOOD_ALARM_COUNT + 1}'dedir: tanımın "
+                               f"ihlal edildiği ilk değer."),
+        table(layout, "En çok alarm üreten panolar (7 gün)", f"""
 SELECT pano_id AS "Pano", count(*) AS "Alarm", string_agg(DISTINCT code, ', ') AS "Kodlar"
 FROM alarms WHERE raised_at >= now() - interval '7 days'
-GROUP BY pano_id ORDER BY count(*) DESC LIMIT 10
-""", description="ISA-18.2 'kötü aktör' analizi: alarm yükünün çoğu genellikle birkaç panodan gelir."),
+GROUP BY pano_id ORDER BY count(*) DESC LIMIT {BAD_ACTOR_LIMIT}
+""", description=f"ISA-18.2 'kötü aktör' analizi: alarm yükünün çoğu genellikle birkaç panodan gelir. "
+                 f"İlk {BAD_ACTOR_LIMIT} pano, alarm satırı (alarms.raised_at) sayısına göre."),
+        table(layout, f"En çok alarm üreten kodlar (7 gün) — ilk {BAD_ACTOR_LIMIT}", f"""
+SELECT code AS "Kod", prio AS "Öncelik", count(*) AS "Alarm",
+       count(DISTINCT pano_id) AS "Pano",
+       round(100.0 * count(*) / NULLIF(sum(count(*)) OVER (), 0), 1) AS "Pay %",
+       round(100.0 * sum(count(*)) OVER (ORDER BY count(*) DESC, code)
+             / NULLIF(sum(count(*)) OVER (), 0), 1) AS "Kümülatif %"
+FROM alarms WHERE raised_at >= now() - interval '7 days'
+GROUP BY code, prio ORDER BY count(*) DESC, code LIMIT {BAD_ACTOR_LIMIT}
+""", description=f"KOD bazında kötü aktör: yan paneldeki pano listesiyle aynı ölçü (alarms.raised_at), farklı "
+                 f"eksen. EEMUA 191 rasyonalize edilmemiş sistemlerde ilk {BAD_ACTOR_LIMIT} alarmın oluşumların "
+                 f"%60-80'ini ürettiğini söyler; 'Kümülatif %' sütunu bunu bizim filomuzda ölçer. "
+                 f"Payların paydası 7 günün TÜM alarmlarıdır, yalnızca listelenenler değil."),
+        table(layout, f"Bayat alarmlar (>{STALE_ALARM_H} saat, EEMUA 191)", f"""
+SELECT pano_id AS "Pano", code AS "Kod", prio AS "Öncelik", coalesce(point, '-') AS "Nokta",
+       state AS "Durum",
+       round((extract(epoch FROM now() - coalesce(annunciated_at, raised_at)) / 3600.0)::numeric, 1) AS "Süre (saat)"
+FROM alarms
+WHERE state <> 'cleared'
+  AND coalesce(annunciated_at, raised_at) < now() - interval '{STALE_ALARM_H} hours'
+ORDER BY coalesce(annunciated_at, raised_at) LIMIT {STALE_LIST_LIMIT}
+""", description=f"EEMUA 191: alarm listesinde {STALE_ALARM_H} saatten uzun duran alarm bayattır — operatör onu "
+                 f"artık görmez. Süre duyurudan (annunciated_at, duvar saati) itibaren ölçülür; temizlenmemiş "
+                 f"her durum listelenir, rafa alınmış olanlar 'Durum' sütununda görünür. En eski "
+                 f"{STALE_LIST_LIMIT} kayıt."),
+        table(layout, "Chattering (run-length, 7 gün)", f"""
+WITH annunciation AS (
+  SELECT a.pano_id, a.code, a.point,
+         j.at - lag(j.at) OVER (PARTITION BY a.pano_id, a.code, a.point ORDER BY j.at, j.id) AS gap
+  FROM alarm_journal j JOIN alarms a ON a.id = j.alarm_id
+  WHERE j.action IN {ANNUNCIATIONS} AND j.at >= now() - interval '7 days'
+), run AS (
+  SELECT pano_id, code, point, greatest(round(extract(epoch FROM gap))::bigint, 1) AS run_s
+  FROM annunciation WHERE gap IS NOT NULL
+)
+SELECT pano_id AS "Pano", code AS "Kod", coalesce(point, '-') AS "Nokta",
+       count(*) + 1 AS "Duyuru", round(avg(1.0 / run_s), 3) AS "Chatter indeksi",
+       round(min(run_s) / 60.0, 1) AS "En kısa ara (dk)"
+FROM run GROUP BY pano_id, code, point
+HAVING avg(1.0 / run_s) >= {CHATTER_INDEX_LIMIT}
+ORDER BY avg(1.0 / run_s) DESC LIMIT {BAD_ACTOR_LIMIT}
+""", description=f"Chatter indeksi = ardışık duyurular arasındaki sürenin (run-length, saniye) dağılımında "
+                 f"ortalama 1/n (Kondaveeti ve ark., 2013). 1'e yaklaşması saniyeler arayla tekrarlayan alarm "
+                 f"demektir; {CHATTER_INDEX_LIMIT} ve üstü chattering sayılır ve yalnızca onlar listelenir. "
+                 f"Tablo BOŞSA chattering yoktur — histerezis (hysteresis_clear_min) işini yapıyor demektir."),
     ]
     return dashboard("gridup-alarm-kpi", "Grid Up — Alarm KPI (ISA-18.2 / EEMUA 191)",
                      "Alarm performansı. Tanımlar docs/06-alarm-matrisi.md ve API /api/v1/fleet/kpi ile aynıdır.",

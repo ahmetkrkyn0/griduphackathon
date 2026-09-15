@@ -105,7 +105,7 @@ docs/10'un varsayımsal ROI tablosunu, formülü mevzuatta yayımlanmış bir ma
 **Ne üretir:** Çiy marjı eşikleri için ROC benzeri bir tablo; ya mevcut sayının savunması ya da `contracts/changes/` altında gerekçeli bir öneri. Yan kazanç: canlı demoda sağlıklı panodan çiy alarmı çıkma riski kapanır.
 **Dikkat:** Tam ızgara yapılmamalı — yalnızca çiy eşikleri, yalnızca sağlıklı senaryo üzerinde. [libs/panoalgo/panoalgo/validate.py](libs/panoalgo/panoalgo/validate.py) tespiti yeniden koşturmuyor, fixture'ın hazır alarm sütununu okuyor; her ızgara noktasında fixture yeniden üretilmeli. Eşiği **değiştirmek** 17 Eylül'den sonra imkânsız; bu iş eşiği yalnızca savunur.
 
-### F-07 · EEMUA 191 alarm başarım panelleri
+### F-07 · EEMUA 191 alarm başarım panelleri — ✅ tamamlandı
 Sel, bayat, chattering ve kod bazında "kötü aktör" metriklerini Grafana'da ham SQL ile üretir · **Etki:** yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** [scripts/gen_grafana_dashboards.py](scripts/gen_grafana_dashboards.py) → [deploy/grafana/dashboards/alarm-kpi.json](deploy/grafana/dashboards/alarm-kpi.json), [backend/tests/](backend/tests/) yeniden üretim testi
 **Sektörel dayanak:** EEMUA 191 sayısal tanımları (10 dakikada >10 alarm = sel; 24 saatten uzun = bayat) ve ISA-18.2 izleme-değerlendirme aşaması; chatter index için run-length dağılımı (Kondaveeti ve ark., 2013).
 **Bizdeki boşluk:** Panonun kendisi zaten yayında ve EEMUA hedef karşılaştırması, raf sayacı ve **pano** bazında ilk-on içinde var. Gerçekten eksik olan üç şey: kod bazında kötü aktör, chattering ve bayat alarm. **Ve bir GK10 hatası:** mevcut panellerden birinin açıklaması "10 dakikada 10'dan fazla alarm sel sayılır" diyor ama sorgusu saatlik kova kullanıyor — panel, hesaplamadığı bir tanımı iddia ediyor.
