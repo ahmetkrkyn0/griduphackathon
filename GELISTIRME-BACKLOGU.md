@@ -84,7 +84,7 @@ Sözleşmede tanımlı ama kodda hiç uygulanmamış özet bildirimini gerçekte
 **Ne üretir:** Günde bir kez gönderilen tek parça özet mesajı + testi; jüri dokümanındaki bir vaadin kapanması.
 **Dikkat:** Sözleşme değişikliği **gerekmiyor**, alanlar zaten tanımlı. Metin tek parça GSM-7 sınırına uymalı; maskeleme kurallarına dokunulmamalı (GK9). Haftalık yönetim raporu ve mevzuat eşlemesi bu kapsamın dışında bırakıldı.
 
-### F-04 · Prognoz geri testi: alfa-lambda, prognostic horizon, relative accuracy
+### F-04 · Prognoz geri testi: alfa-lambda, prognostic horizon, relative accuracy — ✅ tamamlandı
 "209 saat önce uyardı" tek noktasını, tahminin zamanla yakınsayıp yakınsamadığını gösteren bir eğriye çevirir · **Etki:** çok yüksek · **Efor:** 3-5 saat · **Nerede yaşar:** yeni `libs/panoalgo/panoalgo/prognostics.py`, [libs/panoalgo/panoalgo/validate.py](libs/panoalgo/panoalgo/validate.py), yeni `libs/panoalgo/tests/test_prognostics.py`
 **Sektörel dayanak:** Saxena ve ark. prognostik performans metrikleri ve NASA Prognostics Metrics Library; ISO 13381-1 prognozun doğrulanmasını ve güven ifadesini ister.
 **Bizdeki boşluk:** [docs/12-dogrulama-sonuclari.md](docs/12-dogrulama-sonuclari.md) §2 prognoz hakkında tek bir sayı veriyor. Fixture'larda sınır ihlali anı zaten etiketli olduğu için gerçek kalan ömür her örnek için hesaplanabilir — yeni veri gerekmiyor, sadece kod gerekiyor.
@@ -98,7 +98,7 @@ docs/10'un varsayımsal ROI tablosunu, formülü mevzuatta yayımlanmış bir ma
 **Ne üretir:** Parametreli bir hesaplayıcı betiği + docs/10 §3'ün yeniden yazımı; jüri kendi tarife değerini girer.
 **Dikkat:** API ucu ve arayüz kartı **eklenmeyecek** (donmuş openapi, onay kuyruğu tıkalı). Çıktı kesinlikle MARUZİYET dilinde olmalı: "bu pano kesilirse yönetmeliğe göre şu kadar tazminat doğar". "Şu kadar arıza önledik" ölçülemez, GK10 ihlalidir. Dağıtım bedeli ve ortalama talep girilmediyse hesap "veri yok" demeli.
 
-### F-06 · Çiy noktası eşik taraması
+### F-06 · Çiy noktası eşik taraması — ✅ tamamlandı
 Ölçülmüş tek gerçek zayıflığı (sağlıklı panoda 71,4 yanlış alarm/100 pano-gün, tamamı çiy kaynaklı) veriyle savunur veya öneri açar · **Etki:** yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** yeni `scripts/threshold_sweep.py`, [docs/05-anomali-tespiti.md](docs/05-anomali-tespiti.md)'ye yeni bölüm, gerekirse `contracts/changes/` altında öneri
 **Sektörel dayanak:** IEEE C57.104-2019 eşikleri popülasyon yüzdeliğinden türetiyor; ISO 17359 alarm kriterinin yinelemeli optimize edilmesini ister.
 **Bizdeki boşluk:** [contracts/alarm-codes.yaml](contracts/alarm-codes.yaml)'daki hiçbir eşiğin "neden bu sayı" sorusuna ölçülmüş cevabı yok. Sorun zaten kayıtlı ve sahiplenilmiş ([KALAN-EKSIKLER.md](KALAN-EKSIKLER.md) D7).

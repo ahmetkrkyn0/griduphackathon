@@ -16,6 +16,9 @@ Olculen seyler ve tanimlari:
   yanlis     S0 (tamamen saglikli) senaryosunda cikan her alarm yanlis alarmdir.
              100 pano x gun olcegine tasinir, cunku operatorun gunluk alarm butcesi
              sozlesmede bu olcekte tanimli (alarms_per_operator_day_acceptable).
+  prognoz    Tahmin edilen kalan omur (min_ttl_h) ile GERCEK kalan omur
+             (l0_breach_at - t) karsilastirilir: alfa-lambda, prognostic horizon,
+             goreli dogruluk, yakinsama. Olcutlerin tanimi prognostics.py'dedir.
 
 DURUSTLUK NOTU: bu betik etiket dosyasindaki "beklenen"i degil, VERIDEKI gercek
 alarm sutununu okur. Etiket yalnizca "ne olmasi gerekiyordu"yu soyler; ne oldugu
@@ -37,9 +40,11 @@ from pathlib import Path
 
 import yaml
 
+from . import prognostics
 from .detect import default_contracts_dir
 
 FIXED_THRESHOLD_CODE = "ALM-THR-TERM-ALM"  # sabit 70 K esigi
+TTL_ALARM_CODE = "ALM-TTL-14D"  # ttl tahmininin ALARMA dondugu kod (sozlesme biti 6)
 
 # Merkezde uretilen kodlar kenar fixture'inda ASLA gorunmez; recall'da "kacan" olarak
 # sayilmalari yaniltici olur. ALM-COMMS-LOST'u backend/app/alarm_service.py heartbeat
@@ -65,6 +70,13 @@ class ScenarioResult:
     first_l1_at: str | None
     false_alarm_codes: tuple[str, ...]
     false_alarms_per_100_panel_days: float
+    prognosis: prognostics.PrognosisResult | None
+    # Sinir hic asilmadigi halde uretilen ttl tahminlerinin sayisi. Bu bir PROGNOZ
+    # YANLIS-ALARMIDIR ve saklanmaz; docs/05'in "bilinen sinirlar" bolumune girer.
+    false_prognoses: int
+    # Bu tahminlerin kacinin gercekten ALM-TTL-14D alarmina dondugu. §3'teki yanlis
+    # alarm sayaci bunlari GORMEZ: etiket penceresinin ICINDE cikiyorlar.
+    false_prognosis_alarms: int
 
     @property
     def recall(self) -> float | None:
@@ -133,6 +145,9 @@ def validate_scenario(
                 lead_time_h = (pd.Timestamp(breach) - hit.iloc[0]).total_seconds() / SECONDS_PER_HOUR
 
     false_codes, per_100 = _false_alarms(frame, labels, duration_h)
+    prognosis, false_prognoses, false_prognosis_alarms = _prognosis(
+        frame, labels["scenario_id"], l0_breach_at
+    )
     return ScenarioResult(
         scenario_id=labels["scenario_id"],
         duration_h=duration_h,
@@ -147,7 +162,39 @@ def validate_scenario(
         first_l1_at=first_l1_at,
         false_alarm_codes=false_codes,
         false_alarms_per_100_panel_days=per_100,
+        prognosis=prognosis,
+        false_prognoses=false_prognoses,
+        false_prognosis_alarms=false_prognosis_alarms,
     )
+
+
+def _prognosis(frame, scenario_id: str, l0_breach_at: str | None):
+    """(prognoz geri testi, prognoz yanlis-alarm sayisi, bunlarin alarma donen sayisi).
+
+    Tahmin serisi fixture'in `min_ttl_h` sutunudur — kenarin O AN yayinladigi ttl_h.
+    Gercek kalan omur etiketten gelir (`l0_breach_at`), yani tahminin kendisinden
+    BAGIMSIZ bir kaynaktan; modulun basindaki durustluk notu burada da gecerlidir.
+
+    Sinir hic asilmadiysa (l0_breach_at yok) hicbir tahmin DOGRU olamaz: gercek kalan
+    omur sonsuzdur, oysa sistem sonlu bir sure soylemistir. Bu durumda geri test
+    yapilmaz, tahminler SAYILIR ve yanlis-alarm olarak raporlanir.
+    """
+    import pandas as pd
+
+    if "min_ttl_h" not in frame:
+        return None, 0, 0
+
+    ttl = frame["min_ttl_h"]
+    if l0_breach_at is None:
+        fired = frame["alarm_set"].map(lambda s: TTL_ALARM_CODE in s)
+        return None, int(ttl.notna().sum()), int(fired.sum())
+
+    start = frame["ts"].iloc[0]
+    hours = ((frame["ts"] - start).dt.total_seconds() / SECONDS_PER_HOUR).tolist()
+    values = [None if pd.isna(v) else float(v) for v in ttl]
+    eol_hours = (pd.Timestamp(l0_breach_at) - start).total_seconds() / SECONDS_PER_HOUR
+    points, late = prognostics.predictions_from_series(hours, values, eol_hours)
+    return prognostics.backtest(scenario_id, points, late), 0, 0
 
 
 def _false_alarms(frame, labels: dict, duration_h: float) -> tuple[tuple[str, ...], float]:
@@ -259,10 +306,136 @@ def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = 
         codes = ", ".join(r.false_alarm_codes) or "yok"
         lines.append(f"| `{r.scenario_id}` | {r.false_alarms_per_100_panel_days:.1f} | {codes} |")
 
-    lines += ["", "## 4. Nasil yeniden uretilir", "", "```bash",
+    lines += _prognosis_section(results)
+
+    lines += ["", "## 5. Nasil yeniden uretilir", "", "```bash",
               "python -m panoalgo.scenarios --all --seed 1304 --out data/fixtures",
               "python scripts/validate.py --out docs/12-dogrulama-sonuclari.md", "```", ""]
     return "\n".join(lines)
+
+
+def _prognosis_section(results: list[ScenarioResult]) -> list[str]:
+    """docs/12 §4: prognoz geri testi (F-04).
+
+    Bolum numarasi 4'tur ve §1-§3 YERINDE KALIR: docs/10 §1'e, jury kartlari §3'e
+    atif veriyor, araya bolum eklemek o atiflari sessizce bozardi.
+    """
+    alpha = prognostics.DEFAULT_ALPHA
+    scored = [r for r in results if r.prognosis is not None]
+    breached = [r for r in results if r.l0_breach_at is not None]
+
+    lines = [
+        "",
+        "## 4. Prognoz geri testi",
+        "",
+        "Gercek kalan omur ETIKETTEN turetilir: `RUL* = l0_breach_at - t`. Tahmin,",
+        "verideki `min_ttl_h` sutunudur (kenarin o an yayinladigi `ttl_h`). Koni",
+        f"genisligi alfa = {alpha:.2f} (Saxena ve ark. 2010): tahmin",
+        "`[(1-alfa)RUL*, (1+alfa)RUL*]` araligindaysa koni icinde sayilir.",
+        "",
+        "| Senaryo | Tahmin | Ilk tahmin (RUL*) | Koni icinde | Ufuk (PH) | CRA | "
+        "Medyan tahmin/gercek | Hata agirlik merkezi |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for r in breached:
+        p = r.prognosis
+        if p is None:
+            lines.append(f"| `{r.scenario_id}` | 0 | - | - | - | - | - | - |")
+            continue
+        horizon = "yok" if p.horizon_h is None else f"{p.horizon_h:.1f} h"
+        centre = "-" if p.convergence_fraction is None else f"{p.convergence_fraction:.2f}"
+        lines.append(
+            f"| `{p.scenario_id}` | {p.count} | {p.first_prediction_h:.1f} h | "
+            f"{p.in_band_ratio * 100:.1f}% | {horizon} | "
+            f"{p.cumulative_relative_accuracy:.2f} | {p.median_ratio:.2f} | {centre} |"
+        )
+
+    lines += [
+        "",
+        "**Ufuk (PH)** = tahminin o andan ihlale kadar BIR DAHA konidan cikmadigi ilk an.",
+        "**CRA** = ortalama goreli dogruluk, `1 - |RUL* - tahmin| / RUL*`; 1,00 kusursuz,",
+        "0 hata gercek omur kadar buyuk, negatif daha da buyuk. **Hata agirlik merkezi**",
+        "0'a yakinsa hata pencerenin BASINDA toplanmis, 1'e yakinsa SONUNDA — tek basina",
+        "okunmaz, cunku hata her yerde buyukse merkez de ortalarda cikar; koni icinde",
+        "kalma orani ile birlikte okunur.",
+    ]
+
+    if scored:
+        lines += [
+            "",
+            "### 4.1 alfa-lambda noktalari",
+            "",
+            "lambda, ilk tahmin ile ihlal ani arasindaki yolun kesridir; lambda = 0,50",
+            "\"omrun yarisinda tahmin tutuyor muydu\" demektir.",
+            "",
+            "| Senaryo | lambda | RUL* (h) | Tahmin (h) | Koni icinde | RA |",
+            "|---|---:|---:|---:|---|---:|",
+        ]
+        for r in scored:
+            for point in r.prognosis.alpha_lambda:
+                lines.append(
+                    f"| `{r.scenario_id}` | {point.lam:.2f} | {point.rul_true_h:.1f} | "
+                    f"{point.rul_pred_h:.1f} | {'evet' if point.in_band else 'hayir'} | "
+                    f"{point.relative_accuracy:.2f} |"
+                )
+
+        lines += [
+            "",
+            "### 4.2 Tahmin ne zaman guvenilir hale geldi",
+            "",
+            "Saglikli bir prognozda ariza yaklastikca (kucuk RUL*) koni icinde kalma",
+            "orani 1'e dogru gitmelidir.",
+            "",
+            "| Senaryo | Kalan omur araligi | Tahmin | Koni icinde | Medyan tahmin/gercek |",
+            "|---|---|---:|---:|---:|",
+        ]
+        for r in scored:
+            for bucket in r.prognosis.buckets:
+                span = (
+                    f"{bucket.low_h:.0f} h ustu"
+                    if bucket.high_h is None
+                    else f"{bucket.low_h:.0f}-{bucket.high_h:.0f} h"
+                )
+                if bucket.count == 0:
+                    lines.append(f"| `{r.scenario_id}` | {span} | 0 | - | - |")
+                    continue
+                lines.append(
+                    f"| `{r.scenario_id}` | {span} | {bucket.count} | "
+                    f"{bucket.in_band_ratio * 100:.1f}% | {bucket.median_ratio:.2f} |"
+                )
+
+    lines += ["", "### 4.3 Durustluk kayitlari", ""]
+    lines.append(
+        f"- **Sonuc {len(scored)} yorungeden geliyor (n = {len(scored)}).** Guven araligi "
+        "YOKTUR; tek bir seed'li senaryonun tek bir bozulma yorungesi olculmustur. "
+        "Yukaridaki yuzdeler bu yorungenin ozellikleridir, populasyon istatistigi degildir."
+    )
+    for r in breached:
+        if r.prognosis is None:
+            lines.append(
+                f"- **`{r.scenario_id}`: sinir asildi ama hic tahmin uretilmedi.** "
+                "Kalici uyarim ve surekli pozitif egim kosullari saglanmadigi icin "
+                "`ttl_h` null kaldi; prognoz olcumu bu senaryoda YAPILAMAZ."
+            )
+        elif r.prognosis.late_count:
+            lines.append(
+                f"- **`{r.scenario_id}`: ihlalden SONRA {r.prognosis.late_count} tahmin daha "
+                "uretildi.** Sinir zaten asilmisken sistem hala sonlu bir kalan omur "
+                "soyluyor; bu tahminler geri testin disinda tutuldu (gercek kalan omur "
+                "negatif, oran tanimsiz)."
+            )
+    for r in results:
+        if r.false_prognoses:
+            lines.append(
+                f"- **`{r.scenario_id}`: sinir HIC asilmadigi halde {r.false_prognoses} "
+                "tahmin uretildi — bu bir PROGNOZ YANLIS-ALARMIDIR.** Bunlarin "
+                f"{r.false_prognosis_alarms} tanesi `{TTL_ALARM_CODE}` alarmina dondu ve "
+                "§3'teki yanlis alarm sayaci bunlari GORMEZ: etiket penceresinin icinde "
+                "cikiyorlar. Nedeni "
+                "[05-anomali-tespiti.md](05-anomali-tespiti.md) \"bilinen sinirlar\" "
+                "bolumundedir."
+            )
+    return lines
 
 
 # --------------------------------------------------------------------- CLI
