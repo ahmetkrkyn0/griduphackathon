@@ -91,7 +91,7 @@ Sözleşmede tanımlı ama kodda hiç uygulanmamış özet bildirimini gerçekte
 **Ne üretir:** docs/12'ye yeni bir bölüm: tahminin ne zaman güvenilir hale geldiği, bandın içinde kalma oranı, yakınsama.
 **Dikkat:** Çıktı docs/12'ye **elle yazılamaz** — dosya betikle üretiliyor ve yeniden üretim testiyle korunuyor; metrikler `render_markdown()` içine girmeli. İki dürüstlük kaydı zorunlu: sonuç tek yörüngeden geliyor (n=1) ve sensör arızası senaryosunda sınır ihlali olmadığı halde 99 kez tahmin üretiliyor — bu bir prognoz yanlış-alarmıdır, saklanmaz, [docs/05-anomali-tespiti.md](docs/05-anomali-tespiti.md) "bilinen sınırlar" bölümüne yazılır.
 
-### F-05 · Tazminat maruziyeti hesaplayıcısı
+### F-05 · Tazminat maruziyeti hesaplayıcısı — ✅ tamamlandı
 docs/10'un varsayımsal ROI tablosunu, formülü mevzuatta yayımlanmış bir maruziyet hesabıyla değiştirir · **Etki:** yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** yeni `scripts/tazminat_maruziyeti.py`, [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md)
 **Sektörel dayanak:** EPDK Kalite Yönetmeliği'nin tazminat formülü (ÖTMSÜRE ve ÖTMSAYI); Whisker Labs/sigorta modelinde olduğu gibi fayda kaleminin dış bir kurala bağlanması.
 **Bizdeki boşluk:** [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md) baştan sona varsayım üzerine kurulu ve bunu kendisi yazıyor ("Sayılar iddia değil, örnektir") — teslimin GK10 açısından en zayıf parçası. Aynı geçişte ikinci bir bedava sayı da eklenmeli: mevcut enerji analizörü ve ark koruma cihazını sensör olarak kullandığımız için **eklemediğimiz** kalemlerin (akım trafoları, ayrı ark dedektörü, ek kablaj) BOM farkı.
