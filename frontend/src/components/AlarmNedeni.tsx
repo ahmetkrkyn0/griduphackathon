@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Alarm, AlarmSignal } from "../api/types";
+import type { Alarm, AlarmReason, AlarmSignal } from "../api/types";
 import { ago, measure, ttlText } from "../lib/format";
-import { CHANNEL_TEXT, adviceText, alarmText, signalLabel, unitText } from "../lib/labels";
+import { CHANNEL_TEXT, adviceText, alarmText, hypText, signalLabel, unitText } from "../lib/labels";
 import { PrioMark } from "./PrioMark";
+
+/**
+ * Karsi-olgusal aciklama blogu: baskin hipotezin HENUZ GORULMEYEN kaniti (backend/app/risk.py `_verify`).
+ * contracts/openapi.yaml DONMUS oldugu icin yeni bir yanit alani acilmadi; sozlesmedeki AlarmReason
+ * acik bir nesne (additionalProperties kapali degil) ve blok onun icinde tasiniyor. Bicim burada
+ * yerel olarak tanimli: api/types.ts bu kulvarin dosyasi degil.
+ */
+interface VerifyBlock {
+  /** hypotheses[].code, or. "HYP-LOOSE-CONN". */
+  hypothesis: string;
+  /** Bu ornekte gorulmeyen kanit kodlari, sozlesmedeki sirayla. */
+  missing: string[];
+  /** Hipotezin sozlesmedeki toplam kanit sayisi. */
+  total: number;
+}
 
 interface Props {
   alarm: Alarm;
@@ -39,7 +54,8 @@ function SignalRow({ signal }: { signal: AlarmSignal }) {
   );
 }
 
-/** Her alarm uc soruyu cevaplar: Neden? Ne yapmali? Ne kadar acil? (rapor 6.5 L4) */
+/** Her alarm uc soruyu cevaplar: Neden? Ne yapmali? Ne kadar acil? (rapor 6.5 L4)
+ *  Buna karsi-olgusal dorduncu blok eklenir: Ne dogrulanmali? (hipotezin eksik kaniti). */
 export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false, shelveBusy = false, message = null }: Props) {
   const [note, setNote] = useState("");
   const [shelving, setShelving] = useState(false);
@@ -47,6 +63,8 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
   const [reason, setReason] = useState("");
 
   const signals = alarm.reason?.signals ?? [];
+  const verify = (alarm.reason as (AlarmReason & { verify?: VerifyBlock }) | null | undefined)?.verify;
+  const confirmed = verify ? verify.total - verify.missing.length : 0;
   const ttl = ttlText(alarm.ttl_h);
   const advice = adviceText(alarm.advice);
   const notified = (alarm.notified ?? []).map((channel) => CHANNEL_TEXT[channel] ?? channel);
@@ -83,6 +101,28 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
           {alarm.reason?.basis && <p className="basis">Dayanak: {alarm.reason.basis}</p>}
         </div>
       </section>
+
+      {verify && (
+        <section>
+          <h3>Ne doğrulanmalı?</h3>
+          <div>
+            <p className="dim small">
+              {hypText(verify.hypothesis)} hipotezinin {verify.total} kanıtından {confirmed} tanesi görüldü.
+              {verify.missing.length > 0 && " Aşağıdakiler de doğrulanırsa teşhis kesinleşir."}
+            </p>
+            {verify.missing.length === 0 ? (
+              <p>Bu hipotezin tüm kanıtları toplandı; doğrulanacak başka kanıt yok.</p>
+            ) : (
+              verify.missing.map((code) => (
+                <div className="sig" key={code}>
+                  <span>{alarmText(code)}</span>
+                  <span className="dim small">{code}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
 
       <section>
         <h3>Ne yapmalı?</h3>

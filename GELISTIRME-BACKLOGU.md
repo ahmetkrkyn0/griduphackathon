@@ -126,7 +126,7 @@ Operatörün kara kutu ekranında gördüğünü tek sayfalık, imzalanabilir bi
 **Ne üretir:** A4'e sığan, gezinme ve etkileşim gizlenmiş, altında imza satırları olan yazdırılabilir olay raporu; örnek çıktı demo paketine konur.
 **Dikkat:** Yeni npm bağımlılığı eklenmeyecek (derleme ve GK4 tartışması açar) — tarayıcı yazdırma yeterli. 3B ikiz tuvali yazdırmada boş çıkar; rapora 2D görünüş ve çizgi grafikler konmalı. "Örnek/sentetik veriden üretilmiştir" ibaresi ve hem olay hem alındı zaman damgası basılmalı.
 
-### F-10 · Karşı-olgusal açıklama: "Ne doğrulanmalı" satırı
+### F-10 · Karşı-olgusal açıklama: "Ne doğrulanmalı" satırı — ✅ tamamlandı
 Alarm kartına, teşhisi kesinleştirmek için eksik olan kanıtı yazar · **Etki:** orta · **Efor:** 2-4 saat · **Nerede yaşar:** [backend/app/risk.py](backend/app/risk.py), [frontend/src/components/AlarmNedeni.tsx](frontend/src/components/AlarmNedeni.tsx), [libs/panoalgo/tests/](libs/panoalgo/tests/)
 **Sektörel dayanak:** Açıklanabilirlikte karşı-olgusal açıklama yerleşik ikinci aile; ISO 13379-1 semptom-arıza ilişkisinin izlenebilir kurulmasını ister; CIGRE TB 858 sağlık indeksinde monotonluk ilkesini koyar.
 **Bizdeki boşluk:** Füzyon yalnızca **eşleşen** kanıtları döndürüyor; hipotezin eksik kanıtı hiçbir yere yazılmıyor. Operatöre "neyi doğrularsam teşhis kesinleşir" diyemiyoruz. Ayrıca skorun monotonluğu genel olarak test edilmemiş.

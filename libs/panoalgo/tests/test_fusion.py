@@ -9,9 +9,14 @@ Beklenen degerlerin kaynagi:
     (var/yok) kanit secildi ve fusion.py'de gerekcelendirildi.
   - HYP-OVERLOAD'in `discriminator` alani sozlesmede yazili: "tum fazlarda uniform
     dT artisi VE K normal". Yani asiri akim tek basina "asiri yuk" demek degildir.
+  - MONOTONLUK: CIGRE TB 858 varlik saglik indekslerinde monotonluk ilkesini koyar —
+    daha fazla ya da daha agir kanit skoru ASLA dusuremez. Asagidaki uc ozellik testi
+    bunu tek ornekle degil, sozlesmedeki kanit kodlarinin alt kume taramasiyla dogrular.
 """
 
 from __future__ import annotations
+
+import itertools
 
 import pytest
 
@@ -165,3 +170,65 @@ def test_result_is_json_serialisable_for_the_risk_block():
          "contributions": result.contributions},
         allow_nan=False,
     )
+
+
+# ------------------------------------------------- monotonluk (CIGRE TB 858)
+
+
+def _contract_evidence(alarm_codes: dict) -> list[str]:
+    """Sozlesmedeki tum hipotezlerin kanit kodlari: tekrarsiz, sozlesme sirasinda."""
+    codes: list[str] = []
+    for hypothesis in alarm_codes["hypotheses"]:
+        codes.extend(code for code in hypothesis["evidence"] if code not in codes)
+    return codes
+
+
+@pytest.mark.parametrize(
+    "make_features",
+    [
+        lambda t: {},
+        lambda t: {"k_rising": True},
+        lambda t: {"k_ratio": t["k_ratio_alarm"] + 0.1},
+    ],
+    ids=["ozelliksiz", "artis-bonuslu", "asiri-yuk-ayirt-edicisi-kapali"],
+)
+def test_adding_evidence_never_lowers_the_score(alarm_codes, thresholds, make_features):
+    """Kanit ekseninde monotonluk: bir kanit EKLEMEK skoru asla dusurmez.
+
+    Tarama: sozlesmedeki kanit kodlarinin 0-3 elemanli TUM alt kumeleri taban alinir ve
+    her tabana kalan her kod tek tek eklenir. Ozellikler sabit tutulur, cunku monotonluk
+    iddiasi kanit ekseninde kuruludur. Ayirt edici kapaliyken de (K tirmaniyor) gecmeli:
+    bastirilan hipotez, kalan hipotezlerin monotonlugunu bozamaz.
+    """
+    codes = _contract_evidence(alarm_codes)
+    features = make_features(thresholds)
+    for size in range(4):
+        for base in itertools.combinations(codes, size):
+            before = score(list(base), features).score
+            for extra in codes:
+                if extra in base:
+                    continue
+                after = score([*base, extra], features).score
+                assert after >= before, f"{list(base)} + {extra}: {before} -> {after}"
+
+
+def test_a_heavier_failure_mode_never_scores_below_a_lighter_one(alarm_codes):
+    """Agirlik ekseninde monotonluk: ciddiyet agirligi buyuyunce tam kanitli skor da
+    buyumeli. Esitlik serbest (ayni agirlikli iki hipotez ayni skoru verir), dususe izin yok."""
+    ranked = sorted(
+        (h for h in alarm_codes["hypotheses"] if h["evidence"]),
+        key=lambda h: h["severity_w"],
+    )
+    scores = [score(list(h["evidence"]), {}).score for h in ranked]
+    assert scores == sorted(scores), dict(zip([h["code"] for h in ranked], scores, strict=True))
+
+
+def test_the_rate_bonus_never_lowers_the_score(alarm_codes):
+    """Artis hizi ekseninde monotonluk: 'surekli artis' bilgisi eklemek (rapor 6.5 L3 ek
+    puani) hicbir kanit kumesinde skoru dusurmemeli — kirpma 100'de olsa bile."""
+    codes = _contract_evidence(alarm_codes)
+    for size in range(4):
+        for base in itertools.combinations(codes, size):
+            flat = score(list(base), {"k_rising": False}).score
+            rising = score(list(base), {"k_rising": True}).score
+            assert rising >= flat, f"{list(base)}: {flat} -> {rising}"
