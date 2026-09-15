@@ -207,11 +207,13 @@ class Stamper:
 class Publisher:
     """Sozlesme kapisi + topic cozumu + yayin. Iki kip de bunu kullanir."""
 
-    def __init__(self, schema: dict, client: mqtt.Client | None, stamper: Stamper) -> None:
+    def __init__(self, schema: dict, client: mqtt.Client | None, stamper: Stamper,
+                 prefix: str = "panosim") -> None:
         self._validator = Draft202012Validator(schema)
         self._template, self._qos, self._retain = telemetry_topic_spec(schema)
         self._client = client
         self._stamper = stamper
+        self._prefix = prefix   # log satirlari cagiran araci gostersin (panosim / panobeyni)
         self.published = 0
 
     @property
@@ -228,14 +230,14 @@ class Publisher:
         errors = sorted(self._validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
         if errors:
             for err in errors[:3]:
-                print(f"[panosim] SEMA HATASI {list(err.absolute_path)}: {err.message}", flush=True)
+                print(f"[{self._prefix}] SEMA HATASI {list(err.absolute_path)}: {err.message}", flush=True)
             return False
 
         topic = self._template.format(pano_id=payload["pano_id"])
         # allow_nan=False: NaN/Infinity backend'de karantinaya duser (ingest.py:252).
         body = json.dumps(payload, allow_nan=False)
         if self._client is None:
-            print(f"[panosim] {topic} {body}", flush=True)
+            print(f"[{self._prefix}] {topic} {body}", flush=True)
         else:
             self._client.publish(topic, body, qos=self._qos, retain=self._retain)
         self.published += 1

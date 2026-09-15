@@ -50,6 +50,39 @@ services:
     volumes:
       - ../contracts:/contracts:ro
 
+  # Tasima kabugu (TA3 Adim 6): iki cihaz simulatorunden GERCEK Modbus TCP ile okur,
+  # kenar boru hattindan gecirir, MQTT'ye yayinlar. `panosim` fizik uretecini dogrudan
+  # yayinlar; bu servis ise CIHAZ UZERINDEN gecen yolu gosterir — tvoc-sim'de uretilen
+  # bir ark tripi boylece alarm konsoluna kadar akar.
+  # Varsayilan KAPALI (ayni panoyu iki kaynak beslemesin):
+  #   docker compose -f deploy/compose.yaml --profile cihaz up -d panobeyni
+  panobeyni:
+    profiles: ["cihaz"]
+    build:
+      context: ..
+      dockerfile: sim/Dockerfile
+    container_name: gridup-panobeyni
+    restart: unless-stopped
+    command: ["python", "panobeyni_sim.py"]
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      CONTRACTS_DIR: /contracts
+      MPR_TARGET: mpr-sim:5020
+      TVOC_TARGET: tvoc-sim:5021
+      MPR_UNIT: "1"
+      TVOC_UNIT: ${SIM_TVOC_ID:-248}
+      PANO_ID: ${PANOBEYNI_PANO:-ADM-00007}
+    volumes:
+      - ../contracts:/contracts:ro
+    depends_on:
+      mosquitto:
+        condition: service_started
+      mpr-sim:
+        condition: service_started
+      tvoc-sim:
+        condition: service_started
+
   tvoc-sim:
     build:
       context: ..

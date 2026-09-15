@@ -10,7 +10,13 @@
  * istenen seye (kenarda ve merkezde AYNI algoritma) hicbir sey katmazdi. Bu yuzden:
  *
  *     C  -> fizik, kestirim, esik karari, register tablosu   (MCU'ya giden kisim)
- *     Py -> Modbus TCP slave, MQTT, seri port                (sim/panobeyni_sim.py)
+ *     Py -> Modbus master dongusu ve MQTT yayini             (sim/panobeyni_sim.py)
+ *
+ * sim/panobeyni_sim.py 15 Eylul'de yazildi ve MPR-53CS/TVOC-2 simulatorlerinden
+ * GERCEK Modbus TCP ile okuyup kenar boru hattindan gecirerek MQTT'ye yayinliyor
+ * (sim/tests/test_panobeyni_sim.py, 12 test). Hala yapilmayan iki sey var ve
+ * docs/17 DH2'de yazili: sanal SERI port yerine TCP kullanilir, Modbus SLAVE
+ * sunumu kenarda degil merkezde yapilir (backend/app/scada/, :502).
  *
  * Boyle oldugu icin "ayni algoritma" iddiasi zayiflamaz; tam tersine, tasima
  * degistiginde cekirdek degismedigi GORULUR. Gercek urunde tasima katmani da C'dir

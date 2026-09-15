@@ -56,7 +56,11 @@ Donanım satın alınmadı (PLAN.md GK3). Bu bir eksiklik değil, üç gerekçes
 | C ve Python RLS aynı test vektöründe ≤ 1e-6 | ✅ **K 1,36e-8 · τ 1,42e-8** (`data/fixtures/rls_vectors.csv`, `firmware/akis-diyagramlari/ana-dongu.md`) |
 | `malloc` yok, sabit bellek | ✅ — ama nokta başına **320 B** (hedef 48 B); sapma gerekçesi `docs/13` |
 | Akış diyagramları | ✅ `firmware/akis-diyagramlari/` |
-| **`panobeyni-sim`: sanal seri porttan Modbus master + Modbus slave + MQTT yayını** | ❌ **Yazılmadı.** `firmware/host/main.c` stdin'den ölçüm okur, register tablosunu stdout'a JSON basar — yani **hesap çekirdeği** doğrulanmıştır, **taşıma katmanı** değil. Kapsam kararı `main.c` başında yazılı (§6). |
+| `panobeyni-sim`: Modbus master döngüsü + MQTT yayını | ✅ `sim/panobeyni_sim.py` (15 Eylül). MPR-53CS ve TVOC-2 simülatörlerinden **gerçek Modbus TCP** ile okur (CT oranını cihazın 0x8001 register'ından öğrenir), kenar boru hattından geçirir, MQTT'ye yayınlar. 12 test, sahte Modbus yok: testler gerçek cihaz simülatörlerini alt süreç olarak kaldırır. **Ölçülen:** `--trip-after` ile üretilen gerçek bir ark tripi artık `ALM-ARC-TRIP` olarak yayına çıkıyor; 14 Eylül'e kadar depoda hiçbir Modbus **istemcisi** yoktu ve bu olay hiçbir yere akmıyordu. |
+| Halka tampon (broker yokken biriktirme) | ✅ `RingBuffer`; dolunca **en eski** düşer ve sayılır, `health.buffered` alanı bekleyeni bildirir |
+| **Sanal SERİ port üzerinden Modbus** | ❌ TCP kullanılıyor. Sahada RS485; değişen ağ geçidi, protokol çerçevesi aynı. |
+| **Kenarda Modbus SLAVE sunumu** | ❌ Kenarda yapılmıyor. Aynı harita merkezde sunuluyor (`backend/app/scada/`, :502), sözleşmesi `contracts/modbus-map.yaml`. |
+| Taşıma katmanı C değil Python | ⚠️ Bilinçli: kanıtlanmak istenen "kenarda ve merkezde aynı algoritma"dır ve o C'de doğrulanmıştır (yukarıdaki 1,4e-8 satırı). C'de sıfırdan MQTT/Modbus yığını yazmak buna bir şey katmazdı. |
 | Renode / Wokwi üzerinde MCU emülasyonu | ❌ Atlandı (MoSCoW *Should*) |
 
 **B'nin bu hamleye katkısı hazır:** firmware'in sunacağı Modbus haritası (`contracts/modbus-map.yaml`) merkezde birebir çalışıyor. Aynı adresler,
@@ -169,7 +173,7 @@ Rapor §13 soru bankasındaki entegrasyon, ölçek ve güvenlik soruları (PLAN.
 | # | Sapma | Gerekçe |
 |---|---|---|
 | 1 | KiCad şema PDF'i yok (MoSCoW *Must*) | Blok diyagram + I/O tablosu + BOM üçlüsü seçildi; üretime aynı bilgiyi verir. `hardware/pano-beyni/README.md` |
-| 2 | `panobeyni-sim` taşıma katmanı yok | Hesap çekirdeği C'de doğrulandı ve Python ile 1e-8 farkla eşleşiyor; sanal seri port + Modbus master döngüsü yazılmadı. `firmware/host/main.c` |
+| 2 | Taşıma kabuğu Python; sanal seri port yerine TCP; kenarda Modbus slave yok | Modbus master döngüsü ve MQTT yayını **yapıldı** (`sim/panobeyni_sim.py`, 12 test); kalan üç fark DH2'de tek tek yazılı. Hesap çekirdeği C'de doğrulandı ve Python ile 1e-8 farkla eşleşiyor. |
 | 3 | DIN kutu STL'i üretilmedi | `.scad` kaynağı var; OpenSCAD kurulu bir makinede tek komut |
 | 4 | Firmware belleği 48 B yerine 320 B/nokta | `docs/13` |
 | 5 | Renode / Wokwi emülasyonu atlandı | MoSCoW *Should* |
