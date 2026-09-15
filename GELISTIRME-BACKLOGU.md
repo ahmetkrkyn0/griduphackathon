@@ -77,7 +77,7 @@ Jüriye giden metinlerde kendi ölçümümüzle çelişen üç yeri kapatır · 
 **Ne üretir:** Düzeltilmiş ROI örneği, 336 saate çıkarılmış kara kutu penceresi, digest ile sabitlenmiş imaj.
 **Dikkat:** Saat başına getirisi listedeki her şeyden yüksek. Pencere üst sınırı değişirken varsayılan (72 saat) korunmalı, yoksa ekran ağırlaşır.
 
-### F-03 · P3 günlük özeti ve SYS toplu özeti
+### F-03 · P3 günlük özeti ve SYS toplu özeti — ✅ tamamlandı
 Sözleşmede tanımlı ama kodda hiç uygulanmamış özet bildirimini gerçekten gönderir · **Etki:** çok yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** [backend/app/notify/dispatcher.py](backend/app/notify/dispatcher.py), [backend/app/alarm_service.py](backend/app/alarm_service.py), [backend/app/notify/templates.py](backend/app/notify/templates.py), [backend/app/config.py](backend/app/config.py)
 **Sektörel dayanak:** EcoStruxure Asset Advisor her alarmda bildirim + periyodik rapor zincirini ürünleştirmiş; ISA-18.2 izleme-değerlendirme aşaması periyodik raporlamayı öngörür.
 **Bizdeki boşluk:** [contracts/alarm-codes.yaml](contracts/alarm-codes.yaml) P3 için `daily_digest: true`, SYS için `sms: digest_only` diyor ve **jüriye giden** [docs/06-alarm-matrisi.md](docs/06-alarm-matrisi.md) §4 "P3 günlük özete, SYS toplu özete gider" yazıyor — kodda "digest" kelimesi yalnızca bir docstring'de geçiyor. K/K₀ erken uyarısının tamamı P3, yani 209 saatlik başlığımız bugün bir veritabanı satırında bitiyor.

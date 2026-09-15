@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 from types import SimpleNamespace
 
 import httpx
@@ -17,15 +18,21 @@ import pytest
 import serial
 
 from app.alarm_manager import AlarmManager, Condition
+from app.alarm_service import Digest
 from app.notify.dispatcher import NotifyConfig, Notifier
-from app.notify.pdu import decode_submit
+from app.notify.pdu import decode_submit, gsm7_septets
 from app.notify.sms_modem import SmsModem
-from app.notify.templates import escalation_sms, sms_alarm, whatsapp_alarm
+from app.notify.templates import SMS_LIMIT, digest_sms, escalation_sms, sms_alarm, whatsapp_alarm
 from app.notify.whatsapp import WhatsAppClient
 from helpers import utc
 
 T0 = utc(2026, 9, 13, 10, 0, 0)
 PANO = "ADM-00001"
+# Alarm servisinin urettigi gunluk ozet (icerigi tests/test_digest.py kanitlar).
+DIGEST = Digest(
+    day=date(2026, 9, 13), hours=24, counts=(("uyari (P3)", 7), ("sistem (SYS)", 2)), panels=3,
+    top_pano=PANO, top_count=4, top_text="Isil direnc indeksi K/K0 > 1.3 - baglanti direnci artisi suphesi",
+)
 FIELD_TEAM = ("+905550000001", "+905550000002")  # ALERT_RECIPIENTS
 SUPERVISOR = ("+905550000009",)  # ALERT_ESCALATION
 
@@ -268,4 +275,68 @@ def test_gateway_without_channels_accepts_changes_and_does_nothing(contracts, ma
     )
 
     notifier([raise_alarm(manager, "ALM-ARC-TRIP")])
+    notifier.run_once()
+
+
+# ---------------------------------------------------------- gunluk ozet yolu
+def test_daily_digest_goes_to_the_field_team_as_a_single_sms(gateway, modem_log):
+    """P3/SYS alarmlari aninda kimseyi aramaz ama gunde bir kez tek parca SMS olarak gider."""
+    assert gateway.notifier.digest(DIGEST) is True
+    gateway.notifier.run_once()
+
+    text = digest_sms(DIGEST, "http://gridup.local")
+    assert sorted(sent_sms(modem_log)) == [(number, text) for number in FIELD_TEAM]
+    septets = gsm7_septets(text)
+    assert septets is not None and len(septets) <= SMS_LIMIT
+
+
+def test_digest_is_not_written_to_the_alarm_audit_trail(gateway):
+    """Ozet tek bir alarma ait degildir: notifications satiri yazilmaz (uctan uca gecikme KPI'si bozulmaz)."""
+    gateway.notifier.digest(DIGEST)
+    gateway.notifier.run_once()
+
+    assert gateway.deliveries == []
+
+
+def test_digest_does_not_disturb_the_instant_p2_path(gateway, manager, contracts, modem_log):
+    """Ayni turda hem P2 alarmi hem ozet: iki mesaj da gider, alarmin denetim izi degismez."""
+    change = raise_alarm(manager, "ALM-THR-TERM-ALM", "DSYA3_L2")
+
+    gateway.notifier([change])
+    gateway.notifier.digest(DIGEST)
+    gateway.notifier.run_once()
+
+    alarm_sms = sms_alarm(change.alarm, text_of(contracts, "ALM-THR-TERM-ALM"))
+    assert sorted(sent_sms(modem_log)) == sorted(
+        [(number, alarm_sms) for number in FIELD_TEAM]
+        + [(number, digest_sms(DIGEST, "http://gridup.local")) for number in FIELD_TEAM]
+    )
+    sms_trail = [(d.alarm_id, d.recipient, d.ok) for d in gateway.deliveries if d.channel == "sms"]
+    assert sorted(sms_trail) == [(42, "+90******0001", True), (42, "+90******0002", True)]
+
+
+def test_digest_does_not_steal_the_reply_target(gateway, manager, modem_server):
+    """Kimliksiz '1' yaniti hala son ALARM SMS'ini onaylar; ozet yanit hedefini degistirmez."""
+    gateway.notifier([raise_alarm(manager, "ALM-THR-TERM-ALM", "DSYA3_L2")])
+    gateway.notifier.run_once()
+    gateway.notifier.digest(DIGEST)
+    gateway.notifier.run_once()
+
+    modem_server.inject("+905550000001", "1")
+    gateway.notifier.run_once(wait_s=1.0)
+
+    assert gateway.replies == [(42, "sms:+90******0001", "gordum")]
+
+
+@pytest.mark.parametrize("config", [NotifyConfig(recipients=FIELD_TEAM), NotifyConfig(recipients=())])
+def test_digest_without_an_sms_channel_or_recipient_is_not_queued(contracts, config, modem_server):
+    """False doner: alarm servisi ozetlenen alarmlari 'gonderildi' diye isaretlemez."""
+    sms = SmsModem(f"socket://127.0.0.1:{modem_server.port}") if not config.recipients else None
+    notifier = Notifier(
+        contracts, config, sms=sms, whatsapp=None,
+        on_delivery=lambda d: pytest.fail("gonderilmeyen ozet kayit birakmamali"),
+        on_reply=lambda *a: None, clock=lambda: T0,
+    )
+
+    assert notifier.digest(DIGEST) is False
     notifier.run_once()

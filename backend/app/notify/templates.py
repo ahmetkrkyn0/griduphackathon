@@ -6,15 +6,24 @@ pano adi, konum, kisi adi YOK — WhatsApp sirket disina cikan tek kanaldir (PLA
 SMS tek parca GSM-7 (160 karakter): Turkce karakter UCS-2'ye dusurup siniri 70'e indirmesin ve alarm
 metni parcalanmasin diye ASCII'ye katlanir. Yanit kodlari cift yonlu onayi besler (1 = gordum,
 2 = ekip yolda).
+
+Gunluk ozet (P3 daily_digest + SYS digest_only) ayni sinira uyar: sigmayan parcalar sondan atilir,
+once portal baglantisi, sonra alarm metni kisalir.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..alarm_manager import Alarm
 from .pdu import gsm7_septets
 
+if TYPE_CHECKING:
+    from ..alarm_service import Digest
+
 SMS_LIMIT = 160
 ELLIPSIS = "..."
+DIGEST_MIN_BODY = 20  # portal baglantisi govdeye bu kadar yer birakmiyorsa baglanti yazilmaz
 
 _FOLD = str.maketrans(
     {
@@ -63,6 +72,19 @@ def sms_alarm(alarm: Alarm, text: str) -> str:
 def escalation_sms(alarm: Alarm, text: str, minutes: int) -> str:
     head = f"[GRIDUP {alarm.prio} ESKALASYON] {alarm.pano_id}: "
     return _fit(head, f"{fold(text).rstrip('. ')}. {minutes} dk onaysiz", _reply_codes(alarm))
+
+
+def digest_sms(summary: Digest, portal_url: str) -> str:
+    """Gunluk ozet, tek parca GSM-7: sayilar + en cok alarm ureten pano + portal baglantisi.
+
+    Bas kisim (tarih, sayilar, pano adedi) her zaman yazilir ve dort haneli sayilarla bile 80 septeti
+    gecmez (olculdu: 78); kalan yer once govdeye, sonra portal baglantisina gider. Toplam 160 septeti asmaz.
+    """
+    counts = ", ".join(f"{count} {label}" for label, count in summary.counts)
+    head = _gsm7_safe(f"[GRIDUP OZET {summary.day:%d.%m}] {summary.hours} saat: {counts}, {summary.panels} pano. ")
+    link = f" {portal_url.rstrip('/')}/alarmlar"
+    tail = link if _septets(head) + _septets(link) + DIGEST_MIN_BODY <= SMS_LIMIT else ""
+    return _fit(head, f"En cok {summary.top_pano} ({summary.top_count}): {summary.top_text}", tail)
 
 
 def whatsapp_alarm(alarm: Alarm, text: str, portal_url: str) -> str:

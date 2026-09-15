@@ -3,6 +3,7 @@
 Akis:
     ingest yazici thread'i --on_samples--> RiskEngine.evaluate --> AlarmManager.observe
     alarm zamanlayicisi (5 s) --tick-----> raf suresi dolanlar + haberlesme denetimi (ALM-COMMS-LOST)
+                                          + gunde bir kez (DIGEST_AT) P3/SYS gunluk ozeti
     API (ack / shelve) ------------------> AlarmManager.ack / shelve
     her degisiklik --> depo (tek transaction) --> WebSocket {"type": "alarm"} --> dinleyiciler (bildirim)
 
@@ -21,14 +22,17 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections import Counter
 from collections.abc import Callable, Sequence
-from datetime import datetime, timedelta
+from dataclasses import dataclass, replace
+from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 from .alarm_manager import Alarm, AlarmManager, AlarmNotFound, AlarmStateConflict, Change
+from .api.alarms import ALARM_STATES
 from .api.stream import StreamHub
 from .api.views import alarm_view
-from .config import Contracts
+from .config import PRIO_ORDER, Contracts, digest_at_from_env
 from .db import Store, StoreError
 from .models import Sample
 from .risk import CentralDetector, RiskEngine, signal
@@ -41,7 +45,36 @@ log = logging.getLogger("gridup.alarms")
 COMMS_LOST = "ALM-COMMS-LOST"
 MAX_UNSAVED_BATCHES = 10_000
 
+# Gunluk ozet (contracts/alarm-codes.yaml: P3 daily_digest, SYS sms: digest_only).
+DIGEST_WINDOW = timedelta(hours=24)  # ozet penceresi: [ozet saati - 24 sa, ozet saati)
+DIGEST_LIMIT = 1000  # tek ozette taranan en fazla alarm (alarm konsolunun ust siniriyla ayni)
+DIGEST_CHANNEL = "sms"  # ozet SMS ile gider; alarmin kanal rozeti (contracts/openapi.yaml Alarm.notified)
+
 ChangeListener = Callable[[list[Change]], None]
+
+
+@dataclass(frozen=True)
+class Digest:
+    """Gunde bir kez gonderilen ozetin icerigi; metne cevirmek bildirim katmaninin isidir.
+
+    `counts` etiketleri oncelik tablosundan gelir ("uyari (P3)", "sistem (SYS)") — sayilar ve
+    etiketler koda gomulmez (PLAN.md kural 10).
+    """
+
+    day: date
+    hours: int  # ozet penceresinin uzunlugu (DIGEST_WINDOW)
+    counts: tuple[tuple[str, int], ...]
+    panels: int
+    top_pano: str
+    top_count: int
+    top_text: str
+
+    @property
+    def total(self) -> int:
+        return sum(count for _, count in self.counts)
+
+
+DigestListener = Callable[[Digest], bool]
 
 
 class AlarmService:
@@ -53,6 +86,7 @@ class AlarmService:
         *,
         clock: Callable[[], datetime],
         detector: CentralDetector | None = None,
+        digest_at: time | None = None,
     ) -> None:
         self._contracts = contracts
         self._store = store
@@ -60,6 +94,12 @@ class AlarmService:
         self._clock = clock
         self._risk = RiskEngine(contracts, detector)
         self._comms_timeout = timedelta(minutes=contracts.thresholds["heartbeat_timeout_min"])
+        # Ozet saati: uygulama fabrikasi alarm servisini Settings olmadan kurar, bu yuzden
+        # verilmediyse ayni yardimciyla ortamdan okunur (DIGEST_AT).
+        self._digest_at = digest_at or digest_at_from_env()
+        self._digest_prios = _digest_prios(contracts)
+        self._digest_day: date | None = None  # bugunun ozeti icin depo tarandi mi
+        self._digest_listeners: list[DigestListener] = []
         self._manager: AlarmManager | None = None
         self._load_lock = threading.Lock()
         self._serial = threading.RLock()  # yonetici islemi -> yazma -> yayin sirasi
@@ -85,7 +125,11 @@ class AlarmService:
             return self._manager
 
     def add_listener(self, listener: ChangeListener) -> None:
+        """Degisiklik dinleyicisi. `digest` metodu olan dinleyici (bildirim ag gecidi) gunluk ozeti de alir."""
         self._listeners.append(listener)
+        digest = getattr(listener, "digest", None)
+        if callable(digest):
+            self._digest_listeners.append(digest)
 
     # ------------------------------------------------------------ girdiler
     def on_samples(self, samples: list[Sample]) -> None:
@@ -126,6 +170,7 @@ class AlarmService:
                 )
                 changes += manager.assert_condition(pano_id, condition, ts=now, now=now)
             self._apply(changes, now)
+        self._maybe_digest(now)
 
     def ack(self, alarm_id: int, *, by: str, note: str | None = None) -> Alarm:
         manager = self.load()
@@ -164,6 +209,62 @@ class AlarmService:
             change = manager.mark_notified(delivery.alarm_id, delivery.channel)
             if change is not None:
                 self._apply([change], self._clock())
+
+    # ----------------------------------------------------------- gunluk ozet
+    def _maybe_digest(self, now: datetime) -> None:
+        """Gunde bir kez, DIGEST_AT saatinde: P3 uyarilari ve SYS alarmlari tek SMS'lik ozete girer.
+
+        Pencere sabittir: [ozet saati - 24 sa, ozet saati). Ozetlenen alarmin `notified` alanina
+        'sms' yazilir ve bu alarms tablosunda kalicidir; penceredeki bir alarm zaten isaretliyse
+        bugunun ozeti gonderilmis demektir, yeniden baslatma ikinci mesaj uretmez. Ozet saatinden
+        sonra olusan alarmlar bir sonraki gunun penceresine dusar.
+        """
+        if self._digest_at is None or not self._digest_listeners or self._digest_day == now.date():
+            return
+        due = datetime.combine(now.date(), self._digest_at, tzinfo=now.tzinfo)
+        if now < due:
+            return
+        try:
+            pending = self._digest_alarms(due)
+        except StoreError as exc:  # depo erisilebilir oldugunda sonraki tick tekrar dener
+            log.warning("gunluk ozet hazirlanamadi: %s", exc)
+            return
+        self._digest_day = now.date()
+        if not pending:
+            return
+        summary = _digest_summary(self._contracts, due, pending, self._digest_prios)
+        if not [listener for listener in self._digest_listeners if listener(summary)]:
+            log.warning("gunluk ozet gonderilemedi, SMS kanali ya da alici yok (%d alarm)", summary.total)
+            return
+        self._mark_digested(pending, now)
+        log.info("gunluk ozet gonderildi: %d alarm, %d pano", summary.total, summary.panels)
+
+    def _digest_alarms(self, due: datetime) -> list[Alarm]:
+        """Ozet penceresindeki, henuz ozetlenmemis P3/SYS alarmlari (StoreError atabilir).
+
+        Penceredeki bir alarm zaten isaretliyse bugunun ozeti gitmistir: bos liste doner.
+        """
+        rows = self._store.list_alarms(ALARM_STATES, self._digest_prios, None, DIGEST_LIMIT)
+        window = [alarm for alarm in rows if due - DIGEST_WINDOW <= alarm.raised_at < due]
+        pending = [alarm for alarm in window if DIGEST_CHANNEL not in alarm.notified]
+        return [] if len(pending) < len(window) else pending
+
+    def _mark_digested(self, alarms: list[Alarm], now: datetime) -> None:
+        """Ozetlenen alarmlara kanal rozetini yazar (Alarm.notified 'sms').
+
+        Acik alarm yoneticiden, temizlenmis alarm depodan gelen kopyadan isaretlenir; ikisi de ayni
+        yazma yolundan (save_alarm_changes) gecer, boylece isaret yeniden baslatmayi asar.
+        """
+        manager = self._manager
+        changes: list[Change] = []
+        for alarm in alarms:
+            change = manager.mark_notified(alarm.id, DIGEST_CHANNEL) if manager is not None else None
+            if change is None:
+                marked = replace(alarm, notified=(*alarm.notified, DIGEST_CHANNEL))
+                change = Change("notified", marked, step=DIGEST_CHANNEL, note=DIGEST_CHANNEL)
+            changes.append(change)
+        with self._serial:
+            self._apply(changes, now)
 
     # ------------------------------------------------------------ sorgular
     def list_alarms(self, states: Sequence[str], prios: Sequence[str] | None, pano_id: str | None, limit: int) -> list[Alarm]:
@@ -233,6 +334,44 @@ class AlarmService:
                 log.exception("bekleyen alarm degisikligi veri hatasi nedeniyle atildi")
             with self._lock:
                 self._unsaved.pop(0)
+
+
+def _digest_prios(contracts: Contracts) -> tuple[str, ...]:
+    """Ozete girecek oncelikler sozlesmeden okunur: daily_digest: true (P3), sms: digest_only (SYS)."""
+    priorities = contracts.alarm_codes["priorities"]
+    return tuple(
+        prio
+        for prio in PRIO_ORDER
+        if prio in priorities
+        and (priorities[prio].get("daily_digest") is True or priorities[prio].get("sms") == "digest_only")
+    )
+
+
+def _digest_summary(contracts: Contracts, due: datetime, alarms: list[Alarm], prios: tuple[str, ...]) -> Digest:
+    """Oncelik basina sayi, pano sayisi ve en cok alarm ureten panonun en sik alarm metni."""
+    priorities = contracts.alarm_codes["priorities"]
+    by_prio = Counter(alarm.prio for alarm in alarms)
+    by_pano = Counter(alarm.pano_id for alarm in alarms)
+    top_pano, top_count = _most_common(by_pano)
+    top_code, _ = _most_common(Counter(alarm.code for alarm in alarms if alarm.pano_id == top_pano))
+    return Digest(
+        day=due.date(),
+        hours=int(DIGEST_WINDOW.total_seconds() // 3600),
+        counts=tuple(
+            (f"{priorities[prio].get('name', prio).lower()} ({prio})", by_prio[prio])
+            for prio in prios
+            if by_prio[prio]
+        ),
+        panels=len(by_pano),
+        top_pano=top_pano,
+        top_count=top_count,
+        top_text=(contracts.alarm(top_code) or {}).get("text", top_code),
+    )
+
+
+def _most_common(counter: Counter) -> tuple[str, int]:
+    """Counter.most_common yerine: esitlikte alfabetik ilk, boylece ayni veri ayni ozeti verir."""
+    return min(counter.items(), key=lambda item: (-item[1], item[0]))
 
 
 class PeriodicWorker:

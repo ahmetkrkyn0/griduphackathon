@@ -4,12 +4,13 @@ Kanal kurali kodda degil, contracts/alarm-codes.yaml `priorities` tablosundadir:
     raised / unshelved (notify=True)  sms: true -> SMS, whatsapp: true -> WhatsApp   -> ALERT_RECIPIENTS
     escalated step=call               sesli arama (P1 call_after_min)                -> ALERT_RECIPIENTS
     escalated step=escalate           SMS (+ oncelik izin veriyorsa WhatsApp)         -> ALERT_ESCALATION
-    P3 (daily_digest) ve SYS (sms: digest_only) aninda kimseyi aramaz.
+    P3 (daily_digest) ve SYS (sms: digest_only) aninda kimseyi aramaz: bu alarmlar gunde bir kez
+    alarm servisinin urettigi ozette (`digest()`, DIGEST_AT saati) tek parca SMS olarak gider.
 
 Isler kendi thread'inde yurur: alarm servisi ve ingest modemi ya da HTTP'yi beklemez. Gecici hata (modem
 kopuk, sebeke reddi, internet yok, 5xx/429) ussel geri cekilmeyle tekrar denenir; kalici hata (yetki,
-WhatsApp penceresi disi) bir kez kaydedilir. Her deneme `on_delivery` ile maskeli aliciyla denetim izine
-yazilir (KVKK).
+WhatsApp penceresi disi) bir kez kaydedilir. Alarma bagli her deneme `on_delivery` ile maskeli aliciyla
+denetim izine yazilir (KVKK); gunluk ozetin alarm kimligi yoktur, yalnizca kayda duser.
 
 Cift yonlu onay: gelen SMS "1 <id>" (gordum) / "2 <id>" (ekip yonlendirildi); kimliksiz "1"/"2" o numaraya
 en son giden alarmi onaylar. Yalnizca kayitli alici numaralarindan kabul edilir.
@@ -25,14 +26,18 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from ..alarm_manager import Alarm, Change
 from ..config import Contracts
 from .pdu import Sms
 from .privacy import mask_number
 from .sms_modem import ModemError, SmsModem
-from .templates import escalation_sms, fold, sms_alarm, whatsapp_alarm
+from .templates import digest_sms, escalation_sms, fold, sms_alarm, whatsapp_alarm
 from .whatsapp import DEFAULT_API_VERSION, WhatsAppClient, WhatsAppError
+
+if TYPE_CHECKING:
+    from ..alarm_service import Digest
 
 log = logging.getLogger("gridup.notify")
 
@@ -103,7 +108,7 @@ class Delivery:
 
 @dataclass
 class _Job:
-    alarm: Alarm
+    alarm: Alarm | None  # gunluk ozette yok: ozet tek bir alarma ait degildir
     channel: str  # sms | whatsapp | call
     recipient: str
     text: str = ""
@@ -170,6 +175,20 @@ class Notifier:
             if spec.get("whatsapp") is True and self._whatsapp is not None:
                 jobs += [self._whatsapp_job(alarm, n, text) for n in self._config.escalation]
         return jobs
+
+    def digest(self, summary: Digest) -> bool:
+        """Gunluk ozet: alarm servisi gunde bir kez cagirir, saha ekibine tek parca SMS gider.
+
+        True = is kuyruguna alindi (gecici hatada anlik bildirimlerle ayni sekilde tekrar denenir).
+        False = SMS kanali ya da alici yok; alarm servisi ozetlenen alarmlari isaretlemez.
+        """
+        if self._sms is None or not self._config.recipients:
+            return False
+        text = digest_sms(summary, self._config.portal_url)
+        with self._lock:
+            self._jobs.extend(_Job(None, "sms", number, text) for number in self._config.recipients)
+        self._wake.set()
+        return True
 
     def _whatsapp_job(self, alarm: Alarm, number: str, text: str) -> _Job:
         body = whatsapp_alarm(alarm, text, self._config.portal_url)
@@ -238,9 +257,14 @@ class Notifier:
             ok, detail, retryable = False, str(exc), exc.retryable
 
         masked = mask_number(job.recipient)
-        self._on_delivery(Delivery(job.alarm.id, job.channel, masked, self._clock(), ok, detail))
+        if job.alarm is not None:
+            self._on_delivery(Delivery(job.alarm.id, job.channel, masked, self._clock(), ok, detail))
+        elif ok:
+            # Ozet tek bir alarma ait degildir: notifications satiri alarm kimligi ister ve uctan uca
+            # gecikme KPI'sini bozardi. Denetim izi burada kayittir; alici yine maskelidir (KVKK).
+            log.info("gunluk ozet gonderildi: %s", masked)
         if ok:
-            if job.channel in ("sms", "call"):
+            if job.alarm is not None and job.channel in ("sms", "call"):
                 self._last_alarm_for[normalize_msisdn(job.recipient)] = job.alarm.id
             return
         job.attempts += 1
