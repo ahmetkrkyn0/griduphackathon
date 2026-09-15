@@ -11,6 +11,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
+from datetime import time
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,10 @@ PANO_ID_PLACEHOLDER = "{pano_id}"
 
 # Yuksekten dusuge. SYS (izleme sistemi) is emri acar, INFO yalnizca ekrana duser.
 PRIO_ORDER = ("P1", "P2", "P3", "SYS", "INFO")
+
+# Gunluk ozet saati (P3 daily_digest + SYS digest_only, contracts/alarm-codes.yaml).
+# DIKKAT: saat SUNUCU saatiyle degerlendirilir; konteynerde bu UTC'dir (TSI 08:00 icin DIGEST_AT=05:00).
+DEFAULT_DIGEST_AT = time(8, 0)
 
 
 @dataclass(frozen=True)
@@ -55,6 +60,8 @@ class Settings:
     iec104_host: str = "0.0.0.0"
     iec104_port: int = 2404
     iec104_allowed_clients: tuple[str, ...] = DEFAULT_MODBUS_ALLOWED_CLIENTS
+    # --- Gunluk ozet (TB2 Adim 7): P3 uyarilari ve SYS alarmlari gunde bir kez tek SMS ile. ---
+    digest_at: time | None = DEFAULT_DIGEST_AT  # None -> ozet gonderilmez
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -77,7 +84,27 @@ class Settings:
             iec104_host=os.getenv("IEC104_HOST", "0.0.0.0"),
             iec104_port=int(os.getenv("IEC104_PORT", "2404")),
             iec104_allowed_clients=_csv(os.getenv("IEC104_ALLOWED_CLIENTS", "")) or DEFAULT_MODBUS_ALLOWED_CLIENTS,
+            digest_at=digest_at_from_env(),
         )
+
+
+def digest_at_from_env() -> time | None:
+    """DIGEST_AT ortam degiskeni; alarm servisi Settings olmadan kuruldugu icin ayrica cagrilabilir."""
+    return parse_digest_at(os.getenv("DIGEST_AT"))
+
+
+def parse_digest_at(value: str | None) -> time | None:
+    """DIGEST_AT: 'HH:MM' (24 saat, sunucu saati). Tanimsiz -> varsayilan; bos -> gunluk ozet kapali."""
+    if value is None:
+        return DEFAULT_DIGEST_AT
+    value = value.strip()
+    if not value:
+        return None
+    hour, _, minute = value.partition(":")
+    try:
+        return time(int(hour), int(minute))
+    except ValueError:
+        raise ValueError("DIGEST_AT 'HH:MM' biciminde olmali, ornek 08:00") from None
 
 
 def parse_modbus_password(value: str) -> int | None:

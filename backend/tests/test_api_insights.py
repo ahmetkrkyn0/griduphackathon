@@ -197,9 +197,20 @@ def test_blackbox_unknown_event_is_404(rig):
     assert rig.http.get("/api/v1/events/EVT-999/blackbox").status_code == 404
 
 
-@pytest.mark.parametrize("window_h", [0, 169])
+@pytest.mark.parametrize("window_h", [0, 337])
 def test_blackbox_window_limits(rig, window_h):
     assert rig.http.get("/api/v1/events/EVT-1/blackbox", params={"window_h": window_h}).status_code == 422
+
+
+def test_blackbox_covers_the_measured_lead_time(rig, incident, api_contract):
+    """docs/12 §2: en erken L1 tespiti sabit 70 K esiginden 209 saat once. Pencere onu almali."""
+    response = rig.http.get(f"/api/v1/events/{incident['event_id']}/blackbox", params={"window_h": 336})
+    assert response.status_code == 200
+    body = response.json()
+    api_contract(body, "Blackbox")
+    assert body["window_h"] == 336
+    # 336 sa + 1 sa kuyruk en kaba kovada 338 nokta eder; adim secimi kendiliginden saatlige duser.
+    assert all(len(points) <= 500 for points in body["series"].values())
 
 
 # ================================================================== fleet kpi

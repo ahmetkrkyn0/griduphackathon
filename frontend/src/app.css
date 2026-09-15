@@ -352,6 +352,10 @@
 .badge-shelved { background: var(--well); color: var(--dim); font-size: 12px; padding: 2px 8px; border-radius: 3px; }
 
 /* ---------- Kara kutu (Olay Analizi) ---------- */
+/* Pencere secimi solda, yazdirma dugmesi sagda; ikisi de kagitta gizlenir (print.css). */
+.bb-bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.bb-bar .console-filters { margin-bottom: 0; }
+
 .timeline { list-style: none; margin: 16px 0 0; padding: 0; border-left: 2px solid var(--line); }
 .timeline li { position: relative; padding: 0 0 18px 20px; }
 .timeline li::before { content: ""; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--dim); }

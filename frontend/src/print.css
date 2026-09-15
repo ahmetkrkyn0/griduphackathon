@@ -1,0 +1,205 @@
+/* Yazdirilabilir olay dosyasi (F-09) — depodaki TEK yazdirma kurali kaynagi.
+   Yeni npm bagimliligi yoktur: tarayicinin kendi yazdirmasi (window.print) kullanilir.
+   Sahibi ve tek tuketicisi src/pages/OlayAnalizi.tsx (Kara kutu); rapor duzeni
+   main.page.report kapsayicisina baglanmistir, diger ekranlarin cikti duzeni degismez.
+   ISA-101 dili korunur: bu dosya yeni renk kodu TANIMLAMAZ, yalnizca ekran icin kurulmus
+   duzeni A4 kagida uyarlar — renk yine yalnizca anormal durumdaki noktalardan gelir ve
+   ayirt edicilik renge degil metne/sekle dayanir (renk korlugu). */
+
+/* Ekranda gizli, kagitta gorunur bloklar. Ekran tarafindaki kural da burada durur ki
+   "yazdirma" kavraminin tamami tek dosyada kalsin. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* A4 dikey. Kenar boslugu 12 mm: imza satirlari kagit kenarina yapismaz. */
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  /* Kagitta arka plan degil metin okunur: ekran gradyani ve golgeler kalkar. Renk
+     uyarlamasi acik birakilir, yoksa zaman cizelgesindeki durum noktalari kaybolur. */
+  html,
+  body {
+    background: #fff;
+  }
+  body {
+    color: #000;
+    font-size: 9.5pt;
+    line-height: 1.35;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Gezinme ve durum seridi icerik degil; kagitta hicbir sayfada yer kaplamaz. */
+  .topbar,
+  .strip {
+    display: none !important;
+  }
+
+  .page {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ---------- Olay raporu (main.page.report) ---------- */
+
+  /* Etkilesim ve ekran basligi gizlenir: geri baglantisi, pencere secimi, yazdirma
+     dugmesi ve goreli zamanli ekran basligi. Kagit basligini .print-head tasir. */
+  .report .back,
+  .report .bb-bar,
+  .report .ident,
+  .report .statement {
+    display: none !important;
+  }
+
+  .report .print-head {
+    display: block;
+    margin: 0 0 4mm;
+    padding-bottom: 3mm;
+    border-bottom: 2px solid #000;
+  }
+  .report .print-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-bottom: 2mm;
+  }
+  .report .print-title strong {
+    font: 700 14pt/1.1 var(--display);
+  }
+  .report .print-title span {
+    font-size: 8.5pt;
+  }
+
+  /* Veri kaynagi ibaresi (GK10): rapor neyin uzerinde uretildigini kendisi soyler. */
+  .report .print-source {
+    margin: 0 0 3mm;
+    padding: 2mm 3mm;
+    border: 1px solid #000;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+
+  /* Kimlik ve zaman damgalari: iki sutun, her satir noktali cizgiyle ayrilir. */
+  .report .print-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 8mm;
+    margin: 0;
+  }
+  .report .print-meta > div {
+    display: flex;
+    gap: 3mm;
+    padding: 1mm 0;
+    border-bottom: 1px dotted #999;
+  }
+  .report .print-meta dt {
+    flex: none;
+    width: 32mm;
+    font-weight: 600;
+  }
+  .report .print-meta dd {
+    margin: 0;
+  }
+
+  /* Govde: solda cizgi grafikler, sagda 2B on gorunus + zaman cizelgesi.
+     Ekrandaki px tabanli sutun genisligi kagitta anlamsiz; esit iki sutuna gecilir. */
+  .report .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6mm;
+    align-items: start;
+  }
+  .report .phases {
+    margin-top: 3mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report .phases:first-child {
+    margin-top: 0;
+  }
+  .report .split h3 {
+    margin: 0 0 1mm;
+    font-size: 10pt;
+  }
+  .report .chart-legend {
+    margin-top: 2px;
+    font-size: 8pt;
+  }
+
+  /* 3B ikiz tuvali kagitta bos cikar; rapora 2B on gorunus konur (F-09 Dikkat satiri). */
+  .report figure.front.print-only {
+    display: block;
+  }
+  .report .front {
+    padding: 2mm;
+    border: 1px solid #000;
+    border-radius: 0;
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report .front figcaption {
+    margin: 2mm 0 0;
+    font-size: 8pt;
+  }
+
+  .report .timeline {
+    margin-top: 2mm;
+  }
+  .report .timeline li {
+    padding-bottom: 2.5mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Kagitta goreli zaman ("3 sa once") okunmaz: mutlak damga acilir, goreli olan kapanir. */
+  .report .timeline .tl-time {
+    display: none;
+    font-size: 8pt;
+  }
+  .report .timeline .tl-time.print-only {
+    display: block;
+  }
+
+  /* Imza bolumu: raporun imzalanabilir olmasi maddenin cikti sartidir. */
+  .report .print-sign {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8mm;
+    margin-top: 8mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report .print-sign h4 {
+    margin: 0 0 2mm;
+    padding-bottom: 1mm;
+    border-bottom: 1px solid #000;
+    font: 600 9.5pt var(--cond);
+  }
+  /* Etiket ustte, altinda yazi boslugu, en altta imza cizgisi. */
+  .report .print-sign p {
+    margin: 0 0 3mm;
+    padding-bottom: 8mm;
+    border-bottom: 1px solid #000;
+    font-size: 8pt;
+  }
+
+  .report .print-foot {
+    display: block;
+    margin-top: 4mm;
+    padding-top: 2mm;
+    border-top: 1px solid #000;
+    font-size: 7.5pt;
+  }
+
+  /* Kagitta baglanti diye bir sey yok: alti cizili mavi metin okumayi bozar. */
+  .report a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

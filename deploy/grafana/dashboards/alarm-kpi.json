@@ -363,7 +363,7 @@
       "id": 7,
       "type": "timeseries",
       "title": "Oluşan alarmlar (saatlik)",
-      "description": "Alarm seli (flood) tespiti: ISA-18.2'de 10 dakikada 10'dan fazla alarm sel sayılır.",
+      "description": "Saatlik kovada oluşan alarm (alarms.raised_at), önceliğe göre: genel eğilim. EEMUA 191'in 10 dakikalık sel tanımını bu panel HESAPLAMAZ, yan paneldedir — saatlik kova o tanımı gizler.",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "gridup-tsdb"
@@ -412,9 +412,9 @@
     },
     {
       "id": 8,
-      "type": "table",
-      "title": "En çok alarm üreten panolar (7 gün)",
-      "description": "ISA-18.2 'kötü aktör' analizi: alarm yükünün çoğu genellikle birkaç panodan gelir.",
+      "type": "timeseries",
+      "title": "Alarm seli — 10 dakikalık pencere (EEMUA 191)",
+      "description": "EEMUA 191 sel tanımı, GERÇEK penceresiyle: 10 dakikalık kovada 10'dan fazla yeni alarm duyurusu sel sayılır. Duyuru = alarm_journal'da raised + reactivated (operatörün yeni alarm olarak gördüğü an), yalnızca P1/P2/P3. Kırmızı çizgi 11'dedir: tanımın ihlal edildiği ilk değer.",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "gridup-tsdb"
@@ -424,6 +424,73 @@
         "w": 12,
         "x": 12,
         "y": 13
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 11
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(at, '10m'), count(*) AS \"Yeni alarm\"\nFROM (\n  SELECT j.at\n  FROM alarm_journal j JOIN alarms a ON a.id = j.alarm_id\n  WHERE j.action IN ('raised', 'reactivated') AND a.prio IN ('P1', 'P2', 'P3')\n) annunciation\nWHERE $__timeFilter(at)\nGROUP BY 1\nORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "En çok alarm üreten panolar (7 gün)",
+      "description": "ISA-18.2 'kötü aktör' analizi: alarm yükünün çoğu genellikle birkaç panodan gelir. İlk 10 pano, alarm satırı (alarms.raised_at) sayısına göre.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
       },
       "fieldConfig": {
         "defaults": {
@@ -447,6 +514,129 @@
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT pano_id AS \"Pano\", count(*) AS \"Alarm\", string_agg(DISTINCT code, ', ') AS \"Kodlar\"\nFROM alarms WHERE raised_at >= now() - interval '7 days'\nGROUP BY pano_id ORDER BY count(*) DESC LIMIT 10",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "En çok alarm üreten kodlar (7 gün) — ilk 10",
+      "description": "KOD bazında kötü aktör: yan paneldeki pano listesiyle aynı ölçü (alarms.raised_at), farklı eksen. EEMUA 191 rasyonalize edilmemiş sistemlerde ilk 10 alarmın oluşumların %60-80'ini ürettiğini söyler; 'Kümülatif %' sütunu bunu bizim filomuzda ölçer. Payların paydası 7 günün TÜM alarmlarıdır, yalnızca listelenenler değil.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT code AS \"Kod\", prio AS \"Öncelik\", count(*) AS \"Alarm\",\n       count(DISTINCT pano_id) AS \"Pano\",\n       round(100.0 * count(*) / NULLIF(sum(count(*)) OVER (), 0), 1) AS \"Pay %\",\n       round(100.0 * sum(count(*)) OVER (ORDER BY count(*) DESC, code)\n             / NULLIF(sum(count(*)) OVER (), 0), 1) AS \"Kümülatif %\"\nFROM alarms WHERE raised_at >= now() - interval '7 days'\nGROUP BY code, prio ORDER BY count(*) DESC, code LIMIT 10",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Bayat alarmlar (>24 saat, EEMUA 191)",
+      "description": "EEMUA 191: alarm listesinde 24 saatten uzun duran alarm bayattır — operatör onu artık görmez. Süre duyurudan (annunciated_at, duvar saati) itibaren ölçülür; temizlenmemiş her durum listelenir, rafa alınmış olanlar 'Durum' sütununda görünür. En eski 20 kayıt.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT pano_id AS \"Pano\", code AS \"Kod\", prio AS \"Öncelik\", coalesce(point, '-') AS \"Nokta\",\n       state AS \"Durum\",\n       round((extract(epoch FROM now() - coalesce(annunciated_at, raised_at)) / 3600.0)::numeric, 1) AS \"Süre (saat)\"\nFROM alarms\nWHERE state <> 'cleared'\n  AND coalesce(annunciated_at, raised_at) < now() - interval '24 hours'\nORDER BY coalesce(annunciated_at, raised_at) LIMIT 20",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Chattering (run-length, 7 gün)",
+      "description": "Chatter indeksi = ardışık duyurular arasındaki sürenin (run-length, saniye) dağılımında ortalama 1/n (Kondaveeti ve ark., 2013). 1'e yaklaşması saniyeler arayla tekrarlayan alarm demektir; 0.05 ve üstü chattering sayılır ve yalnızca onlar listelenir. Tablo BOŞSA chattering yoktur — histerezis (hysteresis_clear_min) işini yapıyor demektir.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "gridup-tsdb"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "gridup-tsdb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH annunciation AS (\n  SELECT a.pano_id, a.code, a.point,\n         j.at - lag(j.at) OVER (PARTITION BY a.pano_id, a.code, a.point ORDER BY j.at, j.id) AS gap\n  FROM alarm_journal j JOIN alarms a ON a.id = j.alarm_id\n  WHERE j.action IN ('raised', 'reactivated') AND j.at >= now() - interval '7 days'\n), run AS (\n  SELECT pano_id, code, point, greatest(round(extract(epoch FROM gap))::bigint, 1) AS run_s\n  FROM annunciation WHERE gap IS NOT NULL\n)\nSELECT pano_id AS \"Pano\", code AS \"Kod\", coalesce(point, '-') AS \"Nokta\",\n       count(*) + 1 AS \"Duyuru\", round(avg(1.0 / run_s), 3) AS \"Chatter indeksi\",\n       round(min(run_s) / 60.0, 1) AS \"En kısa ara (dk)\"\nFROM run GROUP BY pano_id, code, point\nHAVING avg(1.0 / run_s) >= 0.05\nORDER BY avg(1.0 / run_s) DESC LIMIT 10",
           "refId": "A"
         }
       ]

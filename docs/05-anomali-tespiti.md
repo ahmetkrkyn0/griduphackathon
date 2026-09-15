@@ -134,6 +134,11 @@ Gelecek yük **sabit varsayılmaz**; 168 kutulu saat-of-hafta profilinden okunur
 Eşik: `ttl_warn_days = 14` → `ALM-TTL-14D` (P3). **Gün değil saat** karşılaştırılır
 (14 × 24 = 336 h); çevrim unutulursa 14 gün yerine 14 saat kala alarm verilir.
 
+Bu tahminin geri testi — α-λ doğruluğu, prognostic horizon, göreli doğruluk ve
+yakınsama — [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §4'tedir; ölçüt
+tanımları `libs/panoalgo/panoalgo/prognostics.py` içindedir. **Ölçülen sonuç
+olumsuzdur**, §10'daki iki kayda bakın.
+
 ## 5. L1 — Faz karşılaştırması
 
 ```
@@ -250,5 +255,135 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   uygulama riski vardır.
 - **Aşırı yükte öne alma yoktur** (ölçülen: 1,2 saat). Beklenen davranış: sebep bozulma
   değil yüktür, fizik katmanının bir üstünlüğü yoktur ve olmamalıdır.
+- **`ttl_h` henüz güvenilir bir kalan ömür kestirimi değildir.** Geri testi yapıldı
+  ([12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §4): S1'deki 790 tahminin
+  yalnızca **%5,2'si** ±%20 konisinin içinde; **prognostic horizon yok** — tahmin hiçbir
+  noktadan sonra konide kalmıyor; ihlale 48 saatten az kala koni içinde kalma oranı
+  **%0**; ortalama göreli doğruluk **−5,12**. Manşetteki 209 saatlik öne alma **tespit**
+  katmanından (K/K₀ eşiği) gelir, bu tahminden değil; ikisi karıştırılmamalıdır. Sonuç
+  **tek yörüngeden** (n = 1) gelir, güven aralığı yoktur.
+- **Prognoz yanlış-alarmı (S8, sensör arızası).** Sınır hiç aşılmadığı hâlde **99 tahmin**
+  üretiliyor ve bunların **89'u** `ALM-TTL-14D` (P3) alarmına dönüyor. Ölçüldü: 99 tahminin
+  **tamamı** `DSYA4_L3` noktasından, yani S8'in **sürüklenen** (drift) sensöründen geliyor.
+  L-1 veri kalitesi katmanı bu noktayı 672 örneğin **hiçbirinde** işaretlemiyor — yavaş
+  sürüklenme ne donmuş sensör ne de ortam altı kuralına takılıyor — ve `ttl_h` üretimi
+  kalite bitlerinden bağımsız çalışıyor (`edge.py` kestirimi `q` hesabından önce yapar).
+  Bu bir tespit değil **tahmin** yanlış-alarmıdır; docs/12 §3'teki yanlış alarm sayacı
+  onu görmez, çünkü etiket penceresinin içinde çıkar. Saklanmıyor, burada duruyor.
 - **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`; rapor §3.7'ye göre
   400 V'ta Paschen minimumunun (~327 V) altında kalındığı için PD beklenmez.
+
+## 11. Çiy eşiği taraması — ölçülmüş savunma
+
+[12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §3'te ölçülen tek gerçek zayıflık
+budur: sağlıklı panoda (`S0_normal`) **71,4 yanlış alarm/100 pano/gün** ve tamamı
+`ALM-DEW-*`. Sözleşme sınırı 150 olduğu için "geçiyor", ama "neden 3,0 / 1,0 K" sorusunun
+ölçülmüş bir cevabı yoktu ([KALAN-EKSIKLER.md](../KALAN-EKSIKLER.md) D7). Aşağıdaki
+tabloların hepsi şu komutla yeniden üretilir; testleri
+`libs/panoalgo/tests/test_threshold_sweep.py` içindedir:
+
+```bash
+python scripts/threshold_sweep.py --verify --seasons
+```
+
+### 11.1 Tarama neyi yeniden koşturuyor
+
+`scripts/validate.py` tespiti yeniden koşturmaz, fixture'ın hazır `alarms` sütununu okur.
+Çiy kararı ise `limits._environment()` içinde **tek bir alan** üzerinde **tek bir kesin
+küçüktür** karşılaştırmasıdır: `env.td_margin_k < eşik`. Eşik ne fiziğe, ne üretece, ne de
+`td_margin_k` değerine girer — yalnızca karşılaştırmaya girer. Bu yüzden her ızgara
+noktasında fixture yeniden üretilmedi; kararın kendisi `td_margin_k` sütunu üzerinde
+yeniden koşturuldu. Kestirmenin bedava olmadığı iki şekilde kanıtlanır:
+
+- `--verify`: sözleşme eşikleriyle hesaplanan kodlar fixture'ın hazır `alarms` sütunuyla
+  **672 satırın 672'sinde** aynı (0 uyuşmazlık).
+- `--rerun`: her ızgara noktası için `contracts/` dizininin **geçici bir kopyası** o eşikle
+  yazılır ve senaryo üreteç + kenar boru hattından baştan koşturulur. Sonuç hızlı yolla
+  **birebir aynı**. Donmuş sözleşme dosyasına yazılmaz (testle kilitli).
+
+**Ölçülen maliyet** (bu makine, 168 h / 672 örnek, 11 noktalı ızgara): hızlı yol
+**0,024 s**, tam yeniden koşturma **30,9 s** (nokta başına ~2,8 s). Kestirme yol ~1300 kat
+ucuz ve aynı sayıyı veriyor.
+
+### 11.2 Tek eşik taraması (`S0_normal`, 168 h, 672 örnek)
+
+| Eşik (K) | Olay | Olay/100 pano/gün | Ayakta kalma | En uzun kesintisiz | Bayat? |
+|---:|---:|---:|---:|---:|---|
+| 0,0 | 8 | 114,3 | %65,6 | 17,0 h | hayır |
+| 0,5 | 8 | 114,3 | %78,1 | 20,8 h | hayır |
+| **1,0 (sözleşme: alarm)** | 4 | 57,1 | %94,5 | 110,0 h | evet |
+| 1,5 | 1 | 14,3 | %100,0 | 168,0 h | evet |
+| 2,0 | 1 | 14,3 | %100,0 | 168,0 h | evet |
+| 2,5 | 1 | 14,3 | %100,0 | 168,0 h | evet |
+| **3,0 (sözleşme: uyarı)** | 1 | 14,3 | %100,0 | 168,0 h | evet |
+| 3,5 – 6,0 | 1 | 14,3 | %100,0 | 168,0 h | evet |
+
+"Bayat" = EEMUA 191'in tanımı: 24 saatten uzun süre ayakta duran alarm. **Olay sayısı tek
+başına yanıltıcıdır** — ayakta duran tek bir alarmı ucuz gösterir, oysa operatör için en
+pahalı alarm tam odur.
+
+### 11.3 Eşik çifti taraması
+
+| Uyarı (K) | Alarm (K) | Olay/100 pano/gün | Uyarı ayakta | Alarm ayakta | Yoğuşma yakalandı mı |
+|---:|---:|---:|---:|---:|---|
+| 6,0 | 3,0 | 28,6 | %100,0 | %100,0 | evet (0,00 h) |
+| 5,0 | 2,0 | 28,6 | %100,0 | %100,0 | evet (0,00 h) |
+| 4,0 | 2,0 | 28,6 | %100,0 | %100,0 | evet (0,00 h) |
+| **3,0 / 1,0 (sözleşme)** | | **71,4** | %100,0 | %94,5 | evet (0,00 h) |
+| 2,0 | 1,0 | 71,4 | %100,0 | %94,5 | evet (0,00 h) |
+| 2,0 | 0,5 | 128,6 | %100,0 | %78,1 | evet (0,00 h) |
+| 1,5 | 0,5 | 128,6 | %100,0 | %78,1 | evet (0,00 h) |
+| 1,0 | 0,0 | **171,4** | %94,5 | %65,6 | evet (0,00 h) |
+| 0,5 | 0,0 | **228,6** | %78,1 | %65,6 | evet (0,00 h) |
+
+### 11.4 Aynı senaryo, üç mevsim (eşik sabit)
+
+| Mevsim | En düşük marj | Medyan marj | En yüksek marj | Uyarı ayakta | Alarm ayakta | Olay/100 pano/gün |
+|---|---:|---:|---:|---:|---:|---:|
+| kış | −1,72 K | −1,70 K | −1,69 K | %100,0 | %100,0 | 28,6 |
+| geçiş | −1,69 K | −0,76 K | 1,27 K | %100,0 | %94,5 | **71,4** |
+| yaz | 7,48 K | 10,17 K | 13,29 K | %0,0 | %0,0 | **0,0** |
+
+### 11.5 Sonuç: eşik veriyle savunuluyor, değiştirilmiyor
+
+1. **Eşiği kısmak yükü azaltmıyor, artırıyor.** 1,0/0,0 çifti 171,4 olay/100 pano/gün
+   üretiyor ve sözleşmenin kabul edilebilir günlük bütçesini (150) **aşıyor**; 0,5/0,0
+   çifti 228,6. Sebep: dar eşik, ayakta duran tek bir alarmı kesik kesik (chattering)
+   bir alarm dizisine çeviriyor.
+2. **Eşiği gevşetmek sayıyı düşürüyor ama alarmı işlevsiz bırakıyor.** 2,0 K ve üzerinde
+   alarm haftanın %100'ünde ayakta; hiç temizlenmeyen bir alarm bilgi taşımaz. Olay
+   metriği bunu "daha iyi" (28,6) gösterir — EEMUA 191'in bayat alarm patolojisi tam
+   budur.
+3. **Sözleşme çifti ölçülen etkin sınırın üzerinde.** 150 bütçesinin altında kalan ve
+   alarm kodu hâlâ **temizlenen** (ayakta kalma %94,5, 4 ayrı olay) tek aday grubu
+   3,0/1,0 ve 2,0/1,0'dır; ikisi de 71,4 üretir. Aradaki tek fark uyarı eşiğidir ve
+   ölçülebilir hiçbir şeyi değiştirmez (her ikisinde de uyarı tek ve sürekli). Yani
+   **sözleşmedeki sayıyı değiştirmenin ölçülmüş bir faydası yok**.
+4. **Tespit hiçbir adayda kaybolmuyor** — yani "eşiği kısarsak yoğuşmayı kaçırırız"
+   savunması bu veride yapılamaz; savunma yalnızca operatör yükü üzerinden yapılır.
+
+**Sözleşme değişikliği önerilmedi.** `dew_margin_warn_k = 3,0` ve
+`dew_margin_alarm_k = 1,0` olduğu gibi kalıyor.
+
+### 11.6 Eşiğin çözmediği şey (dürüstlük)
+
+- **Asıl sürücü eşik değil hava.** Geçiş mevsiminde sağlıklı panonun çiy marjı örneklerin
+  **%65,6'sında negatif**; yani referans yüzey gerçekten çiy noktasının altında. Bu
+  alarmlar fiziksel olarak **doğru**. Yazın aynı senaryoda çiy alarmı **hiç çıkmıyor**
+  (0,0 olay). 71,4 sayısı bir algoritma hatası değil, bir mevsim özelliğidir. Canlı
+  demoda sağlıklı panodan çiy alarmı çıkmasını istemiyorsak yapılacak şey eşiği
+  oynatmak değil, yaz senaryosunu oynatmaktır.
+- **Özellik doyuyor.** Bağıl nem üreteçte %98'de sınırlı ve pano alt bölme havası referans
+  yüzeyden 2,0 K sıcak; nem doyunca marj ≈ **−1,70 K** tabanına çakılıyor. Sağlıklı
+  panonun en düşük marjı (−1,69 K) ile yoğuşma enjekte edilmiş `S3_condense` senaryosunun
+  marjı (−1,72 … −1,69 K) **aynı bölgede**. İki durum bu özellik üzerinden **hiçbir
+  eşikle** ayrılamaz; ayrım ancak gerçek yüzey sıcaklığı ölçülürse mümkün olur — bu bir
+  donanım/sözleşme konusudur, eşik konusu değil.
+- **`ALM-DEW-WARN` sağlıklı panoda bayat alarmdır.** 3,0 K'de uyarı 168 saat boyunca
+  kesintisiz ayakta. Sözleşmedeki otomatik aksiyon (`heater_relay_on`) zaten tetikleniyor,
+  ama ısıtıcının marjı toparlaması modellenmediği için "aksiyon işe yaradı mı" ölçülemiyor.
+  Ölçemediğimiz için öneri de yazmadık.
+- **docs/12'nin yanlış alarm tanımı bu kodlar için cömerttir.** §3, etiket penceresi
+  dışındaki her alarmı yanlış sayar; `S0_normal`'ın hiç etiketi yoktur, dolayısıyla
+  fiziksel olarak doğru olan çevresel alarmlar da "yanlış" hanesine yazılır. Tanımı
+  senaryo katalogunda düzeltmek (`scenarios.py`) bu kulvarın dışında bırakıldı.

@@ -249,6 +249,103 @@ def test_alarm_that_is_evidence_of_no_hypothesis_takes_the_dominant_mode_advice(
     assert condition.advice is None
 
 
+# -------------------------------------------------------- "Ne dogrulanmali?" (karsi-olgusal)
+
+
+def test_verify_lists_the_evidence_of_the_hypothesis_that_is_still_missing(engine, contracts, tel_payload):
+    """Fuzyon yalnizca ESLESEN kaniti dondurur; eksik kanit burada hipotez tanimindan turetilir.
+    Yuk: ALM-THR-TERM-WARN + ALM-K-WARN, kenarin baskin modu HYP-LOOSE-CONN."""
+    evidence = hypothesis(contracts, "HYP-LOOSE-CONN")["evidence"]
+
+    conditions = by_key(engine.evaluate(to_sample(contracts, tel_payload)))
+
+    expected = {
+        "hypothesis": "HYP-LOOSE-CONN",
+        "missing": [code for code in evidence if code != "ALM-K-WARN"],
+        "total": len(evidence),
+    }
+    assert conditions[("ALM-K-WARN", "GIRIS_L2")].reason["verify"] == expected
+    # Hipotezin kaniti olmayan kod da ayni listeyi gorur: operator iki kartta ayni seyi okur.
+    assert conditions[("ALM-THR-TERM-WARN", "GIRIS_L2")].reason["verify"] == expected
+
+
+def test_confirming_one_more_piece_of_evidence_shortens_the_list(engine, contracts, tel_payload):
+    """Karsi-olgunun ise yaradiginin kaniti: dogrulanan kanit listeden DUSER."""
+    before = by_key(engine.evaluate(to_sample(contracts, tel_payload)))[("ALM-K-WARN", "GIRIS_L2")]
+
+    tel_payload["alarms"] = ["ALM-THR-TERM-WARN", "ALM-K-WARN", "ALM-TTL-14D"]  # GIRIS_L2 ttl_h 150.5 h
+    tel_payload["seq"] += 1
+    after = by_key(engine.evaluate(to_sample(contracts, tel_payload)))[("ALM-K-WARN", "GIRIS_L2")]
+
+    assert "ALM-TTL-14D" in before.reason["verify"]["missing"]
+    assert after.reason["verify"]["missing"] == [c for c in before.reason["verify"]["missing"] if c != "ALM-TTL-14D"]
+    assert after.reason["verify"]["total"] == before.reason["verify"]["total"]
+
+
+def test_verify_and_advice_always_name_the_same_hypothesis(engine, contracts, tel_payload):
+    """ALM-PD-TREND iki hipotezin kaniti. "Ne yapmali?" hangi hipotezden geliyorsa
+    "Ne dogrulanmali?" de ondan gelmeli; yoksa operator celiskili iki cumle okur."""
+    tel_payload["pd"] = {"pps": 140.0, "amp_dbmv": 31.0, "trend": 2.4}
+    tel_payload["alarms"] = ["ALM-PD-TREND"]
+    tel_payload["risk"] = {"score": 44, "mode": "HYP-CONDENSE", "ttl_h": None, "contributions": {}}
+
+    [condensation] = engine.evaluate(to_sample(contracts, tel_payload))
+
+    tel_payload["risk"]["mode"] = "HYP-NORMAL"
+    tel_payload["seq"] += 1
+    [no_mode] = engine.evaluate(to_sample(contracts, tel_payload))
+
+    assert condensation.reason["verify"]["hypothesis"] == "HYP-CONDENSE"
+    assert condensation.advice == hypothesis(contracts, "HYP-CONDENSE")["advice"]
+    assert condensation.reason["verify"]["missing"] == ["ALM-DEW-WARN", "ALM-DEW-ALM"]
+    assert no_mode.reason["verify"]["hypothesis"] == "HYP-PD"  # en yuksek severity_w
+    assert no_mode.advice == hypothesis(contracts, "HYP-PD")["advice"]
+
+
+def test_evidence_seen_through_quality_bits_counts_as_confirmed(engine, contracts, tel_payload):
+    """Veri kalitesi kodlari yukun `alarms` listesinde degil, nokta q bitlerinde gelir;
+    yine de GORULMUS kanittir ve dogrulanacaklar listesinde yer almaz."""
+    frozen, below = contracts.alarm("ALM-DQ-FROZEN")["bit"], contracts.alarm("ALM-DQ-BELOW-AMBIENT")["bit"]
+    evidence = hypothesis(contracts, "HYP-SELF-FAULT")["evidence"]
+    tel_payload["alarms"] = []
+    tel_payload["t_conn"][3]["q"] = (1 << frozen) | (1 << below)  # GIRIS_N
+
+    conditions = by_key(engine.evaluate(to_sample(contracts, tel_payload)))
+
+    verify = conditions[("ALM-DQ-FROZEN", "GIRIS_N")].reason["verify"]
+    assert verify["missing"] == [c for c in evidence if c not in {"ALM-DQ-FROZEN", "ALM-DQ-BELOW-AMBIENT"}]
+    assert verify["total"] == len(evidence)
+
+
+def test_an_exhausted_hypothesis_leaves_nothing_to_verify(engine, contracts, tel_payload):
+    """HYP-ARC'in tek kaniti ALM-ARC-TRIP: teshis zaten kesin, dogrulanacak kanit yok."""
+    tel_payload["alarms"] = ["ALM-ARC-TRIP"]
+    tel_payload["tvoc"]["trips"] = 1
+
+    [condition] = engine.evaluate(to_sample(contracts, tel_payload))
+
+    assert condition.reason["verify"] == {"hypothesis": "HYP-ARC", "missing": [], "total": 1}
+
+
+def test_no_hypothesis_means_no_counterfactual_block(engine, contracts, tel_payload):
+    """Hicbir hipoteze baglanamayan kodda blok HIC uretilmez (advice de None)."""
+    tel_payload["alarms"] = ["ALM-THR-TERM-WARN"]
+    tel_payload["risk"] = {"score": 5, "mode": "HYP-NORMAL", "ttl_h": None, "contributions": {}}
+
+    [condition] = engine.evaluate(to_sample(contracts, tel_payload))
+
+    assert "verify" not in condition.reason
+    assert condition.advice is None
+
+
+def test_the_counterfactual_block_fits_the_frozen_response_contract(engine, contracts, tel_payload, api_contract):
+    """contracts/openapi.yaml DONMUS: yeni yanit alani acilmadi, blok AlarmReason'in
+    (acik nesne) icinde tasiniyor — sema dogrulayicisi yine gecmeli."""
+    for condition in engine.evaluate(to_sample(contracts, tel_payload)):
+        assert "verify" in condition.reason
+        api_contract(condition.reason, "AlarmReason")
+
+
 def test_central_detector_codes_are_merged_with_edge_codes(contracts, tel_payload):
     calls = []
 

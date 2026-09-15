@@ -5,7 +5,8 @@ Katmanlar (rapor 6.5):
                      nokta `q` veri kalitesi bitlerinde gelir. Merkez algoritmayi yeniden yazmaz;
                      merkezi dedektor (panoalgo) varsa yalnizca cagirir ve kodlari birlestirir.
   L4 aciklama     -> BURASI. Her kod icin: hangi nokta, hangi sinyal hangi esigi asti ("Neden?"),
-                     hangi hipotezin onerisi ("Ne yapmali?"), sinira kalan sure ("Ne kadar acil?").
+                     hangi hipotezin onerisi ("Ne yapmali?"), sinira kalan sure ("Ne kadar acil?"),
+                     o hipotezin HENUZ GORULMEYEN kaniti ("Ne dogrulanmali?" — karsi-olgusal aciklama).
 
 Esik degerleri contracts/alarm-codes.yaml'dan okunur (`alarms[].threshold` -> `thresholds.*`);
 burada yalnizca kodun yukteki HANGI alana baktigi yazilidir.
@@ -96,49 +97,66 @@ class RiskEngine:
             codes.extend(code for code in detected if code not in codes)
         self._previous[sample.pano_id] = payload
 
+        # "Ne dogrulanmali?" bu ornekte GORULEN kodlara gore hesaplanir: kenar listesi +
+        # merkezi dedektor + nokta q bitlerinden cikan veri kalitesi kodlari.
+        quality = self._dq_hits(payload)
+        active = frozenset(codes) | {code for code, _ in quality}
+
         conditions: dict[tuple[str, str | None], Condition] = {}
 
         def add(items: Iterable[Condition]) -> None:
             for condition in items:
                 conditions.setdefault((condition.code, condition.point), condition)
 
-        add(self._quality_conditions(payload))
+        add(self._quality_conditions(quality, payload, active))
         for code in codes:
-            add(self._explain(code, payload))
+            add(self._explain(code, payload, active))
         return list(conditions.values())
 
     def center_condition(self, code: str, signals: list[Signal]) -> Condition:
         """Merkezde uretilen kosul (or. ALM-COMMS-LOST): ayni aciklama ve oneri kurallariyla."""
-        return self._condition(code, {}, point=None, signals=signals)
+        return self._condition(code, {}, point=None, signals=signals, active=frozenset({code}))
 
     # ------------------------------------------------------------- aciklama
-    def _explain(self, code: str, payload: dict[str, Any]) -> list[Condition]:
+    def _explain(self, code: str, payload: dict[str, Any], active: frozenset[str]) -> list[Condition]:
         if self._contracts.alarm(code) is None:
             return [Condition(code=code)]  # alarm yoneticisi sayar ve yok sayar
         if code in POINT_LIMITS:
-            return self._point_limit(code, payload)
+            return self._point_limit(code, payload, active)
         if code == "ALM-THR-PHASE-DIF":
-            return self._phase_difference(code, payload)
+            return self._phase_difference(code, payload, active)
         if code.startswith(DQ_PREFIX):
-            return [self._condition(code, payload, point=None, signals=[])]  # q biti olan nokta yoksa
+            return [self._condition(code, payload, point=None, signals=[], active=active)]  # q biti olan nokta yoksa
         rule = self._panel_rules.get(code)
-        return [self._condition(code, payload, point=None, signals=rule(payload) if rule else [])]
+        return [self._condition(code, payload, point=None, signals=rule(payload) if rule else [], active=active)]
 
-    def _condition(self, code: str, payload: dict[str, Any], point: dict[str, Any] | None, signals: list[Signal]) -> Condition:
+    def _condition(
+        self,
+        code: str,
+        payload: dict[str, Any],
+        point: dict[str, Any] | None,
+        signals: list[Signal],
+        active: frozenset[str],
+    ) -> Condition:
         alarm = self._contracts.alarm(code)
         point_name = point["pt"] if point else None
         reason: dict[str, Any] = {"signals": signals, "layer": alarm["layer"], "point": point_name}
         if "basis" in alarm:
             reason["basis"] = alarm["basis"]
+        hypothesis = self._dominant_hypothesis(code, payload)
+        verify = _verify(hypothesis, active)
+        if verify is not None:
+            reason["verify"] = verify
         ttl_h = point.get("ttl_h") if point else (payload.get("risk") or {}).get("ttl_h")
-        return Condition(code=code, point=point_name, reason=reason, advice=self._advice(code, payload), ttl_h=ttl_h)
+        advice = hypothesis["advice"] if hypothesis else None
+        return Condition(code=code, point=point_name, reason=reason, advice=advice, ttl_h=ttl_h)
 
     def _threshold(self, code: str) -> float:
         name = self._contracts.alarm(code)["threshold"].removeprefix("thresholds.")
         value = self._thresholds[name]
         return value * DAYS_TO_HOURS if name.endswith("_days") else value
 
-    def _point_limit(self, code: str, payload: dict[str, Any]) -> list[Condition]:
+    def _point_limit(self, code: str, payload: dict[str, Any], active: frozenset[str]) -> list[Condition]:
         field, op = POINT_LIMITS[code]
         limit = self._threshold(code)
         candidates = [p for p in payload["t_conn"] if p.get(field) is not None]
@@ -146,13 +164,19 @@ class RiskEngine:
         if not offending and candidates:  # kenar 1 s veriyle karar verdi: en yakin nokta
             offending = [(max if op == ">" else min)(candidates, key=lambda p: p[field])]
         if not offending:
-            return [self._condition(code, payload, point=None, signals=[])]
+            return [self._condition(code, payload, point=None, signals=[], active=active)]
         return [
-            self._condition(code, payload, point, [signal(f"t_conn.{point['pt']}.{field}", point[field], limit, POINT_UNITS[field])])
+            self._condition(
+                code,
+                payload,
+                point,
+                [signal(f"t_conn.{point['pt']}.{field}", point[field], limit, POINT_UNITS[field])],
+                active,
+            )
             for point in offending
         ]
 
-    def _phase_difference(self, code: str, payload: dict[str, Any]) -> list[Condition]:
+    def _phase_difference(self, code: str, payload: dict[str, Any], active: frozenset[str]) -> list[Condition]:
         """Ayni grubun (GIRIS, DSYAn) L1/L2/L3 fazlari: en sicak faz, en soguk faz + esik ile kiyaslanir."""
         limit = self._threshold(code)
         groups: dict[str, list[dict[str, Any]]] = {}
@@ -166,7 +190,7 @@ class RiskEngine:
                 hot, cold = max(points, key=lambda p: p["dt_c"]), min(points, key=lambda p: p["dt_c"])
                 spreads.append((hot["dt_c"] - cold["dt_c"], hot, cold))
         if not spreads:
-            return [self._condition(code, payload, point=None, signals=[])]
+            return [self._condition(code, payload, point=None, signals=[], active=active)]
         offending = [s for s in spreads if s[0] > limit] or [max(spreads, key=lambda s: s[0])]
         return [
             self._condition(
@@ -177,19 +201,28 @@ class RiskEngine:
                     signal(f"t_conn.{hot['pt']}.dt_c", hot["dt_c"], cold["dt_c"] + limit, "K"),
                     signal(f"t_conn.{cold['pt']}.dt_c", cold["dt_c"], unit="K"),
                 ],
+                active,
             )
             for _, hot, cold in offending
         ]
 
-    def _quality_conditions(self, payload: dict[str, Any]) -> list[Condition]:
-        conditions = []
+    def _dq_hits(self, payload: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        """Nokta q bitlerinden cikan veri kalitesi kodlari: (kod, nokta) ciftleri."""
+        hits = []
         for point in payload["t_conn"]:
             q = point.get("q", 0)
             for bit, code in self._dq_bits.items():
                 if q & (1 << bit):
-                    signals = [signal(f"t_conn.{point['pt']}.t_c", point["t_c"], unit="degC")]
-                    conditions.append(self._condition(code, payload, point, signals))
-        return conditions
+                    hits.append((code, point))
+        return hits
+
+    def _quality_conditions(
+        self, hits: list[tuple[str, dict[str, Any]]], payload: dict[str, Any], active: frozenset[str]
+    ) -> list[Condition]:
+        return [
+            self._condition(code, payload, point, [signal(f"t_conn.{point['pt']}.t_c", point["t_c"], unit="degC")], active)
+            for code, point in hits
+        ]
 
     def _env_limit(self, payload: dict[str, Any], code: str, field: str, op: str, unit: str) -> list[Signal]:
         value = (payload.get("env") or {}).get(field)
@@ -202,17 +235,43 @@ class RiskEngine:
         offending = [(i, a) for i, a in phases if a > limit] or [max(phases, key=lambda item: item[1])]
         return [signal(f"elec.i_ph.{i}", amps, limit, "A") for i, amps in offending]
 
-    # ---------------------------------------------------------------- oneri
-    def _advice(self, code: str, payload: dict[str, Any]) -> str | None:
-        """Kodun kaniti oldugu hipotezlerden kenarin baskin modu; yoksa en agir olani.
-        Hicbir hipotezin kaniti olmayan kodda (or. 50 K terminal) baskin arizali mod."""
+    # ------------------------------------------------- oneri ve karsi-olgu
+    def _dominant_hypothesis(self, code: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Kodun "Ne yapmali?" ve "Ne dogrulanmali?" bloklarinin dayandigi TEK hipotez.
+
+        Kodun kaniti oldugu hipotezlerden kenarin baskin modu; yoksa en agir olani.
+        Hicbir hipotezin kaniti olmayan kodda (or. 50 K terminal) baskin arizali mod.
+        Iki blok ayni hipotezden turer: oneri bir hipoteze, eksik kanit baskasina ait olsaydi
+        operator celiskili iki cumle okurdu."""
         mode = (payload.get("risk") or {}).get("mode")
         hypotheses = self._evidence_of.get(code)
         if hypotheses:
             dominant = next((h for h in hypotheses if h["code"] == mode), None)
-            return (dominant or max(hypotheses, key=lambda h: h["severity_w"]))["advice"]
+            return dominant or max(hypotheses, key=lambda h: h["severity_w"])
         dominant = self._hypothesis.get(mode)
-        return dominant["advice"] if dominant and dominant["severity_w"] > 0 else None
+        return dominant if dominant and dominant["severity_w"] > 0 else None
+
+
+def _verify(hypothesis: dict[str, Any] | None, active: frozenset[str]) -> dict[str, Any] | None:
+    """'Ne dogrulanmali?': hipotezin sozlesmedeki kanitlarindan bu ornekte GORULMEYENLER.
+
+    Karsi-olgusal aciklama (ISO 13379-1 semptom-ariza izinin ikinci yonu): eslesen kanit
+    "neden" sorusunu, eksik kanit "neyi dogrularsam teshis kesinlesir" sorusunu cevaplar.
+    Fuzyon skoru kanit orani uzerinden hesaplandigi icin (panoalgo.fusion.score) eksik kanit
+    ayni zamanda skorun neden 100 olmadiginin aciklamasidir.
+
+    Kenara EK ALAN ACILMAZ: mqtt-telemetry.schema.json additionalProperties: false, yeni alan
+    mesaji reddettirirdi. Liste burada, hipotez tanimindan yeniden turetilir.
+    `total` gonderilir, eslesen sayisi `total - len(missing)` ile arayuzde hesaplanir.
+    """
+    evidence = hypothesis.get("evidence") if hypothesis else None
+    if not evidence:
+        return None
+    return {
+        "hypothesis": hypothesis["code"],
+        "missing": [code for code in evidence if code not in active],
+        "total": len(evidence),
+    }
 
 
 def _present(payload: dict[str, Any], section: str, fields: list[tuple[str, str | None]]) -> list[Signal]:

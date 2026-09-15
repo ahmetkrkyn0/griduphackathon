@@ -136,7 +136,11 @@ def panel_series(
 
 # ================================================================== /events/{id}/blackbox
 @router.get("/events/{event_id}/blackbox", tags=["events"])
-def event_blackbox(request: Request, event_id: str, window_h: int = Query(72, ge=1, le=168)) -> dict[str, Any]:
+def event_blackbox(request: Request, event_id: str, window_h: int = Query(72, ge=1, le=336)) -> dict[str, Any]:
+    # Ust sinir 336 sa (14 gun): docs/12 §2'de olculen en erken tespit, sabit 70 K esiginden
+    # 209 saat once. 168 sa'lik eski sinirla bozulmanin baslangici pencereye hicbir ayarla
+    # giremiyordu. Yuk artmaz: 336 sa + 1 sa kuyruk, 60 dk'lik en kaba kovada 338 nokta eder
+    # (BLACKBOX_MAX_POINTS = 500), yani asagidaki adim secimi kendiliginden saatlige duser.
     state = request.app.state
     event = state.store.get_event(event_id)
     if event is None:

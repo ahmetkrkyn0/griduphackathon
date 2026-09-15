@@ -63,70 +63,70 @@ Bu dosya, "Pano/Hücre İçi Anomali Erken Uyarı Sistemi" için üç aşamalı 
 
 Sıra **etki sırasıdır**, bütçe sırası değil. Bu on maddenin toplamı ~27-33 saat; [KALAN-EKSIKLER.md](KALAN-EKSIKLER.md)'deki K/Y kalemleri üç kişide zaten bağlı olduğu için serbest bütçe gerçekçi olarak 12-15 saat. Yukarıdan aşağı alın, çizginin altı kalsın. **Kabul kapısı:** 15-17 Eylül'de yeni işe ancak dört koşul birden sağlanıyorsa başlanır — tek kulvar, [contracts/](contracts/) dokunmuyor, ≤3-4 saat, mevcut 987 testi kırmıyor.
 
-### F-01 · Altın demo veritabanı ve tek seferlik göç penceresi
+### F-01 · Altın demo veritabanı ve tek seferlik göç penceresi — ✅ tamamlandı
 Bekleyen tüm şema göçlerini tek `down -v` anında uygular ve ≥7 günlük temiz veriyle ısıtılmış bir veritabanı üretir · **Etki:** çok yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [deploy/compose.yaml](deploy/compose.yaml), yeni bir `scripts/seed_demo.py`
 **Sektörel dayanak:** Her ölçüm iddiasının tekrar üretilebilir bir zeminden çıkması gereği (ENWL kapanış raporu, devreye alma kayıt kalitesi bulgusu).
 **Bizdeki boşluk:** [deploy/initdb/](deploy/initdb/) yalnızca boş volume'de koşuyor; yerel veritabanlarında Faz 0 artıkları ve geçmiş zaman damgası bozukluğundan kalan satırlar var. Taban öğrenme canlı yığında gerçek saatler sürüyor.
 **Ne üretir:** Demo, ekran görüntüsü, video ve F-03/F-05/F-06'nın tamamının üzerinde koşacağı tek ortak veri zemini; üç geliştiricinin `down -v` maliyeti bir kez ödenir.
 **Dikkat:** Bu iş yapılmazsa aşağıdaki rapor üreten dört madde de gerçek sayı üretemez ve GK10'a takılır. Y4 (temiz makine testi) ile aynı pencerede yapılmalı.
 
-### F-02 · GK10 bütünlük geçişi: üç sayı ve metin düzeltmesi
+### F-02 · GK10 bütünlük geçişi: üç sayı ve metin düzeltmesi — ✅ tamamlandı
 Jüriye giden metinlerde kendi ölçümümüzle çelişen üç yeri kapatır · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md), [backend/app/api/insights.py](backend/app/api/insights.py), [deploy/compose.yaml](deploy/compose.yaml)
 **Sektörel dayanak:** GK10'un kendisi; ayrıca ölçümlerin tekrar üretilebilirliği için imaj sabitleme yerleşik pratik (CISA SBOM asgari unsurları, bileşen hash'i).
 **Bizdeki boşluk:** (a) [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md) "tespit oranı %70 (etiketli senaryo setinde ölçülecek)" diyor — oysa [docs/12-dogrulama-sonuclari.md](docs/12-dogrulama-sonuclari.md) bunu ölçmüş ve 10 senaryonun 8'inde recall 1,00 çıkmış; kendi performansımızı düşük gösteriyoruz. (b) Kara kutu penceresinin üst sınırı 168 saat, oysa manşet sayımız 209 saatlik öne alma — kendi en iyi sonucumuzu kendi ekranımızda gösteremiyoruz. (c) [deploy/compose.yaml](deploy/compose.yaml)'da bir imaj etiketi sabit değil; iki kişi farklı imaj çalıştırabilir.
 **Ne üretir:** Düzeltilmiş ROI örneği, 336 saate çıkarılmış kara kutu penceresi, digest ile sabitlenmiş imaj.
 **Dikkat:** Saat başına getirisi listedeki her şeyden yüksek. Pencere üst sınırı değişirken varsayılan (72 saat) korunmalı, yoksa ekran ağırlaşır.
 
-### F-03 · P3 günlük özeti ve SYS toplu özeti
+### F-03 · P3 günlük özeti ve SYS toplu özeti — ✅ tamamlandı
 Sözleşmede tanımlı ama kodda hiç uygulanmamış özet bildirimini gerçekten gönderir · **Etki:** çok yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** [backend/app/notify/dispatcher.py](backend/app/notify/dispatcher.py), [backend/app/alarm_service.py](backend/app/alarm_service.py), [backend/app/notify/templates.py](backend/app/notify/templates.py), [backend/app/config.py](backend/app/config.py)
 **Sektörel dayanak:** EcoStruxure Asset Advisor her alarmda bildirim + periyodik rapor zincirini ürünleştirmiş; ISA-18.2 izleme-değerlendirme aşaması periyodik raporlamayı öngörür.
 **Bizdeki boşluk:** [contracts/alarm-codes.yaml](contracts/alarm-codes.yaml) P3 için `daily_digest: true`, SYS için `sms: digest_only` diyor ve **jüriye giden** [docs/06-alarm-matrisi.md](docs/06-alarm-matrisi.md) §4 "P3 günlük özete, SYS toplu özete gider" yazıyor — kodda "digest" kelimesi yalnızca bir docstring'de geçiyor. K/K₀ erken uyarısının tamamı P3, yani 209 saatlik başlığımız bugün bir veritabanı satırında bitiyor.
 **Ne üretir:** Günde bir kez gönderilen tek parça özet mesajı + testi; jüri dokümanındaki bir vaadin kapanması.
 **Dikkat:** Sözleşme değişikliği **gerekmiyor**, alanlar zaten tanımlı. Metin tek parça GSM-7 sınırına uymalı; maskeleme kurallarına dokunulmamalı (GK9). Haftalık yönetim raporu ve mevzuat eşlemesi bu kapsamın dışında bırakıldı.
 
-### F-04 · Prognoz geri testi: alfa-lambda, prognostic horizon, relative accuracy
+### F-04 · Prognoz geri testi: alfa-lambda, prognostic horizon, relative accuracy — ✅ tamamlandı
 "209 saat önce uyardı" tek noktasını, tahminin zamanla yakınsayıp yakınsamadığını gösteren bir eğriye çevirir · **Etki:** çok yüksek · **Efor:** 3-5 saat · **Nerede yaşar:** yeni `libs/panoalgo/panoalgo/prognostics.py`, [libs/panoalgo/panoalgo/validate.py](libs/panoalgo/panoalgo/validate.py), yeni `libs/panoalgo/tests/test_prognostics.py`
 **Sektörel dayanak:** Saxena ve ark. prognostik performans metrikleri ve NASA Prognostics Metrics Library; ISO 13381-1 prognozun doğrulanmasını ve güven ifadesini ister.
 **Bizdeki boşluk:** [docs/12-dogrulama-sonuclari.md](docs/12-dogrulama-sonuclari.md) §2 prognoz hakkında tek bir sayı veriyor. Fixture'larda sınır ihlali anı zaten etiketli olduğu için gerçek kalan ömür her örnek için hesaplanabilir — yeni veri gerekmiyor, sadece kod gerekiyor.
 **Ne üretir:** docs/12'ye yeni bir bölüm: tahminin ne zaman güvenilir hale geldiği, bandın içinde kalma oranı, yakınsama.
 **Dikkat:** Çıktı docs/12'ye **elle yazılamaz** — dosya betikle üretiliyor ve yeniden üretim testiyle korunuyor; metrikler `render_markdown()` içine girmeli. İki dürüstlük kaydı zorunlu: sonuç tek yörüngeden geliyor (n=1) ve sensör arızası senaryosunda sınır ihlali olmadığı halde 99 kez tahmin üretiliyor — bu bir prognoz yanlış-alarmıdır, saklanmaz, [docs/05-anomali-tespiti.md](docs/05-anomali-tespiti.md) "bilinen sınırlar" bölümüne yazılır.
 
-### F-05 · Tazminat maruziyeti hesaplayıcısı
+### F-05 · Tazminat maruziyeti hesaplayıcısı — ✅ tamamlandı
 docs/10'un varsayımsal ROI tablosunu, formülü mevzuatta yayımlanmış bir maruziyet hesabıyla değiştirir · **Etki:** yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** yeni `scripts/tazminat_maruziyeti.py`, [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md)
 **Sektörel dayanak:** EPDK Kalite Yönetmeliği'nin tazminat formülü (ÖTMSÜRE ve ÖTMSAYI); Whisker Labs/sigorta modelinde olduğu gibi fayda kaleminin dış bir kurala bağlanması.
 **Bizdeki boşluk:** [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md) baştan sona varsayım üzerine kurulu ve bunu kendisi yazıyor ("Sayılar iddia değil, örnektir") — teslimin GK10 açısından en zayıf parçası. Aynı geçişte ikinci bir bedava sayı da eklenmeli: mevcut enerji analizörü ve ark koruma cihazını sensör olarak kullandığımız için **eklemediğimiz** kalemlerin (akım trafoları, ayrı ark dedektörü, ek kablaj) BOM farkı.
 **Ne üretir:** Parametreli bir hesaplayıcı betiği + docs/10 §3'ün yeniden yazımı; jüri kendi tarife değerini girer.
 **Dikkat:** API ucu ve arayüz kartı **eklenmeyecek** (donmuş openapi, onay kuyruğu tıkalı). Çıktı kesinlikle MARUZİYET dilinde olmalı: "bu pano kesilirse yönetmeliğe göre şu kadar tazminat doğar". "Şu kadar arıza önledik" ölçülemez, GK10 ihlalidir. Dağıtım bedeli ve ortalama talep girilmediyse hesap "veri yok" demeli.
 
-### F-06 · Çiy noktası eşik taraması
+### F-06 · Çiy noktası eşik taraması — ✅ tamamlandı
 Ölçülmüş tek gerçek zayıflığı (sağlıklı panoda 71,4 yanlış alarm/100 pano-gün, tamamı çiy kaynaklı) veriyle savunur veya öneri açar · **Etki:** yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** yeni `scripts/threshold_sweep.py`, [docs/05-anomali-tespiti.md](docs/05-anomali-tespiti.md)'ye yeni bölüm, gerekirse `contracts/changes/` altında öneri
 **Sektörel dayanak:** IEEE C57.104-2019 eşikleri popülasyon yüzdeliğinden türetiyor; ISO 17359 alarm kriterinin yinelemeli optimize edilmesini ister.
 **Bizdeki boşluk:** [contracts/alarm-codes.yaml](contracts/alarm-codes.yaml)'daki hiçbir eşiğin "neden bu sayı" sorusuna ölçülmüş cevabı yok. Sorun zaten kayıtlı ve sahiplenilmiş ([KALAN-EKSIKLER.md](KALAN-EKSIKLER.md) D7).
 **Ne üretir:** Çiy marjı eşikleri için ROC benzeri bir tablo; ya mevcut sayının savunması ya da `contracts/changes/` altında gerekçeli bir öneri. Yan kazanç: canlı demoda sağlıklı panodan çiy alarmı çıkma riski kapanır.
 **Dikkat:** Tam ızgara yapılmamalı — yalnızca çiy eşikleri, yalnızca sağlıklı senaryo üzerinde. [libs/panoalgo/panoalgo/validate.py](libs/panoalgo/panoalgo/validate.py) tespiti yeniden koşturmuyor, fixture'ın hazır alarm sütununu okuyor; her ızgara noktasında fixture yeniden üretilmeli. Eşiği **değiştirmek** 17 Eylül'den sonra imkânsız; bu iş eşiği yalnızca savunur.
 
-### F-07 · EEMUA 191 alarm başarım panelleri
+### F-07 · EEMUA 191 alarm başarım panelleri — ✅ tamamlandı
 Sel, bayat, chattering ve kod bazında "kötü aktör" metriklerini Grafana'da ham SQL ile üretir · **Etki:** yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** [scripts/gen_grafana_dashboards.py](scripts/gen_grafana_dashboards.py) → [deploy/grafana/dashboards/alarm-kpi.json](deploy/grafana/dashboards/alarm-kpi.json), [backend/tests/](backend/tests/) yeniden üretim testi
 **Sektörel dayanak:** EEMUA 191 sayısal tanımları (10 dakikada >10 alarm = sel; 24 saatten uzun = bayat) ve ISA-18.2 izleme-değerlendirme aşaması; chatter index için run-length dağılımı (Kondaveeti ve ark., 2013).
 **Bizdeki boşluk:** Panonun kendisi zaten yayında ve EEMUA hedef karşılaştırması, raf sayacı ve **pano** bazında ilk-on içinde var. Gerçekten eksik olan üç şey: kod bazında kötü aktör, chattering ve bayat alarm. **Ve bir GK10 hatası:** mevcut panellerden birinin açıklaması "10 dakikada 10'dan fazla alarm sel sayılır" diyor ama sorgusu saatlik kova kullanıyor — panel, hesaplamadığı bir tanımı iddia ediyor.
 **Ne üretir:** Dört yeni panel + düzeltilmiş açıklama; ISA-18.2 iddiasının "uyguladık"tan "ölçüyoruz"a geçmesi.
 **Dikkat:** **İlk iş** yanlış panel açıklamasını kapatmak. Grafana JSON elle düzenlenmez, [scripts/gen_grafana_dashboards.py](scripts/gen_grafana_dashboards.py) üzerinden geçer; pano dosyaları [PLAN.md](PLAN.md) Bölüm B kural 7 gereği tek sahiplidir (B). Filo KPI şemasına alan eklenmeyecek — üç ayrı yerde depo uygulaması demek. Ölçüm yük testi verisiyle yapılamaz (tek kod üretiyor); senaryo oynatmalarıyla yapılmalı.
 
-### F-08 · IEC 104 birlikte çalışabilirlik bloğu (koddan üretilmiş)
+### F-08 · IEC 104 birlikte çalışabilirlik bloğu (koddan üretilmiş) — ✅ tamamlandı
 Çalışan IEC 104 istasyonumuzu standardın kendi form başlıklarıyla belgeler · **Etki:** yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [scripts/gen_iec104_doc.py](scripts/gen_iec104_doc.py) → [docs/04-iec104-haritasi.md](docs/04-iec104-haritasi.md) yeni §7 bloğu, mevcut test dosyasına iki doğrulama
 **Sektörel dayanak:** IEC 60870-5-104 uygulayan her ürün bu listeyi yayımlıyor; bölüm başlıkları ve işaretleme kuralı standarttır (Beckhoff, Bachmann, Phoenix Contact örnekleri).
 **Bizdeki boşluk:** İçeriğin çoğu zaten üretiliyor (k/w, t1/t2/t3, IOA, tip↔COT matrisi) ama bizim anlattığımız biçimde. Eksik delta: COT ve ortak adres alan uzunlukları, azami APDU, t0'ın yokluğu ve desteklenmeyen uygulama fonksiyonlarının açıkça işaretlenmesi.
 **Ne üretir:** SCADA entegrasyon mühendisinin okuduğu formda, koddan üretilen ve yeniden üretim testiyle korunan bir bölüm.
 **Dikkat:** Ayrı dosya, ayrı betik, ayrı test modülü açılmamalı. Standardın ek formundaki satırlar birebir kopyalanmamalı, yalnızca bölüm başlıkları kullanılmalı. Desteklenmeyen her şey (tüm kontrol ASDU'ları, sayaç sorgulaması, dosya transferi) açıkça "desteklenmiyor" işaretlenmeli — bu GK6 hikâyesini standart formda güçlendirir.
 
-### F-09 · Yazdırılabilir olay dosyası
+### F-09 · Yazdırılabilir olay dosyası — ✅ tamamlandı
 Operatörün kara kutu ekranında gördüğünü tek sayfalık, imzalanabilir bir olay raporuna çevirir · **Etki:** yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** yeni `frontend/src/print.css`, [frontend/src/pages/OlayAnalizi.tsx](frontend/src/pages/OlayAnalizi.tsx), [frontend/src/app.css](frontend/src/app.css)
 **Sektörel dayanak:** EcoStruxure Power Commission kabul raporlarını, Asset Advisor aylık raporları otomatik üretiyor; NFPA 70B 2023 bakım ve olay kayıtlarının belgelenmesini istiyor (ABD standardı, Türkiye'de bağlayıcı değil).
 **Bizdeki boşluk:** Depoda tek bir `@media print` kuralı, tek bir yazdırma çağrısı ve tek bir dışa aktarma yolu yok. Kara kutu ucu, olay zaman çizelgesi ve "neden/ne yapmalı/ne kadar acil" üçlüsü zaten hazır; iş tek bir CSS dosyasına iniyor.
 **Ne üretir:** A4'e sığan, gezinme ve etkileşim gizlenmiş, altında imza satırları olan yazdırılabilir olay raporu; örnek çıktı demo paketine konur.
 **Dikkat:** Yeni npm bağımlılığı eklenmeyecek (derleme ve GK4 tartışması açar) — tarayıcı yazdırma yeterli. 3B ikiz tuvali yazdırmada boş çıkar; rapora 2D görünüş ve çizgi grafikler konmalı. "Örnek/sentetik veriden üretilmiştir" ibaresi ve hem olay hem alındı zaman damgası basılmalı.
 
-### F-10 · Karşı-olgusal açıklama: "Ne doğrulanmalı" satırı
+### F-10 · Karşı-olgusal açıklama: "Ne doğrulanmalı" satırı — ✅ tamamlandı
 Alarm kartına, teşhisi kesinleştirmek için eksik olan kanıtı yazar · **Etki:** orta · **Efor:** 2-4 saat · **Nerede yaşar:** [backend/app/risk.py](backend/app/risk.py), [frontend/src/components/AlarmNedeni.tsx](frontend/src/components/AlarmNedeni.tsx), [libs/panoalgo/tests/](libs/panoalgo/tests/)
 **Sektörel dayanak:** Açıklanabilirlikte karşı-olgusal açıklama yerleşik ikinci aile; ISO 13379-1 semptom-arıza ilişkisinin izlenebilir kurulmasını ister; CIGRE TB 858 sağlık indeksinde monotonluk ilkesini koyar.
 **Bizdeki boşluk:** Füzyon yalnızca **eşleşen** kanıtları döndürüyor; hipotezin eksik kanıtı hiçbir yere yazılmıyor. Operatöre "neyi doğrularsam teşhis kesinleşir" diyemiyoruz. Ayrıca skorun monotonluğu genel olarak test edilmemiş.

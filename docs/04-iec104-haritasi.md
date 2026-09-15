@@ -1,7 +1,7 @@
 # 04 — IEC 60870-5-104 Nokta Planı
 
 > **Sahip:** Kişi B · **Kapsam:** MoSCoW **Could** (PLAN.md TB3 Adım 8), TB3 Adım 1–7 bittikten sonra yapıldı.
-> §2, §3, §5 ve §6 tabloları sözleşmeden ve IEC 104 kodundan **üretilir** (`python scripts/gen_iec104_doc.py`); elle düzenlenmez
+> §2, §3, §5, §6 ve §7 tabloları sözleşmeden ve IEC 104 kodundan **üretilir** (`python scripts/gen_iec104_doc.py`); elle düzenlenmez
 > (PLAN.md kural 10). **Kod:** `backend/app/scada/iec104.py` (çerçeve), `iec104_points.py` (nokta planı), `iec104_server.py` (istasyon).
 
 ## 1. Neden IEC 104, neden aynı veri?
@@ -251,7 +251,130 @@ Değerler Modbus ağ geçidiyle aynı kodlayıcıdan (`encoder.py`) gelir: iki p
 | 3005 | `data_quality_ok` | coil 5 | - | tum noktalarda q = 0 ve canli ALM-DQ-* yok |
 <!-- /URETILMIS:tek-nokta -->
 
-## 7. Güvenlik
+## 7. Birlikte çalışabilirlik (üretilmiş)
+
+IEC 60870-5-104 uygulayan her ürün, standardın ek formundaki **bölüm başlıklarıyla** bir birlikte çalışabilirlik listesi yayımlar;
+SCADA entegrasyon mühendisi bu formu okur. Aşağıdaki blok o başlıkları kullanır, satırların tamamını `backend/app/scada/` kodundan
+üretir (`python scripts/gen_iec104_doc.py`) ve elle düzenlenmez.
+
+<!-- URETILMIS:birlikte-calisabilirlik -->
+> Isaretleme: **X** = uygulandi, **-** = uygulanmadi/desteklenmiyor. Satirlarin tamami `backend/app/scada/` kodundan okunur; bu blok elle duzenlenmez.
+
+### 7.1 Genel bilgi (sistem veya cihaz)
+
+| Satir | Isaret | Kaynak |
+|---|---|---|
+| Kontrollu istasyon (alt istasyon) tanimi | X | `iec104_server.Iec104Server`, salt okunur |
+| Kontrol eden istasyon (ana istasyon) tanimi | - | modulde istemci/ana istasyon sinifi yok; merkez baglanti kurmaz |
+| Uygulama katmani | X | IEC 60870-5-101 ASDU'lari, IEC 60870-5-104 ag erisimiyle (`iec104.py`) |
+| Yazma / kontrol yolu | - | her kontrol ASDU'su COT 44 + P/N ile reddedilir (GK6) |
+
+### 7.2 Ag yapilandirmasi
+
+| Ozellik | Deger | Kaynak |
+|---|---|---|
+| Ag erisimi | TCP/IP uzerinde coklu istemci | `asyncio.start_server` |
+| Es zamanli baglanti siniri | 8 | `Iec104Server(max_connections=...)` |
+| Istasyon basina ortak adres | her pano bir CA (= Modbus birim numarasi) | `iec104_points`, `gateway` |
+| Yedekli baglanti grubu | - | tek dinleyici soket; yedeklilik uygulanmadi |
+| Seri hat yapilandirmasi (noktadan noktaya, coklu nokta) | - | IEC 60870-5-104 seri hat kullanmaz |
+
+### 7.3 Fiziksel katman
+
+| Ozellik | Deger | Kaynak |
+|---|---|---|
+| Tasima | TCP/IP | `Iec104Server.start` |
+| Dinlenen port | 2404 (`IEC104_PORT`) | `Iec104Server(port=...)` |
+| Dinlenen arayuz | `0.0.0.0` (`IEC104_HOST`) | `Iec104Server(host=...)` |
+| Izinli istemci aglari | `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1/128` (`IEC104_ALLOWED_CLIENTS` ile daraltilir) | `DEFAULT_ALLOWED_NETWORKS` |
+| Iletim hizi, seri cerceve (FT 1.2), bagli katman adresi | - | ag erisiminde yok |
+
+### 7.4 Baglanti katmani (APCI)
+
+| Ozellik | Deger | Kaynak |
+|---|---|---|
+| Baslangic bayti | 0x68 | `iec104.START` |
+| Kontrol alani | 4 bayt; I (veri), S (onay), U (STARTDT/STOPDT/TESTFR) | `decode_apdu` |
+| Azami APDU (uzunluk alani: kontrol alani + ASDU) | 253 | `iec104.MAX_LENGTH` |
+| Azami APDU (hat uzerinde, baslangic + uzunluk dahil) | 255 | `0x68` + uzunluk bayti + APDU |
+| Azami ASDU | 249 | `iec104.MAX_ASDU` |
+| Sira numarasi modulu | 32768 | `iec104.SEQ_MODULO` (15 bit) |
+| Bir ASDU'ya sigan azami nesne | M_SP_NA_1: 60, M_ME_NC_1: 30, M_SP_TB_1: 22, M_ME_TF_1: 16 | azami ASDU / (IOA + eleman); istasyonun grup siniri 30 / 16 (§2) |
+| Dengeli / dengesiz iletim | 104'te yalnizca dengeli; yoklama yok | - |
+
+### 7.5 Uygulama katmani: alan uzunluklari
+
+| Alan | Uzunluk (oktet) | Not |
+|---|---|---|
+| Tip tanimlayici | 1 | `encode_asdu` ciktisinin ilk bayti |
+| Degisken yapi niteleyici (VSQ) | 1 | SQ = 0 uretilir (her nesne kendi adresiyle); SQ = 1 cozulur |
+| Iletim nedeni (COT) | 2 | neden + kaynak adres; kaynak adres gelen cercevedeki degeriyle geri doner |
+| Ortak adres (ASDU adresi) | 2 | yayin adresi 0xFFFF |
+| Bilgi nesnesi adresi (IOA) | 3 | 1000 / 2000 / 3000 tabanli plan (§4) |
+| Zaman etiketi | 7 | CP56Time2a, UTC, yaz saati biti 0 |
+
+### 7.6 Standartlastirilmis ASDU secimi
+
+| Tip | Ad | Yon | Isaret | Not |
+|---|---|---|---|---|
+| 1 | `M_SP_NA_1` | izleme | X | Tek nokta + SIQ; sorgulama cevabi |
+| 13 | `M_ME_NC_1` | izleme | X | Olculen deger, kisa kayan nokta + QDS; sorgulama cevabi |
+| 30 | `M_SP_TB_1` | izleme | X | Tek nokta + CP56Time2a (UTC); kendiliginden |
+| 36 | `M_ME_TF_1` | izleme | X | Olculen deger + CP56Time2a (UTC); kendiliginden |
+| 70 | `M_EI_NA_1` | izleme | - | Baslatma sonu: kodekte tanimli, istasyon GONDERMEZ (oturum STARTDT ile baslar) |
+| - | Cift nokta, adim konumu, bit dizisi, sayac, koruma olayi | izleme | - | kodekte tanimli degil; sunulmaz |
+| 45 | `C_SC_NA_1` | kontrol | - | Tek komut: cozulur, calistirilmaz (istasyon salt okunur, GK6) |
+| 46 | `C_DC_NA_1` | kontrol | - | Cift komut: cozulur, calistirilmaz (istasyon salt okunur, GK6) |
+| 100 | `C_IC_NA_1` | kontrol | X | Istasyon sorgulamasi, yalnizca QOI 20 (grup sorgulamasi yok) |
+| 103 | `C_CS_NA_1` | kontrol | X | Saat senkronu: istasyon saatiyle ACTCON, merkez saati degismez |
+| - | Diger tum kontrol tipleri | kontrol | - | kodek tanimadigi icin COT 44 + P/N |
+
+### 7.7 Tip - iletim nedeni matrisi
+
+| Tip | 3<br>kendiliginden | 6<br>etkinlestirme | 7<br>etkinlestirme onayi | 10<br>etkinlestirme sonu | 20<br>sorgulama cevabi | 44<br>bilinmeyen tip | 45<br>bilinmeyen neden | 46<br>bilinmeyen ortak adres |
+|---|---|---|---|---|---|---|---|---|
+| `M_SP_NA_1` | - | - | - | - | X | - | - | - |
+| `M_ME_NC_1` | - | - | - | - | X | - | - | - |
+| `M_SP_TB_1` | X | - | - | - | - | - | - | - |
+| `M_ME_TF_1` | X | - | - | - | - | - | - | - |
+| `C_IC_NA_1` | - | X | X | X | - | - | X | X |
+| `C_CS_NA_1` | - | X | X | - | - | - | X | X |
+| Diger tum tipler | - | - | - | - | - | X | - | - |
+
+Reddetme nedenleri (44, 45, 46) her zaman P/N biti kurulu dondurulur. Istasyon sorgulamasi QOI 20 disinda bir nitelikle gelirse ACTCON P/N ile dondurulur; grup sorgulamasi yoktur. Kodekte tanimli olup hicbir SCADA modulunde gecmeyen sabitler: `C_SC_NA_1`, `C_DC_NA_1`, `M_EI_NA_1`, `COT_INITIALIZED`, `COT_UNKNOWN_IOA`.
+
+### 7.8 Temel uygulama fonksiyonlari
+
+| Fonksiyon | Isaret | Kaynak | Not |
+|---|---|---|---|
+| Istasyon baslatma (baslatma sonu bildirimi) | - | `M_EI_NA_1` = 70 | tip tanimli ama hicbir yerde uretilmiyor; baslatma yerine STARTDT/STOPDT kullanilir |
+| Istasyon sorgulamasi | X | `C_IC_NA_1` = 100 | ACTCON -> tum noktalar (COT 20) -> ACTTERM; yayin adresinde istasyon basina ayri |
+| Saat senkronizasyonu | X | `C_CS_NA_1` = 103 | yalnizca onay: NTP disindan saat oynatilmaz |
+| Komut iletimi | - | `C_SC_NA_1` = 45 | tum kontrol ASDU'lari reddedilir; koruma cihazina yol yoktur (GK6) |
+| Sayac (integrated totals) sorgulamasi | - | `C_CI_NA_1` kodekte tanimli degil | sayac nesnesi sunulmuyor, sorgulanacak sayac yok |
+| Parametre yukleme | - | `P_ME_NA_1` kodekte tanimli degil | esik/parametre uzaktan yazilmaz; esikler contracts/ dizininden gelir |
+| Test yordami (test komutu) | - | `C_TS_NA_1` kodekte tanimli degil | canlilik denetimi APCI duzeyinde TESTFR ile yapilir |
+| Dosya transferi | - | `F_FR_NA_1` kodekte tanimli degil | kayit/dosya aktarimi yok; olay kaydi REST ucundan alinir |
+| Nokta bazli okuma (okuma yordami) | - | `C_RD_NA_1` kodekte tanimli degil | nokta bazli okuma yok; bu yuzden bilinmeyen IOA reddi (COT 47) hic kullanilmaz |
+| Kendiliginden gonderim | X | `_Connection._spontaneous` | olu bant asilinca M_ME_TF_1, tek nokta degisince M_SP_TB_1 |
+| Baglanti canliligi denetimi (TESTFR) | X | `_Connection._timers` | t3 sonunda TESTFR gonderilir, t1 icinde cevap gelmezse baglanti kapanir |
+
+### 7.9 Zaman asimlari, pencere parametreleri ve port
+
+| Parametre | Deger | Not |
+|---|---|---|
+| t0 (baglanti kurma) | - | `Timing` alanlari: t1, t2, t3, k, w, spontaneous, tick; t0 yok - baglantiyi ana istasyon acar, istasyon hicbir zaman baglanti kurmaz |
+| t1 (gonderilen I / TESTFR icin onay suresi) | 15 s | asilirsa baglanti kapatilir |
+| t2 (alinan cerceveleri S ile onaylama) | 10 s | t1'den kucuk olmali |
+| t3 (bosta TESTFR gonderme) | 20 s | sessiz baglanti canlilik denetimine girer |
+| k (onaysiz gonderilebilen I cercevesi) | 12 | pencere dolunca gonderim bekletilir, baglanti kapatilmaz |
+| w (onaylanmadan alinabilen I cercevesi) | 8 | w'inci cercevede S gonderilir |
+| Port | 2404 | TCP, `IEC104_PORT` |
+| Kendiliginden gonderim taramasi | 1 s | olu bant denetimi araligi |
+| Zamanlayici adimi | 0.05 s | t1/t2/t3 denetim cozunurlugu |
+<!-- /URETILMIS:birlikte-calisabilirlik -->
+
+## 8. Güvenlik
 
 - **Salt okunur:** kontrol komutları (`C_SC_NA_1`, `C_DC_NA_1` ve diğerleri) P/N bitiyle COT 44 döner; koruma cihazına (TVOC-2) hiçbir yol yoktur (GK6).
 - **İzinli ağlar:** `IEC104_ALLOWED_CLIENTS` (varsayılan özel ağlar; sahada SCADA ön-ucunun adresi). Bağlantı sınırı 8.
@@ -259,7 +382,7 @@ Değerler Modbus ağ geçidiyle aynı kodlayıcıdan (`encoder.py`) gelir: iki p
 - **Onay beklenmezse** (t1) veya TESTFR cevapsız kalırsa bağlantı kapanır; yarı açık bağlantı kaynak tutmaz.
 - Saat senkronu merkez saatini **değiştirmez**: saat NTP'nin işidir, SCADA'dan gelen komutla sistem saati oynatılmaz.
 
-## 8. Doğrulama
+## 9. Doğrulama
 
 Bağımsız bir IEC 104 istemcisi kurulu olmadığı için kilit çerçeveler **standarttan elle çıkarılmış baytlarla** sınanır; örnek: istasyon
 sorgulaması `68 0E 00 00 00 00 64 01 06 00 01 00 00 00 00 14` → ACTCON `68 0E 00 00 02 00 64 01 07 00 01 00 00 00 00 14`.
@@ -270,7 +393,7 @@ sorgulaması `68 0E 00 00 00 00 64 01 06 00 01 00 00 00 00 14` → ACTCON `68 0E
 | `test_iec104_points.py` | IOA planı, işaretli/ölçekli değer, IV kuralı, alarm bitleri, ölü bant | 9/9 |
 | `test_iec104_server.py` (30 test) | Sorgulama, yayın adresi (istasyon başına cevap), reddedilen komut/adres/neden, saat senkronu, k/w penceresi, t1/t2/t3, kendiliğinden gönderim, STOPDT, izinli ağ | 37/37 |
 | `test_scada_app.py` | Uygulama içinde: **IEC 104 değeri = API değeri**, Modbus kapalıyken IEC 104 çalışır, ayarlar | — |
-| `test_gen_iec104_doc.py` | Bu dokümanın tabloları koddan güncel mi (`--check`) | — |
+| `test_gen_iec104_doc.py` | Bu dokümanın tabloları koddan güncel mi (`--check`); §7 alan uzunlukları kodlayıcıdan ölçülüyor mu, desteklenmeyen fonksiyonlar açıkça işaretli mi | — |
 
 **Canlı yığında ölçüm (13 Eyl 2026, 3 simüle pano, `localhost:2404`).** Backend kodeğini kullanmayan, baytları elle kuran ayrı bir
 istemciyle:
