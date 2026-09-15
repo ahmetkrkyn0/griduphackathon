@@ -127,7 +127,31 @@ kalir. **Bu sayi turetilmistir.**
 uygularsa kenar ile merkez farkli karar verir ve demo sirasinda bir alarm bir yerde
 gorunup digerinde gorunmez.
 
+## 15 Eylul guncellemesi — riskin buyuklugu OLCULDU, karar kolaylasti
+
+Onerinin "Kabul edilmezse ne olur" bolumundeki risk suydu: *"merkez tarafi ayni kurali kendi
+sayisiyla uygularsa kenar ile merkez farkli karar verir"*. Birlesmeden sonra bu risk BUYUK
+OLCUDE ORTADAN KALKTI ve sebebi olculebilir:
+
+- Merkez dedektor artik `panoalgo.central.CentralDetector` uzerinden **`panoalgo.limits.evaluate`
+  cagiriyor** (backend/app/main.py, TB2 Adim 4 — 15 Eylul'de baglandi). Yani kenarin kullandigi
+  KODUN AYNISI merkezde de kosuyor; turetilmis varsayilanlar iki yerde ayri ayri secilemez.
+- Backend'in `risk.py:_neutral_harmonics` fonksiyonu **karar VERMEZ**, yalnizca "Neden?"
+  bolumunun sinyallerini toplar. Esik karsilastirmasi tek yerdedir (`limits.py:228-231`).
+
+**Geriye kalan risk ve karar:** sayilar sozlesmede degil KODDA duruyor. Bu, kural 10'un
+("esikler sozlesmeden okunur") ihlalidir ve juri `contracts/`'a bakip bu uc kodun esigini
+bulamaz. Teknik risk dusuk, **seffaflik riski surüyor**.
+
+**Oneri (A):** 1, 2 ve 4 numarali maddeler kabul edilsin — uc de `thresholds` blogunda tek
+satirdir, geri uyumludur (kod zaten `thresholds.get(...)` ile once sozlesmeye bakiyor, sonra
+varsayilana duser; yani kabul edilirse **kod degisikligi gerekmez**). 3 numarali madde (PD kapsam
+notu) da yalnizca aciklama ekler. Reddedilirse §"Kabul edilmezse ne olur" gecerlidir ve
+`docs/17` §6'ya "esikler kodda" satiri eklenmelidir.
+
 ## Onaylar
+
+Karar toplantisinda isaretlenecek (PLAN.md Bolum B, kural 3 — uc onay sart).
 
 - [ ] Kisi A (Tuna)
 - [ ] Kisi B (Ahmet)
