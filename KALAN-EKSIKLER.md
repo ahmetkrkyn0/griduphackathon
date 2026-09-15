@@ -3,54 +3,7 @@
 > **Tarih:** 15 Eylül 2026, 00:15 · **Baz:** `main` = `5c969d1` (GitHub'daki `origin/main` ile aynı commit)
 > **Kapsam:** Birleştirmeden sonra `main` üzerinde yapılan doğrulamada bulunanlar + `PLAN.md`'de açık kalanlar.
 > **Takvim:** Özellik dondurma **17 Eylül 23:59** (≈3 gün) · M4 18 Eylül · M5 19 Eylül · Teslim hedefi **20 Eylül 18:00**, son sınır 23:59.
-> **Not:** Bu dosya 15 Eylül'de `Fix/Eksikler` dalında commit **edildi** (ekip içi takip için).
-> Teslim reposunda durup durmayacağı Faz 6 kararıdır — bkz. O8.
-
----
-
-## 0. DURUM — 15 Eylül, `Fix/Eksikler` dalı
-
-**Aşağıdaki liste 15 Eylül 00:15 itibarıyla yazıldı ve büyük kısmı o günün içinde kapatıldı.**
-Kapatma turu `Fix/Eksikler` dalında 9 commit (`origin/main` = `5c969d1` üzerine).
-Maddelerin tek tek durumu:
-
-| Madde | Durum |
-|---|---|
-| **K1** senaryo oynatma | ✅ `panosim --scenario`; `s0`–`s6` gerçek CLI'ya bağlandı |
-| **K2** jüriye giden metinler | ✅ README, sunum taslağı, `demo/senaryo/README.md`, `docs/17` |
-| **K3** simüle zaman damgası | ✅ Karar verildi: fizik hızlı kalır, `ts` duvar saati (`docs/14` §7) |
-| **K4** TVOC-2 ID 248 | ✅ Kod düzeltildi (iddia ölçülünce **yanlış** çıkmıştı) |
-| **K5** merkez dedektör | ✅ Bağlandı, Docker imajında doğrulandı |
-| **Y1** taban öğrenme | ✅ `--baseline-hours` + senaryo kipi |
-| **Y2** taşıma kabuğu | ✅ `sim/panobeyni_sim.py` yazıldı (12 test) |
-| **Y3** `docs/17` kanıtları | ✅ |
-| **Y4** temiz makine testi | ✅ Koşuldu, 24/24 (`scripts/duman-testi.sh`) |
-| **Y5** sözleşme önerileri | ⏳ Karar-hazır, **onaylar işaretlenmedi** (üç imza gerekir) |
-| **Y6** KiCad / STL | ⏳ **Ekip kararı** — STL tek komuta indirildi, şema kararı açık |
-| **Y7** Windows `python3` | ✅ |
-| **Y8** `loadtest/fleet.py` | ✅ `--generator physics` |
-| **Y9** `pandas` extras | ✅ |
-| **D1–D3** defter | ✅ PLAN kutucukları, handle'lar (C'ninki hariç), `validate.py` sahipliği |
-| **O1–O8, D4–D8** | ⏳ Video, provalar, sunum destesi, teslim listesi — açık |
-
-**Bu belgede sonradan yanlış çıkan iki tespit** (aşağıda düzeltilmeden duruyor, kayıt için):
-
-1. **§2 ve Y4 — "Faz 0 `hello_publisher`'ından kalan `GDZ-00001`".** Yanlış. `GDZ-00001`
-   `deploy/initdb/001_schema.sql` içindeki **bilinçli başlangıç verisidir** ve 0 telemetri
-   satırı vardır. Listedeki `last_seen` değeri `installed_at`'e düşen tasarım gereği
-   davranıştır (`backend/app/api/views.py:86`). Temiz veritabanında alarm sayısı **0**.
-2. **§2 "Canlı duman testi 15/16"** — 16/16'ya çıktı; tek başarısız olan K4 düzeltildi.
-   Yeni ve daha geniş ölçüm: sıfırdan klon + sıfırdan volume ile **24/24**.
-
-**Kapatma turunda ortaya çıkan, bu listede olmayan üç hata** (üçü de düzeltildi):
-
-- `gsm-modem` backend Dockerfile'ını paylaşıyordu; K5'in context değişikliği onu kırınca
-  **tüm yığın** ayağa kalkmıyordu. Yalnızca temiz kurulumda görünüyordu.
-- Kenar tetiklemeli `ALM-ARC-TRIP`, raporlanmayan bir taramaya denk gelince kayboluyordu.
-- Sözleşme dosyaları sıcak yolda yeniden okunuyordu: panoalgo test takımı **452 s → 53 s**,
-  üreteç kurulumu 173 ms → 0,31 ms/pano.
-
----
+> **Not:** Bu dosya commit **edilmedi**. Jüriye gidecek repoda iç çalışma notu durmasın diye; paylaşmak isterseniz ayrıca karar verin.
 
 **Sahipler:** A = Tuna (fizik, kenar, algoritma) · B = Ahmet (platform, entegrasyon, ölçek) · C = Berke (arayüz, donanım, teslim)
 **Öncelik:** 🔴 kritik (demoyu ya da teslimi doğrudan bozar) · 🟠 yüksek (17 Eylül dondurmasından önce) · 🟡 orta (M4–M5) · ⚪ düşük
