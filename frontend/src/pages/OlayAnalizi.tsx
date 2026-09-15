@@ -8,7 +8,9 @@ import { ago } from "../lib/format";
 import { alarmText } from "../lib/labels";
 import { useFleet } from "../state/fleet";
 
-const WINDOWS = [24, 72, 168] as const; // saat; backend sinir: 1-168 (insights.py)
+// saat; backend sinir: 1-336 (insights.py). 336 sa = 14 gun: docs/12 §2'deki 209 saatlik
+// erken uyariyi kara kutuda geriye dogru takip edebilmek icin gerekli olan pencere.
+const WINDOWS = [24, 72, 168, 336] as const;
 
 const KIND_TR: Record<string, string> = { alarm: "Alarm", ack: "Onay", action: "Aksiyon", note: "Not", trip: "Trip" };
 

@@ -70,7 +70,7 @@ Bekleyen tüm şema göçlerini tek `down -v` anında uygular ve ≥7 günlük t
 **Ne üretir:** Demo, ekran görüntüsü, video ve F-03/F-05/F-06'nın tamamının üzerinde koşacağı tek ortak veri zemini; üç geliştiricinin `down -v` maliyeti bir kez ödenir.
 **Dikkat:** Bu iş yapılmazsa aşağıdaki rapor üreten dört madde de gerçek sayı üretemez ve GK10'a takılır. Y4 (temiz makine testi) ile aynı pencerede yapılmalı.
 
-### F-02 · GK10 bütünlük geçişi: üç sayı ve metin düzeltmesi
+### F-02 · GK10 bütünlük geçişi: üç sayı ve metin düzeltmesi — ✅ tamamlandı
 Jüriye giden metinlerde kendi ölçümümüzle çelişen üç yeri kapatır · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md), [backend/app/api/insights.py](backend/app/api/insights.py), [deploy/compose.yaml](deploy/compose.yaml)
 **Sektörel dayanak:** GK10'un kendisi; ayrıca ölçümlerin tekrar üretilebilirliği için imaj sabitleme yerleşik pratik (CISA SBOM asgari unsurları, bileşen hash'i).
 **Bizdeki boşluk:** (a) [docs/10-bom-maliyet-roi.md](docs/10-bom-maliyet-roi.md) "tespit oranı %70 (etiketli senaryo setinde ölçülecek)" diyor — oysa [docs/12-dogrulama-sonuclari.md](docs/12-dogrulama-sonuclari.md) bunu ölçmüş ve 10 senaryonun 8'inde recall 1,00 çıkmış; kendi performansımızı düşük gösteriyoruz. (b) Kara kutu penceresinin üst sınırı 168 saat, oysa manşet sayımız 209 saatlik öne alma — kendi en iyi sonucumuzu kendi ekranımızda gösteremiyoruz. (c) [deploy/compose.yaml](deploy/compose.yaml)'da bir imaj etiketi sabit değil; iki kişi farklı imaj çalıştırabilir.

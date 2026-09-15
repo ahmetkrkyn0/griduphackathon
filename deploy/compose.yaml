@@ -21,7 +21,8 @@ include:
 
 services:
   mosquitto:
-    image: eclipse-mosquitto:2.0
+    # 2.0 bir yama serisidir, yama cikinca kayar; digest ile sabitlendi (GK10).
+    image: eclipse-mosquitto:2.0@sha256:212f89e1eaeb2c322d6441b64396e3346026674db8fa9c27beac293405c32b3c
     container_name: gridup-mosquitto
     restart: unless-stopped
     ports:
@@ -36,7 +37,10 @@ services:
       retries: 5
 
   timescaledb:
-    image: timescale/timescaledb:latest-pg16
+    # GK10: `latest-pg16` KAYAN bir etiketti — docs/09'daki olcumler (TimescaleDB 2.30.0 /
+    # PostgreSQL 16.15) bugun ceken biri icin tekrar uretilebilir degildi. Digest, o olcumun
+    # yapildigi imaji sabitler. Surum yukseltmek isteyen digest'i bilerek degistirir.
+    image: timescale/timescaledb:latest-pg16@sha256:75d58b53f3337a6babd3a1cce5e503f2300bdede62dd7d743651deb1a95b6d76
     container_name: gridup-timescaledb
     restart: unless-stopped
     environment:
@@ -144,7 +148,8 @@ services:
       - "127.0.0.1:7001:7001"
 
   grafana:
-    image: grafana/grafana:11.2.0
+    # 11.2.0 kesin bir yama surumu; butunluk icin digest ile de sabitlendi (GK10).
+    image: grafana/grafana:11.2.0@sha256:408afb9726de5122b00a2576763a8a57a3c86d5b0eff5305bc994ceb3eb96c3f
     container_name: gridup-grafana
     restart: unless-stopped
     ports:
