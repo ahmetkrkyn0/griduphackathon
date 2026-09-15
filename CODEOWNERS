@@ -1,36 +1,43 @@
 # Dosya sahipligi — PLAN.md Bolum A.3/A.4, kural 2: "bir dosya = bir sahip".
 #
-# YAPILACAK: @kisi-a / @kisi-b / @kisi-c yerine gercek GitHub kullanici adlarini yazin.
-#   A = Fizik, Kenar, Algoritma
-#   B = Platform, Entegrasyon, Olcek
-#   C = Arayuz, Donanim Tasarimi, Teslim
+#   A = @tunadeniz1304  — Fizik, Kenar, Algoritma
+#   B = @ahmetkrkyn0     — Platform, Entegrasyon, Olcek
+#   C = @kisi-c          — Arayuz, Donanim Tasarimi, Teslim
+#
+# A ve B handle'lari commit gecmisinden alindi (git log --all --format=%an). C'nin
+# GitHub kullanici adi gecmisten cikarilamiyor (commit'leri gmail adresiyle atilmis);
+# Berke kendi handle'ini yazmali. Yanlis bir handle yazmak, olmayan bir handle'dan
+# daha kotudur: baskasinin hesabina inceleme atar.
 #
 # Not: CODEOWNERS'in zorunlu inceleme etkisi ancak branch protection acikken calisir.
 # Acik olmasa bile bu dosya sahipligin tek kaynagidir — cakismada dosya sahibinin
 # surumu kazanir.
 
 # --- Kisi A: Fizik, Kenar, Algoritma ---
-/libs/          @kisi-a
-/firmware/      @kisi-a
-/sim/           @kisi-a
-/data/          @kisi-a
-/docs/05-anomali-tespiti.md        @kisi-a
-/docs/12-dogrulama-sonuclari.md    @kisi-a
-/docs/14-veri-ureteci.md           @kisi-a
+/libs/          @tunadeniz1304
+/firmware/      @tunadeniz1304
+/sim/           @tunadeniz1304
+/data/          @tunadeniz1304
+/docs/05-anomali-tespiti.md        @tunadeniz1304
+/docs/12-dogrulama-sonuclari.md    @tunadeniz1304
+/docs/14-veri-ureteci.md           @tunadeniz1304
 
 # --- Kisi B: Platform, Entegrasyon, Olcek ---
-/backend/       @kisi-b
-/deploy/        @kisi-b
-/loadtest/      @kisi-b
-/scripts/       @kisi-b
-/docs/02-mimari.md                 @kisi-b
-/docs/03-modbus-haritasi.md        @kisi-b
-/docs/04-iec104-haritasi.md        @kisi-b
-/docs/06-alarm-matrisi.md          @kisi-b
-/docs/07b-fmea-yazilim-sistem.md   @kisi-b
-/docs/09-olceklenebilirlik.md      @kisi-b
-/docs/15-guvenlik-kvkk.md          @kisi-b
-/docs/17-donanimsiz-dogrulama.md   @kisi-b
+/backend/       @ahmetkrkyn0
+/deploy/        @ahmetkrkyn0
+/loadtest/      @ahmetkrkyn0
+/scripts/       @ahmetkrkyn0
+# Istisna (PLAN.md T4.2): dogrulama betigi girisi A'nindir. Asil mantik
+# libs/panoalgo/panoalgo/validate.py icinde; burasi yalnizca bir giristir.
+/scripts/validate.py  @tunadeniz1304
+/docs/02-mimari.md                 @ahmetkrkyn0
+/docs/03-modbus-haritasi.md        @ahmetkrkyn0
+/docs/04-iec104-haritasi.md        @ahmetkrkyn0
+/docs/06-alarm-matrisi.md          @ahmetkrkyn0
+/docs/07b-fmea-yazilim-sistem.md   @ahmetkrkyn0
+/docs/09-olceklenebilirlik.md      @ahmetkrkyn0
+/docs/15-guvenlik-kvkk.md          @ahmetkrkyn0
+/docs/17-donanimsiz-dogrulama.md   @ahmetkrkyn0
 
 # --- Kisi C: Arayuz, Donanim Tasarimi, Teslim ---
 /frontend/      @kisi-c
@@ -47,11 +54,11 @@
 /docs/16-ux-tasarim.md             @kisi-c
 
 # --- Kilitli bolge: uc onay gerekir (PLAN.md kural 3) ---
-/contracts/     @kisi-a @kisi-b @kisi-c
-/PLAN.md        @kisi-a @kisi-b @kisi-c
-/.gitattributes @kisi-a @kisi-b @kisi-c
-/CODEOWNERS     @kisi-a @kisi-b @kisi-c
+/contracts/     @tunadeniz1304 @ahmetkrkyn0 @kisi-c
+/PLAN.md        @tunadeniz1304 @ahmetkrkyn0 @kisi-c
+/.gitattributes @tunadeniz1304 @ahmetkrkyn0 @kisi-c
+/CODEOWNERS     @tunadeniz1304 @ahmetkrkyn0 @kisi-c
 
 # --- Komitenin gizli dokumanlari: dokunulmaz ---
-/Hackathon Verileri/               @kisi-a @kisi-b @kisi-c
-/HACKATHON_ANALIZ_RAPORU.md        @kisi-a @kisi-b @kisi-c
+/Hackathon Verileri/               @tunadeniz1304 @ahmetkrkyn0 @kisi-c
+/HACKATHON_ANALIZ_RAPORU.md        @tunadeniz1304 @ahmetkrkyn0 @kisi-c

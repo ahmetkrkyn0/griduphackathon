@@ -6,12 +6,30 @@ Olculenler: yayin hizi (mesaj/s), alim gecikmesi (yayin -> backend'in mesaji ald
 telemetri tablosunun buyumesi ve gun basina projeksiyonu, alarm acilma ve alarm -> SMS gecikmesi.
 Sonuc: loadtest/results/<run_id>.json (git disi) + loadtest_metrics tablosu (Grafana "Olcek" panosu).
 
-Yuk kaynagi SABLON'dur: sozlesmeye (contracts/mqtt-telemetry.schema.json) uyan, zamanla degisen ama fiziksel
-model olmayan yuk. Platformu (broker -> ingest -> DB -> alarm -> bildirim) olcer; tespit basarisini OLCMEZ
-(o docs/12, Kisi A). panoalgo uretecine gecis A'nin paketi geldiginde eklenecek (kod kopyalanmaz, import edilir).
+YUK KAYNAGI (TB3 Adim 4) — iki uretec, varsayilan FIZIK:
+
+  --generator physics   A'nin fizik uretecini KUTUPHANE OLARAK import eder
+                        (panoalgo.generator.PanelSimulator; kod kopyalanmaz).
+                        Yuk profili, isil model ve AR(1) gurultu gercektir.
+  --generator template  Sozlesmeye uyan ama fiziksel model olmayan sablon yuk.
+                        Cok buyuk kosularda (>= 5.000 pano) uretecin kendisi
+                        darbogaz olmasin diye korunur; bkz. asagidaki olcum.
+
+Her iki halde de olculen sey PLATFORMDUR (broker -> ingest -> DB -> alarm -> bildirim);
+tespit basarisi burada OLCULMEZ (o docs/12, Kisi A).
+
+OLCULEN URETEC MALIYETI (tek cekirdek, bu makine):
+    PanelSimulator.step()         ~3.900 mesaj/s   (filo buyuklugunden bagimsiz)
+    limits.evaluate()             ~9.800 cagri/s
+    (karsilastirma) EdgePipeline    ~540 mesaj/s   100 panoda, ~130 mesaj/s 1.000 panoda
+1.000 pano 10 s periyotla 100 mesaj/s ister; uretec bunun ~%3'unu kullanir, yani olculen
+platformla CPU icin yarismaz. Tam kenar boru hatti (RLS + K/K0) bilerek KULLANILMAZ:
+7 gunluk taban ogrenmesi gerektirir, 300 saniyelik bir kosuda anlamli sonuc vermez ve
+1.000 panoda darbogaza donusurdu.
 
 Calistirma (yigin ayaktayken, repo kokunden):
     backend/.venv/Scripts/python loadtest/fleet.py --panels 1000 --duration 300
+    backend/.venv/Scripts/python loadtest/fleet.py --panels 10000 --generator template
     backend/.venv/Scripts/python loadtest/fleet.py --cleanup-only
 
 Test bitince SIM-* verisi silinir ve backend yeniden baslatilir (--keep ile kalir): bellekteki alarm yoneticisi
@@ -39,6 +57,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
+# A'nin paketi KURULU DEGILSE de calissin: kod kopyalanmaz, yola eklenir (PLAN.md TB3 Adim 4).
+sys.path.insert(0, str(ROOT / "libs" / "panoalgo"))
 
 from app.config import Contracts, load_contracts  # noqa: E402
 from app.scada.map_loader import load_map  # noqa: E402
@@ -53,6 +73,8 @@ _MEM_TO_MIB = {"B": 1 / 1048576, "KiB": 1 / 1024, "MiB": 1.0, "GiB": 1024.0, "kB
 # ================================================================== saf parcalar
 class PayloadFactory:
     """Pano ve sira numarasina gore deterministik sablon telemetri (ayni tohum -> ayni filo)."""
+
+    ALARM_CODE = "ALM-K-ALM"   # enjeksiyonun urettigi kod (bkz. alarm_latencies)
 
     def __init__(self, contracts: Contracts, *, points: int, seed: int) -> None:
         names = load_map(ROOT / "contracts" / "modbus-map.yaml").points
@@ -147,6 +169,142 @@ class PayloadFactory:
         }
 
 
+class PhysicsPayloadFactory:
+    """A'nin fizik uretecini kutuphane olarak kullanir (PLAN.md TB3 Adim 4).
+
+    PayloadFactory ile AYNI arayuz: payload(pano_id, seq, ts, alarm=...).
+    Kod KOPYALANMAZ; panoalgo.generator ve panoalgo.limits import edilir.
+
+    SIMULE ADIM 15 DAKIKADIR, duvar saati periyodu degil. Yuk testi panolari 10 s'de
+    bir yayinlar; her yayinda fizik 15 simule dakika ilerler. Sebep: 300 saniyelik bir
+    kosuda 10 s'lik fizik adimlariyla hicbir sey degismez (isil zaman sabiti dakikalar
+    mertebesinde), yuk profili duz cizgi olur ve olculen sey gercek bir gunun degiskenligini
+    hic gormez. Yayinlanan `ts` yine duvar saatidir (asagida uzerine yazilir) — sim/panosim.py
+    --wall-clock ile ayni karar (docs/14 §7).
+
+    TESPIT TABAN OGRENMESI OLMADAN: `alarms` alanini panoalgo.limits.evaluate() doldurur.
+    Bu, merkez dedektorun (panoalgo.central) kullandigi kodun ta kendisidir ve yalnizca
+    SABIT sozlesme esiklerine bakar — K/K0 gibi 7 gunluk taban ogrenmesi gerektiren
+    katmanlara DEGIL. 300 saniyelik bir yuk testi o 7 gunu bekleyemez; k_ratio bu yuzden
+    1,0 kalir ve bu DURUSTTUR: yeni devreye alinmis bir filonun ilk haftasi boyle gorunur.
+    Olculdu: limits.evaluate ~9.800 cagri/s, uretec ~3.900 mesaj/s — ikisi de darbogaz degil.
+
+    ALARM ENJEKSIYONU FIZIKSELDIR: sablon uretec k_ratio alanini dogrudan esigin ustune
+    YAZIYORDU. Burada noktanin isil direnc indeksi buyutulur, sicaklik isil modelle
+    (tau*d(dT)/dt + dT = K*I^2) gercekten yukselir ve sabit 70 K siniri asilir; alarmi
+    limits.evaluate bulur.
+
+    Enjeksiyon HESAPLANIR, denenerek bulunmaz, ve iki adimdir:
+      1) Panonun yuku ALARM_LOAD_FRACTION'da dondurulur. Sebep olculdu: gercek yuk
+         profiliyle baglanti artisi gunun saatine gore 0,5 K ile 26 K arasinda degisiyor.
+         Sabit bir carpan bazi saatlerde 70 K sinirini HIC gecirmiyor (saat 09: 37,8 K'da
+         kaliyordu), carpani her mesajda ayarlayan bir dongu ise isil gecikme yuzunden
+         asiri tepiyordu (saat 18: 2.629 K). Yuk dondurulunca I sabittir.
+      2) Carpan dogrudan hesaplanir: M = hedef / (K0 * I^2). Sicaklik oraya isil zaman
+         sabitiyle (tau) yumusakca yurur; asiri tepme yoktur, saatten bagimsizdir.
+
+    DURUSTLUK NOTU: yuku dondurmak yalnizca enjekte edilen BES panoda gunluk profili
+    kaldirir; filonun kalani gercek profille yayin yapar. Yuk testi tespit basarisini degil
+    ALARM GECIKMESINI olcer ve bunun tekrarlanabilir olmasi gerekir. Tespit gercekligi
+    iddiasi docs/12'dedir.
+    """
+
+    ALARM_CODE = "ALM-THR-TERM-ALM"   # enjeksiyonun urettigi kod (bkz. alarm_latencies)
+
+    SIM_STEP_S = 900.0            # 15 simule dakika / yayin
+    SETTLE_STEPS = 40             # kurulusta isil rejime oturma (~10 simule saat)
+    MIN_ALARM_K_MULTIPLIER = 4.0  # rapor 15.2 tavani 3x; taban olarak biraz ustu
+    ALARM_LIMIT_MARGIN = 1.5      # kalici artis sinirin bu kati olacak sekilde hesaplanir
+    MAX_K_MULTIPLIER = 500.0      # saglik siniri; normalde cok altinda kalir
+    ALARM_LOAD_FRACTION = 0.75    # enjekte edilen panonun yuku burada dondurulur
+
+    def __init__(
+        self,
+        contracts: Contracts,
+        *,
+        points: int,
+        seed: int,
+        period_s: float = 0.0,
+        edge_ids: Sequence[str] = (),
+    ) -> None:
+        from panoalgo import limits as panoalgo_limits
+        from panoalgo.generator import PanelSimulator
+
+        names = load_map(ROOT / "contracts" / "modbus-map.yaml").points
+        if not 4 <= points <= len(names):
+            raise ValueError(f"nokta sayisi 4-{len(names)} olmali: {points}")
+        self._point_count = points
+        self._seed = seed
+        self._alarm_point = names[1]           # GIRIS_L2 — kesilmis listede de var
+        self._alarm_limit = float(contracts.thresholds["term_rise_alarm_k"])
+        self._limits = panoalgo_limits
+        self._contracts_dir = ROOT / "contracts"
+        self._make_sim = PanelSimulator
+        self._start = datetime.now(timezone.utc).replace(microsecond=0)
+        self._sims: dict[str, Any] = {}
+        self._previous: dict[str, dict[str, Any]] = {}
+        self._detect_ids = set(edge_ids)       # bos = TUM panolarda tespit kosar
+        # pano -> uygulanan K carpani; 0.0 = yuk donduruldu, carpan bir sonraki mesajda hesaplanir
+        self._injected: dict[str, float] = {}
+
+    def _sim(self, pano_id: str):
+        """Pano ilk kez yayinlayinca kurulur ve isil rejime oturtulur (deterministik)."""
+        sim = self._sims.get(pano_id)
+        if sim is None:
+            index = int(pano_id[-5:])
+            sim = self._make_sim(
+                pano_id=pano_id,
+                seed=self._seed + index,
+                profile=("konut", "ticari", "karma")[index % 3],
+                start=self._start,
+            )
+            for _ in range(self.SETTLE_STEPS):
+                sim.step(self.SIM_STEP_S)
+            self._sims[pano_id] = sim
+        return sim
+
+    def _trim(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """--points ile istenen nokta sayisina indirir (az sensorlu pano)."""
+        payload["t_conn"] = payload["t_conn"][: self._point_count]
+        payload["health"]["nodes_ok"] = len(payload["t_conn"]) + 2
+        payload["health"]["nodes_total"] = len(payload["t_conn"]) + 2
+        return payload
+
+    def _drive_loose_connection(self, sim, pano_id: str) -> None:
+        """Dondurulmus yukte 70 K sinirini gecirecek K carpanini hesaplar (bkz. sinif notu)."""
+        if self._injected.get(pano_id, 0.0) > 0.0:
+            return  # carpan hesaplandi; ariza oldugu yerde kalir, geri donmez
+        current = sim.point_current(self._alarm_point)
+        if current <= 0.0:
+            return  # akim henuz olculmedi; bir sonraki mesajda dondurulmus yuku yansitir
+        target = self._alarm_limit * self.ALARM_LIMIT_MARGIN
+        multiplier = target / (sim.point_k(self._alarm_point) * current * current)
+        multiplier = min(max(multiplier, self.MIN_ALARM_K_MULTIPLIER), self.MAX_K_MULTIPLIER)
+        sim.set_k_multiplier(self._alarm_point, multiplier)
+        self._injected[pano_id] = multiplier
+
+    def payload(self, pano_id: str, seq: int, ts: datetime, *, alarm: bool = False) -> dict[str, Any]:
+        sim = self._sim(pano_id)
+        if alarm and pano_id not in self._injected:
+            # 1. adim: yuku dondur. Carpan BU MESAJDA hesaplanmaz — olculen akim henuz
+            # dondurulmemis yuku yansitir ve hesap saatlerce sapar (olculdu: 5.495 K tepe).
+            sim.freeze_load(self.ALARM_LOAD_FRACTION)
+            self._injected[pano_id] = 0.0
+        elif pano_id in self._injected:
+            # 2. adim: akim artik dondurulmus yuku yansitiyor, carpan hesaplanabilir.
+            self._drive_loose_connection(sim, pano_id)
+        payload = self._trim(sim.step(self.SIM_STEP_S))
+        if not self._detect_ids or pano_id in self._detect_ids:
+            payload["alarms"] = self._limits.evaluate(
+                payload, self._previous.get(pano_id), self._contracts_dir
+            )
+        self._previous[pano_id] = payload
+        # Zaman damgasi ve sira numarasi yuk testinindir: gecikme olcumu bunlara dayanir.
+        payload["ts"] = ts.isoformat()
+        payload["seq"] = seq
+        return payload
+
+
 def phase_offsets(count: int, *, period_s: float, seed: int) -> list[float]:
     """Panolarin periyot icindeki yayin anlari: saha cihazlari ayni saniyede uyanmaz."""
     rng = random.Random(seed)
@@ -197,6 +355,8 @@ class Config:
     out_dir: str = str(ROOT / "loadtest" / "results")
     seed: int = 20260913
     keep: bool = False
+    generator: str = "physics"   # physics | template (bkz. modul docstring)
+    edge_all: bool = False       # kenar boru hattini TUM panolarda kostur
     run_id: str = field(default_factory=lambda: "")
 
 
@@ -388,22 +548,30 @@ def wait_for_drain(api: str, timeout_s: float = 60.0) -> None:
         time.sleep(1.0)
 
 
-def alarm_latencies(recorder: Recorder, alarm_panels: list[str], offset_s: float) -> dict[str, Any]:
+def alarm_latencies(recorder: Recorder, alarm_panels: list[str], offset_s: float,
+                    code: str = "ALM-K-ALM") -> dict[str, Any]:
+    """`code`: enjeksiyonun URETTIGI alarm kodu; ureticiye gore degisir.
+
+    Sablon uretec k_ratio'yu dogrudan esigin ustune yazar -> ALM-K-ALM.
+    Fizik ureteci K'yi buyutur, sicaklik isil modelle 70 K'yi asar -> ALM-THR-TERM-ALM
+    (K/K0 katmani 7 gunluk taban ogrenmesi ister, yuk testinde anlamsizdir).
+    """
     if not alarm_panels:
         return {"injected": 0}
     raised = recorder.query(
         "SELECT id, extract(epoch FROM raised_at), extract(epoch FROM annunciated_at) FROM alarms "
-        "WHERE pano_id = ANY(%s) AND code = 'ALM-K-ALM'",
-        (alarm_panels,),
+        "WHERE pano_id = ANY(%s) AND code = %s",
+        (alarm_panels, code),
     )
     sms = recorder.query(
         "SELECT a.id, extract(epoch FROM a.raised_at), extract(epoch FROM min(n.sent_at)) FROM alarms a "
         "JOIN notifications n ON n.alarm_id = a.id AND n.ok AND n.channel = 'sms' "
-        "WHERE a.pano_id = ANY(%s) AND a.code = 'ALM-K-ALM' GROUP BY a.id, a.raised_at",
-        (alarm_panels,),
+        "WHERE a.pano_id = ANY(%s) AND a.code = %s GROUP BY a.id, a.raised_at",
+        (alarm_panels, code),
     )
     return {
         "injected": len(alarm_panels),
+        "code": code,
         "raised": len(raised),
         "raise_latency_ms": summarize([(float(ann) - offset_s - float(ts)) * 1000.0 for _, ts, ann in raised]),
         "sms_deliveries": len(sms),
@@ -447,16 +615,35 @@ def cleanup(dsn: str, restart_backend: bool = True) -> None:
         print("backend yeniden baslatildi (bellekteki SIM alarmlari ve haberlesme denetimi temizlendi)")
 
 
+def build_factory(config: Config, contracts: Contracts, detect_ids: Sequence[str]):
+    """Yapilandirmaya gore uretici kurar (fizik = varsayilan, sablon = buyuk kosular)."""
+    if config.generator == "template":
+        return PayloadFactory(contracts, points=config.points, seed=config.seed)
+    if config.generator != "physics":
+        raise ValueError(f"--generator physics ya da template olmali: {config.generator!r}")
+    return PhysicsPayloadFactory(
+        contracts,
+        points=config.points,
+        seed=config.seed,
+        period_s=config.period_s,
+        edge_ids=detect_ids,
+    )
+
+
 def run(config: Config) -> dict[str, Any]:
     contracts = load_contracts(ROOT / "contracts")
-    factory = PayloadFactory(contracts, points=config.points, seed=config.seed)
     config.run_id = config.run_id or f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}-{config.panels}p"
     recorder = Recorder(config.db, config.run_id)
     offset = clock_offset_s(recorder)
     bytes_before, (rows_before, messages_before) = telemetry_bytes(recorder), sim_counts(recorder)
     health_before = _get_json(f"{config.api}/health")["ingest"]
-    probes = [f"{SIM_PREFIX}{n:05d}" for n in range(1, config.panels + 1)][:: max(1, config.panels // config.probe_panels)]
+    pano_ids_all = [f"{SIM_PREFIX}{n:05d}" for n in range(1, config.panels + 1)]
+    probes = pano_ids_all[:: max(1, config.panels // config.probe_panels)]
     probes = probes[: config.probe_panels]
+    # Tespit (limits.evaluate) varsayilan olarak TUM panolarda kosar — ucuz olculdu.
+    # --edge-all=False ise yalnizca olcum yapilan panolar: alarm panolari + yoklayicilar.
+    detect_ids = [] if config.edge_all else sorted(set(pano_ids_all[: config.alarm_panels]) | set(probes))
+    factory = build_factory(config, contracts, detect_ids)
     sent_at: dict[tuple[str, int], float] = {}
     receive_ms: list[float] = []
     visible_ms: list[float] = []
@@ -467,7 +654,11 @@ def run(config: Config) -> dict[str, Any]:
     ]
     for thread in threads:
         thread.start()
-    print(f"{config.run_id}: {config.panels} pano, {config.period_s:.0f} s periyot, {config.points} nokta, {config.duration_s:.0f} s")
+    print(
+        f"{config.run_id}: {config.panels} pano, {config.period_s:.0f} s periyot, {config.points} nokta, "
+        f"{config.duration_s:.0f} s, uretec={config.generator}"
+        + (f", tespit {len(detect_ids) or config.panels} panoda" if config.generator == "physics" else "")
+    )
     try:
         publish = publish_fleet(config, factory, recorder, sent_at, set(probes))
         wait_for_drain(config.api)
@@ -486,6 +677,7 @@ def run(config: Config) -> dict[str, Any]:
     result = {
         "run_id": config.run_id,
         "config": {k: v for k, v in asdict(config).items() if k != "db"},
+        "detect_panels": (len(detect_ids) or config.panels) if config.generator == "physics" else 0,
         "clock_offset_ms": round(offset * 1000.0, 1),
         "publish": publish,
         "ingest": {
@@ -507,7 +699,7 @@ def run(config: Config) -> dict[str, Any]:
             "projection_100_panels": storage_projection(bytes_per_row=bytes_per_row, rows_per_message=rows_per_message, period_s=config.period_s, panels=100),
             "projection_1000_panels": storage_projection(bytes_per_row=bytes_per_row, rows_per_message=rows_per_message, period_s=config.period_s, panels=1000),
         },
-        "alarms": alarm_latencies(recorder, publish["alarm_panels"], offset),
+        "alarms": alarm_latencies(recorder, publish["alarm_panels"], offset, factory.ALARM_CODE),
     }
     recorder.close()
     out = Path(config.out_dir)
@@ -533,6 +725,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--db", default=defaults.db)
     parser.add_argument("--api", default=defaults.api)
     parser.add_argument("--out", default=defaults.out_dir)
+    parser.add_argument("--generator", choices=("physics", "template"), default=defaults.generator,
+                        help="physics = panoalgo fizik ureteci (varsayilan), template = sablon yuk")
+    parser.add_argument("--edge-all", action="store_true",
+                        help="tespiti TUM panolarda kostur (varsayilan: yalnizca olculen panolar)")
     parser.add_argument("--keep", action="store_true", help="SIM-* verisini silme")
     parser.add_argument("--cleanup-only", action="store_true", help="yalnizca SIM-* verisini sil, backend'i yeniden baslat")
     args = parser.parse_args(argv)
@@ -543,6 +739,7 @@ def main(argv: list[str] | None = None) -> int:
         panels=args.panels, period_s=args.period, duration_s=args.duration, points=args.points,
         connections=args.connections, alarm_panels=args.alarm_panels, probe_panels=args.probe_panels,
         mqtt=args.mqtt, db=args.db, api=args.api, out_dir=args.out, keep=args.keep,
+        generator=args.generator, edge_all=args.edge_all,
     ))
     return 0
 

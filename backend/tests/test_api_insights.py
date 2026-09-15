@@ -34,7 +34,15 @@ class Rig:
     def __init__(self, store: MemoryStore, clock: Clock) -> None:
         self.store = store
         self.clock = clock
-        self.app = create_app(Settings(contracts_dir=CONTRACTS_DIR, ingest_enabled=False), store=store, clock=clock)
+        # central_detector_enabled=False: bu dosya analiz uclarini (kara kutu, KPI) olcer.
+        # Merkez emniyet agi uretimde aciktir ama burada alarm SAYILARINI degistirir ve
+        # olculen sey "uc dogru mu" degil "kac alarm var" olurdu. Agin kendi testleri:
+        # tests/test_central_detector.py + test_api_alarms.py'deki uctan uca test.
+        self.app = create_app(
+            Settings(contracts_dir=CONTRACTS_DIR, ingest_enabled=False, central_detector_enabled=False),
+            store=store,
+            clock=clock,
+        )
         self.http = TestClient(self.app)
 
     def ingest(self, payload: dict, received_at: datetime | None = None) -> None:

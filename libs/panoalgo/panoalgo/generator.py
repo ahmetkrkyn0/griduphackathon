@@ -38,6 +38,7 @@ import re
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -137,6 +138,63 @@ PANO_ID_DIGITS = 5
 _PANO_PREFIX = re.compile(r"^[A-Z]{%d}$" % PANO_ID_PREFIX_LEN)
 
 
+# TVOC-2 sensor durum register'i (PDU 222/223): her bit bir dedektor, 1 = OK.
+# Fabrika cikisinda tum bitler 1'dir; bir dedektor arizalaninca kendi biti 0 olur.
+ALL_DETECTORS_OK = 0xFFFF
+DETECTOR_CONNECTORS = ("X2", "X3")
+DETECTORS_PER_CONNECTOR = 16
+_DETECTOR_RE = re.compile(r"^(X[23]):([0-9]{1,2})$")
+
+
+def parse_detector(name: str | None) -> tuple[str, int] | None:
+    """"X2:4" -> ("X2", 4). None girdi None doner; gecersiz ad ValueError.
+
+    Ad bicimi TVOC-2 kilavuzundaki konnektor:dedektor gosterimidir; demo
+    betigi (demo/senaryo/s5.sh) bu adi oldugu gibi gecirir.
+    """
+    if name is None:
+        return None
+    match = _DETECTOR_RE.match(name.strip().upper())
+    if match is None:
+        raise ValueError(
+            f"dedektor adi 'X2:4' bicimimde olmali: {name!r} "
+            f"(konnektorler: {', '.join(DETECTOR_CONNECTORS)})"
+        )
+    index = int(match[2])
+    if not 1 <= index <= DETECTORS_PER_CONNECTOR:
+        raise ValueError(f"dedektor sirasi 1-{DETECTORS_PER_CONNECTOR} araliginda olmali: {name!r}")
+    return match[1], index
+
+
+# Sozlesme dosyalari her PanelSimulator kurulusunda yeniden okunuyordu: pano basina
+# uc dosya (alarm-codes.yaml, mqtt-telemetry.schema.json, modbus-map.yaml). Tek pano
+# icin gorunmezdi, ama yuk testi 1.000 pano kurar ve olcum 173 ms/pano idi — yalnizca
+# kurulum ~3 dakika surerdi. Sozlesmeler calisma aninda DEGISMEZ (salt okunur baglanir),
+# bu yuzden dizin basina bir kez okunur. Donen sozlukler HICBIR YERDE degistirilmez.
+@lru_cache(maxsize=4)
+def _thresholds(contracts_dir: str) -> dict:
+    text = (Path(contracts_dir) / "alarm-codes.yaml").read_text(encoding="utf-8")
+    return yaml.safe_load(text)["thresholds"]
+
+
+@lru_cache(maxsize=4)
+def _pano_id_pattern(contracts_dir: str) -> str:
+    schema = json.loads((Path(contracts_dir) / "mqtt-telemetry.schema.json").read_text(encoding="utf-8"))
+    return schema["properties"]["pano_id"]["pattern"]
+
+
+@lru_cache(maxsize=4)
+def _point_names(contracts_dir: str) -> tuple[str, ...]:
+    blocks = yaml.safe_load((Path(contracts_dir) / "modbus-map.yaml").read_text(encoding="utf-8"))["blocks"]
+    conn_temp = next(b for b in blocks if b["name"] == "conn_temp")
+    return tuple(conn_temp["points"])
+
+
+def contract_point_names(contracts_dir: Path | None = None) -> list[str]:
+    """conn_temp nokta adlari — sozlesmeden, koda gomulmeden (PLAN.md kural 10)."""
+    return list(_point_names(str(contracts_dir or default_contracts_dir())))
+
+
 def format_pano_id(prefix: str, index: int) -> str:
     """Sozlesme desenine uyan pano kimligi: format_pano_id("adm", 1) -> "ADM-00001"."""
     upper = prefix.upper()
@@ -147,13 +205,25 @@ def format_pano_id(prefix: str, index: int) -> str:
     return f"{upper}-{index:0{PANO_ID_DIGITS}d}"
 
 
+@lru_cache(maxsize=1)
+def _repo_contracts_dir() -> Path:
+    """Repo icindeki contracts/ dizini — dosya sistemi sorgusu bir kez yapilir.
+
+    Onbellek NEDEN gerekli: default_contracts_dir() sicak yolda cagriliyor
+    (quality.q_bits her ornekte NOKTA BASINA cagirir, yani ornek basina 25 kez).
+    Path.resolve() + is_dir() her seferinde gercek dosya sistemine gidiyordu;
+    olcum: uretec+kenar boru hatti 9 mesaj/s, suresinin %80'i bu iki cagrida.
+    CONTRACTS_DIR ortam degiskeni onbellege ALINMAZ (asagida her cagride okunur),
+    boylece konteynerde /contracts baglama davranisi aynen korunur.
+    """
+    in_repo = Path(__file__).resolve().parents[3] / "contracts"
+    return in_repo if in_repo.is_dir() else Path("/contracts")
+
+
 def default_contracts_dir() -> Path:
     """CONTRACTS_DIR ortam degiskeni, yoksa repo icindeki contracts/ dizini."""
     env = os.getenv("CONTRACTS_DIR")
-    if env:
-        return Path(env)
-    in_repo = Path(__file__).resolve().parents[3] / "contracts"
-    return in_repo if in_repo.is_dir() else Path("/contracts")
+    return Path(env) if env else _repo_contracts_dir()
 
 
 @dataclass(frozen=True)
@@ -216,6 +286,7 @@ class PanelSimulator:
         self._thd_multiplier = 1.0
         self._tvoc_trips = 0
         self._prot_health_ok = True
+        self._failed_detector: tuple[str, int] | None = None
         self._sensor_faults: dict[str, str] = {}
         self._pd_activity = 0.0   # 0 = taban gurultusu, 1 = belirgin PD
         self._fault_age_h: dict[str, float] = {}
@@ -229,21 +300,15 @@ class PanelSimulator:
     # ------------------------------------------------------------ sozlesme okuma
 
     def _load_thresholds(self) -> dict:
-        text = (self._contracts_dir / "alarm-codes.yaml").read_text(encoding="utf-8")
-        return yaml.safe_load(text)["thresholds"]
+        return _thresholds(str(self._contracts_dir))
 
     def _validate_pano_id(self, pano_id: str) -> None:
-        schema_path = self._contracts_dir / "mqtt-telemetry.schema.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        pattern = schema["properties"]["pano_id"]["pattern"]
+        pattern = _pano_id_pattern(str(self._contracts_dir))
         if not re.match(pattern, pano_id):
             raise ValueError(f"pano_id sozlesme desenine uymuyor ({pattern}): {pano_id!r}")
 
     def _contract_point_names(self) -> list[str]:
-        text = (self._contracts_dir / "modbus-map.yaml").read_text(encoding="utf-8")
-        blocks = yaml.safe_load(text)["blocks"]
-        conn_temp = next(b for b in blocks if b["name"] == "conn_temp")
-        return list(conn_temp["points"])
+        return contract_point_names(self._contracts_dir)
 
     # ------------------------------------------------------------- kurulum
 
@@ -345,9 +410,16 @@ class PanelSimulator:
         """TVOC-2 trip sayacini artirir (PDU 149). Sayac geri sayilmaz."""
         self._tvoc_trips += 1
 
-    def set_protection_health(self, healthy: bool) -> None:
-        """Ark korumasi dedektor sagligi: False = pano sessizce korumasiz."""
+    def set_protection_health(self, healthy: bool, detector: str | None = None) -> None:
+        """Ark korumasi dedektor sagligi: False = pano sessizce korumasiz.
+
+        `detector` verilirse ("X2:4" gibi) TVOC-2 sensor durum register'inda
+        (PDU 222/223) O DEDEKTORUN biti temizlenir. Tespit bunu KULLANMAZ —
+        ALM-PROT-HEALTH ozet bit `prot_health_ok` uzerinden cikar (limits.py:268) —
+        ama operatore "hangi dedektor?" diye sorulunca cevap yukun icinde olur.
+        """
         self._prot_health_ok = healthy
+        self._failed_detector = None if healthy else parse_detector(detector)
 
     def set_pd_activity(self, level: float) -> None:
         """Kismi desarj etkinligi (0 = taban gurultusu, 1 = belirgin PD).
@@ -596,13 +668,21 @@ class PanelSimulator:
 
     def _tvoc_block(self) -> dict:
         """Baslangicta sakin ark korumasi (PLAN.md TA1 Adim 5). SALT OKUNUR (GK6)."""
+        sensor_x2, sensor_x3 = ALL_DETECTORS_OK, ALL_DETECTORS_OK
+        if self._failed_detector is not None:
+            connector, index = self._failed_detector
+            mask = ALL_DETECTORS_OK & ~(1 << (index - 1))
+            if connector == "X2":
+                sensor_x2 = mask
+            else:
+                sensor_x3 = mask
         return {
             "state": 0 if self._prot_health_ok else 2,  # bit1 = aktif hata (PDU 1300)
             "trips": self._tvoc_trips,
             "det_bits_low": 0,
             "det_bits_high": 0,
-            "sensor_x2": 0xFFFF,
-            "sensor_x3": 0xFFFF,
+            "sensor_x2": sensor_x2,
+            "sensor_x3": sensor_x3,
             "amb_light_x2": 0,
             "amb_light_x3": 0,
             "prot_health_ok": self._prot_health_ok,

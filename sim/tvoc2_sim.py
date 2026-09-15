@@ -10,8 +10,11 @@ DEMODA GOSTERILECEK DETAY — fabrika ayari ID 248:
     Yani kutudan cikan TVOC-2 hicbir isteme cevap VERMEZ — istisna bile dondurmez.
     Sahada en sik yasanan devreye alma hatasi budur; "cihaz bozuk" sanilir.
 
-    python tvoc2_sim.py --slave-id 248     -> QModMaster timeout alir
+    python tvoc2_sim.py --slave-id 248     -> QModMaster timeout alir (cevap YOK)
     python tvoc2_sim.py --slave-id 10      -> ayni istek cevap doner
+
+    Sessizlik `ignore_missing_slaves=True` ile saglanir; ayrintili gerekce
+    build_context() docstring'inde. Dogrulama: tests/test_tvoc2_server.py.
 
 YAZMA: gercek cihaz PDU 1000 (trip reset) ve 213 (diagnostik) yazmalarini kabul eder.
 Simulator bunlari KAYDEDER ama uygulamaz ve ekrana "olmamasi gereken" diye basar:
@@ -82,8 +85,14 @@ class Tvoc2Block(ModbusSparseDataBlock):
 def build_context(device: Tvoc2Device) -> ModbusServerContext:
     """ID 248 ise HICBIR slave kaydedilmez -> sunucu sessiz kalir.
 
-    pymodbus, istenen unit id baglamda yoksa cevap URETMEZ. "Haberlesme kapali"
-    davranisinin birebir karsiligi budur; sahte bir istisna dondurmek yaniltici olurdu.
+    Sessizlik iki parcanin birlikte calismasiyla saglanir:
+      1) burada bos bir baglam donulur (istenen unit id hicbir zaman bulunmaz),
+      2) sunucu `ignore_missing_slaves=True` ile kaldirilir (main() icinde).
+
+    Ikincisi olmadan pymodbus 3.7 bilinmeyen birim icin 0x8B / kod 11
+    (Gateway Target Device Failed To Respond) istisnasi doner — yani cihaz
+    "sessiz" degil "konusan ama hata veren" olurdu. Gercek TVOC-2 ise kilavuz
+    1.3'e gore HIC cevap vermez; istemci zaman asimi alir.
     """
     if not device.communication_enabled:
         return ModbusServerContext(slaves={}, single=False)
@@ -132,7 +141,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.trip_after > 0.0:
         threading.Thread(target=_trip_after, args=(device, args.trip_after), daemon=True).start()
 
-    StartTcpServer(context=build_context(device), address=(args.host, args.port))
+    # ignore_missing_slaves=True: bilinmeyen birim icin CEVAP URETILMEZ.
+    # Varsayilan (False) 0x8B kod 11 "Gateway Target Device Failed To Respond"
+    # dondururdu; o zaman ID 248 demosu "sessiz cihaz" degil "hata donduren cihaz"
+    # olurdu. Kilavuz 1.3 davranisi sessizliktir — bkz. build_context().
+    StartTcpServer(
+        context=build_context(device),
+        address=(args.host, args.port),
+        ignore_missing_slaves=True,
+    )
     return 0
 
 

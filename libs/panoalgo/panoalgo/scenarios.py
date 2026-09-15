@@ -28,13 +28,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .detect import load_thresholds
 from .edge import EdgePipeline
-from .generator import PanelSimulator, format_pano_id
+from .generator import PanelSimulator, contract_point_names, format_pano_id, parse_detector
 from .quality import codes_from_bits
 
 EXPORT_PERIOD_S = 900.0          # 15 dk (rapor 15.2 Excel uyumu)
@@ -185,6 +185,133 @@ def list_scenarios() -> list[dict]:
     ]
 
 
+@dataclass(frozen=True)
+class ScenarioPlan:
+    """Bir senaryo kosusunun degismez parametreleri.
+
+    CSV fixture uretimi (build) ve CANLI OYNATMA (sim/panosim.py --scenario) ayni
+    plani ve ayni yurutucuyu kullanir. Boylece demoda gosterilen fizik, docs/12'yi
+    ureten fizigin BIREBIR aynisidir — "demoda baska, raporda baska" olamaz.
+    """
+
+    scenario_id: str
+    spec: ScenarioSpec
+    seed: int
+    pano_id: str
+    duration_h: float
+    baseline_h: float
+    start: datetime
+    steps: int
+    l0_limit: float
+    contracts_dir: Path | None = None
+
+
+@dataclass(frozen=True)
+class ScenarioSample:
+    """Yurutucunun her adimda verdigi sonuc."""
+
+    index: int
+    hours: float                      # senaryo baslangicindan itibaren SIMULE saat
+    payload: dict | None              # None = haberlesme boslugu; veri YOK
+    injected_from: datetime | None    # enjeksiyonun basladigi an (basladiysa)
+
+
+def plan(
+    scenario_id: str,
+    seed: int,
+    duration_h: float | None = None,
+    *,
+    contracts_dir: Path | None = None,
+    pano_id: str | None = None,
+    point: str | None = None,
+    detector: str | None = None,
+    baseline_h: float | None = None,
+) -> ScenarioPlan:
+    """Senaryoyu dogrular ve kosturulabilir bir plana cevirir.
+
+    `point` / `detector` / `pano_id` demo icin gecersiz kilinabilir (bkz. demo/senaryo).
+    `baseline_h` yalnizca CANLI demoda kisaltilir (Y1); fixture uretimi asla vermez.
+    """
+    spec = SCENARIOS.get(scenario_id)
+    if spec is None:
+        raise ValueError(f"bilinmeyen senaryo: {scenario_id!r}; gecerli: {sorted(SCENARIOS)}")
+
+    duration = spec.default_duration_h if duration_h is None else duration_h
+    if duration <= 0.0:
+        raise ValueError(f"duration_h pozitif olmali: {duration}")
+
+    if point is not None:
+        spec = replace(spec, point=_validated_point(point, contracts_dir))
+    if detector is not None:
+        # parse_detector burada patlasin: gecersiz ad 30 sn'lik demoda degil, ilk saniyede.
+        parse_detector(detector)
+        spec = replace(spec, params={**spec.params, "detector": detector})
+
+    thresholds = load_thresholds(contracts_dir)
+    learned = min(float(thresholds["baseline_learning_days"]) * 24.0, duration / 3.0)
+    return ScenarioPlan(
+        scenario_id=scenario_id,
+        spec=spec,
+        seed=seed,
+        pano_id=pano_id or format_pano_id("SIM", DEFAULT_PANO_INDEX),
+        duration_h=duration,
+        baseline_h=learned if baseline_h is None else min(max(baseline_h, 0.0), duration),
+        start={"kis": WINTER_START, "yaz": SUMMER_START, "gecis": SHOULDER_START}[spec.season],
+        steps=int(duration * SECONDS_PER_HOUR / EXPORT_PERIOD_S),
+        l0_limit=float(thresholds["term_rise_alarm_k"]),
+        contracts_dir=contracts_dir,
+    )
+
+
+def iter_samples(scenario: ScenarioPlan):
+    """Plani adim adim kosturur; her adimda bir ScenarioSample verir.
+
+    Adim suresi EXPORT_PERIOD_S'dir (15 dk) ve DUVAR SAATINDEN bagimsizdir:
+    yurutucu hiz bilmez. Canli oynatmada araya bekleme koymak cagiranin isidir
+    (sim/panosim.py), fixture uretiminde hic beklenmez.
+    """
+    spec = scenario.spec
+    sim = PanelSimulator(
+        pano_id=scenario.pano_id,
+        seed=scenario.seed,
+        profile=spec.profile,
+        start=scenario.start,
+        contracts_dir=scenario.contracts_dir,
+        medium_voltage=spec.medium_voltage,
+    )
+    pipeline = EdgePipeline(profile=spec.profile, contracts_dir=scenario.contracts_dir)
+    injected_from: datetime | None = None
+
+    for index in range(scenario.steps):
+        hours = index * EXPORT_PERIOD_S / SECONDS_PER_HOUR
+        if not pipeline.baseline_frozen and hours >= scenario.baseline_h:
+            pipeline.freeze_baselines()
+
+        if hours >= scenario.baseline_h:
+            if injected_from is None:
+                injected_from = scenario.start + timedelta(hours=hours)
+            _inject(spec, sim, hours, scenario.baseline_h, scenario.duration_h)
+
+        payload = pipeline.process(sim.step(EXPORT_PERIOD_S))
+
+        if _in_comms_gap(spec, hours, scenario.baseline_h):
+            # veri YOK; sahte deger uretmiyoruz. Canli oynatmada da YAYINLANMAZ.
+            yield ScenarioSample(index, hours, None, injected_from)
+            continue
+
+        yield ScenarioSample(index, hours, payload, injected_from)
+
+
+def _validated_point(point: str, contracts_dir: Path | None) -> str:
+    """Nokta adini sozlesmedeki conn_temp listesine karsi dogrular."""
+    if point in ("PANEL", "SYSTEM"):
+        return point
+    names = contract_point_names(contracts_dir)
+    if point not in names:
+        raise ValueError(f"bilinmeyen nokta: {point!r}; gecerli: {', '.join(names)}")
+    return point
+
+
 def build(
     scenario_id: str,
     seed: int,
@@ -198,56 +325,26 @@ def build(
     """
     import pandas as pd
 
-    spec = SCENARIOS.get(scenario_id)
-    if spec is None:
-        raise ValueError(f"bilinmeyen senaryo: {scenario_id!r}; gecerli: {sorted(SCENARIOS)}")
-    if duration_h <= 0.0:
-        raise ValueError(f"duration_h pozitif olmali: {duration_h}")
-
-    thresholds = load_thresholds(contracts_dir)
-    l0_limit = float(thresholds["term_rise_alarm_k"])
-    baseline_h = min(float(thresholds["baseline_learning_days"]) * 24.0, duration_h / 3.0)
-
-    start = {"kis": WINTER_START, "yaz": SUMMER_START, "gecis": SHOULDER_START}[spec.season]
-    pano_id = format_pano_id("SIM", DEFAULT_PANO_INDEX)
-    sim = PanelSimulator(
-        pano_id=pano_id,
-        seed=seed,
-        profile=spec.profile,
-        start=start,
-        contracts_dir=contracts_dir,
-        medium_voltage=spec.medium_voltage,
-    )
-    pipeline = EdgePipeline(profile=spec.profile, contracts_dir=contracts_dir)
+    scenario = plan(scenario_id, seed, duration_h, contracts_dir=contracts_dir)
+    spec = scenario.spec
 
     rows: list[dict] = []
     l0_breach_at: str | None = None
     injected_from: datetime | None = None
-    steps = int(duration_h * SECONDS_PER_HOUR / EXPORT_PERIOD_S)
 
-    for index in range(steps):
-        hours = index * EXPORT_PERIOD_S / SECONDS_PER_HOUR
-        if not pipeline.baseline_frozen and hours >= baseline_h:
-            pipeline.freeze_baselines()
-
-        if hours >= baseline_h:
-            if injected_from is None:
-                injected_from = start + timedelta(hours=hours)
-            _inject(spec, sim, hours, baseline_h, duration_h)
-
-        payload = pipeline.process(sim.step(EXPORT_PERIOD_S))
-
-        if _in_comms_gap(spec, hours, baseline_h):
-            continue  # veri YOK; sahte deger uretmiyoruz
-
-        row = _row(payload, spec)
+    for sample in iter_samples(scenario):
+        injected_from = sample.injected_from
+        if sample.payload is None:
+            continue
+        row = _row(sample.payload, spec)
         rows.append(row)
-        if l0_breach_at is None and row["worst_dt_c"] > l0_limit:
+        if l0_breach_at is None and row["worst_dt_c"] > scenario.l0_limit:
             l0_breach_at = row["ts"]
 
     frame = pd.DataFrame(rows)
     labels = _labels(
-        spec, scenario_id, seed, pano_id, duration_h, start, injected_from, l0_breach_at, generated_at
+        spec, scenario_id, seed, scenario.pano_id, duration_h, scenario.start,
+        injected_from, l0_breach_at, generated_at,
     )
     return frame, labels
 
@@ -272,7 +369,7 @@ def _inject(spec: ScenarioSpec, sim: PanelSimulator, hours: float, baseline_h: f
         if sim._tvoc_trips < params["trips"]:  # noqa: SLF001 - ayni kulvarin modulu
             sim.trigger_arc_trip()
     elif spec.label_type == "protection_health_loss":
-        sim.set_protection_health(False)
+        sim.set_protection_health(False, detector=params.get("detector"))
     elif spec.label_type == "harmonic":
         sim.set_thd_multiplier(params["thd_multiplier"])
     elif spec.label_type == "sensor_dropped":

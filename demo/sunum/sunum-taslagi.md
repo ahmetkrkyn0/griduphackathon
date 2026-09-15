@@ -32,14 +32,15 @@ Rapor §0'daki 12 içgörüden en güçlü 5'i (`docs/01-problem-analizi.md`):
 | Kanıt | Mesaj |
 |---|---|
 | Üretilebilir donanım tasarımı (blok diyagram + I/O + BOM, gerçek parça numaraları) | "Breadboard göstermiyoruz; üretime verilebilir bir ürün gösteriyoruz." |
-| Firmware host'ta gerçekten koşuyor (A tamamlandığında) | "Kod MCU'ya hazır." |
+| Firmware host'ta gerçekten koşuyor (`ctest` 5/5, `double` ve `float` derlemede; C ↔ Python farkı 1,4e-8, eşik 1e-6) | "Kod MCU'ya hazır; aynı matematik iki dilde aynı sonucu veriyor." |
 | Fizik motoru, rastgele sayı değil (τ·dΔT/dt + ΔT = K·I²) | "Isıl direnç indeksi gerçek bir fiziksel modelden geliyor." |
-| Gerçek register adresleriyle simülatörler (A/B tamamlandığında) | "Cihazlarınız elimizde yok ama register haritanız elimizde." |
+| Gerçek register adresleriyle simülatörler (MPR-53CS CT=500, TVOC-2 fabrika ID 248'de sessiz) | "Cihazlarınız elimizde yok ama register haritanız elimizde." |
 | Bildirim gerçekten telefona düşüyor (WhatsApp + sanal GSM modem) | "SMS sürücüsü üretim sürücüsüdür." |
 
-**Not (dürüstlük):** Bu depoda bugün itibarıyla A kulvarı (fizik motoru, firmware, simülatörler)
-henüz tamamlanmadı; sunumda hangi kanıtların canlı gösterilebildiği demo provasında netleşecek
-(bkz. `STATUS.md`).
+**Not (dürüstlük):** Beş kanıtın beşi de bugün canlı gösterilebiliyor. Bilinçli sınırlar ayrıca
+söylenir: donanım satın alınmadı (ölçüm uçları simüle), firmware hedef MCU'da değil host'ta koşuyor,
+9 ekranın 7'si yapıldı, gerçek telefona WhatsApp teslimi Meta token'ına bağlı. Tek tek döküm:
+`docs/17`.
 
 ## Slayt 4 — Mimari (1,5 dk)
 

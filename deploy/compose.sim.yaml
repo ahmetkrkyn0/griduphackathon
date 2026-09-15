@@ -20,6 +20,12 @@ services:
       SIM_SPEED: ${SIM_SPEED:-60}
       SIM_SEED: ${SIM_SEED:-1000}
       SIM_PREFIX: ${SIM_PREFIX:-ADM}
+      # K3 karari (15 Eylul): fizik HIZLANDIRILMIS kalir, yayinlanan ts DUVAR SAATIDIR.
+      # Eskiden ts de simule zamandi ve SIM_SPEED=60 ile duvar saatinin onune geciyordu
+      # (11 dk kosuda 10,5 saat ileri). Arayuzun trend grafikleri `to = new Date()`
+      # penceresi kullandigi icin yeni veri grafige hic girmiyordu. Gerekce: docs/14 §7.
+      # 0 = eski davranis (simule zaman damgasi).
+      SIM_WALL_CLOCK: ${SIM_WALL_CLOCK:-1}
     volumes:
       - ../contracts:/contracts:ro
       - ../data:/data
@@ -43,6 +49,39 @@ services:
       CONTRACTS_DIR: /contracts
     volumes:
       - ../contracts:/contracts:ro
+
+  # Tasima kabugu (TA3 Adim 6): iki cihaz simulatorunden GERCEK Modbus TCP ile okur,
+  # kenar boru hattindan gecirir, MQTT'ye yayinlar. `panosim` fizik uretecini dogrudan
+  # yayinlar; bu servis ise CIHAZ UZERINDEN gecen yolu gosterir — tvoc-sim'de uretilen
+  # bir ark tripi boylece alarm konsoluna kadar akar.
+  # Varsayilan KAPALI (ayni panoyu iki kaynak beslemesin):
+  #   docker compose -f deploy/compose.yaml --profile cihaz up -d panobeyni
+  panobeyni:
+    profiles: ["cihaz"]
+    build:
+      context: ..
+      dockerfile: sim/Dockerfile
+    container_name: gridup-panobeyni
+    restart: unless-stopped
+    command: ["python", "panobeyni_sim.py"]
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      CONTRACTS_DIR: /contracts
+      MPR_TARGET: mpr-sim:5020
+      TVOC_TARGET: tvoc-sim:5021
+      MPR_UNIT: "1"
+      TVOC_UNIT: ${SIM_TVOC_ID:-248}
+      PANO_ID: ${PANOBEYNI_PANO:-ADM-00007}
+    volumes:
+      - ../contracts:/contracts:ro
+    depends_on:
+      mosquitto:
+        condition: service_started
+      mpr-sim:
+        condition: service_started
+      tvoc-sim:
+        condition: service_started
 
   tvoc-sim:
     build:

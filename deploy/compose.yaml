@@ -59,7 +59,9 @@ services:
 
   backend:
     build:
-      context: ../backend
+      # Context repo koku: imaj hem backend/app'i hem libs/panoalgo'yu icerir (TB2 Adim 4).
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: gridup-backend
     restart: unless-stopped
     environment:
@@ -125,7 +127,11 @@ services:
   #   python scripts/virtual_gsm_modem.py inject --control localhost:7001 --sender +905550000001 --text "1 42"
   gsm-modem:
     build:
-      context: ../backend
+      # backend ile AYNI imaj (ayni Dockerfile, ayni context) — ikinci bir imaj kurmaya
+      # gerek yok, sanal modem yalnizca pyserial ve stdlib kullanir. Context repo koku
+      # olmali: backend/Dockerfile artik libs/panoalgo'yu da kopyaliyor (TB2 Adim 4).
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: gridup-gsm-modem
     restart: unless-stopped
     command: ["python", "/scripts/virtual_gsm_modem.py", "serve", "--port", "7000", "--control-port", "7001", "--log", "/runtime/sms-log.txt"]

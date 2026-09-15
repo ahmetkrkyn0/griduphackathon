@@ -37,6 +37,29 @@ il/ilçe bazlı kırılım için konum alanına ihtiyaç duyuyor — bu öneri k
 
 `CihazSagligi.tsx` görünen panoları sınırlı eşzamanlılıkla (6) tek tek çeker; sayfa içinde bu
 sınırlama açıkça belirtilir. `BolgeHaritasi.tsx` gerçek il/ilçe verisi olmadığı için pano_id
-önekindeki dağıtım şirketine (ADM/GDZ) göre gruplar. `contracts/` Faz 3 sonrası donduğu için
-(PLAN.md kuralı: "Faz 3'ten sonra sözleşme değişmez") bu öneri **bu teslimde uygulanmayabilir**;
-üç onay gelirse ve zaman kalırsa uygulanır, gelmezse bir sonraki milestone'a taşınır.
+önekindeki dağıtım şirketine (ADM/GDZ) göre gruplar.
+
+## 15 Eylül güncellemesi — önerilen karar: **sonraki sürüme**
+
+Gerekçe, öneriyi zayıflatmıyor; zamanlama:
+
+- `contracts/` Faz 3 sonrası donmuştur (PLAN.md Bölüm F). Özellik dondurma **17 Eylül 23:59**.
+  Bu uç, sözleşme + backend ucu + frontend istemcisi + testler demektir ve dondurmadan önceki
+  iki güne sığdırılırsa diğer kritik maddelerin (K1, K5, video, prova) zamanını yer.
+- Mevcut geçici çözüm **ölçülen kullanımda yeterli**: demo filosu 3–20 pano, sınırlı
+  eşzamanlılık 6. GK7 hedefi olan 100+ pano bu teslimde canlı gösterilmiyor.
+- Sapma zaten açıkça yazılı: `docs/17` §6 madde 7 ve sunum "bilinçli sapmalar" listesi
+  ("Cihaz Sağlığı ekranı pano başına istek atıyor").
+
+Yani **reddedilmiyor, ertelenir**: kabul edilirse `version: 2` ile bir sonraki milestone'un ilk
+işidir. Üç onay dondurmadan önce gelirse ve K1–K5 kapanmışsa bu teslimde de uygulanabilir.
+
+## Onaylar (karar toplantısında)
+
+- [ ] A — bu sürümde uygula
+- [ ] B — bu sürümde uygula
+- [ ] C — bu sürümde uygula
+
+veya
+
+- [ ] Üçü birden: **sonraki sürüme ertele** (önerilen)

@@ -38,6 +38,10 @@ class Settings:
     db_dsn: str = ""
     ingest_enabled: bool = True  # False: MQTT abonesi ve arka plan isleri (yazici, alarm zamanlayicisi) calismaz
     alarm_tick_s: float = 5.0  # raf suresi + haberlesme denetimi araligi
+    # Merkez dedektor (TB2 Adim 4): panoalgo.central.CentralDetector. Emniyet agidir —
+    # asil tespit kenarda calisir. Eski ya da gudulu bir firmware kenar tespitini
+    # yapamazsa esik ihlalleri merkezde yine de yakalanir. 0 = bilinerek kapali.
+    central_detector_enabled: bool = True
     # --- SCADA Modbus TCP ag gecidi (TB3). Varsayilan: salt okunur, yalnizca ozel aglardan. ---
     modbus_enabled: bool = False
     modbus_host: str = "0.0.0.0"
@@ -61,6 +65,7 @@ class Settings:
             db_dsn=os.getenv("DB_DSN", ""),
             ingest_enabled=os.getenv("INGEST_ENABLED", "1").lower() not in ("0", "false", "no"),
             alarm_tick_s=float(os.getenv("ALARM_TICK_S", "5")),
+            central_detector_enabled=os.getenv("CENTRAL_DETECTOR", "1").lower() not in ("0", "false", "no"),
             modbus_enabled=os.getenv("MODBUS_ENABLED", "1").lower() not in ("0", "false", "no"),
             modbus_host=os.getenv("MODBUS_HOST", "0.0.0.0"),
             modbus_port=int(os.getenv("MODBUS_TCP_PORT", "502")),

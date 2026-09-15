@@ -31,6 +31,7 @@ import os
 import re
 from collections import deque
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
 
@@ -95,13 +96,25 @@ class KState(NamedTuple):
     excited: bool        # son pencerede yeterli yuk degisimi var miydi
 
 
+@lru_cache(maxsize=1)
+def _repo_contracts_dir() -> Path:
+    """Repo icindeki contracts/ dizini — dosya sistemi sorgusu bir kez yapilir.
+
+    Onbellek NEDEN gerekli: default_contracts_dir() sicak yolda cagriliyor
+    (quality.q_bits her ornekte NOKTA BASINA cagirir, yani ornek basina 25 kez).
+    Path.resolve() + is_dir() her seferinde gercek dosya sistemine gidiyordu;
+    olcum: uretec+kenar boru hatti 9 mesaj/s, suresinin %80'i bu iki cagrida.
+    CONTRACTS_DIR ortam degiskeni onbellege ALINMAZ (asagida her cagride okunur),
+    boylece konteynerde /contracts baglama davranisi aynen korunur.
+    """
+    in_repo = Path(__file__).resolve().parents[3] / "contracts"
+    return in_repo if in_repo.is_dir() else Path("/contracts")
+
+
 def default_contracts_dir() -> Path:
     """CONTRACTS_DIR ortam degiskeni, yoksa repo icindeki contracts/ dizini."""
     env = os.getenv("CONTRACTS_DIR")
-    if env:
-        return Path(env)
-    in_repo = Path(__file__).resolve().parents[3] / "contracts"
-    return in_repo if in_repo.is_dir() else Path("/contracts")
+    return Path(env) if env else _repo_contracts_dir()
 
 
 def lambda_for_period(ts_s: float, reference_lam: float, reference_ts_s: float = REFERENCE_PERIOD_S) -> float:
@@ -122,10 +135,20 @@ def lambda_for_period(ts_s: float, reference_lam: float, reference_ts_s: float =
     return min(reference_lam, max(derived, floor))
 
 
+@lru_cache(maxsize=4)
+def _thresholds(contracts_dir: str) -> dict:
+    return yaml.safe_load((Path(contracts_dir) / "alarm-codes.yaml").read_text(encoding="utf-8"))["thresholds"]
+
+
 def load_thresholds(contracts_dir: Path | None = None) -> dict:
-    """contracts/alarm-codes.yaml thresholds blogu."""
-    directory = contracts_dir or default_contracts_dir()
-    return yaml.safe_load((directory / "alarm-codes.yaml").read_text(encoding="utf-8"))["thresholds"]
+    """contracts/alarm-codes.yaml thresholds blogu.
+
+    Dizin basina bir kez okunur (limits.load_contract ile ayni desen). Olculdu:
+    onbelleksiz her EdgePipeline kurulusu 49 ms suruyordu ve yuk testi 1.000 pano
+    kurdugunda bu tek basina ~49 saniye ediyordu. Sozlesme calisma aninda degismez.
+    Donen sozluk HICBIR YERDE degistirilmez (yalnizca okunur).
+    """
+    return _thresholds(str(contracts_dir or default_contracts_dir()))
 
 
 class KIndexEstimator:

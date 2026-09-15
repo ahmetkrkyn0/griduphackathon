@@ -26,6 +26,11 @@ test = [
   # numpy yalnizca TESTLERDE: PLAN.md TA2 Adim 1 test vektoru numpy ile yazilmis.
   # Uretim kodu (detect.py dahil) saf stdlib kalir — bkz. detect.py modul notu.
   "numpy==2.1.*",
+  # pandas: scenarios.build() CSV disa aktarimi icin (fonksiyon icinde import edilir,
+  # paket import edilirken DEGIL). tests/test_scenarios.py onsuz toplanmaz.
+  # 14 Eylul'e kadar bildirilmemisti: yalnizca [test] ile kurulan temiz ortamda
+  # 27 test ModuleNotFoundError ile dusuyordu (sim/requirements.txt ile geciyordu).
+  "pandas==2.2.*",
 ]
 
 [tool.setuptools.packages.find]
