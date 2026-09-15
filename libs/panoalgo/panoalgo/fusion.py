@@ -32,6 +32,7 @@ bu dosyada gomulu hipotez sabiti YOKTUR (PLAN.md kural 10).
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -56,13 +57,25 @@ class RiskResult(NamedTuple):
     contributions: dict[str, float]     # alarm kodu -> katki (0-1), toplami 1.0
 
 
+@lru_cache(maxsize=1)
+def _repo_contracts_dir() -> Path:
+    """Repo icindeki contracts/ dizini — dosya sistemi sorgusu bir kez yapilir.
+
+    Onbellek NEDEN gerekli: default_contracts_dir() sicak yolda cagriliyor
+    (quality.q_bits her ornekte NOKTA BASINA cagirir, yani ornek basina 25 kez).
+    Path.resolve() + is_dir() her seferinde gercek dosya sistemine gidiyordu;
+    olcum: uretec+kenar boru hatti 9 mesaj/s, suresinin %80'i bu iki cagrida.
+    CONTRACTS_DIR ortam degiskeni onbellege ALINMAZ (asagida her cagride okunur),
+    boylece konteynerde /contracts baglama davranisi aynen korunur.
+    """
+    in_repo = Path(__file__).resolve().parents[3] / "contracts"
+    return in_repo if in_repo.is_dir() else Path("/contracts")
+
+
 def default_contracts_dir() -> Path:
     """CONTRACTS_DIR ortam degiskeni, yoksa repo icindeki contracts/ dizini."""
     env = os.getenv("CONTRACTS_DIR")
-    if env:
-        return Path(env)
-    in_repo = Path(__file__).resolve().parents[3] / "contracts"
-    return in_repo if in_repo.is_dir() else Path("/contracts")
+    return Path(env) if env else _repo_contracts_dir()
 
 
 def load_contract(contracts_dir: Path | None = None) -> dict:

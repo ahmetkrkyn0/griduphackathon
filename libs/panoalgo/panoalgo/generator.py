@@ -38,6 +38,7 @@ import re
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -165,12 +166,33 @@ def parse_detector(name: str | None) -> tuple[str, int] | None:
     return match[1], index
 
 
+# Sozlesme dosyalari her PanelSimulator kurulusunda yeniden okunuyordu: pano basina
+# uc dosya (alarm-codes.yaml, mqtt-telemetry.schema.json, modbus-map.yaml). Tek pano
+# icin gorunmezdi, ama yuk testi 1.000 pano kurar ve olcum 173 ms/pano idi — yalnizca
+# kurulum ~3 dakika surerdi. Sozlesmeler calisma aninda DEGISMEZ (salt okunur baglanir),
+# bu yuzden dizin basina bir kez okunur. Donen sozlukler HICBIR YERDE degistirilmez.
+@lru_cache(maxsize=4)
+def _thresholds(contracts_dir: str) -> dict:
+    text = (Path(contracts_dir) / "alarm-codes.yaml").read_text(encoding="utf-8")
+    return yaml.safe_load(text)["thresholds"]
+
+
+@lru_cache(maxsize=4)
+def _pano_id_pattern(contracts_dir: str) -> str:
+    schema = json.loads((Path(contracts_dir) / "mqtt-telemetry.schema.json").read_text(encoding="utf-8"))
+    return schema["properties"]["pano_id"]["pattern"]
+
+
+@lru_cache(maxsize=4)
+def _point_names(contracts_dir: str) -> tuple[str, ...]:
+    blocks = yaml.safe_load((Path(contracts_dir) / "modbus-map.yaml").read_text(encoding="utf-8"))["blocks"]
+    conn_temp = next(b for b in blocks if b["name"] == "conn_temp")
+    return tuple(conn_temp["points"])
+
+
 def contract_point_names(contracts_dir: Path | None = None) -> list[str]:
     """conn_temp nokta adlari — sozlesmeden, koda gomulmeden (PLAN.md kural 10)."""
-    directory = contracts_dir or default_contracts_dir()
-    blocks = yaml.safe_load((directory / "modbus-map.yaml").read_text(encoding="utf-8"))["blocks"]
-    conn_temp = next(b for b in blocks if b["name"] == "conn_temp")
-    return list(conn_temp["points"])
+    return list(_point_names(str(contracts_dir or default_contracts_dir())))
 
 
 def format_pano_id(prefix: str, index: int) -> str:
@@ -183,13 +205,25 @@ def format_pano_id(prefix: str, index: int) -> str:
     return f"{upper}-{index:0{PANO_ID_DIGITS}d}"
 
 
+@lru_cache(maxsize=1)
+def _repo_contracts_dir() -> Path:
+    """Repo icindeki contracts/ dizini — dosya sistemi sorgusu bir kez yapilir.
+
+    Onbellek NEDEN gerekli: default_contracts_dir() sicak yolda cagriliyor
+    (quality.q_bits her ornekte NOKTA BASINA cagirir, yani ornek basina 25 kez).
+    Path.resolve() + is_dir() her seferinde gercek dosya sistemine gidiyordu;
+    olcum: uretec+kenar boru hatti 9 mesaj/s, suresinin %80'i bu iki cagrida.
+    CONTRACTS_DIR ortam degiskeni onbellege ALINMAZ (asagida her cagride okunur),
+    boylece konteynerde /contracts baglama davranisi aynen korunur.
+    """
+    in_repo = Path(__file__).resolve().parents[3] / "contracts"
+    return in_repo if in_repo.is_dir() else Path("/contracts")
+
+
 def default_contracts_dir() -> Path:
     """CONTRACTS_DIR ortam degiskeni, yoksa repo icindeki contracts/ dizini."""
     env = os.getenv("CONTRACTS_DIR")
-    if env:
-        return Path(env)
-    in_repo = Path(__file__).resolve().parents[3] / "contracts"
-    return in_repo if in_repo.is_dir() else Path("/contracts")
+    return Path(env) if env else _repo_contracts_dir()
 
 
 @dataclass(frozen=True)
@@ -266,13 +300,10 @@ class PanelSimulator:
     # ------------------------------------------------------------ sozlesme okuma
 
     def _load_thresholds(self) -> dict:
-        text = (self._contracts_dir / "alarm-codes.yaml").read_text(encoding="utf-8")
-        return yaml.safe_load(text)["thresholds"]
+        return _thresholds(str(self._contracts_dir))
 
     def _validate_pano_id(self, pano_id: str) -> None:
-        schema_path = self._contracts_dir / "mqtt-telemetry.schema.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        pattern = schema["properties"]["pano_id"]["pattern"]
+        pattern = _pano_id_pattern(str(self._contracts_dir))
         if not re.match(pattern, pano_id):
             raise ValueError(f"pano_id sozlesme desenine uymuyor ({pattern}): {pano_id!r}")
 
