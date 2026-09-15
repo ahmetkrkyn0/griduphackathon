@@ -119,7 +119,7 @@ Sel, bayat, chattering ve kod bazında "kötü aktör" metriklerini Grafana'da h
 **Ne üretir:** SCADA entegrasyon mühendisinin okuduğu formda, koddan üretilen ve yeniden üretim testiyle korunan bir bölüm.
 **Dikkat:** Ayrı dosya, ayrı betik, ayrı test modülü açılmamalı. Standardın ek formundaki satırlar birebir kopyalanmamalı, yalnızca bölüm başlıkları kullanılmalı. Desteklenmeyen her şey (tüm kontrol ASDU'ları, sayaç sorgulaması, dosya transferi) açıkça "desteklenmiyor" işaretlenmeli — bu GK6 hikâyesini standart formda güçlendirir.
 
-### F-09 · Yazdırılabilir olay dosyası
+### F-09 · Yazdırılabilir olay dosyası — ✅ tamamlandı
 Operatörün kara kutu ekranında gördüğünü tek sayfalık, imzalanabilir bir olay raporuna çevirir · **Etki:** yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** yeni `frontend/src/print.css`, [frontend/src/pages/OlayAnalizi.tsx](frontend/src/pages/OlayAnalizi.tsx), [frontend/src/app.css](frontend/src/app.css)
 **Sektörel dayanak:** EcoStruxure Power Commission kabul raporlarını, Asset Advisor aylık raporları otomatik üretiyor; NFPA 70B 2023 bakım ve olay kayıtlarının belgelenmesini istiyor (ABD standardı, Türkiye'de bağlayıcı değil).
 **Bizdeki boşluk:** Depoda tek bir `@media print` kuralı, tek bir yazdırma çağrısı ve tek bir dışa aktarma yolu yok. Kara kutu ucu, olay zaman çizelgesi ve "neden/ne yapmalı/ne kadar acil" üçlüsü zaten hazır; iş tek bir CSS dosyasına iniyor.

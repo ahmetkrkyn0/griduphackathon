@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useParams } from "react-router-dom";
-import { api } from "../api/client";
+import { api, usingMocks } from "../api/client";
 import { errorText } from "../api/errors";
-import type { Alarm, Blackbox } from "../api/types";
+import type { Alarm, Blackbox, PanelDetail } from "../api/types";
 import { CizgiGrafik, type ChartMarker } from "../components/CizgiGrafik";
+import { OnGorunus } from "../components/OnGorunus";
 import { ago } from "../lib/format";
-import { alarmText } from "../lib/labels";
+import { alarmText, panoTypeText } from "../lib/labels";
+import "../print.css";
 import { useFleet } from "../state/fleet";
 
 // saat; backend sinir: 1-336 (insights.py). 336 sa = 14 gun: docs/12 §2'deki 209 saatlik
@@ -13,6 +16,13 @@ import { useFleet } from "../state/fleet";
 const WINDOWS = [24, 72, 168, 336] as const;
 
 const KIND_TR: Record<string, string> = { alarm: "Alarm", ack: "Onay", action: "Aksiyon", note: "Not", trip: "Trip" };
+
+// Kagitta goreli zaman ("3 sa once") okunmaz: rapor mutlak damga basar.
+const STAMP = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "medium" });
+const stampText = (ms: number) => STAMP.format(new Date(ms));
+
+// Islak imza satirlari — yazdirilan olay dosyasi bu uc rolle dolasir.
+const SIGN_ROLES = ["Raporu hazırlayan", "Kontrol eden (vardiya amiri)", "Teslim alan"] as const;
 
 /** TC3: kara kutu — bir olayin oncesindeki 72 saatlik sinyalleri ve zaman cizelgesini gosterir. */
 export function OlayAnalizi() {
@@ -77,6 +87,8 @@ function KaraKutu({ eventId }: { eventId: string }) {
   const [windowH, setWindowH] = useState<(typeof WINDOWS)[number]>(72);
   const [data, setData] = useState<Blackbox | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [panel, setPanel] = useState<PanelDetail | null>(null);
+  const [printedAt, setPrintedAt] = useState<number | null>(null);
 
   useEffect(() => {
     setData(null);
@@ -88,6 +100,30 @@ function KaraKutu({ eventId }: { eventId: string }) {
       .catch((e) => !controller.signal.aborted && setError(errorText(e)));
     return () => controller.abort();
   }, [eventId, windowH]);
+
+  // Raporun 2B on gorunusu icin nokta listesi: kara kutu ucu seri dondurur, nokta durumu
+  // dondurmez. Ek istek yalnizca yazdirilan bolumu besler; alinamazsa rapor onsuz basilir.
+  const panoId = data?.pano_id;
+  useEffect(() => {
+    if (!panoId) return;
+    setPanel(null);
+    const controller = new AbortController();
+    api
+      .panel(panoId, controller.signal)
+      .then(setPanel)
+      .catch(() => {
+        // On gorunus raporun tamamlayici parcasi; hata ekranda da kagitta da gosterilmez.
+      });
+    return () => controller.abort();
+  }, [panoId]);
+
+  // "Alindi" damgasi yazdirma penceresi acilmadan hemen once tazelenir. flushSync sart:
+  // React guncellemeyi erteleseydi kagida bir onceki damga (ya da hic) basilirdi.
+  const stampNow = () => flushSync(() => setPrintedAt(Date.now()));
+  useEffect(() => {
+    window.addEventListener("beforeprint", stampNow);
+    return () => window.removeEventListener("beforeprint", stampNow);
+  }, []);
 
   if (error) {
     return (
@@ -115,11 +151,19 @@ function KaraKutu({ eventId }: { eventId: string }) {
 
   const occurredMs = Date.parse(data.occurred_at);
   const markers: ChartMarker[] = [{ tMs: occurredMs, label: "Olay" }];
-  const panoName = panels.find((p) => p.pano_id === data.pano_id)?.name ?? data.pano_id;
+  const summary = panels.find((p) => p.pano_id === data.pano_id);
+  const panoName = summary?.name ?? data.pano_id;
+  const panoType = panoTypeText(summary?.pano_type);
   const pointTags = Object.keys(data.series).filter((t) => t.startsWith("t_conn."));
 
+  // beforeprint'i desteklemeyen tarayicida da damga taze olsun diye dugme de tazeler.
+  const yazdir = () => {
+    stampNow();
+    window.print();
+  };
+
   return (
-    <main className="page">
+    <main className="page report">
       <Link to="/olay" className="back">
         Olay analizi
       </Link>
@@ -132,12 +176,61 @@ function KaraKutu({ eventId }: { eventId: string }) {
         {data.det_label ? `, ${data.det_label}` : ""} — {ago(data.occurred_at)}
       </p>
 
-      <div className="console-filters" role="group" aria-label="Pencere">
-        {WINDOWS.map((w) => (
-          <button key={w} type="button" aria-pressed={windowH === w} onClick={() => setWindowH(w)}>
-            {w} saat
-          </button>
-        ))}
+      {/* Kagit basligi: ekranda gizli, yazdirmada ekran basliginin yerini alir (print.css). */}
+      <header className="print-head print-only">
+        <div className="print-title">
+          <strong>Olay raporu — Grid Up Pano İzleme</strong>
+          <span>Kara kutu · olay öncesi {data.window_h} saatlik kayıt</span>
+        </div>
+        <p className="print-source">
+          {usingMocks
+            ? "ÖRNEK/SENTETİK VERİDEN ÜRETİLMİŞTİR — arayüz örnek veriyle çalışmaktadır, bu rapor saha ölçümü değildir."
+            : "Veri kaynağı: bağlı Grid Up API'si (/api/v1); rapor, kayıtların yazdırma anındaki görüntüsüdür."}
+        </p>
+        <dl className="print-meta">
+          <div>
+            <dt>Pano</dt>
+            <dd>
+              {panoName} · {data.pano_id}
+              {panoType ? ` · ${panoType}` : ""}
+            </dd>
+          </div>
+          <div>
+            <dt>Olay kimliği</dt>
+            <dd>{data.event_id}</dd>
+          </div>
+          <div>
+            <dt>Olay</dt>
+            <dd>
+              {alarmText(data.code)} ({data.code})
+            </dd>
+          </div>
+          <div>
+            <dt>Tespit noktası</dt>
+            <dd>{data.det_label ?? "Bildirilmedi"}</dd>
+          </div>
+          <div>
+            <dt>Olay zamanı</dt>
+            <dd>{stampText(occurredMs)}</dd>
+          </div>
+          <div>
+            <dt>Rapor alındığı an</dt>
+            <dd>{printedAt == null ? "Yazdırma anında basılır" : stampText(printedAt)}</dd>
+          </div>
+        </dl>
+      </header>
+
+      <div className="bb-bar">
+        <div className="console-filters" role="group" aria-label="Pencere">
+          {WINDOWS.map((w) => (
+            <button key={w} type="button" aria-pressed={windowH === w} onClick={() => setWindowH(w)}>
+              {w} saat
+            </button>
+          ))}
+        </div>
+        <button type="button" className="btn ghost" onClick={yazdir}>
+          Olay raporunu yazdır
+        </button>
       </div>
 
       <div className="split">
@@ -186,11 +279,24 @@ function KaraKutu({ eventId }: { eventId: string }) {
         </div>
 
         <div>
+          {/* 3B ikiz tuvali kagitta bos cikar; rapora 2B on gorunus konur. Yalnizca yazdirmada. */}
+          {panel && (
+            <figure className="front print-only">
+              <OnGorunus points={panel.points} tvoc={panel.tvoc} />
+              <figcaption>
+                Ön görünüş, kapaklar açık. Renkli noktalar normal dışı bağlantılar, mavi kutu Pano Beyni. Nokta durumları raporun alındığı ana
+                aittir; olay anındaki değerler yandaki grafiklerdedir.
+              </figcaption>
+            </figure>
+          )}
+
           <h3>Zaman çizelgesi</h3>
           <ul className="timeline">
             {data.timeline.map((entry, i) => (
               <li key={i} className={`k-${entry.kind}`}>
                 <span className="tl-time">{ago(entry.ts)}</span>
+                {/* Imzalanan raporda goreli zaman ise yaramaz; kagitta bunun yerine mutlak damga cikar. */}
+                <span className="tl-time print-only">{stampText(Date.parse(entry.ts))}</span>
                 <span className="tl-text">
                   <span className="dim small">{KIND_TR[entry.kind] ?? entry.kind}</span> — {entry.text}
                 </span>
@@ -199,6 +305,22 @@ function KaraKutu({ eventId }: { eventId: string }) {
           </ul>
         </div>
       </div>
+
+      <div className="print-sign print-only">
+        {SIGN_ROLES.map((role) => (
+          <section key={role}>
+            <h4>{role}</h4>
+            <p>Ad-Soyad</p>
+            <p>Tarih / Saat</p>
+            <p>İmza</p>
+          </section>
+        ))}
+      </div>
+
+      <p className="print-foot print-only">
+        Bu rapor, Grid Up Pano İzleme arayüzünün kara kutu ekranından tarayıcı yazdırması ile üretilmiştir. Olay kimliği {data.event_id}; kara
+        kutu penceresi {data.window_h} saat. 3B ikiz görünümü kâğıda basılamadığından rapora 2B ön görünüş konmuştur.
+      </p>
     </main>
   );
 }
