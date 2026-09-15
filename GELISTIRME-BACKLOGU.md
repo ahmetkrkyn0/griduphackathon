@@ -63,7 +63,7 @@ Bu dosya, "Pano/Hücre İçi Anomali Erken Uyarı Sistemi" için üç aşamalı 
 
 Sıra **etki sırasıdır**, bütçe sırası değil. Bu on maddenin toplamı ~27-33 saat; [KALAN-EKSIKLER.md](KALAN-EKSIKLER.md)'deki K/Y kalemleri üç kişide zaten bağlı olduğu için serbest bütçe gerçekçi olarak 12-15 saat. Yukarıdan aşağı alın, çizginin altı kalsın. **Kabul kapısı:** 15-17 Eylül'de yeni işe ancak dört koşul birden sağlanıyorsa başlanır — tek kulvar, [contracts/](contracts/) dokunmuyor, ≤3-4 saat, mevcut 987 testi kırmıyor.
 
-### F-01 · Altın demo veritabanı ve tek seferlik göç penceresi
+### F-01 · Altın demo veritabanı ve tek seferlik göç penceresi — ✅ tamamlandı
 Bekleyen tüm şema göçlerini tek `down -v` anında uygular ve ≥7 günlük temiz veriyle ısıtılmış bir veritabanı üretir · **Etki:** çok yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [deploy/compose.yaml](deploy/compose.yaml), yeni bir `scripts/seed_demo.py`
 **Sektörel dayanak:** Her ölçüm iddiasının tekrar üretilebilir bir zeminden çıkması gereği (ENWL kapanış raporu, devreye alma kayıt kalitesi bulgusu).
 **Bizdeki boşluk:** [deploy/initdb/](deploy/initdb/) yalnızca boş volume'de koşuyor; yerel veritabanlarında Faz 0 artıkları ve geçmiş zaman damgası bozukluğundan kalan satırlar var. Taban öğrenme canlı yığında gerçek saatler sürüyor.
