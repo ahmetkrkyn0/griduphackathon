@@ -112,7 +112,7 @@ Sel, bayat, chattering ve kod bazında "kötü aktör" metriklerini Grafana'da h
 **Ne üretir:** Dört yeni panel + düzeltilmiş açıklama; ISA-18.2 iddiasının "uyguladık"tan "ölçüyoruz"a geçmesi.
 **Dikkat:** **İlk iş** yanlış panel açıklamasını kapatmak. Grafana JSON elle düzenlenmez, [scripts/gen_grafana_dashboards.py](scripts/gen_grafana_dashboards.py) üzerinden geçer; pano dosyaları [PLAN.md](PLAN.md) Bölüm B kural 7 gereği tek sahiplidir (B). Filo KPI şemasına alan eklenmeyecek — üç ayrı yerde depo uygulaması demek. Ölçüm yük testi verisiyle yapılamaz (tek kod üretiyor); senaryo oynatmalarıyla yapılmalı.
 
-### F-08 · IEC 104 birlikte çalışabilirlik bloğu (koddan üretilmiş)
+### F-08 · IEC 104 birlikte çalışabilirlik bloğu (koddan üretilmiş) — ✅ tamamlandı
 Çalışan IEC 104 istasyonumuzu standardın kendi form başlıklarıyla belgeler · **Etki:** yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [scripts/gen_iec104_doc.py](scripts/gen_iec104_doc.py) → [docs/04-iec104-haritasi.md](docs/04-iec104-haritasi.md) yeni §7 bloğu, mevcut test dosyasına iki doğrulama
 **Sektörel dayanak:** IEC 60870-5-104 uygulayan her ürün bu listeyi yayımlıyor; bölüm başlıkları ve işaretleme kuralı standarttır (Beckhoff, Bachmann, Phoenix Contact örnekleri).
 **Bizdeki boşluk:** İçeriğin çoğu zaten üretiliyor (k/w, t1/t2/t3, IOA, tip↔COT matrisi) ama bizim anlattığımız biçimde. Eksik delta: COT ve ortak adres alan uzunlukları, azami APDU, t0'ın yokluğu ve desteklenmeyen uygulama fonksiyonlarının açıkça işaretlenmesi.
