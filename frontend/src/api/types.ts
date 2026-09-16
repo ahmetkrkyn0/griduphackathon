@@ -89,11 +89,27 @@ export interface AlarmSignal {
   unit?: string;
 }
 
+/**
+ * Karsi-olgusal aciklama blogu: baskin hipotezin bu ornekte HENUZ GORULMEYEN kaniti
+ * (backend/app/risk.py `_verify`). contracts/openapi.yaml DONMUS oldugu icin yeni bir
+ * yanit alani acilmadi; sozlesmedeki AlarmReason acik bir nesnedir
+ * (additionalProperties kapali degil) ve blok onun icinde tasinir.
+ */
+export interface AlarmVerify {
+  /** hypotheses[].code, or. "HYP-LOOSE-CONN". */
+  hypothesis: string;
+  /** Bu ornekte gorulmeyen kanit kodlari, sozlesmedeki sirayla. */
+  missing: string[];
+  /** Hipotezin sozlesmedeki toplam kanit sayisi. */
+  total: number;
+}
+
 export interface AlarmReason {
   signals?: AlarmSignal[];
   layer?: "L-1" | "L0" | "L1" | "L2" | "L3";
   basis?: string;
   point?: string | null;
+  verify?: AlarmVerify;
 }
 
 export interface Alarm {

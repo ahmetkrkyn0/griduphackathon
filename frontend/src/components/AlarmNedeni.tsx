@@ -1,24 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Alarm, AlarmReason, AlarmSignal } from "../api/types";
+import type { Alarm, AlarmSignal } from "../api/types";
 import { ago, measure, ttlText } from "../lib/format";
 import { CHANNEL_TEXT, adviceText, alarmText, hypText, signalLabel, unitText } from "../lib/labels";
 import { PrioMark } from "./PrioMark";
-
-/**
- * Karsi-olgusal aciklama blogu: baskin hipotezin HENUZ GORULMEYEN kaniti (backend/app/risk.py `_verify`).
- * contracts/openapi.yaml DONMUS oldugu icin yeni bir yanit alani acilmadi; sozlesmedeki AlarmReason
- * acik bir nesne (additionalProperties kapali degil) ve blok onun icinde tasiniyor. Bicim burada
- * yerel olarak tanimli: api/types.ts bu kulvarin dosyasi degil.
- */
-interface VerifyBlock {
-  /** hypotheses[].code, or. "HYP-LOOSE-CONN". */
-  hypothesis: string;
-  /** Bu ornekte gorulmeyen kanit kodlari, sozlesmedeki sirayla. */
-  missing: string[];
-  /** Hipotezin sozlesmedeki toplam kanit sayisi. */
-  total: number;
-}
 
 interface Props {
   alarm: Alarm;
@@ -63,7 +48,7 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
   const [reason, setReason] = useState("");
 
   const signals = alarm.reason?.signals ?? [];
-  const verify = (alarm.reason as (AlarmReason & { verify?: VerifyBlock }) | null | undefined)?.verify;
+  const verify = alarm.reason?.verify;
   const confirmed = verify ? verify.total - verify.missing.length : 0;
   const ttl = ttlText(alarm.ttl_h);
   const advice = adviceText(alarm.advice);
