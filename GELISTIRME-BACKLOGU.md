@@ -169,7 +169,7 @@ Dört ayrı dosyaya dağılmış itirafları tek yerde toplar · **Etki:** yüks
 **Ne üretir:** "Neyi yapmadınız?" sorusunun tek kaynağı; dürüstlüğün dağınık değil toplu okunması.
 **Dikkat:** Her satır gerekçeli olmalı; gerekçesiz "yapmadık" listesi eksik listesi gibi okunur.
 
-### F-15 · docs/18 — Ticari ürün karşılaştırması ve analitik standart izi
+### F-15 · docs/18 — Ticari ürün karşılaştırması ve analitik standart izi — ✅ tamamlandı
 Cihaz düzeyindeki mevcut karşılaştırmayı platform düzeyine taşır ve durum izleme standart ailesini kod dosyalarına bağlar · **Etki:** yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** yeni `docs/18-konumlandirma-ve-standart-izi.md`
 **Sektörel dayanak:** Karşılaştırılacak platformlar: ABB Ability EDCS çok-tesisli karşılaştırma, Siemens SENTRON powermanager (EN 50160 raporu, kesici kalan ömür), Eaton Foreseer, Hitachi TXpert, Schneider PME. Standart izi: ISO 17359 (durum izleme programı ve alarm kriteri), ISO 13379-1 (veri yorumlama ve tanı), ISO 13381-1 (prognoz, kalan ömür), CIGRE TB 858 (varlık sağlık indeksleri).
 **Bizdeki boşluk:** Cihaz düzeyinde sekiz satırlık bir karşılaştırma tablosu iç çalışma dosyasında zaten var ama jüriye gitmiyor; platform düzeyi hiç yok. Ayrıca ürünün ANA İŞİ için (durum izleme + prognoz) depoda sıfır standart izi var: K₀ = baz çizgisi, ttl = kalan ömür, risk skoru = sağlık indeksi eşlemesi hiçbir yerde yazılı değil.
