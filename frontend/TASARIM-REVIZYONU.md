@@ -559,6 +559,49 @@ kural). CC BY-IGO atıf zorunluluğu haritanın altına eklendi (kaynağa bağla
 çalışıyor, yatay taşma yok, konsolda hata yok. `/cihaz-sagligi` gibi başka bir sayfada aktif nav
 sekmesinin tam turuncu + beyaz metin göründüğü ayrıca doğrulandı.
 
+## 18. Haritayı tamamlama (tüm ADM/GDZ hizmet bölgesi) + gerçek GDZ logosu (16 Eylül, aynı gün)
+
+Kullanıcı §17'deki haritayı gördükten sonra iki şey daha istedi: (a) haritadaki "kopukluklar"ı
+gider — yalnızca panosu olan 20 ilçe çizildiği için aralarında büyük boş alanlar vardı; ADM ve
+GDZ'nin hizmet aldığı TÜM ilçeleri ekle, aradaki kopukluk gerçekten onlara ait değilse bile
+bütünlük için pasif gri bir bölge ekle; (b) kendi sağladığı `gdzlogo.svg` dosyasını siteye sol
+üste, gerçek sitedeki boyutuna yakın şekilde koy.
+
+**(a) Harita tamamlama:** `districts_names.json`'daki `plate_code` alanı üzerinden ADM'nin
+(Aydın=09, Denizli=20, Muğla=48) ve GDZ'nin (İzmir=35, Manisa=45) hizmet verdiği **toplam 96
+ilçenin tamamı** çıkarıldı (önceki turda yalnızca panosu olan 20'si vardı), aynı Douglas-Peucker
+hattıyla sadeleştirildi (6.088 nokta, 115 KB) ve `company`/`province` etiketiyle birlikte
+`src/data/ilce-sinirlari.json`'a yazıldı. **Ayrı bir "bağlayıcı" bölgeye gerek çıkmadı:** bu 5 il
+gerçekte zaten birbirine komşu (İzmir–Aydın, Manisa–Aydın, Manisa–Denizli sınırdaş) — 96 ilçenin
+hepsi çizilince harita zaten tek parça, kopuksuz bir bütün oluşturuyor. Kullanıcı "eğer böyle bir
+bölge varsa" diye şartlı istemişti; gerçekte yoktu, o yüzden var olmayan bir üçüncü bölgeyi
+uydurup eklemedim (dürüstlük kuralı) — bu, ekrandaki metinle de (`ADM ... ve GDZ'nin ... hizmet
+bölgesindeki tüm ilçeler`) tutarlı.
+
+`BolgeHaritasi.tsx`'te `GeoHarita` artık `TERRITORY` (96 ilçe) üzerinden tam iterasyon yapıyor;
+panosu olan ilçeler (`panelDistricts` seti) mevcut `.geo-district` (turuncu+glow+hover) sınıfını
+alırken, geri kalan 76'sı yeni `.geo-territory` sınıfıyla (pasif gri dolgu, ince kontur, hover/glow
+yok — kasıtlı olarak vurgusuz, ISA-101 "renk yalnızca anormal durumda" ilkesiyle tutarlı) çiziliyor.
+Aynı ilçe için iki ayrı path çizmek yerine (ki kenarlarda çift-çizgi görsel hatasına yol açardı) her
+ilçe TEK path olarak render ediliyor, sınıfı panosu olup olmamasına göre değişiyor.
+
+**(b) Gerçek GDZ logosu:** Önceki karar (plan §3.5: "logo dosyaları gömülmez", grafit üçgen
+"kıvılcım" işareti) kullanıcının doğrudan talimatıyla bu oturumda geçersiz kılındı — kullanıcı
+kendi sağladığı `gdzlogo.svg`'yi (960×540 viewBox, içine gömülü 605×258 raster PNG) istedi.
+Gerçek sitede (`gdzelektrik.com.tr`) header logosu incelendi: orada gerçek, temiz bir vektör SVG
+`width="126" height="70"` olarak gösteriliyor — bize verilen dosya farklı bir dışa aktarım
+olduğundan piksel-birebir eşleştirme anlamlı değildi; bunun yerine dosyanın kendi en-boy oranı
+(960:540) korunarak `height: 40px` (topbar'a sığan, "gerçek logo ölçeği" hissi veren bir boyut)
+uygulandı. `App.tsx`'teki `BrandMark()` artık bu görüntüyü döndürüyor, `.brand-mark` CSS'i
+güncellendi. Dosya `frontend/src/assets/gdz-logo.svg`'ye kondu (kullanıcının repo köküne
+bıraktığı `gdzlogo.svg` dokunulmadan kaldı — kopyalandı, silinmedi).
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı (harita verisi ~90 KB,
+logo 45,7 KB pakete eklendi). `/bolge` chrome-devtools ile 1440px ve 390px'de kontrol edildi —
+5 il artık tek parça, kopuksuz bir alan olarak görünüyor, panosu olan ilçeler turuncu+glow ile
+öne çıkıyor, GDZ logosu sol üstte doğru oranda görünüyor, konsolda hata yok. `assets/ekran/
+07-bolge-haritasi.png` yenilendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

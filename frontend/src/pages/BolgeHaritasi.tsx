@@ -22,10 +22,15 @@ type Geo = PanelSummary & { lat: number; lon: number };
 const hasCoords = (p: PanelSummary): p is Geo => p.lat != null && p.lon != null;
 
 // [boylam, enlem] — GeoJSON sozlesmesi. Kaynak: UN OCHA HDX COD-AB-TUR (CC BY-IGO), ilce
-// sinirlari Douglas-Peucker ile sadelestirildi (bkz. frontend/TASARIM-REVIZYONU.md §17).
+// sinirlari Douglas-Peucker ile sadelestirildi (bkz. frontend/TASARIM-REVIZYONU.md §18). Bu dosya
+// ADM (Aydin/Denizli/Mugla) ve GDZ'nin (Izmir/Manisa) hizmet bolgesindeki TUM 96 ilceyi icerir —
+// yalnizca panosu olan 20 tanesini degil — harita "kopuk" degil butun gorunsun diye (kullanici
+// talebi, 16 Eylul). Bu 5 il gercekte birbirine komsu (Izmir-Aydin, Manisa-Aydin, Manisa-Denizli
+// sinirdas) oldugundan ayri bir "baglayici" ile eklemeye gerek kalmadi — bkz. TASARIM-REVIZYONU.md.
 type LonLat = [number, number];
 type BoundaryGeom = { type: "Polygon"; coordinates: LonLat[][] } | { type: "MultiPolygon"; coordinates: LonLat[][][] };
-const DISTRICT_BOUNDARIES = ilceSinirlari as unknown as Record<string, BoundaryGeom>;
+type TerritoryEntry = { company: "ADM" | "GDZ"; province: string; plate: string; geom: BoundaryGeom };
+const TERRITORY = ilceSinirlari as unknown as Record<string, TerritoryEntry>;
 
 function districtKey(name: string): string {
   return name.split(" ")[0];
@@ -33,6 +38,12 @@ function districtKey(name: string): string {
 
 function ringsOf(geom: BoundaryGeom): LonLat[][] {
   return geom.type === "Polygon" ? geom.coordinates : geom.coordinates.flat();
+}
+
+function pathOf(geom: BoundaryGeom, project: (lon: number, lat: number) => { x: number; y: number }): string {
+  return ringsOf(geom)
+    .map((ring) => `M${ring.map(([lon, lat]) => { const { x, y } = project(lon, lat); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join("L")}Z`)
+    .join(" ");
 }
 
 const MAP_W = 900;
@@ -63,11 +74,12 @@ function projector(allPoints: LonLat[]) {
 }
 
 /** TC3: bölge haritası. Gerçek enlem/boylamı olan panolar varsa (ilçe merkezi hassasiyetinde,
- *  bkz. api/mock.ts DISTRICT_COORDS) yerel ölçekli bir konum grafiğine yerleştirilir; panonun
- *  ilçesi için gerçek sınır verisi varsa (bkz. src/data/ilce-sinirlari.json) o ilçenin gerçek
- *  poligonu da çizilir. Gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını
- *  tamamen çevrimdışı çalışır — sınır verisi build zamanında pakete gömülü, çalışma zamanında
- *  hiçbir ağ isteği yapılmaz. */
+ *  bkz. api/mock.ts DISTRICT_COORDS) yerel ölçekli bir konum grafiğine yerleştirilir. Arka planda
+ *  ADM/GDZ'nin hizmet bölgesindeki TÜM ilçeler (src/data/ilce-sinirlari.json, 96 ilçe) pasif gri
+ *  zeminde çizilir ki harita "kopuk" görünmesin; panosu olan ilçeler bunun üstünde turuncu+glow
+ *  ile öne çıkar. Gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını tamamen
+ *  çevrimdışı çalışır — sınır verisi build zamanında pakete gömülü, çalışma zamanında hiçbir ağ
+ *  isteği yapılmaz. */
 export function BolgeHaritasi() {
   const { panels } = useFleet();
   const geoPanels = panels.filter(hasCoords);
@@ -78,9 +90,10 @@ export function BolgeHaritasi() {
         <h1>Bölge haritası</h1>
         {geoPanels.length >= 2 ? (
           <p>
-            Panoların gerçek enlem/boylamına göre yerel ölçekli konum görünümü; ilçe sınırları
-            gerçek coğrafi veridir. Nokta konumu ilçe merkezi hassasiyetindedir (gerçek trafo GPS
-            pini değil); gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü yığın tamamen
+            ADM (Aydın, Denizli, Muğla) ve GDZ'nin (İzmir, Manisa) hizmet bölgesindeki tüm ilçeler,
+            gerçek sınırlarıyla çizilir; panosu olan ilçeler turuncu ve vurgulu, diğerleri pasif
+            gri gösterilir. Nokta konumu ilçe merkezi hassasiyetindedir (gerçek trafo GPS pini
+            değil); gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü yığın tamamen
             internetten bağımsız çalışır (GK4).
           </p>
         ) : (
@@ -111,19 +124,18 @@ export function BolgeHaritasi() {
 
 function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
   const missing = allCount - panels.length;
-  const withBoundary = panels
-    .map((p) => ({ p, geom: DISTRICT_BOUNDARIES[districtKey(p.name)] }))
-    .filter((d): d is { p: Geo; geom: BoundaryGeom } => !!d.geom);
+  const panelDistricts = new Set(panels.map((p) => districtKey(p.name)));
+  const territoryEntries = Object.entries(TERRITORY);
 
   const allLonLat: LonLat[] = [
     ...panels.map((p): LonLat => [p.lon, p.lat]),
-    ...withBoundary.flatMap((d) => ringsOf(d.geom)).flat(),
+    ...territoryEntries.flatMap(([, t]) => ringsOf(t.geom)).flat(),
   ];
   const project = projector(allLonLat);
 
   return (
     <>
-      <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="Panoların gerçek konumu ve ilçe sınırları">
+      <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="ADM/GDZ hizmet bölgesi ve panoların gerçek konumu">
         <defs>
           <filter id="geo-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
@@ -140,16 +152,18 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           <text y={26} textAnchor="middle">K</text>
         </g>
 
-        {withBoundary.map(({ p, geom }) => {
-          const d = ringsOf(geom)
-            .map((ring) => `M${ring.map(([lon, lat]) => { const { x, y } = project(lon, lat); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join("L")}Z`)
-            .join(" ");
-          return (
-            <path key={`b-${p.pano_id}`} className="geo-district" d={d} fillRule="evenodd">
-              <title>{p.name.split(" ")[0]}</title>
-            </path>
-          );
-        })}
+        {/* ADM/GDZ'nin tum hizmet bolgesi (96 ilce) — pasif/gri zemin, harita "kopuk" gorunmesin
+            diye (kullanici talebi). Panosu olan ilceler asagida ayrica turuncu+glow ile vurgulanir. */}
+        {territoryEntries.map(([name, t]) => (
+          <path
+            key={`t-${name}`}
+            className={panelDistricts.has(name) ? "geo-district" : "geo-territory"}
+            d={pathOf(t.geom, project)}
+            fillRule="evenodd"
+          >
+            <title>{`${name} (${COMPANY[t.company]})`}</title>
+          </path>
+        ))}
 
         {panels.map((p) => {
           const { x, y } = project(p.lon, p.lat);

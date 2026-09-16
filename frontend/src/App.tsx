@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { usingMocks } from "./api/client";
+import gdzLogo from "./assets/gdz-logo.svg";
 import { ago, num } from "./lib/format";
 import { useNow } from "./lib/useNow";
 import { AlarmKonsolu } from "./pages/AlarmKonsolu";
@@ -56,14 +57,13 @@ export function App() {
   );
 }
 
-/** Kendi urun isaretimiz: grafit ucgen, turuncu kenar (plan §3.5). ADM/GDZ'nin
- *  "kivilcim" isaretine gonderme yapar, kopyalamaz — logo dosyalari gomulmez. */
+/** Kullanicinin sagladigi gercek GDZ Elektrik logosu (16 Eylul, kullanici talebi) — onceki
+ *  "logo dosyalari gomulmez" karari (plan §3.5, grafit ucgen kivilcim isareti) burada acikca
+ *  gecersiz kilindi. Gercek sitede (gdzelektrik.com.tr) header logosu inline SVG olarak
+ *  126x70 px goruntuleniyor; bize verilen dosya farkli bir disa aktarim (960x540 viewBox,
+ *  icinde gomulu raster) oldugu icin piksel-birebir degil, ayni oranli "logo olcegi" hedeflendi. */
 function BrandMark() {
-  return (
-    <svg className="brand-mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <polygon points="2,15 9,2 16,15" fill="var(--plate)" stroke="var(--brand)" strokeWidth="1.4" strokeLinejoin="round" />
-    </svg>
-  );
+  return <img className="brand-mark" src={gdzLogo} alt="GDZ Elektrik" />;
 }
 
 function FleetKpis() {

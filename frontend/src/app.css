@@ -13,7 +13,8 @@
   flex-wrap: wrap;
 }
 .brand { display: inline-flex; align-items: center; gap: 8px; font: 800 18px var(--display); text-decoration: none; }
-.brand-mark { flex: none; }
+/* Gercek GDZ logosu, gercek sitedeki header logo olcegine yakin (kullanici talebi, 16 Eylul). */
+.brand-mark { flex: none; height: 40px; width: auto; }
 .nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav-link { color: var(--dim); text-decoration: none; padding: 6px 10px; border-radius: var(--radius-sm); font-size: 14px; }
 .nav-link:hover { background: var(--well); color: var(--ink); }
@@ -403,6 +404,13 @@
   transform: scale(1.045);
   fill: rgba(255, 103, 29, 0.16);
   stroke-width: 2.6;
+}
+/* ADM/GDZ hizmet bolgesindeki panosuz ilceler: pasif gri zemin — haritayi "butun" gostermek icin
+   (kullanici talebi 16 Eylul), ama alarm/turuncu ile karismasin diye vurgusuz ve etkilesimsiz. */
+.geo-territory {
+  fill: rgba(31, 34, 36, 0.05);
+  stroke: var(--line);
+  stroke-width: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .geo-district { transition: none; }

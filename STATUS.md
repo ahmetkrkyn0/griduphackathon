@@ -9,10 +9,33 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Bölge haritasına gerçek ilçe sınırları + aktif nav sekmesi tam
-turuncu, §19).
-**Son commit:** `BolgeHaritasi.tsx`'e gerçek ilçe poligonları (UN OCHA HDX COD-AB-TUR, CC BY-IGO)
-eklendi, hover'da büyüme + turuncu glow; `.nav-link.active` grafitten tam marka turuncusuna çekildi.
+**Son güncelleme:** 16 Eylül 2026 (Harita tamamlandı: ADM/GDZ'nin tüm 96 ilçesi + gerçek GDZ
+logosu, §20).
+**Son commit:** `BolgeHaritasi.tsx` artık ADM/GDZ'nin hizmet bölgesindeki 96 ilçenin tamamını
+çiziyor (panosuz olanlar pasif gri); sol üstte kullanıcının sağladığı gerçek GDZ logosu var.
+
+## 20. Haritayı tamamlama (96 ilçe) + gerçek GDZ logosu (kullanıcı talebi, 16 Eylül)
+
+Kullanıcı §19'daki haritada "kopukluk" gördü (yalnızca panosu olan 20 ilçe çiziliyordu) ve iki şey
+istedi: (1) ADM (Aydın/Denizli/Muğla) ve GDZ'nin (İzmir/Manisa) hizmet verdiği TÜM ilçeleri ekle,
+aradaki kopukluk için gerekirse pasif gri bir "bağlayıcı" bölge koy; (2) kendi sağladığı
+`gdzlogo.svg`'yi sol üste, gerçek sitedeki boyutuna yakın koy.
+
+(1) için `plate_code` ile ADM/GDZ'nin 5 iline ait 96 ilçenin tamamı çıkarıldı, sadeleştirildi ve
+`company` etiketiyle `ilce-sinirlari.json`'a yazıldı. Meğer bu 5 il zaten birbirine komşuymuş
+(İzmir–Aydın, Manisa–Aydın, Manisa–Denizli sınırdaş) — 96 ilçe çizilince harita zaten tek parça
+oluyor, ayrı bir "bağlayıcı" bölgeye gerek çıkmadı (var olmayan bir bölgeyi uydurup eklemedim).
+Panosu olan ilçeler eski turuncu+glow stilini korudu, diğer 76'sı yeni `.geo-territory` (pasif
+gri, etkileşimsiz) sınıfıyla çizildi.
+
+(2) için gerçek siteyi (`gdzelektrik.com.tr`) inceledim — header logosu orada 126×70 px vektör
+SVG. Kullanıcının verdiği dosya farklı bir dışa aktarım (raster gömülü) olduğundan piksel-birebir
+değil, kendi oranı korunarak 40px yüksekliğinde topbar'a yerleştirildi; önceki "logo dosyası
+gömülmez" kararı kullanıcının açık talimatıyla geçersiz kılındı.
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §18. Doğrulama: tsc temiz, 71/71 test yeşil, build
+başarılı, `/bolge` 1440px ve 390px'de görsel kontrol edildi (harita artık tek parça, logo doğru
+oranda), konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
 ## 19. Gerçek ilçe sınırları (polyline) + aktif sekmede tam turuncu (kullanıcı talebi, 16 Eylül)
 
