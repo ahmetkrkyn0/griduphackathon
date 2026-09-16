@@ -602,6 +602,28 @@ logo 45,7 KB pakete eklendi). `/bolge` chrome-devtools ile 1440px ve 390px'de ko
 öne çıkıyor, GDZ logosu sol üstte doğru oranda görünüyor, konsolda hata yok. `assets/ekran/
 07-bolge-haritasi.png` yenilendi.
 
+## 19. Nokta boyutu ve glow tutarsızlığı düzeltmesi (16 Eylül, aynı gün)
+
+Kullanıcı Fethiye ilçesinin ekran görüntüsünü gönderip iki sorun bildirdi: (a) pano noktaları
+fazla büyük; (b) sınır çizgisinin bazı kısımları glow'lu, bazıları düz duruyor — hover olmadan bile.
+
+(a) basit: `r={10}` → `r={6}`, halo `r={20}` → `r={13}`, etiket ofseti buna göre küçültüldü.
+
+(b) gerçek bir kök nedeni vardı: `#geo-glow` filtresi varsayılan `filterUnits="objectBoundingBox"`
+ile tanımlıydı — bölge `x/y/width/height`'ı her ilçenin KENDİ sınır kutusuna göre yüzde olarak
+hesaplanıyordu. Fethiye gibi ince/uzun kıyı şeritli, düzensiz ilçelerde bu, bazı kenarlarda
+blur'un (feGaussianBlur) filtre bölgesinin dışında kalıp kırpılmasına, dolayısıyla o kısımların
+"düz" (glow'suz) görünmesine yol açıyordu — tamamen şekle bağlı, rastgele görünen ama aslında
+matematiksel bir kırpma hatası. Düzeltme: `filterUnits="userSpaceOnUse"` + tüm harita tuvalini
+(`MAP_W`/`MAP_H`) kapsayan sabit, cömert bir bölge (`-100`/`+200` kenar payı) — artık hiçbir
+ilçenin şekli, kendi sınır kutusu ne kadar ince/uzun olursa olsun, glow'u kırpmıyor. Ayrıca
+`.geo-district`/`.geo-territory`'ye `stroke-linejoin: round` eklendi (Douglas-Peucker'dan gelen
+keskin köşelerdeki miter-join sivrilmelerini yumuşatmak için, ek bir tutarlılık iyileştirmesi).
+
+Doğrulama: tsc/test/build temiz. Fethiye özelinde chrome-devtools ile yakınlaştırılıp kontrol
+edildi — sınır artık tüm çevresinde tutarlı glow gösteriyor, konsolda hata yok.
+`assets/ekran/07-bolge-haritasi.png` yenilendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

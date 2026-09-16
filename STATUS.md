@@ -9,10 +9,21 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Harita tamamlandı: ADM/GDZ'nin tüm 96 ilçesi + gerçek GDZ
-logosu, §20).
-**Son commit:** `BolgeHaritasi.tsx` artık ADM/GDZ'nin hizmet bölgesindeki 96 ilçenin tamamını
-çiziyor (panosuz olanlar pasif gri); sol üstte kullanıcının sağladığı gerçek GDZ logosu var.
+**Son güncelleme:** 16 Eylül 2026 (Harita: nokta boyutu küçültüldü, glow tutarsızlığı (SVG filtre
+kırpma hatası) düzeltildi, §21).
+**Son commit:** Pano noktaları küçültüldü, `#geo-glow` filtresi `userSpaceOnUse`'a alınarak
+Fethiye gibi ince/uzun ilçelerde glow'un kırpılması giderildi.
+
+## 21. Nokta boyutu ve glow tutarsızlığı düzeltmesi (kullanıcı geri bildirimi, ekran görüntüsüyle)
+
+Kullanıcı Fethiye'nin ekran görüntüsünü gönderip iki sorun bildirdi: pano noktaları fazla büyük,
+sınır çizgisi bazı yerlerde glow'lu bazı yerlerde düz (hover olmadan bile). İkincisinin gerçek bir
+kök nedeni vardı: `#geo-glow` filtresi varsayılan `objectBoundingBox` birimindeydi, bölge her
+ilçenin KENDİ sınır kutusuna göre % hesaplanıyordu — ince/uzun kıyı şeritli ilçelerde blur bazı
+kenarlarda filtre bölgesi dışında kalıp kırpılıyordu. `filterUnits="userSpaceOnUse"` + tüm haritayı
+kapsayan sabit bölgeyle düzeltildi. Noktalar `r=10→6` küçültüldü. Ayrıntı:
+`frontend/TASARIM-REVIZYONU.md` §19. Doğrulama: tsc/test/build temiz, Fethiye özelinde
+yakınlaştırılarak kontrol edildi, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
 ## 20. Haritayı tamamlama (96 ilçe) + gerçek GDZ logosu (kullanıcı talebi, 16 Eylül)
 

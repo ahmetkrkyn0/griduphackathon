@@ -137,7 +137,12 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
     <>
       <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="ADM/GDZ hizmet bölgesi ve panoların gerçek konumu">
         <defs>
-          <filter id="geo-glow" x="-60%" y="-60%" width="220%" height="220%">
+          {/* filterUnits=userSpaceOnUse + tum tuvali kaplayan sabit bolge: objectBoundingBox
+              (varsayilan) kullanilsaydi her ilcenin KENDI (bazen çok ince/uzun kiyi seritli)
+              sinir kutusuna gore % olarak kirpilirdi — bu da bazi kenarlarda glow'un kirpilip
+              duz gorunmesine yol aciyordu (kullanici bulgusu, Fethiye ornegi). Sabit, comert bir
+              bolge tum sekiller icin tutarli glow saglar. */}
+          <filter id="geo-glow" filterUnits="userSpaceOnUse" x={-100} y={-100} width={MAP_W + 200} height={MAP_H + 200}>
             <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
@@ -170,16 +175,16 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           const prio = effectivePrio(p);
           return (
             <g key={p.pano_id}>
-              {prio && !["SYS", "INFO"].includes(prio) && <circle className="geo-halo" cx={x} cy={y} r={20} />}
+              {prio && !["SYS", "INFO"].includes(prio) && <circle className="geo-halo" cx={x} cy={y} r={13} />}
               <Link to={`/pano/${p.pano_id}`} title={`${p.name} (${p.pano_id}), risk ${p.risk_score}`}>
                 <circle
                   className={prio ? "geo-dot" : "geo-dot normal"}
                   style={prio ? { fill: PRIO_COLOR[prio] } : undefined}
                   cx={x}
                   cy={y}
-                  r={10}
+                  r={6}
                 />
-                <text className="geo-label" x={x} y={y - 15} textAnchor="middle">
+                <text className="geo-label" x={x} y={y - 11} textAnchor="middle">
                   {p.name.split(" ")[0]}
                 </text>
               </Link>
