@@ -378,10 +378,27 @@
 .region-legend { display: flex; gap: 14px; margin: 10px 0 4px; font-size: 13px; color: var(--dim); flex-wrap: wrap; }
 
 /* Gercek enlem/boylam tabanli konum gorunumu (BolgeHaritasi.tsx GeoHarita) — harita karosu yok. */
-.geo-map { width: 100%; height: auto; display: block; margin-top: 8px; background: var(--well); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.geo-map-wrap { position: relative; margin-top: 8px; }
+.geo-map { width: 100%; height: auto; display: block; background: var(--well); border-radius: var(--radius); box-shadow: var(--shadow-sm); touch-action: none; }
 .geo-frame { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 3 6; }
-.geo-compass { stroke: var(--dim); fill: var(--dim); font: 600 13px var(--cond); }
+/* Kuzey oku: marka turuncusu (kullanici talebi 16 Eylul) — daha once notr griydi. */
+.geo-compass { stroke: var(--brand); fill: var(--brand); font: 600 13px var(--cond); }
 .geo-compass line, .geo-compass path { stroke-width: 2; fill: none; }
+/* Yakinlastir/uzaklastir/sifirla — kullanici talebi 16 Eylul ("zoom in zoom out da yapilabilsin"). */
+.geo-zoom { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+.geo-zoom button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  font: 700 16px var(--cond);
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.geo-zoom button:hover { background: var(--well); }
 .geo-dot { stroke: #fff; stroke-width: 2; }
 .geo-dot.normal { fill: var(--dot); }
 .geo-halo { fill: none; stroke: var(--p2); stroke-width: 4; animation: og-pulse 1.6s ease-in-out infinite; }

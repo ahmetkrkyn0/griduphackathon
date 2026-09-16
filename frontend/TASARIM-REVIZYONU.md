@@ -654,6 +654,38 @@ dairelerde iç içe girenleri vs. düzelt." Üç ayrı düzeltme:
 ile yakınlaştırılıp kontrol edildi — etiketler artık üst üste binmeden dikey olarak ayrışıyor,
 sınırlar düz ve tutarlı turuncu, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
+## 21. Zoom/pan, turuncu Kuzey oku, sınırlardaki "beyaz çizgi" hatası (16 Eylül, aynı gün)
+
+Kullanıcı harita ekran görüntüsü (Menteşe) gönderip üç şey istedi: "harita ölçeğini biraz daha
+büyüt zoom in zoom out da yapılabilsin sağ üstteki Kuzey okunu da turuncu yap... bi kenarı düz
+turuncu var bir de kenarı turuncu içi beyaz çizgiler var sadece düz turuncu olsun sınırlar."
+
+**Zoom/pan.** `GeoHarita`'ya `view = { scale, tx, ty }` durumu eklendi; tüm ilçe/nokta katmanı tek
+bir `<g transform="translate(tx,ty) scale(scale)">` içine alındı (çerçeve ve Kuzey oku bunun
+dışında kalır — sabit HUD öğeleri). Fare tekerleği imlecin altındaki noktayı sabit tutarak
+yakınlaştırır (`zoomAt`), sürükleme `pointerdown/move/up` ile kaydırır, sağ altta +/−/sıfırla
+düğmeleri var (dokunmatik için de). Nokta/etiket boyutu ve `stroke-width`'lerin zoom'la birlikte
+devasa büyümemesi için nokta/halo/etiket boyutları `/view.scale` ile telafi edildi, sınır ve nokta
+konturlarına `vectorEffect="non-scaling-stroke"` eklendi (ekran pikseli olarak sabit kalır).
+`MAP_PAD` 64→40'a düşürüldü — içerik varsayılan görünümde tuval'i daha çok dolduruyor
+("ölçeği büyüt" isteğinin bir kısmı).
+
+**Kuzey oku.** `.geo-compass`'in rengi `var(--dim)` (nötr gri) → `var(--brand)` (turuncu).
+
+**"Beyaz çizgili" sınır hatası — gerçek bir kök nedeni vardı.** İlçe path'leri `fillRule="evenodd"`
+ile çiziliyordu; bu, delikli (donut) şekiller için güvenli olsun diye eklenmiş bir önlemdi. Ama
+Douglas-Peucker sadeleştirmesi bazı karmaşık/içbükey ilçelerde kendine-kesişen bir sınır üretebilir
+— `evenodd` kuralı her kesişimde dolgu durumunu tersine çevirdiği için, kendine kesişen bir sınırın
+İÇİNDE dolgusuz (beyaz) şeritler/delikler oluşturuyordu — kullanıcının tarif ettiği "kenarı turuncu
+içi beyaz çizgiler" tam olarak buydu. Gerçek il/ilçe sınırlarının (delik/enklav) SVG'de "hole"
+olarak modellenmesi bu 5 ilde pratikte yok; `fillRule` tamamen kaldırıldı (varsayılan `nonzero`),
+bu kendine-kesişen kesitlerde yanlış "delik" oluşturmuyor.
+
+**Doğrulama:** tsc/test/build temiz. Chrome-devtools ile: +/− düğmeleri, fare tekerleği zoom'u,
+sürükleme, sıfırlama butonu, 1440px ve 390px'de kontrol edildi — zoom'da nokta/etiket boyutu ve
+sınır kontur kalınlığı sabit kalıyor, hiçbir ilçede beyaz çizgi/delik yok, Kuzey oku turuncu,
+konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

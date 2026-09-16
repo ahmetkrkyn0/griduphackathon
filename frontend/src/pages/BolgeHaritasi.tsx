@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { PanelSummary, Prio } from "../api/types";
 import ilceSinirlari from "../data/ilce-sinirlari.json";
@@ -102,7 +103,9 @@ function layoutLabelOffsets(points: { x: number; y: number; text: string }[]): n
 
 const MAP_W = 900;
 const MAP_H = 620;
-const MAP_PAD = 64;
+const MAP_PAD = 40;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 6;
 
 /** Gercek enlem/boylamdan yerel, olcek-korumali bir izdusum (kucuk bolgesel alanda yeterince
  *  dogru — boylam, ortalama enlemin kosinusuyle duzeltilir ki sekil dogu-bati yonunde sikismasin). */
@@ -192,52 +195,128 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
   const dotPoints = separateDots(rawPoints, 17);
   const labelOffsets = layoutLabelOffsets(dotPoints.map((d) => ({ x: d.x, y: d.y, text: d.p.name.split(" ")[0] })));
 
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  const [view, setView] = useState({ scale: 1, tx: 0, ty: 0 });
+
+  const toSvgPoint = useCallback((clientX: number, clientY: number) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return { ux: MAP_W / 2, uy: MAP_H / 2 };
+    return { ux: ((clientX - rect.left) / rect.width) * MAP_W, uy: ((clientY - rect.top) / rect.height) * MAP_H };
+  }, []);
+
+  const zoomAt = useCallback((ux: number, uy: number, factor: number) => {
+    setView((v) => {
+      const scale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v.scale * factor));
+      if (scale === v.scale) return v;
+      const cx = (ux - v.tx) / v.scale;
+      const cy = (uy - v.ty) / v.scale;
+      return { scale, tx: ux - cx * scale, ty: uy - cy * scale };
+    });
+  }, []);
+
+  const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const { ux, uy } = toSvgPoint(e.clientX, e.clientY);
+    zoomAt(ux, uy, e.deltaY < 0 ? 1.18 : 1 / 1.18);
+  };
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (view.scale === ZOOM_MIN) return;
+    (e.target as Element).setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const drag = dragRef.current;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!drag || !rect) return;
+    const dx = ((e.clientX - drag.x) / rect.width) * MAP_W;
+    const dy = ((e.clientY - drag.y) / rect.height) * MAP_H;
+    setView((v) => ({ ...v, tx: drag.tx + dx, ty: drag.ty + dy }));
+  };
+  const onPointerUp = () => {
+    dragRef.current = null;
+  };
+
   return (
     <>
-      <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="ADM/GDZ hizmet bölgesi ve panoların gerçek konumu">
-        <rect className="geo-frame" x={1} y={1} width={MAP_W - 2} height={MAP_H - 2} rx={12} />
-        <g className="geo-compass" transform={`translate(${MAP_W - 46}, 40)`}>
-          <line x1={0} y1={14} x2={0} y2={-14} />
-          <path d="M -6 -6 L 0 -16 L 6 -6" />
-          <text y={26} textAnchor="middle">K</text>
-        </g>
+      <div className="geo-map-wrap">
+        <svg
+          ref={svgRef}
+          className="geo-map"
+          viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+          role="group"
+          aria-label="ADM/GDZ hizmet bölgesi ve panoların gerçek konumu"
+          onWheel={onWheel}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
+          style={{ cursor: view.scale > ZOOM_MIN ? "grab" : "default" }}
+        >
+          <rect className="geo-frame" x={1} y={1} width={MAP_W - 2} height={MAP_H - 2} rx={12} />
+          <g transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`}>
+            {/* ADM/GDZ'nin tum hizmet bolgesi (96 ilce) — pasif/gri zemin, harita "kopuk" gorunmesin
+                diye (kullanici talebi). Panosu olan ilceler duz turuncu kontur ile vurgulanir.
+                fillRule verilmez (varsayilan nonzero): evenodd, sadelestirmeden kalan kendine-kesisen
+                kenarlarda ilcenin icinde beyaz "cizgiler/delikler" gibi gorunuyordu (kullanici bulgusu). */}
+            {territoryEntries.map(([name, t]) => (
+              <path
+                key={`t-${name}`}
+                className={panelDistricts.has(name) ? "geo-district" : "geo-territory"}
+                d={pathOf(t.geom, project)}
+                vectorEffect="non-scaling-stroke"
+              >
+                <title>{`${name} (${COMPANY[t.company]})`}</title>
+              </path>
+            ))}
 
-        {/* ADM/GDZ'nin tum hizmet bolgesi (96 ilce) — pasif/gri zemin, harita "kopuk" gorunmesin
-            diye (kullanici talebi). Panosu olan ilceler duz turuncu kontur ile vurgulanir. */}
-        {territoryEntries.map(([name, t]) => (
-          <path
-            key={`t-${name}`}
-            className={panelDistricts.has(name) ? "geo-district" : "geo-territory"}
-            d={pathOf(t.geom, project)}
-            fillRule="evenodd"
-          >
-            <title>{`${name} (${COMPANY[t.company]})`}</title>
-          </path>
-        ))}
-
-        {dotPoints.map(({ x, y, p }, i) => {
-          const prio = effectivePrio(p);
-          return (
-            <g key={p.pano_id}>
-              {prio && !["SYS", "INFO"].includes(prio) && <circle className="geo-halo" cx={x} cy={y} r={13} />}
-              <Link to={`/pano/${p.pano_id}`} title={`${p.name} (${p.pano_id}), risk ${p.risk_score}`}>
-                <circle
-                  className={prio ? "geo-dot" : "geo-dot normal"}
-                  style={prio ? { fill: PRIO_COLOR[prio] } : undefined}
-                  cx={x}
-                  cy={y}
-                  r={6}
-                />
-                <text className="geo-label" x={x} y={y + labelOffsets[i]} textAnchor="middle">
-                  {p.name.split(" ")[0]}
-                </text>
-              </Link>
-            </g>
-          );
-        })}
-      </svg>
+            {dotPoints.map(({ x, y, p }, i) => {
+              const prio = effectivePrio(p);
+              return (
+                <g key={p.pano_id}>
+                  {prio && !["SYS", "INFO"].includes(prio) && (
+                    <circle className="geo-halo" cx={x} cy={y} r={13 / view.scale} vectorEffect="non-scaling-stroke" />
+                  )}
+                  <Link to={`/pano/${p.pano_id}`} title={`${p.name} (${p.pano_id}), risk ${p.risk_score}`}>
+                    <circle
+                      className={prio ? "geo-dot" : "geo-dot normal"}
+                      style={prio ? { fill: PRIO_COLOR[prio] } : undefined}
+                      cx={x}
+                      cy={y}
+                      r={6 / view.scale}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <text className="geo-label" x={x} y={y + labelOffsets[i] / view.scale} textAnchor="middle" fontSize={11 / view.scale}>
+                      {p.name.split(" ")[0]}
+                    </text>
+                  </Link>
+                </g>
+              );
+            })}
+          </g>
+          <g className="geo-compass" transform={`translate(${MAP_W - 46}, 40)`}>
+            <line x1={0} y1={14} x2={0} y2={-14} />
+            <path d="M -6 -6 L 0 -16 L 6 -6" />
+            <text y={26} textAnchor="middle">K</text>
+          </g>
+        </svg>
+        <div className="geo-zoom">
+          <button type="button" onClick={() => zoomAt(MAP_W / 2, MAP_H / 2, 1.4)} aria-label="Yakınlaştır">
+            +
+          </button>
+          <button type="button" onClick={() => zoomAt(MAP_W / 2, MAP_H / 2, 1 / 1.4)} aria-label="Uzaklaştır">
+            −
+          </button>
+          {view.scale > ZOOM_MIN && (
+            <button type="button" onClick={() => setView({ scale: 1, tx: 0, ty: 0 })} aria-label="Haritayı sıfırla">
+              ⟲
+            </button>
+          )}
+        </div>
+      </div>
       <p className="dim small geo-note">
         İlçe sınırları: UN OCHA HDX <a href="https://data.humdata.org/dataset/cod-ab-tur" target="_blank" rel="noreferrer">COD-AB-TUR</a> (CC BY-IGO), sadeleştirilmiş.
+        Fare tekerleğiyle veya +/− ile yakınlaştırabilir, sürükleyerek kaydırabilirsiniz.
         {missing > 0 && ` ${missing} pano konum verisi olmadığı için haritada gösterilmiyor.`}
       </p>
     </>

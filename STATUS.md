@@ -9,11 +9,30 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Glow tamamen kaldırıldı, etiket kontrastı ve nokta çakışması
-düzeltildi, §22).
-**Son commit:** `.geo-district` glow'suz düz turuncu kontur; etiketler koyu renk + hale ile
-okunabilir; birbirine çok yakın noktalar/etiketler artık çakışmıyor (yeni `separateDots`/
-`layoutLabelOffsets`).
+**Son güncelleme:** 16 Eylül 2026 (Harita zoom/pan eklendi, Kuzey oku turuncu, sınırlardaki "beyaz
+çizgi" hatası düzeltildi, §23).
+**Son commit:** `BolgeHaritasi.tsx`'e fare tekerleği/dokunmatik zoom + sürükleme + sıfırlama
+eklendi; `fillRule="evenodd"` kaldırıldı (kendine kesişen sadeleştirilmiş sınırlarda "delik"
+oluşturuyordu).
+
+## 23. Zoom/pan, turuncu Kuzey oku, sınırlardaki "beyaz çizgi" hatası (kullanıcı geri bildirimi)
+
+Kullanıcı Menteşe ekran görüntüsüyle üç şey istedi: haritayı büyüt + zoom in/out eklensin, Kuzey
+oku turuncu olsun, sınırlarda "kenarı turuncu içi beyaz çizgi" görünen kısımlar düzelsin.
+
+Zoom/pan: `view={scale,tx,ty}` state'i + tek bir `<g transform>` katmanı, fare tekerleğiyle
+imlecin altındaki noktayı sabit tutarak yakınlaştırma, sürükleyerek kaydırma, +/−/sıfırla
+düğmeleri. Nokta/etiket boyutu zoom'la büyümesin diye `/view.scale` ile telafi edildi, sınır ve
+nokta konturlarına `vectorEffect="non-scaling-stroke"` eklendi. `MAP_PAD` düşürülerek varsayılan
+görünüm de biraz büyütüldü. Kuzey oku rengi turuncuya çekildi.
+
+"Beyaz çizgi" sorununun gerçek bir kök nedeni vardı: `fillRule="evenodd"`, Douglas-Peucker
+sadeleştirmesinin bazı ilçelerde ürettiği kendine-kesişen kenarları "delik" gibi yorumluyordu.
+Gerçek il/ilçe sınırlarında delik/enklav pratikte yok; `fillRule` kaldırıldı (varsayılan
+`nonzero`), sorun düzeldi. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §21.
+
+Doğrulama: tsc/test/build temiz, zoom/pan/reset 1440px ve 390px'de test edildi, hiçbir ilçede
+beyaz çizgi kalmadı, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
 ## 22. Glow kaldırıldı, etiket kontrastı ve nokta çakışması düzeltildi (kullanıcı geri bildirimi)
 
