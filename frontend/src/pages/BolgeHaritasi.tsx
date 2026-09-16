@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { PanelSummary, Prio } from "../api/types";
 import ilceSinirlari from "../data/ilce-sinirlari.json";
@@ -74,29 +74,50 @@ function separateDots<T extends { x: number; y: number }>(points: T[], minDist: 
   return pts;
 }
 
-/** Etiketler birbirine cok yakinsa (ayni kume) ustuste binip okunmaz olur — noktanin ustunde
- *  varsayilan konum calisirsa kullan, calismazsa sirayla alt/daha alt konumlari dene. */
-function layoutLabelOffsets(points: { x: number; y: number; text: string }[]): number[] {
+/** Etiketler birbirine cok yakinsa (ayni kume, ornegin Bornova/Karsiyaka/Cigli/Buca) ustuste binip
+ *  okunmaz olur. Yalnizca dikey kaydirma yeterli degildi (birbirine 2 boyutta yakin noktalarda
+ *  hala cakisiyordu) — simdi noktanin etrafinda (ust/alt/sag/sol/kose) sirayla aday konum dener,
+ *  ilk cakismayanı kullanir; hicbiri bos degilse en az cakisani secer. */
+function layoutLabelOffsets(points: { x: number; y: number; text: string }[]): { dx: number; dy: number }[] {
   const CHAR_W = 6.2;
   const LINE_H = 13;
-  const CANDIDATES = [-13, 20, 34, 48, -27];
+  const CANDIDATES: Array<[number, number]> = [
+    [0, -13],
+    [0, 20],
+    [26, -13],
+    [-26, -13],
+    [26, 20],
+    [-26, 20],
+    [0, 34],
+    [0, -27],
+    [34, 6],
+    [-34, 6],
+  ];
   const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
-  const offsets: number[] = [];
+  const offsets: { dx: number; dy: number }[] = [];
   for (const p of points) {
-    const halfW = (p.text.length * CHAR_W) / 2;
-    let chosen = CANDIDATES[0];
-    for (const dy of CANDIDATES) {
+    const halfW = (p.text.length * CHAR_W) / 2 + 2;
+    let chosen: [number, number] = CANDIDATES[0];
+    let chosenBox = { x0: 0, x1: 0, y0: 0, y1: 0 };
+    let found = false;
+    for (const [dx, dy] of CANDIDATES) {
+      const cx = p.x + dx;
       const cy = p.y + dy;
-      const box = { x0: p.x - halfW, x1: p.x + halfW, y0: Math.min(cy, cy - LINE_H), y1: Math.max(cy, cy - LINE_H) };
+      const box = { x0: cx - halfW, x1: cx + halfW, y0: Math.min(cy, cy - LINE_H), y1: Math.max(cy, cy - LINE_H) };
       const collides = placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0);
-      chosen = dy;
       if (!collides) {
-        placed.push(box);
+        chosen = [dx, dy];
+        chosenBox = box;
+        found = true;
         break;
       }
-      if (dy === CANDIDATES[CANDIDATES.length - 1]) placed.push(box);
+      if (!found) {
+        chosen = [dx, dy];
+        chosenBox = box;
+      }
     }
-    offsets.push(chosen);
+    placed.push(chosenBox);
+    offsets.push({ dx: chosen[0], dy: chosen[1] });
   }
   return offsets;
 }
@@ -215,11 +236,22 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
     });
   }, []);
 
-  const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const { ux, uy } = toSvgPoint(e.clientX, e.clientY);
-    zoomAt(ux, uy, e.deltaY < 0 ? 1.18 : 1 / 1.18);
-  };
+  // React'in onWheel'i pasif dinleyici olarak eklenir — preventDefault icinde cagrilsa bile
+  // tarayicinin varsayilan davranisi (sayfa kaydirma / trackpad pinch'te tarayici sayfa yakinlastirmasi)
+  // engellenmiyordu (kullanici bulgusu: "zoom atarken sayfayi asagiya da kaydiriyor"). Cozum: native,
+  // passive:false bir 'wheel' dinleyicisi elle eklemek — yalnizca bu, preventDefault'un ise yaramasini saglar.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const { ux, uy } = toSvgPoint(e.clientX, e.clientY);
+      zoomAt(ux, uy, e.deltaY < 0 ? 1.18 : 1 / 1.18);
+    };
+    svg.addEventListener("wheel", handler, { passive: false });
+    return () => svg.removeEventListener("wheel", handler);
+  }, [toSvgPoint, zoomAt]);
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (view.scale === ZOOM_MIN) return;
     (e.target as Element).setPointerCapture(e.pointerId);
@@ -246,7 +278,6 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           viewBox={`0 0 ${MAP_W} ${MAP_H}`}
           role="group"
           aria-label="ADM/GDZ hizmet bölgesi ve panoların gerçek konumu"
-          onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -286,7 +317,13 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
                       r={6 / view.scale}
                       vectorEffect="non-scaling-stroke"
                     />
-                    <text className="geo-label" x={x} y={y + labelOffsets[i] / view.scale} textAnchor="middle" fontSize={11 / view.scale}>
+                    <text
+                      className="geo-label"
+                      x={x + labelOffsets[i].dx / view.scale}
+                      y={y + labelOffsets[i].dy / view.scale}
+                      textAnchor="middle"
+                      fontSize={11 / view.scale}
+                    >
                       {p.name.split(" ")[0]}
                     </text>
                   </Link>

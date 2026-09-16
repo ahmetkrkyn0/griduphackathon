@@ -1,7 +1,10 @@
 import type { KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import type { PanelSummary } from "../api/types";
+import type { PanelSummary, Prio } from "../api/types";
+import { PRIO_NAME } from "../lib/labels";
 import { axisFraction, effectivePrio } from "../lib/worklist";
+
+const PRIO_COLOR: Record<Prio, string> = { P1: "var(--p1)", P2: "var(--p2)", P3: "var(--p3)", SYS: "var(--sys)", INFO: "var(--dim)" };
 
 interface Props {
   panels: PanelSummary[];
@@ -42,8 +45,33 @@ export function RiskMatrisi({ panels }: Props) {
     }
   };
 
+  // Panolar birbirine cok yakinsa (dusuk risk skoru + benzer sure) etiketler ustuste biner —
+  // ayni pano sayisi/dagilimi genelde kucuk oldugu icin basit, siradan bir dikey ayristirma
+  // yeterli (kullanici bulgusu: "pek anlasilir durmuyor").
+  const sorted = [...panels].sort((a, b) => y(a.risk_score) - y(b.risk_score));
+  const labelY = new Map<string, number>();
+  const placed: number[] = [];
+  for (const p of sorted) {
+    let cy = y(p.risk_score) + 4;
+    while (placed.some((v) => Math.abs(v - cy) < 15)) cy += 15;
+    placed.push(cy);
+    labelY.set(p.pano_id, cy);
+  }
+
   return (
     <div className="riskmx">
+      <div className="region-legend">
+        {(["P1", "P2", "P3", "SYS"] as Prio[]).map((p) => (
+          <span key={p}>
+            <span className="region-dot" style={{ background: PRIO_COLOR[p], width: 12, height: 12, display: "inline-block", borderRadius: 3, marginRight: 4 }} />
+            {PRIO_NAME[p]}
+          </span>
+        ))}
+        <span>
+          <span className="region-dot normal" style={{ width: 12, height: 12, display: "inline-block", borderRadius: 3, marginRight: 4 }} />
+          Normal
+        </span>
+      </div>
       <svg
         className="chart-svg"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -51,6 +79,10 @@ export function RiskMatrisi({ panels }: Props) {
         aria-label="Risk matrisi: yatay eksende sınıra kalan süre, dikey eksende risk skoru. Sol üst köşe en acil ve en yüksek riskli panoları gösterir."
       >
         <rect className="riskmx-quad" x={PAD.left} y={PAD.top} width={innerW / 2} height={innerH / 2} />
+        {/* Veri alaninin USTUNDE (PAD.top'tan once), hicbir noktayla asla cakismaz. */}
+        <text className="riskmx-quad-label" x={PAD.left} y={PAD.top - 6}>
+          ▼ En kritik bölge
+        </text>
 
         {X_TICKS_H.map((h) => (
           <g key={h}>
@@ -97,10 +129,18 @@ export function RiskMatrisi({ panels }: Props) {
               onKeyDown={(event) => onKey(event, p.pano_id)}
             >
               <circle className="riskmx-hit" cx={px} cy={py} r={14} />
+              {(() => {
+                const ly = labelY.get(p.pano_id)!;
+                return (
+                  <>
+                    {Math.abs(ly - (py + 4)) > 1 && <line className="riskmx-leader" x1={px} y1={py} x2={px} y2={ly - 4} />}
+                    <text className="riskmx-label" x={px + (nearRight ? -10 : 10)} y={ly} textAnchor={nearRight ? "end" : "start"}>
+                      {p.name}
+                    </text>
+                  </>
+                );
+              })()}
               <circle className="riskmx-dot" cx={px} cy={py} r={6} />
-              <text className="riskmx-label" x={px + (nearRight ? -10 : 10)} y={py + 4} textAnchor={nearRight ? "end" : "start"}>
-                {p.name}
-              </text>
             </g>
           );
         })}

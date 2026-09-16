@@ -57,13 +57,17 @@ body {
 }
 
 body {
-  /* Tam beyaz zeminde tek gorsel ilgi noktasi: ust banttan sarkan turuncu parilti.
-     Opakligi dusuk kalir (durum renkleriyle yarismaz) ama beyaz zeminde gorunur kalacak
-     kadar da guclu — ikinci, daha genis ve soluk bir katman ekrana yayilir. */
+  /* Tam beyaz zeminde ambiyans turuncu: iki koseden hafif parilti, GORUNUM'e (viewport) sabit
+     (background-attachment: fixed) — boylece uzun/kisa her sayfada, her kaydirma konumunda
+     ayni oranda gorunur. Onceki surumde background-repeat verilmemisti, bu yuzden radial-gradient
+     TEKRARLANIYOR ve uzun sayfalarda yalnizca alt kisimlarda rastgele bir tekrar goze carpiyordu
+     (kullanici bulgusu) — simdi no-repeat + fixed ile tum sayfaya tutarli sekilde dagiliyor. */
   background:
-    radial-gradient(900px 420px at 16% -80px, rgba(255, 103, 29, 0.14), transparent 65%),
-    radial-gradient(1600px 900px at 50% -300px, rgba(255, 103, 29, 0.05), transparent 70%),
+    radial-gradient(1100px 700px at 6% -6%, rgba(255, 103, 29, 0.12), transparent 62%),
+    radial-gradient(1300px 800px at 100% 108%, rgba(255, 103, 29, 0.09), transparent 62%),
     var(--bg);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--ink);
   font: 15px/1.45 var(--sans);
   -webkit-font-smoothing: antialiased;

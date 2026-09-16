@@ -15,14 +15,26 @@
 .brand { display: inline-flex; align-items: center; gap: 8px; font: 800 18px var(--display); text-decoration: none; }
 /* Gercek GDZ logosu, gercek sitedeki header logo olcegine yakin (kullanici talebi, 16 Eylul). */
 .brand-mark { flex: none; height: 40px; width: auto; }
-.nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.nav-link { color: var(--dim); text-decoration: none; padding: 6px 10px; border-radius: var(--radius-sm); font-size: 14px; }
-.nav-link:hover { background: var(--well); color: var(--ink); }
+/* Ortalanmis nav + aralarinda ince turuncu ayirici cizgiler (kullanici talebi 16 Eylul). */
+.nav { display: flex; align-items: center; gap: 0; flex: 1; justify-content: center; flex-wrap: wrap; }
+.nav-link {
+  color: var(--dim);
+  text-decoration: none;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  border-right: 1px solid rgba(255, 103, 29, 0.35);
+}
+.nav-link:first-child { padding-left: 10px; }
+.nav-link:last-child { border-right: none; padding-right: 10px; }
+/* Hover: hafif turuncu dolgu (once notr gri idi, kullanici talebi). */
+.nav-link:hover { background: rgba(255, 103, 29, 0.1); color: var(--ink); border-radius: var(--radius-sm); }
 /* Secili durum: tam marka turuncusu + beyaz metin (kullanici talebi, 16 Eylul). */
-.nav-link.active { background: var(--brand); color: #fff; }
+.nav-link.active { background: var(--brand); color: #fff; border-radius: var(--radius-sm); }
 
 /* KPI seridi: duz metin yerine yukseltilmis "buyuk sayi" karolari (GE Vernova / ABB filo panolari). */
-.kpis { display: flex; gap: 8px; margin: 0 0 0 auto; padding: 0; list-style: none; }
+/* margin-left:auto kaldirildi — .nav artik flex:1 ile araya yayiliyor, kpis'i sagda tutmaya yeter. */
+.kpis { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .kpis li {
   display: flex;
   flex-direction: column;
@@ -68,7 +80,8 @@
 
 /* --x0/--xr SureEkseni.tsx'ten gelir; --line eksen cizgisinin yuksekligi, --row-h satir araligi */
 .axis { position: relative; height: 290px; margin: 24px 0 4px; --line: 244px; --row-h: 80px; }
-.axis-now { position: absolute; left: 0; top: 0; width: 258px; height: 230px; padding: 8px 10px; background: var(--well); border-radius: 4px; display: grid; gap: 8px; align-content: start; }
+/* Arkadaki gri dolgu kaldirildi (kullanici talebi) — kartlar kendi golgeleriyle ayrisiyor. */
+.axis-now { position: absolute; left: 0; top: 0; width: 258px; height: 230px; padding: 8px 10px; display: grid; gap: 8px; align-content: start; }
 .axis-now-title { font: 600 14px var(--cond); color: var(--dim); }
 .axis-more { font-size: 13px; color: var(--dim); padding-left: 36px; }
 .axis-line { position: absolute; left: 0; right: 0; top: var(--line); height: 2px; background: var(--ink); }
@@ -81,17 +94,20 @@
 .axis-stem { position: absolute; z-index: 0; left: 13px; top: 28px; width: 2px; height: calc(var(--line) - var(--row) * var(--row-h) - 28px); background: var(--line); }
 
 .pin { position: relative; z-index: 1; display: flex; gap: 8px; align-items: flex-start; text-decoration: none; }
+/* Beyaz zeminde ayrisim icin guclendirilmis golge (kullanici talebi: "arkaplanla butun duruyor,
+   anlasilmiyor, golge ekle") — eski --shadow-sm cok soluktu (opaklik 0.05), beyaz-uzerine-beyazda
+   neredeyse gorunmuyordu. */
 .pin-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-left: 3px solid transparent;
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 6px rgba(31, 34, 36, 0.1), 0 1px 2px rgba(31, 34, 36, 0.08);
   padding: 5px 9px;
   width: 200px;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.pin:hover .pin-card, .pin:focus-visible .pin-card { border-left-color: var(--brand); box-shadow: var(--shadow); }
+.pin:hover .pin-card, .pin:focus-visible .pin-card { border-left-color: var(--brand); box-shadow: 0 4px 12px rgba(31, 34, 36, 0.16), 0 2px 4px rgba(31, 34, 36, 0.1); }
 .pin-name { display: flex; justify-content: space-between; gap: 8px; font: 600 15px var(--cond); }
 .pin-ttl { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pin-head { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 13px; color: var(--dim); line-height: 1.3; }
@@ -164,7 +180,8 @@
 .i3-controls { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 6px; z-index: 1; }
 .i3-bar { display: flex; flex-wrap: wrap; gap: 4px; }
 .i3-bar button { border: 1px solid var(--line); background: rgba(244, 245, 241, 0.94); padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
-.i3-bar button[aria-pressed="true"] { background: var(--plate); color: #fff; border-color: var(--plate); box-shadow: inset 0 -3px 0 var(--brand); }
+/* Secili durum: tam marka turuncusu (once grafit+alt serit idi, kullanici talebi 16 Eylul). */
+.i3-bar button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
 .i3-sep { width: 1px; background: var(--line); margin: 3px 2px; }
 /* Zaman kaydirici (Y1): gecmis K/K0 degerini canli durum rengine dogru interpolasyonla gosterir. */
 .i3-time { display: flex; align-items: center; gap: 8px; background: rgba(246, 246, 244, 0.95); border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; font-size: 12px; }
@@ -301,7 +318,12 @@
 .state.st-stale::before { background: transparent; border: 2px dashed var(--dot); }
 
 /* ---------- Risk matrisi (Y3, components/RiskMatrisi.tsx) ---------- */
-.riskmx-quad { fill: var(--p1); opacity: 0.05; }
+/* Kullanici bulgusu ("pek anlasilir durmuyor"): golgeli alan zar zor gorunuyordu, hicbir yerde
+   ne oldugu yazmiyordu, etiketler ust uste binebiliyordu. Golge biraz guclendirildi, bolgeye
+   dogrudan bir etiket eklendi (riskmx-quad-label), ustteki karta bir renk lejandi eklendi. */
+.riskmx-quad { fill: var(--p1); opacity: 0.07; }
+.riskmx-quad-label { font: 600 11px var(--cond); fill: var(--p1); opacity: 0.75; }
+.riskmx-leader { stroke: var(--line); stroke-width: 1; }
 .riskmx-caption { margin-top: 6px; }
 .riskmx-pt { cursor: pointer; outline: none; }
 .riskmx-hit { fill: transparent; }
@@ -334,8 +356,9 @@
 .chart-empty { padding: 24px 0; text-align: center; }
 .chart-range { display: flex; gap: 6px; margin-bottom: 8px; }
 .chart-range button { border: 1px solid var(--line); background: var(--surface); padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
-/* Gorunum/zaman-araligi secimi (alarm siddeti degil) — aktif sekme vurgusuyla ayni dil. */
-.chart-range button[aria-pressed="true"] { background: var(--plate); color: #fff; border-color: var(--plate); box-shadow: inset 0 -3px 0 var(--brand); }
+/* Gorunum/zaman-araligi secimi (alarm siddeti degil) — aktif sekme vurgusuyla ayni dil.
+   Secili durum: tam marka turuncusu (once grafit+alt serit idi, kullanici talebi 16 Eylul). */
+.chart-range button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
 
 /* ---------- Alarm konsolu ---------- */
 .console-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
@@ -437,6 +460,11 @@
 
 /* ---------- Dar ekran ---------- */
 @media (max-width: 960px) {
+  /* .nav'in flex:1'i (genis ekranda ortalamak icin) dar ekranda nav'i sikistirip dikey bir
+     yigina donusturuyordu, brand ikinci satira dusuyordu (kullanici bulgusu: navbar bozuk
+     gorunuyordu). Dar ekranda basit, dogal bir akisa donuluyor: marka ustte, nav altta tam genislikte. */
+  .topbar { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .nav { flex: none; width: 100%; justify-content: flex-start; }
   .page { padding: 20px 16px 40px; }
   .kpis { display: none; }
   .axis { display: none; }

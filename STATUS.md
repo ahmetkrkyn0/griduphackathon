@@ -9,11 +9,30 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Harita zoom/pan eklendi, Kuzey oku turuncu, sınırlardaki "beyaz
-çizgi" hatası düzeltildi, §23).
-**Son commit:** `BolgeHaritasi.tsx`'e fare tekerleği/dokunmatik zoom + sürükleme + sıfırlama
-eklendi; `fillRule="evenodd"` kaldırıldı (kendine kesişen sadeleştirilmiş sınırlarda "delik"
-oluşturuyordu).
+**Son güncelleme:** 16 Eylül 2026 (Toplu okunabilirlik turu: wheel-scroll, buton renkleri, navbar,
+arka plan, kartlar, risk matrisi, §24).
+**Son commit:** Harita wheel'i artık sayfayı kaydırmıyor (native passive:false dinleyici); tüm
+seçili-durum butonları turuncu; navbar ortalandı + turuncu ayırıcılar; arka plan tüm sayfaya
+yayıldı; risk matrisine legend eklendi.
+
+## 24. Toplu okunabilirlik turu: 7 geri bildirim tek seferde (16 Eylül, aynı tur)
+
+Kullanıcı art arda yedi ayrı geri bildirim gönderdi (aynı tur içinde): (1) bölge haritasında zoom
+atarken sayfa da kayıyor, (2) isim çakışmaları hâlâ var, (3) "ne kadar buton varsa turuncu yap"
+(3D ikiz + zaman/risk toggle + grafik aralığı butonları), (4) navbar ortalansın + turuncu
+ayırıcılar + hafif turuncu hover + bold, (5) arka plandaki turuncu yalnızca sayfanın bir yerinde,
+tüm sayfaya yayılsın, (6) "Şimdi" panelindeki gri dolgu kaldırılsın + kartlara gölge, (7) risk
+matrisi grafiği anlaşılır değil.
+
+Hepsi tek seferde düzeltildi. İki tanesi gerçek kök nedenli buglardı: (1) React'in `onWheel`'i
+pasif dinleyici — native `addEventListener(..., {passive:false})` gerekiyordu; (5) `body`
+arka planına `background-repeat` verilmemişti, gradyan sayfa boyunca tekrarlanıp rastgele bir
+yerde görünüyordu. Ayrıca kendi bulduğumuz bir regresyon da düzeltildi: navbar'ı ortalamak için
+eklenen `flex:1`, dar ekranda navbar'ı bozuyordu — mobil medya sorgusunda ayrıca ele alındı.
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §22. Doğrulama: tsc/test/build temiz, 1440px ve 390px'de
+görsel kontrol edildi (mobil navbar dahil), konsolda hata yok. `assets/ekran/`'daki 8 dosyanın
+TAMAMI yenilendi (nav ve arka plan her sayfada değişti).
 
 ## 23. Zoom/pan, turuncu Kuzey oku, sınırlardaki "beyaz çizgi" hatası (kullanıcı geri bildirimi)
 

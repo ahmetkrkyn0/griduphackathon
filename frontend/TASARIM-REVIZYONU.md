@@ -686,6 +686,64 @@ sürükleme, sıfırlama butonu, 1440px ve 390px'de kontrol edildi — zoom'da n
 sınır kontur kalınlığı sabit kalıyor, hiçbir ilçede beyaz çizgi/delik yok, Kuzey oku turuncu,
 konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
+## 22. Toplu okunabilirlik/geri bildirim turu: wheel-scroll, buton renkleri, navbar, arka plan, kartlar, risk matrisi (16 Eylül, aynı gün)
+
+Kullanıcı arka arkaya (aynı tur içinde) yedi ayrı geri bildirim gönderdi; hepsi tek seferde ele alındı:
+
+**1. Bölge haritasında zoom atarken sayfa da kayıyordu.** React'in `onWheel`'i tarayıcıda pasif
+dinleyici olarak eklenir — `preventDefault()` içeride çağrılsa bile sayfanın varsayılan kaydırma
+davranışını (ve trackpad pinch'te tarayıcı sayfa yakınlaştırmasını) engellemez. Çözüm:
+`useEffect` içinde `svg.addEventListener("wheel", handler, { passive: false })` ile elle,
+pasif-olmayan bir dinleyici eklendi — yalnızca bu, `preventDefault`'un işe yaramasını sağlıyor.
+Doğrulama: 10 art arda wheel olayı simüle edildi, `window.scrollY` 0'da sabit kaldı.
+
+**2. Bölge haritasında hâlâ isim çakışmaları vardı** (Bornova/Karşıyaka/Çiğli/Buca kümesi).
+`layoutLabelOffsets` yalnızca dikey adaylar deniyordu — iki boyutlu yakın kümelerde yetersizdi.
+Fonksiyon artık üst/alt/sağ/sol/köşe olmak üzere 10 aday konum deniyor (`{dx,dy}` çiftleri),
+ilk çakışmayanı seçiyor.
+
+**3. "Ne kadar buton varsa turuncu yap"** — `.i3-bar button[aria-pressed="true"]` (3D ikiz: Saydam
+kapak/Ark koruma kapsaması/Etiketler/3-4 görünüş/Önden) ve `.chart-range button[aria-pressed="true"]`
+(Zaman ekseni/Risk matrisi, 7/14/30 gün) hâlâ grafit dolgu + turuncu alt şerit kullanıyordu (nav
+sekmesi §17'de düzeltilmişti, bunlar unutulmuştu). İkisi de tam marka turuncusuna çekildi.
+`.console-filters` (alarm şiddeti butonları, Kritik/Alarm/Uyarı/Sistem) kasıtlı olarak dokunulmadı
+— bkz. §3.2, turuncu orada "turuncu=P2 alarmı" karışıklığı yaratır.
+
+**4. Navbar ortalama + turuncu ayırıcılar + hafif turuncu hover + bold.** `.nav` `flex:1` ve
+`justify-content:center` aldı (`.kpis`'teki artık gereksiz `margin-left:auto` kaldırıldı); her
+`.nav-link`'e ince turuncu `border-right` (aralarında ayraç), `font-weight:700`, hover'da
+`var(--well)` yerine `rgba(255,103,29,0.1)` (aynı ton, gri değil turuncu) eklendi. **Yan etki
+(dar ekranda kırılma):** `.nav{flex:1}` dar ekranda nav'ı sıkıştırıp dikey bir yığına
+dönüştürüyordu, marka ikinci satıra düşüyordu — `@media (max-width:960px)` içinde
+`.topbar{flex-direction:column}` + `.nav{flex:none; width:100%}` ile düzeltildi (kendi
+bulduğumuz bir regresyon, kullanıcıya sorulmadan önce fark edilip giderildi).
+
+**5. Arka plandaki turuncu parıltı yalnızca sayfanın bir yerinde görünüyordu.** Kök neden:
+`body`'nin `radial-gradient` arka planına `background-repeat` verilmemişti — varsayılan
+`repeat` ile gradyan dikey/yatay olarak TEKRARLANIYOR, uzun sayfalarda rastgele bir tekrar
+gözle görülür oluyordu (kullanıcı: "sadece sayfanın altında var"). `background-repeat: no-repeat`
++ `background-attachment: fixed` eklendi, iki köşeye (sol-üst, sağ-alt) sabit, viewport'a göre
+konumlanan iki parıltıya geçildi — artık her sayfada, her kaydırma konumunda tutarlı.
+
+**6. "Şimdi" panelindeki gri dolgu + kartların arka planla bütünleşmesi.** `.axis-now`'un
+`background: var(--well)` (gri kutu) kaldırıldı; `.pin-card`'ın varsayılan `box-shadow`'u
+(`--shadow-sm`, opaklık 0.05 — tam beyaz zeminde neredeyse görünmezdi) belirgin bir gölgeye
+(`0 2px 6px rgba(31,34,36,.1)` + `0 1px 2px rgba(31,34,36,.08)`) yükseltildi.
+
+**7. Risk matrisi grafiği "anlaşılır durmuyordu".** Üç sorun tespit edildi ve düzeltildi:
+(a) hiçbir yerde P1-P4/Sistem renklerinin anlamı yazmıyordu → `region-legend` eklendi; (b)
+gölgeli "öncelik" bölgesi yalnızca alt yazıda açıklanıyordu, grafiğin kendisinde hiçbir işaret
+yoktu → veri alanının ÜSTÜNE (asla bir noktayla çakışmayacak şekilde) "▼ En kritik bölge" etiketi
+eklendi (ilk denemede veri alanının İÇİNE konulmuştu, en yüksek riskli noktayla çakıştı, fark
+edilip düzeltildi); (c) birbirine yakın risk skorlu panolar etiketleri çakışıyordu → basit bir
+dikey ayrıştırma + kaydırılan etiketler için ince bir "leader" çizgisi eklendi.
+
+**Doğrulama (hepsi):** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Chrome-devtools
+ile Filo/PanoDetay/Bölge sayfalarında 1440px ve 390px'de görsel kontrol edildi (nav merkezi,
+butonlar turuncu, harita wheel'i sayfayı kaydırmıyor, risk matrisi legend+etiket çakışmasız,
+mobil navbar doğru satırlara bölünüyor), konsolda hata yok. `assets/ekran/`'daki 8 dosyanın
+TAMAMI yenilendi — nav ve arka plan her sayfada değiştiği için hepsi güncel değildi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>
