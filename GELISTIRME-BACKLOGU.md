@@ -176,7 +176,7 @@ Cihaz düzeyindeki mevcut karşılaştırmayı platform düzeyine taşır ve dur
 **Ne üretir:** İki bölümlü tek doküman: (a) özellik matrisi + "bizde yok, çünkü GK3/GK4/GK6" sütunu + ADM/GDZ'nin ADMS alımına konumlanma satırı; (b) standart → kod dosyası → ölçülen sonuç → dürüst boşluk tablosu.
 **Dikkat:** Rakip fiyatı ve "onlarınki kötü" iddiası yasak; doğrulanamayan hücre boş bırakılır. Termal bağlantı sensörü ile ortam sensörü aynı satıra konmamalı. ISO madde numarası ve birebir alıntı yazılmayacak (metinlere erişim yok). Sunuma tek cümle çıkar: "onların platformu geliyor, biz onun altındaki ölçüm katmanıyız; bugün IEC 104 ile bağlanırız, koruma devresine asla yazmayız."
 
-### F-16 · docs/19 — TEDAŞ şartname uyum haritası
+### F-16 · docs/19 — TEDAŞ şartname uyum haritası — ✅ tamamlandı
 Türkiye'de bir dağıtım panosuna takılan haberleşme ünitesinin tabi olduğu şartnameyle madde madde karşılaştırma · **Etki:** yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** yeni `docs/19-tedas-sartname-uyumu.md`, [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md)'den atıf
 **Sektörel dayanak:** TEDAŞ-MLZ/2019-064.B haberleşme ünitesi teknik şartnamesi (deponun kendi analiz raporunda "1 Ocak 2025'ten itibaren zorunlu" olarak kaydedilmiş); ayrıca komitenin verdiği AG pano şartnamesinin çalışma koşulları maddesi (dahili/harici sıcaklık aralıkları, 24 saat ortalama, rakım).
 **Bizdeki boşluk:** [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md)'de şartnamenin adı geçiyor ama arkasında hiçbir içerik yok. Ayrıca [hardware/](hardware/) BOM'undaki parçaların şartnamedeki ortam sınırlarına karşı satır satır karşılaştırması hiçbir yerde yok — "saha koşullarında uygulanabilirlik" jüri kriterinin doğrudan konusu.
