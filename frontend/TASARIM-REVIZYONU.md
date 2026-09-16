@@ -511,6 +511,54 @@ hata yok. Sonuç görsel olarak da anlamlı: GDZ panoları (İzmir/Manisa) ve AD
 hizmet bölgeleri gerçekten ayrık. Ekran görüntüsü kullanıcıya gönderildi (SendUserFile),
 `assets/ekran/07-bolge-haritasi.png` ve `docs/16-ux-tasarim.md` §3/§6 güncellendi.
 
+## 17. Gerçek ilçe sınırları (polyline) + aktif sekmede tam marka turuncusu (16 Eylül)
+
+Kullanıcı iki somut istekte bulundu: (a) aktif nav sekmesi (`.nav-link.active`) artık gri/grafit
+değil, tamamen marka turuncusu + beyaz metin olsun; (b) Bölge haritasına gerçek ilçe sınırları
+(polyline) eklensin, üzerine gelince hafif büyüsün, sınırlar turuncu ve hafif "glow"lu olsun.
+
+**(a)** `app.css`: `.nav-link.active { background: var(--plate); ...box-shadow: inset 0 -3px 0
+var(--brand); }` → `{ background: var(--brand); color: #fff; }`. Bu, §3.2'deki "turuncu = P2
+alarmı" karışıklığından kaçınma gerekçesini bu ÖZEL öğe için kullanıcının doğrudan talimatıyla
+geçersiz kılıyor — nav sekmeleri bir alarm etiketi taşımıyor (Kritik/Alarm/Uyarı gibi), yalnızca
+`.console-filters` (alarm şiddeti butonları) için orijinal gerekçe hâlâ geçerli, ona dokunulmadı.
+
+**(b)** Önceki oturumda (§16) yalnızca nokta konumları gerçek enlem/boylama taşınmıştı, ilçe
+*sınırları* yoktu. Gerçek, isimlendirilmiş kamu verisi olmadan bir sınır şekli "çizmek" hayal
+ürünü olurdu (dürüstlük kuralı) — bu yüzden gerçek bir kaynak arandı ve bulundu:
+**UN OCHA HDX `COD-AB-TUR`** (Türkiye idari sınırları, CC BY-IGO), `ttezer/turkiye-harita-verisi`
+(MIT kod lisanslı) GitHub deposundaki pinlenmiş snapshot'ı üzerinden indirildi (`dist/geojson/
+districts.geojson`, 973 ilçe, 14,7 MB; isim eşlemesi `dist/json/districts.json`'daki `plate_code`
++ `name_ascii` alanlarıyla yapıldı). Yalnızca mock verideki 20 ilçe (Efeler, Bornova, Söke...)
+eşleştirildi ve indirildi — tam Türkiye verisini pakete gömmek anlamsız ve gereksiz büyük olurdu.
+
+Ham geometri küçük bir UI haritası için çok ayrıntılıydı (bazı sahil ilçelerinde ~9500 nokta,
+Bodrum/Fethiye gibi ada/koy dolu MultiPolygon'lar). Bir Python betiğiyle (a) Douglas-Peucker
+sadeleştirmesi (~250 m tolerans) uygulandı, (b) MultiPolygon'larda en büyük parçanın %3'ünden
+küçük adacıklar atıldı (görsel gürültüyü azaltmak için — ilçenin ana şekli değişmedi, yalnızca
+önemsiz küçük adalar/koylar UI ölçeğinde anlamsız olduğu için çizilmedi). Sonuç: 917 KB → 26,8 KB,
+~40.000 nokta → 1.493 nokta. Çıktı `frontend/src/data/ilce-sinirlari.json`'a kondu (build zamanı
+pakete gömülür, GK4: çalışma zamanında hiçbir ağ isteği yok).
+
+`pages/BolgeHaritasi.tsx`: `projector()` artık ham `[boylam, enlem]` noktalarını projekte ediyor
+(hem pano konumları hem sınır köşe noktaları için ortak); her panonun adının ilk kelimesi
+(`districtKey`, `api/mock.ts`'teki `DISTRICT_COORDS` anahtarlarıyla aynı sözleşme) sınır verisinde
+aranıyor, bulunursa `<path>` olarak çiziliyor (Polygon/MultiPolygon, `fillRule="evenodd"` ile delik
+varsa doğru işleniyor). Gerçek backend'den farklı ilçe adları gelirse (sınır verisinde karşılığı
+yoksa) yalnızca nokta çizilir, sınır sessizce atlanır — çökme yok, sahte sınır de yok.
+
+CSS (`app.css`, yeni `.geo-district`): turuncu kontur + SVG `<filter id="geo-glow">`
+(`feGaussianBlur` + `feMerge`) ile sürekli hafif parlama; `:hover`'da `transform: scale(1.045)`
+(`transform-box: fill-box` ile ilçenin kendi merkezine göre büyür, sayfa köşesine kaymaz), dolgu
+ve kontur biraz koyulaşır. `prefers-reduced-motion: reduce`'da geçiş anında olur (proje genelindeki
+kural). CC BY-IGO atıf zorunluluğu haritanın altına eklendi (kaynağa bağlantılı).
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı (JSON paket boyutunu
+~27 KB artırdı, beklenen). `/bolge` sayfası chrome-devtools ile 1440px ve 390px'de kontrol edildi
+— gerçek ilçe şekilleri (Bodrum'un yarımada silüeti dahil) doğru çiziliyor, hover büyütme/parlama
+çalışıyor, yatay taşma yok, konsolda hata yok. `/cihaz-sagligi` gibi başka bir sayfada aktif nav
+sekmesinin tam turuncu + beyaz metin göründüğü ayrıca doğrulandı.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

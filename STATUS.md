@@ -9,9 +9,29 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 15 Eylül 2026 (Bölge haritasına gerçek konum eklendi, §18).
-**Son commit:** `BolgeHaritasi.tsx` artık gerçek enlem/boylama göre konum grafiği çiziyor;
-mock verideki ilçe adlarına gerçek merkez koordinatları eklendi (`api/mock.ts`).
+**Son güncelleme:** 16 Eylül 2026 (Bölge haritasına gerçek ilçe sınırları + aktif nav sekmesi tam
+turuncu, §19).
+**Son commit:** `BolgeHaritasi.tsx`'e gerçek ilçe poligonları (UN OCHA HDX COD-AB-TUR, CC BY-IGO)
+eklendi, hover'da büyüme + turuncu glow; `.nav-link.active` grafitten tam marka turuncusuna çekildi.
+
+## 19. Gerçek ilçe sınırları (polyline) + aktif sekmede tam turuncu (kullanıcı talebi, 16 Eylül)
+
+Kullanıcı iki şey istedi: (1) aktif nav sekmesi (ör. "Cihaz sağlığı" seçiliyken) artık gri değil,
+tamamen turuncu + beyaz metin olsun; (2) Bölge haritasına gerçek ilçe sınırları eklensin, hover'da
+hafif büyüsün, sınırlar turuncu ve hafif glowlu olsun.
+
+(1) basit bir CSS değişikliği. (2) için gerçek, isimlendirilmiş bir kamu veri kaynağı gerekiyordu
+(sınır şeklini hayalden çizmek dürüstlük kuralına aykırı olurdu) — UN OCHA HDX'in `COD-AB-TUR`
+(Türkiye idari sınırları, CC BY-IGO) verisini `ttezer/turkiye-harita-verisi` GitHub deposundan
+indirdim, yalnızca mock'taki 20 ilçeyi eşleştirdim, Douglas-Peucker ile sadeleştirdim (917 KB →
+26,8 KB) ve `frontend/src/data/ilce-sinirlari.json`'a gömdüm (build zamanı, GK4: çalışma zamanında
+ağ isteği yok). `BolgeHaritasi.tsx` artık her panonun ilçesi için bu poligonu SVG `<path>` olarak
+çiziyor, turuncu kontur + `feGaussianBlur` glow filtresi + hover'da `transform: scale(1.045)`.
+Ayrıntı ve gerekçe: `frontend/TASARIM-REVIZYONU.md` §17.
+
+Doğrulama: tsc temiz, 71/71 test yeşil, build başarılı. `/bolge` 1440px ve 390px'de görsel
+kontrol edildi (gerçek ilçe şekilleri, hover büyütme çalışıyor), `/cihaz-sagligi`'de aktif sekmenin
+tam turuncu göründüğü doğrulandı, konsolda hata yok.
 
 ## 18. Bölge haritasına gerçek konum (main'den sonra, "bölge haritasına gerçekten harita ekleyebilir miyiz")
 
