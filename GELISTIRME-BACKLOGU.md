@@ -141,7 +141,7 @@ Alarm kartına, teşhisi kesinleştirmek için eksik olan kanıtı yazar · **Et
 
 GK2 gereği bu pencerede kod yazılmaz. **Doküman bütçesi kararı:** en çok **iki** yeni dosya açılır (`docs/18` ve `docs/19`); sektör taramasından gelen sekiz ayrı yeni doküman önerisi bu ikisinde birleştirilmiştir. Depoda zaten 18 doküman var ve M4'te hepsi çapraz okunacak; yirminci dosya jüriye değer değil, okuma yükü ve çelişki riski ekler.
 
-### F-11 · Jüri kanıt haritası: dokuz kriter → dosya → ölçülmüş sayı
+### F-11 · Jüri kanıt haritası: dokuz kriter → dosya → ölçülmüş sayı — ✅ tamamlandı
 Değerlendirme kriterlerinin her biri için tek satırlık kanıt eşlemesi · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [README.md](README.md) başı veya yeni `docs/00-juri-kanit-haritasi.md`
 **Sektörel dayanak:** Yok — bu bir teslim disiplini maddesi; jürinin kendi değerlendirme cetveline hizalanma.
 **Bizdeki boşluk:** 18 doküman teslim ediyoruz, jüri dokuz kriterden puan veriyor ve aradaki eşlemeyi kurma işini jüriye bırakıyoruz.
@@ -155,7 +155,7 @@ Muhtemel jüri sorularının cevaplarını ölçülmüş sayılarla doldurur · 
 **Ne üretir:** Provaya hazır tek kart; en çok puanlanan anın (soru-cevap) tek hazırlık artefaktı.
 **Dikkat:** Her cevabın yanında kanıt dosyası adı olmalı; sayısı olmayan soruya "ölçmedik" yazılmalı.
 
-### F-13 · "Kendiniz okuyun" kartı: üç komutla canlı doğrulama
+### F-13 · "Kendiniz okuyun" kartı: üç komutla canlı doğrulama — ✅ tamamlandı
 Jürinin kendi istemcisiyle üç protokolden aynı değeri okuyup eşitliği doğrulaması için komut kartı · **Etki:** yüksek · **Efor:** ~1 saat · **Nerede yaşar:** [docs/03-modbus-haritasi.md](docs/03-modbus-haritasi.md) ve [README.md](README.md)
 **Sektörel dayanak:** Moxa, Beckhoff gibi ürünlerde birlikte çalışabilirlik belgesinin yanında "kendi istemcinizle doğrulayın" akışı standart.
 **Bizdeki boşluk:** [docs/01-problem-analizi.md](docs/01-problem-analizi.md)'deki ayırt edici özellikler listesinde "jüri kendi Modbus istemcisiyle okuyabilir" yazıyor ama bunu nasıl yapacağını söyleyen tek satır yok.
