@@ -1,15 +1,17 @@
 # Graph Report - griduphackathon  (2026-09-16)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 256 files · ~360,477 words
+- Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 71 file(s) not represented in the graph (top: (none) 48, .csv 13, .css 3)
 
 ## Summary
-- 4023 nodes · 8367 edges · 186 communities (161 shown, 25 thin omitted)
+- 4597 nodes · 8959 edges · 233 communities (198 shown, 35 thin omitted)
 - Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 430 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c4993739`
+- Built from commit: `3161b581`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -22,7 +24,7 @@
 - PanelSimulator
 - test_quality.py
 - score
-- views.py
+- Contracts
 - mock.ts
 - test_notifier.py
 - Ikiz3D.tsx
@@ -31,7 +33,7 @@
 - ModbusTcpServer
 - Alarm
 - ScadaGateway
-- iec104_server.py
+- iec104.py
 - test_modbus_tcp.py
 - test_scenarios.py
 - test_threshold_sweep.py
@@ -44,13 +46,13 @@
 - test_loadtest_physics.py
 - test_risk.py
 - package.json
-- dispatcher.py
+- templates.py
 - test_api_alarms.py
 - virtual_gsm_modem.py
 - PanoDetay.tsx
 - scenarios.py
 - test_generator.py
-- OlayAnalizi.tsx
+- App.tsx
 - SmsModem
 - test_api_insights.py
 - test_digest.py
@@ -64,8 +66,8 @@
 - test_grafana_dashboards.py
 - properties
 - CentralDetector
-- Tvoc2Device
-- alarm_service.py
+- test_devices.py
+- dispatcher.py
 - RegisterMap
 - properties
 - main.py
@@ -86,40 +88,40 @@
 - test_central_detector.py
 - WhatsAppClient
 - test_panobeyni_sim.py
-- Contracts
+- 5. C — Hackathon sonrası ürün yol haritası (3-12 ay)
 - test_scada_gateway.py
-- ingest.py
+- IngestPipeline
 - PgStore
-- db.py
-- MqttSubscriber
+- test_insight_store.py
+- test_mqtt_subscriber.py
 - rls.c
 - AlarmManager
 - test_seed_demo.py
-- test_devices.py
+- Tasarım Revizyonu Planı — "RAL 7035 + Aydem kimliği"
 - modbus_map.c
-- backend/tests/helpers.py
-- encode_submit
+- backend/tests/conftest.py
+- pdu.py
 - x-topics
 - mockSeries.ts
-- IngestPipeline
-- ExceptionCode
+- Grid Up Hackathon — Fazlı Uygulama Planı ve Çakışmasız İş Bölümü
+- GELISTIRME-BACKLOGU.md
 - risk
-- gen_grafana_dashboards.py
-- PointValue
+- OlayAnalizi.tsx
+- iec104_server.py
 - panoalgo/tests/conftest.py
 - test_db_integration.py
 - prognostics.py
 - StreamHub
-- pdu.py
+- 4. 🟠 Yüksek (17 Eylül 23:59'dan önce)
 - test_sms_modem.py
-- Store
+- 05. Anomali Tespiti — Formüller, Eşikler ve Katmanlar
 - Notifier
 - properties
 - 001_schema.sql
 - compilerOptions
 - test_detect.py
 - dew_point
-- make_rig
+- Kişi C — Durum Takibi (Arayüz, Donanım Tasarımı, Teslim)
 - properties
 - properties
 - time_to_limit
@@ -128,16 +130,16 @@
 - Client
 - detect.py
 - test_loadtest_storage.py
-- .__init__
+- generator.py
 - Tvoc2Block
-- LoopThread
+- Rig
 - _ortak.sh
 - MprBlock
 - RateMeter
 - panoalgo/tests/helpers.py
-- test_gen_modbus_doc.py
+- load_map
 - pano_dew_point
-- RingBuffer
+- insights.py
 - test_gen_iec104_doc.py
 - items
 - pano_limits_evaluate
@@ -145,33 +147,33 @@
 - vectors.py
 - _feed
 - test_compression.py
-- acked_codes
+- 04 — IEC 60870-5-104 Nokta Planı
 - mqtt-telemetry.schema.json
 - scenario-labels.schema.json
 - Api
-- GatewayStations
-- PromptCheckingPort
+- 14. Sentetik Veri Üreteci — Spesifikasyon ve Senaryo Kataloğu
+- tazminat_maruziyeti.py
 - t_conn
 - main
 - predictions_from_series
 - test_k_index.py
 - duman-testi.sh
 - main
-- format_pano_id
+- 09 — Ölçeklenebilirlik, Yük Testi ve Veri Bütçesi
 - alpha_lambda
 - relative_accuracy
 - gen_alarm_doc.py
-- .add_listener
+- PanelEncoder
 - expect
 - thermal.c
-- parse_units
+- 17 — Donanım Olmadan Neyi, Nasıl Kanıtladık?
 - alarms
-- .record_trip
+- .on_alarm_changes
 - check_contracts.py
 - l0_breach_at
 - scenario_id
 - .__init__
-- UnknownTypeError
+- 15 — Siber Güvenlik ve KVKK
 - generated_at
 - pano_id
 - pano_type
@@ -197,6 +199,53 @@
 - test_winter_night_can_drive_the_dew_point_margin_into_condensation
 - test_the_sensor_fault_scenario_produces_prognoses_without_any_breach
 - panoalgo
+- UFrame
+- 03 — Pano Beyni Modbus Haritası ve SCADA Ağ Geçidi
+- test_loadtest_fleet.py
+- run_cli
+- 02 — Mimari
+- 06 — Alarm Matrisi, ISA-18.2 Alarm Yönetimi ve Bildirim
+- 13 — Donanım Tasarımı
+- (a) Konumlandırma ve özellik matrisi
+- Grid Up Hackathon — "Pano/Hücre İçi Anomali Erken Uyarı Sistemi"
+- Sozlesme degisiklik onerisi — esigi olmayan uc alarm kodu + uyarim olcutu
+- Sunum Taslağı — ~12 dakika (rapor §8.2)
+- 10 — BOM, Maliyet ve ROI
+- 19 — TEDAŞ Şartname Uyum Haritası
+- 6. Önerilen Çözüm Mimarisi
+- 12. Dogrulama Sonuclari
+- Pano Beyni — Ana Döngü ve Durum Makinesi
+- `contracts/` — Kilitli Bölge
+- 3. Verilen Dökümanların Derin Analizi
+- Pano/Hücre İçi Anomali Erken Uyarı Sistemi
+- generate
+- MemoryDevice
+- 01 — Problem Analizi (Jüri Özeti)
+- 08 — Kurulum Prosedürü
+- 7. Saha Uygulanabilirliği, FMEA, Güvenlik ve Standartlar
+- WhatsAppStub
+- 2026-09-14 — Toplu cihaz sağlığı ucu (öneri)
+- demo/senaryo/ — Belirlenimli demo betikleri (T5.1)
+- vitest
+- Pano Beyni — Blok Diyagramı (v1)
+- 07b — FMEA: Yazılım ve Sistem
+- 2. Komite Tam Olarak Ne Talep Ediyor? — Gereksinim Matrisi
+- CentralDetector
+- İstenen Veriler_613618b1.md
+- 15. Ekler: Formüller, Hesaplar, Sentetik Veri Spesifikasyonu
+- 1. Yarışma Bağlamı: Kim, Neden, Ne Zaman?
+- 07 — FMEA: Donanım ve Saha
+- Operasyon arayüzü
+- 12. Proje Riskleri ve Komiteye Sorulacak Sorular
+- 16. Kaynaklar
+- 8. Demo Senaryosu (Final Sunumu)
+- rules/graphify.md
+- workflows/graphify.md
+- CLAUDE.md
+- test_healthy_panel_never_breaches_the_l0_terminal_alarm
+- test_healthy_panel_stays_below_the_l0_warning_threshold
+- test_phase_currents_never_exceed_the_rated_current_of_a_healthy_panel
+- test_data_quality_flags_are_clean_on_a_healthy_panel
 
 ## God Nodes (most connected - your core abstractions)
 1. `MemoryStore` - 63 edges
@@ -205,40 +254,40 @@
 4. `Contracts` - 56 edges
 5. `IngestPipeline` - 46 edges
 6. `observe()` - 46 edges
-7. `evaluate()` - 45 edges
-8. `utc()` - 45 edges
+7. `utc()` - 45 edges
+8. `evaluate()` - 45 edges
 9. `AlarmService` - 43 edges
 10. `cond()` - 43 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Tvoc2Block` --uses--> `Tvoc2Device`  [INFERRED]
-  sim/tvoc2_sim.py → libs/panoalgo/panoalgo/devices.py
-- `MprBlock` --uses--> `Mpr53csDevice`  [INFERRED]
-  sim/mpr53cs_sim.py → libs/panoalgo/panoalgo/devices.py
-- `build_payload()` --uses--> `EdgePipeline`  [INFERRED]
-  sim/panobeyni_sim.py → libs/panoalgo/panoalgo/edge.py
-- `main()` --uses--> `EdgePipeline`  [INFERRED]
-  sim/panobeyni_sim.py → libs/panoalgo/panoalgo/edge.py
-- `_run_stream()` --uses--> `EdgePipeline`  [INFERRED]
-  sim/panosim.py → libs/panoalgo/panoalgo/edge.py
+- `_digest_changes()` --uses--> `Change`  [INFERRED]
+  scripts/seed_demo.py → backend/app/alarm_manager.py
+- `seed()` --uses--> `AlarmManager`  [INFERRED]
+  scripts/seed_demo.py → backend/app/alarm_manager.py
+- `build_factory()` --uses--> `Contracts`  [INFERRED]
+  loadtest/fleet.py → backend/app/config.py
+- `PayloadFactory` --uses--> `Contracts`  [INFERRED]
+  loadtest/fleet.py → backend/app/config.py
+- `PhysicsPayloadFactory` --uses--> `Contracts`  [INFERRED]
+  loadtest/fleet.py → backend/app/config.py
 
 ## Import Cycles
 - 3-file cycle: `backend/app/alarm_service.py -> backend/app/notify/dispatcher.py -> backend/app/notify/templates.py -> backend/app/alarm_service.py`
 - 4-file cycle: `backend/app/alarm_service.py -> backend/app/db.py -> backend/app/notify/dispatcher.py -> backend/app/notify/templates.py -> backend/app/alarm_service.py`
 
-## Communities (186 total, 25 thin omitted)
+## Communities (233 total, 35 thin omitted)
 
 ### Community 0 - "evaluate"
 Cohesion: 0.05
-Nodes (74): Repo icindeki contracts/ dizini — dosya sistemi sorgusu bir kez yapilir.…, default_contracts_dir(), _electrical(), _environment(), evaluate(), load_contract(), _partial_discharge(), _phase_difference() (+66 more)
+Nodes (75): default_contracts_dir(), _electrical(), _environment(), evaluate(), load_contract(), _partial_discharge(), _phase_difference(), _phases_similarly_loaded() (+67 more)
 
 ### Community 1 - "threshold_sweep.py"
-Cohesion: 0.05
-Nodes (60): ArgumentParser, calc(), fixture, F-05 — scripts/tazminat_maruziyeti.py: parametre yoksa "veri yok", parametre…, Dokumana elle yazilan adet ve fiyatlar betigin turettikleriyle ayni kalmali., test_docs_10_bom_farki_tablosu_koddaki_sayilarla_ayni(), test_odenen_arayuz_fiyati_bom_csv_satirindan_gelir(), _amount() (+52 more)
+Cohesion: 0.06
+Nodes (60): calc(), fixture, F-05 — scripts/tazminat_maruziyeti.py: parametre yoksa "veri yok", parametre…, Dokumana elle yazilan adet ve fiyatlar betigin turettikleriyle ayni kalmali., test_docs_10_bom_farki_tablosu_koddaki_sayilarla_ayni(), test_odenen_arayuz_fiyati_bom_csv_satirindan_gelir(), alarm_kpi(), build() (+52 more)
 
 ### Community 2 - "test_profiles.py"
 Cohesion: 0.05
-Nodes (61): Kenar tespit boru hatti (TA2 Adim 6, Kisi A): ham fizik yuku -> zengin…, Fizik tabanli sentetik telemetri ureteci (TA1 Adim 5, Kisi A). Neden ureteci:…, ar1_phi(), Ar1Noise, hour_of_week(), load_profile(), datetime, ProfileKind (+53 more)
+Nodes (59): Kenar tespit boru hatti (TA2 Adim 6, Kisi A): ham fizik yuku -> zengin…, ar1_phi(), Ar1Noise, hour_of_week(), load_profile(), datetime, ProfileKind, Saat-of-hafta yuk profilleri (TA1 Adim 5, Kisi A): 168 kutu, 0-1 normalize.… (+51 more)
 
 ### Community 3 - "test_alarm_manager.py"
 Cohesion: 0.08
@@ -250,95 +299,95 @@ Nodes (49): alarm_latencies(), build_factory(), cleanup(), clock_offset_s(), Con
 
 ### Community 5 - "PanelSimulator"
 Cohesion: 0.05
-Nodes (26): PanelSimulator, PointSpec, Bir olcum noktasinin degismez fiziksel kimligi., Tek bir panonun kenar telemetrisini uretir. Ayni `seed` ayni diziyi verir:…, Son adimda bu noktadan gecen akim (A)., Yuku sabitler: profil, mevsim ve gurultu devre disi kalir. Isil modelin kararli…, Bir noktanin isil direnc indeksini K0'in katina cikarir (gevsek baglanti).…, Yuku olcekler (asiri yuk senaryosu). K'ye DOKUNMAZ — ariza degil. (+18 more)
+Nodes (24): PanelSimulator, Tek bir panonun kenar telemetrisini uretir. Ayni `seed` ayni diziyi verir:…, Son adimda bu noktadan gecen akim (A)., Yuku sabitler: profil, mevsim ve gurultu devre disi kalir. Isil modelin kararli…, Bir noktanin isil direnc indeksini K0'in katina cikarir (gevsek baglanti).…, Yuku olcekler (asiri yuk senaryosu). K'ye DOKUNMAZ — ariza degil., Bagil nemi kaydirir (yogusma senaryosu)., Akim THD'sini olcekler; notr akimi da formul geregi birlikte artar. (+16 more)
 
 ### Community 6 - "test_quality.py"
 Cohesion: 0.07
-Nodes (56): _by_point(), check(), codes_from_bits(), default_contracts_dir(), _elapsed_minutes(), load_contract(), point_quality(), Path (+48 more)
+Nodes (58): _by_point(), check(), codes_from_bits(), default_contracts_dir(), _elapsed_minutes(), load_contract(), point_quality(), Path (+50 more)
 
 ### Community 7 - "score"
-Cohesion: 0.06
-Nodes (55): default_contracts_dir(), _discriminator_holds(), load_contract(), Any, NamedTuple, Path, L3 hipotez fuzyonu (TA2 Adim 6, Kisi A): alarm kodlari -> baskin hipotez +…, Sozlesmedeki `discriminator` kosulunu uygular. Su an yalnizca HYP-OVERLOAD'da… (+47 more)
+Cohesion: 0.05
+Nodes (57): default_contracts_dir(), _discriminator_holds(), load_contract(), Any, NamedTuple, Path, L3 hipotez fuzyonu (TA2 Adim 6, Kisi A): alarm kodlari -> baskin hipotez +…, Sozlesmedeki `discriminator` kosulunu uygular. Su an yalnizca HYP-OVERLOAD'da… (+49 more)
 
-### Community 8 - "views.py"
-Cohesion: 0.08
-Nodes (47): _aware(), bucket_starts(), event_blackbox(), fill(), fleet_kpi(), nearest_rank(), panel_series(), parse_step() (+39 more)
+### Community 8 - "Contracts"
+Cohesion: 0.11
+Nodes (30): get_panel(), list_panels(), Any, get, Request, GET /api/v1/panels, GET /api/v1/panels/{pano_id} (TB1)., alarm_view(), comms_ok_since() (+22 more)
 
 ### Community 9 - "mock.ts"
-Cohesion: 0.07
-Nodes (47): api, httpApi, usingMocks, ADVICE, alarm(), allAlarms(), basePoints(), BLACKBOX_PANEL_TAGS (+39 more)
+Cohesion: 0.08
+Nodes (45): api, httpApi, usingMocks, ADVICE, alarm(), allAlarms(), basePoints(), BLACKBOX_PANEL_TAGS (+37 more)
 
 ### Community 10 - "test_notifier.py"
-Cohesion: 0.07
-Nodes (44): NotifyConfig, _numbers(), calls(), gateway(), manager(), fixture, parametrize, Request (+36 more)
+Cohesion: 0.09
+Nodes (37): NotifyConfig, calls(), gateway(), manager(), fixture, parametrize, raise_alarm(), TB2 Adim 5-7 — bildirim ag gecidi (app.notify.dispatcher.Notifier). Gercek… (+29 more)
 
 ### Community 11 - "Ikiz3D.tsx"
-Cohesion: 0.09
-Nodes (39): ConnPoint, Tvoc, ALL_POINTS, buildScene(), paintNode(), DETECTOR_X, HistorySample, HOME_OFFSET (+31 more)
+Cohesion: 0.08
+Nodes (40): ConnPoint, PointState, Tvoc, ALL_POINTS, buildScene(), getThermalColor(), paintNode(), DETECTOR_X (+32 more)
 
 ### Community 12 - "EdgePipeline"
-Cohesion: 0.09
-Nodes (35): lambda_for_period(), Unutma faktorunu farkli bir ornekleme periyoduna tasir (ayni ZAMAN hafizasi). T…, EdgePipeline, expected(), _forget_estimates(), datetime, Yuku YERINDE zenginlestirir ve ayni sozlugu doner., Ornekleme periyodunu ardisik zaman damgalarindan cikarir. (+27 more)
+Cohesion: 0.08
+Nodes (36): AlarmKey, lambda_for_period(), Unutma faktorunu farkli bir ornekleme periyoduna tasir (ayni ZAMAN hafizasi). T…, EdgePipeline, expected(), _forget_estimates(), datetime, Yuku YERINDE zenginlestirir ve ayni sozlugu doner. (+28 more)
 
 ### Community 13 - "panosim.py"
-Cohesion: 0.08
-Nodes (37): Pano ici anomali tespiti ve fizik tabanli sentetik veri uretimi (Kisi A)., build_payload(), main(), parse_args(), FrameType, Namespace, Pano Beyni tasima kabugu (TA3 Adim 6, Kisi A): Modbus master -> kenar -> MQTT.…, Olculen buyuklukleri isil modelle birlestirip sema-gecerli telemetri uretir.… (+29 more)
+Cohesion: 0.09
+Nodes (31): build_payload(), main(), Olculen buyuklukleri isil modelle birlestirip sema-gecerli telemetri uretir.…, _baseline_hours(), build_simulators(), connect(), load_schema(), main() (+23 more)
 
 ### Community 14 - "ModbusTcpServer"
-Cohesion: 0.06
-Nodes (19): Iec104Server, StreamReader, StreamWriter, client_allowed(), _close(), DeviceModel, ModbusTcpServer, normalize_peer() (+11 more)
+Cohesion: 0.09
+Nodes (9): ModbusTcpServer, GatewayStations, _Listener, Any, datetime, SCADA ag gecidinin yasam dongusu (TB3, Kisi B): Modbus TCP + IEC 60870-5-104…, IEC 104 istasyon kaynagi: ortak adres = Modbus birimi; degerler ag gecidinin…, Bir protokol sunucusunun baslatma durumu. (+1 more)
 
 ### Community 15 - "Alarm"
-Cohesion: 0.09
-Nodes (19): Alarm, Depodan yuklenen acik alarmlari geri koyar (yeniden baslatma). Depodaki…, AlarmService, _digest_summary(), datetime, Acik alarmlari ve panolarin son gorulme zamanini depodan bir kez yukler…, Ingest dinleyicisi: yazilan her partiden sonra (yazici thread'inde) cagrilir., Alarm zamanlayicisi: bekleyen yazimlar, raf suresi, haberlesme denetimi. (+11 more)
+Cohesion: 0.07
+Nodes (25): Alarm, AlarmService, _digest_prios(), _digest_summary(), datetime, time, Acik alarmlari ve panolarin son gorulme zamanini depodan bir kez yukler…, Degisiklik dinleyicisi. `digest` metodu olan dinleyici (bildirim ag gecidi)… (+17 more)
 
 ### Community 16 - "ScadaGateway"
 Cohesion: 0.09
-Nodes (24): PanelImage, _Panel, Any, CommandSink, datetime, SCADA ag gecidi (TB3 Adim 2, Kisi B): Modbus birimi -> pano, register…, /health icin ozet: eslenen birim, bellekte izlenen pano, yazma durumu, kilitli…, Kilit altinda: panonun kaydi; sabit eslemede eslenmemis pano izlenmez. Yeni… (+16 more)
+Nodes (23): Diger SCADA protokolleri (IEC 104) icin ayni goruntu. Eslenmemis birim…, ScadaGateway, _check_address_space(), client_allowed(), _close(), DeviceModel, ModbusError, normalize_peer() (+15 more)
 
-### Community 17 - "iec104_server.py"
-Cohesion: 0.09
-Nodes (40): decode_apdu(), encode_asdu(), encode_i(), encode_s(), encode_u(), float_element(), IFrame, parse_cp56time2a() (+32 more)
+### Community 17 - "iec104.py"
+Cohesion: 0.10
+Nodes (29): Asdu, encode_asdu(), encode_i(), encode_s(), float_element(), IFrame, parse_cp56time2a(), datetime (+21 more)
 
 ### Community 18 - "test_modbus_tcp.py"
-Cohesion: 0.11
-Nodes (34): client(), device(), frame(), is_closed(), loop(), MemoryDevice, fixture, parametrize (+26 more)
+Cohesion: 0.15
+Nodes (30): client(), device(), frame(), is_closed(), loop(), fixture, socket, TB3 Adim 2 — Modbus TCP sunucusu: cerceve, fonksiyon kodlari, istisna… (+22 more)
 
 ### Community 19 - "test_scenarios.py"
-Cohesion: 0.07
-Nodes (41): build(), Senaryoyu kosturur; (DataFrame, etiket sozlugu) doner. Etiket sozlugu…, _contract_points(), _lead_time_h(), fixture, parametrize, Etiketli senaryo ureteci testleri — PLAN.md TA2 Adim 7. Beklenen degerlerin…, l0_breach_at = 70 K'nin asildigi an; sabit esik ancak BURADA uyarir. (+33 more)
+Cohesion: 0.06
+Nodes (44): build(), list_scenarios(), Katalog: kimlik, aciklama, varsayilan sure., Senaryoyu kosturur; (DataFrame, etiket sozlugu) doner. Etiket sozlugu…, _contract_points(), _lead_time_h(), fixture, parametrize (+36 more)
 
 ### Community 20 - "test_threshold_sweep.py"
 Cohesion: 0.06
 Nodes (37): condense(), healthy(), _pair(), fixture, Ciy noktasi esik taramasi (F-06) — scripts/threshold_sweep.py. Beklenen…, Yeniden kosturma contracts/ dizininin GECICI kopyasini yazar, aslini degil., docs/12 §3: S0'da 71,4 yanlis alarm/100 pano/gun, tamami ALM-DEW-*., Taramanin ana bulgusu: esigi kismak olay sayisini AZALTMIYOR, artiriyor. (+29 more)
 
 ### Community 21 - "test_scada_encoder.py"
-Cohesion: 0.12
-Nodes (41): EventLog, Ag gecidinin gordugu son alarm acilislari (event blogu)., alarm(), coils(), encoder(), fixture, parametrize, TB3 Adim 2 — pano son durumu + alarm yoneticisi -> Pano Beyni register… (+33 more)
+Cohesion: 0.15
+Nodes (36): EventLog, Ag gecidinin gordugu son alarm acilislari (event blogu)., alarm(), coils(), parametrize, TB3 Adim 2 — pano son durumu + alarm yoneticisi -> Pano Beyni register…, 4.35 / 0.1 kayan noktada 43.4999... olur; dogru ham deger 44., Kayit kodu 4=INFO, 5=SYS; ama aciliyet sirasi P1 > P2 > P3 > SYS > INFO. (+28 more)
 
 ### Community 22 - "test_iec104_server.py"
-Cohesion: 0.11
-Nodes (41): cp56time2a(), decode_asdu(), CP56Time2a, UTC (yaz saati biti 0): ms (2) | dakika | saat | gun + haftanin…, Timing, utc(), Sayilar ve etiketler oncelik tablosundan gelir; P2 (anlik yol) ve pencere disi…, test_digest_counts_only_the_p3_and_sys_alarms_of_the_window(), test_decode_general_interrogation_command() (+33 more)
+Cohesion: 0.12
+Nodes (41): cp56time2a(), decode_asdu(), CP56Time2a, UTC (yaz saati biti 0): ms (2) | dakika | saat | gun + haftanin…, Timing, SFrame, utc(), Sayilar ve etiketler oncelik tablosundan gelir; P2 (anlik yol) ve pencere disi…, test_digest_counts_only_the_p3_and_sys_alarms_of_the_window() (+33 more)
 
 ### Community 23 - "create_app"
 Cohesion: 0.11
 Nodes (33): _csv(), Settings, _configure_logging(), create_app(), Uygulama kayitlari (gridup.*) konteyner loguna duser; uvicorn kendi…, Clock, datetime, Uygulama bozuksa test sonsuza dek beklemesin diye zaman asimli WebSocket… (+25 more)
 
 ### Community 24 - "labels.ts"
-Cohesion: 0.08
-Nodes (35): AlarmSignal, NotifyChannel, PointState, AlarmNedeni(), Props, SignalRow(), formatter(), formatters (+27 more)
+Cohesion: 0.12
+Nodes (25): Alarm, AlarmSignal, NotifyChannel, AlarmNedeni(), Props, SignalRow(), ADVICE_TEXT, adviceText() (+17 more)
 
 ### Community 25 - "gen_iec104_doc.py"
 Cohesion: 0.12
-Nodes (38): Register/coil adi -> merkezdeki kaynagi (docs/03 ureteci icin)., source_docs(), _cell(), _default(), emitted_types(), field_widths(), _fits(), interop_application() (+30 more)
+Nodes (36): _cell(), _default(), emitted_types(), field_widths(), _fits(), interop_application(), interop_asdu_selection(), interop_cot_matrix() (+28 more)
 
 ### Community 26 - "test_map_loader.py"
-Cohesion: 0.11
-Nodes (32): _check_overlaps(), Coil, load_map(), MapError, _parse_block(), _parse_coils(), parse_map(), Any (+24 more)
+Cohesion: 0.13
+Nodes (28): _check_overlaps(), Coil, MapError, _parse_block(), _parse_coils(), parse_map(), Any, ValueError (+20 more)
 
 ### Community 27 - "test_loadtest_physics.py"
-Cohesion: 0.06
-Nodes (31): fleet(), fixture, parametrize, TB3 Adim 4 — loadtest/fleet.py yuk aracinin saf parcalari (canli olcum…, 100 B/satir, mesaj basina 86 satir, 10 s periyot: 100 pano -> 100 x 8640 x 86 x…, Yuk testindeki alarm gercek zinciri calistirmali: kenar kodu + esigi asan K/K0…, test_alarm_payload_is_explained_as_k_alarm_by_the_risk_engine(), test_parse_docker_stats() (+23 more)
+Cohesion: 0.09
+Nodes (18): factory(), fixture, parametrize, TB3 Adim 4 (Y8) — yuk testinin FIZIK ureteci: panoalgo kutuphane olarak import…, --edge-all kapaliyken tespit yalnizca olculen panolarda kosar (CPU butcesi)., alarm_latencies dogru kodu sorgulayabilsin diye uretici kodu bildirir., Kod kopyalanmadi: uretilen simulator A'nin paketinden geliyor., Tekrarlanabilirlik: iki kosu ayni veriyi uretmeli (sablon uretecin garantisi… (+10 more)
 
 ### Community 28 - "test_risk.py"
 Cohesion: 0.09
@@ -348,9 +397,9 @@ Nodes (38): by_key(), hypothesis(), parametrize, TB2 Adim 4 — risk motoru: tel
 Cohesion: 0.05
 Nodes (37): dependencies, @fontsource/barlow, @fontsource/barlow-semi-condensed, react, react-dom, react-router-dom, three, devDependencies (+29 more)
 
-### Community 30 - "dispatcher.py"
-Cohesion: 0.12
-Nodes (31): Digest, Gunde bir kez gonderilen ozetin icerigi; metne cevirmek bildirim katmaninin…, _Job, Bildirim ag gecidi (TB2 Adim 5-7, Kisi B): alarm degisikligi -> kanal isleri ->…, Gunluk ozet: alarm servisi gunde bir kez cagirir, saha ekibine tek parca SMS…, gsm7_septets(), Metin GSM-7'ye sigmiyorsa None., digest_sms() (+23 more)
+### Community 30 - "templates.py"
+Cohesion: 0.16
+Nodes (26): gsm7_septets(), Metin GSM-7'ye sigmiyorsa None., digest_sms(), escalation_sms(), _fit(), fold(), _gsm7_safe(), Bildirim metinleri (TB2 Adim 6, Kisi B). Kural (rapor 6.6c): yalnizca saha… (+18 more)
 
 ### Community 31 - "test_api_alarms.py"
 Cohesion: 0.13
@@ -361,48 +410,48 @@ Cohesion: 0.08
 Nodes (18): mask_number(), Kisisel veri azaltma (KVKK): kayit ve denetim izinde telefon numarasi acik…, +905550000001' -> '+90******0001'. Kisa veya alfanumerik gonderici oldugu gibi…, _control(), _error(), FileLog, main(), ModemServer (+10 more)
 
 ### Community 33 - "PanoDetay.tsx"
-Cohesion: 0.08
-Nodes (29): request(), ApiError, errorText(), buildPath(), ChartSeries, CizgiGrafik(), fmtDay, fmtTime (+21 more)
+Cohesion: 0.14
+Nodes (16): request(), ApiError, errorText(), pointLabel(), FazKarsilastirma(), GorunumSiniri, LoadError, NoktaTrendi() (+8 more)
 
 ### Community 34 - "scenarios.py"
-Cohesion: 0.08
-Nodes (35): parse_detector(), X2:4" -> ("X2", 4). None girdi None doner; gecersiz ad ValueError. Ad bicimi…, Ark korumasi dedektor sagligi: False = pano sessizce korumasiz. `detector`…, _default_fixture_dir(), _in_comms_gap(), _inject(), iter_samples(), _labels() (+27 more)
+Cohesion: 0.09
+Nodes (34): format_pano_id(), parse_detector(), X2:4" -> ("X2", 4). None girdi None doner; gecersiz ad ValueError. Ad bicimi…, Sozlesme desenine uyan pano kimligi: format_pano_id("adm", 1) -> "ADM-00001"., Ark korumasi dedektor sagligi: False = pano sessizce korumasiz. `detector`…, _default_fixture_dir(), _in_comms_gap(), _inject() (+26 more)
 
 ### Community 35 - "test_generator.py"
-Cohesion: 0.09
-Nodes (35): make(), datetime, Sentetik veri ureteci testleri — PLAN.md TA1 Adim 6. Beklenen degerlerin…, Sema deseni ^[A-Z]{3}-[0-9]{5}$ — hata yayin aninda degil, kurulumda cikmali., Sabit akimda dT -> K*I^2 (rapor 15.1 kararli durum)., Bir tau sonunda adim yanitinin ~%63'u tamamlanmis olmali (1 - 1/e)., Rapor 15.2: tau = 10-30 dk., Rapor 15.2: olcum gurultusu sigma ~ 0,2 degC. Gurultusuz seri juriye sahte bir… (+27 more)
+Cohesion: 0.07
+Nodes (40): make(), datetime, parametrize, Sentetik veri ureteci testleri — PLAN.md TA1 Adim 6. Beklenen degerlerin…, Sema deseni ^[A-Z]{3}-[0-9]{5}$ — hata yayin aninda degil, kurulumda cikmali., Sabit akimda dT -> K*I^2 (rapor 15.1 kararli durum)., Bir tau sonunda adim yanitinin ~%63'u tamamlanmis olmali (1 - 1/e)., Rapor 15.2: tau = 10-30 dk. (+32 more)
 
-### Community 36 - "OlayAnalizi.tsx"
-Cohesion: 0.12
-Nodes (26): App(), FleetKpis(), NAV, StatusStrip(), ChartMarker, ago(), panoTypeText(), useNow() (+18 more)
+### Community 36 - "App.tsx"
+Cohesion: 0.09
+Nodes (30): App(), AudioMuteButton(), CihazSagligi, FiloListesi, FleetKpis(), NAV, PanoDetay, StatusStrip() (+22 more)
 
 ### Community 37 - "SmsModem"
-Cohesion: 0.11
-Nodes (16): ModemError, RuntimeError, Tamponlanan ve `timeout_s` icinde gelen SMS'leri teslim eder., Son sonuc koduna (OK / hata) kadar bilgi satirlari; yanki ve istem ayiklanir., Bir sonraki anlamli satir. Gelen SMS (+CMT basligi + PDU satiri) burada…, Komut beklenmezken (poll, calma suresi) gelenleri okur; gelen SMS'ler…, Tampondan tamamlanmis bir satir; '> ' istemi satir sonu beklemeden tek basina…, `quiet_s` boyunca yeni bayt gelmeyene kadar okur ve atar. (+8 more)
+Cohesion: 0.13
+Nodes (11): Sms, Tamponlanan ve `timeout_s` icinde gelen SMS'leri teslim eder., Son sonuc koduna (OK / hata) kadar bilgi satirlari; yanki ve istem ayiklanir., Bir sonraki anlamli satir. Gelen SMS (+CMT basligi + PDU satiri) burada…, Komut beklenmezken (poll, calma suresi) gelenleri okur; gelen SMS'ler…, Tampondan tamamlanmis bir satir; '> ' istemi satir sonu beklemeden tek basina…, `quiet_s` boyunca yeni bayt gelmeyene kadar okur ve atar., Metni gerekirse birlesik parcalar halinde gonderir; parca basina modem mesaj… (+3 more)
 
 ### Community 38 - "test_api_insights.py"
 Cohesion: 0.10
 Nodes (28): get_series(), incident(), iso(), datetime, fixture, parametrize, Analiz uclari (TB3, C'nin TC3 ekranlari bekliyor): /panels/{id}/series,…, from 10:00:40 -> ilk kova 10:00:00'dan baslar; 10:00:30 ornegi o kovadadir ama… (+20 more)
 
 ### Community 39 - "test_digest.py"
-Cohesion: 0.08
-Nodes (21): DigestSink, fixture, time, TB2 Adim 7 — P3 gunluk ozeti ve SYS toplu ozeti (app.alarm_service ->…, Uctan uca: alarm zamanlayicisinin tick'i -> ozet -> sanal GSM modem, tek parca…, Isaret alarms tablosundadir: yeni alarm servisi bellekteki gunu bilmese de…, Ozet saati yapilandirilabilir: 21:30'a ayarli servis 21:29'da hic kimseye…, DIGEST_AT="" -> ozet kapali; alarm servisi Settings olmadan kuruldugu icin… (+13 more)
+Cohesion: 0.06
+Nodes (31): Digest, Gunde bir kez gonderilen ozetin icerigi; metne cevirmek bildirim katmaninin…, digest_at_from_env(), parse_digest_at(), time, DIGEST_AT ortam degiskeni; alarm servisi Settings olmadan kuruldugu icin ayrica…, DIGEST_AT: 'HH:MM' (24 saat, sunucu saati). Tanimsiz -> varsayilan; bos ->…, DigestSink (+23 more)
 
 ### Community 40 - "test_prognostics.py"
 Cohesion: 0.09
 Nodes (32): convergence(), prognostic_horizon(), Tahminin bir daha konidan cikmadigi ilk anin t_EOL'e uzakligi (saat). Tanim…, (yakinsama uzakligi saat, pencere icindeki kesri) — Saxena ve ark. 2010. x_c =…, _perfect(), Prognoz geri testi olcutleri (F-04) — panoalgo/prognostics.py. Beklenen…, None ile 0 ayri seydir: 0 'tam ihlal aninda tuttu' demektir., n = 1 durustluk kaydi: geri testi yapilabilen TEK yorunge var. (+24 more)
 
 ### Community 41 - "MemoryStore"
-Cohesion: 0.11
-Nodes (12): RuntimeError, Gecici depolama hatasi (baglanti yok, zaman asimi). Tekrar denenebilir; API 503…, StoreError, Request, _store_unavailable(), MemoryStore, datetime, `app.db.Store` sozlesmesinin bellek ici test cifti. Uretimde PgStore… (+4 more)
+Cohesion: 0.13
+Nodes (8): RuntimeError, Gecici depolama hatasi (baglanti yok, zaman asimi). Tekrar denenebilir; API 503…, StoreError, Request, _store_unavailable(), MemoryStore, datetime, JSONResponse
 
 ### Community 42 - "worklist.ts"
-Cohesion: 0.12
-Nodes (26): Alarm, PanelDetail, PAD, Props, RiskMatrisi(), X_TICKS_H, xTickLabel(), Pin() (+18 more)
+Cohesion: 0.13
+Nodes (31): PanelSummary, PrioMark(), PAD, Props, RiskMatrisi(), X_TICKS_H, xTickLabel(), Pin() (+23 more)
 
 ### Community 43 - "seed_demo.py"
-Cohesion: 0.11
-Nodes (32): already_seeded(), apply_migrations(), DemoPanel, _digest_changes(), _digest_sample(), generate(), main(), _plan() (+24 more)
+Cohesion: 0.14
+Nodes (24): already_seeded(), apply_migrations(), _digest_changes(), _digest_sample(), main(), datetime, Tekrar uretilebilirlik kaniti: ayni tohum + ayni pencere -> bu sozlugun tamami…, Pencerenin bitisi; ornekleme adimina yuvarlanir. Gelecege tarihli satir… (+16 more)
 
 ### Community 44 - "properties"
 Cohesion: 0.07
@@ -413,8 +462,8 @@ Cohesion: 0.17
 Nodes (16): Condition, Bir ornekte dogru olan alarm kosulu; `reason`/`advice`/`ttl_h` alarm olustugu…, _exceeds(), _neutral_harmonics(), _nodes(), _present(), Any, Risk motoru (TB2 Adim 4, Kisi B): telemetri ornegi -> aciklanabilir alarm… (+8 more)
 
 ### Community 46 - "test_iec104_points.py"
-Cohesion: 0.11
-Nodes (20): PanelEncoder, Register'in "yok" ham degeri (kaynagi bos oldugunda yazilan); bayraklarin "yok"…, MeasuredPoint, PointCatalog, Pano Beyni haritasi -> IEC 60870-5-104 bilgi nesneleri (TB3 Adim 8, Could, Kisi…, SinglePoint, by_ioa(), catalog() (+12 more)
+Cohesion: 0.17
+Nodes (14): by_ioa(), catalog(), encoder(), image(), k_warn(), fixture, parametrize, TB3 Adim 8 (Could) — Pano Beyni haritasi -> IEC 104 bilgi nesneleri… (+6 more)
 
 ### Community 47 - "test_grafana_dashboards.py"
 Cohesion: 0.12
@@ -428,13 +477,13 @@ Nodes (31): description, type, description, type, description, type, description
 Cohesion: 0.10
 Nodes (27): CentralDetector, _is_central(), Any, Path, Merkez dedektor adaptoru (TA2, Kisi A): panoalgo -> backend kancasi.…, backend/app/risk.py CentralDetector Protocol'unun panoalgo uygulamasi., Yukun O AN ihlal ettigi sozlesme alarm kodlari., _point() (+19 more)
 
-### Community 50 - "Tvoc2Device"
+### Community 50 - "test_devices.py"
 Cohesion: 0.06
-Nodes (24): PDU 1000'e 1 yazilinca aktif trip temizlenir; LOG SILINMEZ, 149 azalmaz. Gercek…, Sensor arizasi: 222/223 ANCAK aktif hata varken anlamlidir (kilavuz 4.4.2)., Yazma DENEMESINI kaydeder. Cihaz kabul etse de bizim ag gecidimiz engeller; bu…, ABB TVOC-2 Arc Guard — salt okunur izleme arayuzu. HABERLESME KAPALI DAVRANISI:…, Tvoc2Device, Kilavuz 4.4.2: bu registerlar AKTIF HATA bilgisini tasir; hata yoksa 0x0000. '1…, Her trip blogu 6 okunabilir register + 1 BOSLUK (stride 7)., PDU 1000 aktif tripi temizler; log silinmez, 149 azalmaz. (Bizim ag gecidimiz… (+16 more)
+Nodes (43): date, days_since_epoch(), decode_hhmm(), encode_hhmm(), PDU 1000'e 1 yazilinca aktif trip temizlenir; LOG SILINMEZ, 149 azalmaz. Gercek…, Sensor arizasi: 222/223 ANCAK aktif hata varken anlamlidir (kilavuz 4.4.2)., Tek register okur. None = ILLEGAL DATA ADDRESS (tanimsiz adres)., Yazma DENEMESINI kaydeder. Cihaz kabul etse de bizim ag gecidimiz engeller; bu… (+35 more)
 
-### Community 51 - "alarm_service.py"
-Cohesion: 0.11
-Nodes (27): AlarmNotFound, AlarmNotSuppressible, AlarmStateConflict, RuntimeError, ISA-18.2 alarm yoneticisi (TB2, Kisi B). Saf durum makinesi: veritabani, ag ve…, Acik alarmlar arasinda bu kimlik yok (hic olmamis veya temizlenmis)., Istenen gecis alarmin su anki durumunda yapilamaz (or. iki kez onay)., Bastirilamaz oncelik (P1) rafa alinamaz. (+19 more)
+### Community 51 - "dispatcher.py"
+Cohesion: 0.08
+Nodes (35): AlarmNotFound, AlarmNotSuppressible, AlarmStateConflict, RuntimeError, ISA-18.2 alarm yoneticisi (TB2, Kisi B). Saf durum makinesi: veritabani, ag ve…, Acik alarmlar arasinda bu kimlik yok (hic olmamis veya temizlenmis)., Istenen gecis alarmin su anki durumunda yapilamaz (or. iki kez onay)., Bastirilamaz oncelik (P1) rafa alinamaz. (+27 more)
 
 ### Community 52 - "RegisterMap"
 Cohesion: 0.12
@@ -445,12 +494,12 @@ Cohesion: 0.07
 Nodes (30): description, type, description, minimum, type, additionalProperties, properties, required (+22 more)
 
 ### Community 54 - "main.py"
-Cohesion: 0.10
-Nodes (19): PeriodicWorker, Belirli aralikla bir islevi arka plan thread'inde calistirir; hata dongusu…, HTTP ve WebSocket uclari — sozlesme: contracts/openapi.yaml., Grid Up merkez uygulamasi (Kisi B)., lifespan(), _edge_command_sink(), _panel_update_publisher(), CommandSink (+11 more)
+Cohesion: 0.08
+Nodes (24): PeriodicWorker, Belirli aralikla bir islevi arka plan thread'inde calistirir; hata dongusu…, HTTP ve WebSocket uclari — sozlesme: contracts/openapi.yaml., load_contracts(), Path, Grid Up merkez uygulamasi (Kisi B)., lifespan(), _edge_command_sink() (+16 more)
 
 ### Community 55 - "_Connection"
-Cohesion: 0.17
-Nodes (11): Asdu, group_objects(), Ayni tipteki ardisik degerleri ASDU basina en cok `limit` nesnelik gruplara…, _addressed(), _changed(), _Connection, ProtocolError, Exception (+3 more)
+Cohesion: 0.24
+Nodes (5): _Connection, ProtocolError, Exception, Komutu cevaplayacak istasyonlar. Yayin adresi hepsi demektir; hic istasyon…, Baglantiyi kapatmayi gerektiren IEC 104 ihlali.
 
 ### Community 56 - "test_api_panels.py"
 Cohesion: 0.10
@@ -469,16 +518,16 @@ Cohesion: 0.09
 Nodes (16): KIndexEstimator, KState, NamedTuple, Tek bir olcum noktasi icin K ve tau kestirimcisi. Kullanim: her ornekte…, Fiziksel araliga kirpilmis a kestirimi., Anlik K kestirimi. Negatif kestirim fiziksel degildir, sifira kirpilir., Anlik tau kestirimi (s); fiziksel araligin disina cikmaz., Dondurulmus taban; freeze_baseline() cagrilmadiysa None. (+8 more)
 
 ### Community 60 - "run"
-Cohesion: 0.07
-Nodes (28): Saglikli pano hicbir noktada 70 K artisi gecmemeli; gecerse S0 etiketi yalan…, Saglikli pano UYARI esigini (50 K) de gecmemeli, yalnizca alarm esigini degil.…, Rapor 15.2: 'Nem sicaklikla ters iliskili gunluk dongu'., Sartname 2.2.8.5: altta hava girisi, ustte cikis — cikis daha sicak olmali., Marj = YUZEY - ciy noktasi. Yuzey pano ici havadan sicak olamayacagi icin marj,…, Rapor 15.2: faz dengesizligi %2-15, yavas degisen., S0 normal senaryosunda asiri yuk YOK; ALM-I-OVER tetiklenmemeli., Konut panosunda aksam piki gece cukurundan belirgin yuksek olmali. (+20 more)
+Cohesion: 0.10
+Nodes (20): Rapor 15.2: 'Nem sicaklikla ters iliskili gunluk dongu'., Sartname 2.2.8.5: altta hava girisi, ustte cikis — cikis daha sicak olmali., Marj = YUZEY - ciy noktasi. Yuzey pano ici havadan sicak olamayacagi icin marj,…, Rapor 15.2: faz dengesizligi %2-15, yavas degisen., Konut panosunda aksam piki gece cukurundan belirgin yuksek olmali., Tek ornek gecmesi yetmez; gun boyu surerken sinirlarin disina tasmamali., backend/app/ingest.py NaN/Infinity goren mesaji karantinaya atar., run() (+12 more)
 
 ### Community 61 - "test_panosim_scenario.py"
-Cohesion: 0.09
-Nodes (25): published_payloads(), parametrize, panosim senaryo kipi (Kisi A, K1 + K3). Olculen iddialar: 1. `--scenario` demo…, --point senaryonun varsayilan noktasini gercekten degistirir., --detector X2:4 -> PDU 222'de 4. dedektorun biti 0 (kalanlar 1)., K3: `ts` artik duvar saatinin ONUNE GECMEZ; arayuzun `to = new Date()`…, --sim-clock eski davranisi geri verir (uzun vadeli veri uretimi icin)., Iki pano ayni saniyede yayinlayabilir; biri digerini ileri itmemeli. (+17 more)
+Cohesion: 0.11
+Nodes (14): Pano ici anomali tespiti ve fizik tabanli sentetik veri uretimi (Kisi A)., panosim senaryo kipi (Kisi A, K1 + K3). Olculen iddialar: 1. `--scenario` demo…, --point senaryonun varsayilan noktasini gercekten degistirir., --detector X2:4 -> PDU 222'de 4. dedektorun biti 0 (kalanlar 1)., Iki pano ayni saniyede yayinlayabilir; biri digerini ileri itmemeli., S6'da bosluk suresince ornek URETILMEZ; sifir ya da son deger tekrarlanmaz., Y1: --baseline-hours canli demoda taban ogrenmeyi kisaltir., Oynatma ile CSV uretimi ayni yurutucudan gecer: ayni adim -> ayni deger. Bu… (+6 more)
 
 ### Community 62 - "encoder.py"
 Cohesion: 0.15
-Nodes (23): AlarmKey, _Facts, _firmware_code(), _get(), _item(), get(), _missing(), PanelSnapshot (+15 more)
+Nodes (24): _Facts, _firmware_code(), _get(), _item(), get(), _missing(), PanelSnapshot, _phases() (+16 more)
 
 ### Community 63 - "properties"
 Cohesion: 0.07
@@ -493,116 +542,116 @@ Cohesion: 0.12
 Nodes (25): Popen, free_port(), sim/ testleri icin ortak yardimcilar (Kisi A)., Isletim sisteminden bos bir port ister ve hemen birakir., Alt surecin panoalgo'yu ve sozlesmeleri bulabilmesi icin ortam., sim/<script> dosyasini GERCEK CLI'siyla alt surec olarak baslatir., Port dinlemeye baslayana kadar bekler; acilmazsa testi dusurur., Ham Modbus TCP FC03 istegi gonderir; cevabi doner, cevap yoksa None. pymodbus… (+17 more)
 
 ### Community 66 - "encode"
-Cohesion: 0.12
-Nodes (21): encode(), pipeline(), fixture, TB1 — MQTT ingestion: dogrulama, uzun formata duzlestirme, karantina, toplu…, Veri hatasi tekrar denemekle gecmez; tek bozuk mesaj tum partiyi (tum filoyu)…, PostgreSQL text/JSONB NUL kabul etmez: ham yuk bile karantinaya yazilamazdi., store(), test_accepted_sample_carries_payload_and_receive_time() (+13 more)
+Cohesion: 0.10
+Nodes (25): encode(), Testlerde tekrar eden kucuk yardimcilar (conftest'ten import etmek yerine)., pipeline(), fixture, TB1 — MQTT ingestion: dogrulama, uzun formata duzlestirme, karantina, toplu…, Veri hatasi tekrar denemekle gecmez; tek bozuk mesaj tum partiyi (tum filoyu)…, PostgreSQL text/JSONB NUL kabul etmez: ham yuk bile karantinaya yazilamazdi., store() (+17 more)
 
 ### Community 67 - "AlarmKonsolu.tsx"
-Cohesion: 0.10
-Nodes (22): Seed, AlarmState, Prio, GLYPH, PrioMark(), Props, PRIO_NAME, prioRank() (+14 more)
+Cohesion: 0.09
+Nodes (24): Seed, AlarmState, Prio, AlarmKonsolu, BolgeHaritasi, GLYPH, Props, PRIO_NAME (+16 more)
 
 ### Community 68 - "Mpr53csDevice"
-Cohesion: 0.10
-Nodes (17): Mpr53csDevice, ENTES MPR-53CS sebeke analizoru — okunan degerler sozlesme olcegiyle. CT/VT…, I_primer = ham * 0.001 * CT => ham = I_primer / (0.001 * CT). Dogrulama (rapor…, PDU adresi -> 16-bit register degeri (32-bit olcumler iki register)., Rapor 15.1: 2309 A, CT 500 -> ham 4618., ham 5000 -> 5.000 A sekonder -> x500 = 2500 A primer (AT nominali)., Juri 0x8001'i okuyunca 500 gormeli., contracts/modbus-map.yaml word_order: high_first. (+9 more)
+Cohesion: 0.12
+Nodes (15): Mpr53csDevice, ENTES MPR-53CS sebeke analizoru — okunan degerler sozlesme olcegiyle. CT/VT…, I_primer = ham * 0.001 * CT => ham = I_primer / (0.001 * CT). Dogrulama (rapor…, PDU adresi -> 16-bit register degeri (32-bit olcumler iki register)., Rapor 15.1: 2309 A, CT 500 -> ham 4618., ham 5000 -> 5.000 A sekonder -> x500 = 2500 A primer (AT nominali)., Juri 0x8001'i okuyunca 500 gormeli., contracts/modbus-map.yaml word_order: high_first. (+7 more)
 
 ### Community 69 - "test_central_detector.py"
-Cohesion: 0.10
-Nodes (22): _central_detector(), panoalgo merkez dedektorunu yukler (TB2 Adim 4); yoksa GURULTULU sekilde gecer.…, CentralDetector, Protocol, Merkezde calisan tespit (or. panoalgo.quality.check + limits.evaluate)., fixture, TB2 Adim 4 — merkez dedektorun gercekten BAGLI oldugu (Kisi B, K5). Kanca 13…, ALM-COMMS-LOST ve ALM-DQ-* merkezin kendi mekanizmalarindir; dedektor onlari… (+14 more)
+Cohesion: 0.13
+Nodes (19): _central_detector(), panoalgo merkez dedektorunu yukler (TB2 Adim 4); yoksa GURULTULU sekilde gecer.…, fixture, TB2 Adim 4 — merkez dedektorun gercekten BAGLI oldugu (Kisi B, K5). Kanca 13…, ALM-COMMS-LOST ve ALM-DQ-* merkezin kendi mekanizmalarindir; dedektor onlari…, Dedektorden istisna sizmaz: sizsaydi TUM ingest partisi duserdi (risk.py:95)., main.py artik dedektoru kuruyor (eskiden hic cagrilmiyordu)., CENTRAL_DETECTOR=0 bilincli bir karardir ve sessizce degil, ayarla ifade edilir. (+11 more)
 
 ### Community 70 - "WhatsAppClient"
 Cohesion: 0.13
 Nodes (17): _error_detail(), Response, RuntimeError, WhatsApp Cloud API gondericisi (TB2 Adim 6, Kisi B) — IKINCIL kanal. On-…, Mesaj kimligini (wamid) dondurur; basarisizlikta WhatsAppError., WhatsAppClient, WhatsAppError, parametrize (+9 more)
 
 ### Community 71 - "test_panobeyni_sim.py"
-Cohesion: 0.15
-Nodes (24): _target(), cihazlar(), published(), fixture, Pano Beyni tasima kabugu (Kisi A, Y2): Modbus master -> kenar -> MQTT. TA3 Adim…, Elektriksel alanlar UYDURULMAZ: MQTT'ye giden deger Modbus'tan okunandir., --trip-after ile uretilen GERCEK trip, MQTT yukunde ALM-ARC-TRIP'e donusur. Bu…, --sensor-error: TVOC-2 hata biti -> prot_health_ok=False -> ALM-PROT-HEALTH. (+16 more)
+Cohesion: 0.07
+Nodes (39): datetime, Cihaz register modelleri (TA3 Adim 1-2, Kisi A): TVOC-2 ve MPR-53CS. Iki gercek…, Yeni ark tripi: log basa eklenir, sayac artar, 1300 bit0 set edilir., Bir trip kaydi (kilavuz 4.4.1)., Tvoc2Trip, parse_args(), FrameType, Namespace (+31 more)
 
-### Community 72 - "Contracts"
-Cohesion: 0.11
-Nodes (18): _digest_prios(), time, Ozete girecek oncelikler sozlesmeden okunur: daily_digest: true (P3), sms:…, _command_topic(), Contracts, digest_at_from_env(), _ingest_topics(), parse_digest_at() (+10 more)
+### Community 72 - "5. C — Hackathon sonrası ürün yol haritası (3-12 ay)"
+Cohesion: 0.05
+Nodes (44): 1. Nerede duruyoruz, 2. Sektörel bulgular, 3. A — Özellik dondurmaya kadar (15-17 Eylül), 4. B — Teslim penceresi (18-20 Eylül, yalnızca doküman/sunum/video), 5. C — Hackathon sonrası ürün yol haritası (3-12 ay), 6. Bilinçli olarak önermediklerimiz, 7. Eğer sadece 3 şey yapılacaksa, F-01 · Altın demo veritabanı ve tek seferlik göç penceresi — ✅ tamamlandı (+36 more)
 
 ### Community 73 - "test_scada_gateway.py"
-Cohesion: 0.13
-Nodes (18): parse_modbus_password(), MODBUS_WRITE_PASSWORD: bos -> None (salt okunur); aksi halde 1-65535 (0,…, TB3 Adim 2 — SCADA ag gecidi (app.scada.gateway): birim -> pano, register…, Backend yeniden basladiginda panonun son durumu ve acik alarmlari, yeni…, registers(), test_ack_single_alarm_by_bit(), test_alarm_bits_and_summary_coils_after_ingest(), test_event_block_counts_alarm_openings() (+10 more)
+Cohesion: 0.07
+Nodes (61): parse_modbus_password(), MODBUS_WRITE_PASSWORD: bos -> None (salt okunur); aksi halde 1-65535 (0,…, parse_units(), Pattern, MODBUS_UNITS: '1=ADM-00001, 2=GDZ-00123' -> {1: 'ADM-00001', 2: 'GDZ-00123'};…, ExceptionCode, IntEnum, acked_codes() (+53 more)
 
-### Community 74 - "ingest.py"
-Cohesion: 0.13
-Nodes (18): gridup/pano/{pano_id}/tel' -> MQTT abonelik filtresi 'gridup/pano/+/tel'., topic_filter(), _as_number(), _contains_nul(), flatten(), _NonFiniteNumber, Any, datetime (+10 more)
+### Community 74 - "IngestPipeline"
+Cohesion: 0.06
+Nodes (35): Pattern, gridup/pano/{pano_id}/tel' -> MQTT abonelik filtresi 'gridup/pano/+/tel'., gridup/pano/{pano_id}/tel' -> pano_id grubunu yakalayan tam eslesme deseni., topic_filter(), topic_regex(), Tek transaction: telemetri satirlari + son durum + karantina. - Bilinmeyen pano…, _as_number(), _contains_nul() (+27 more)
 
 ### Community 75 - "PgStore"
-Cohesion: 0.15
-Nodes (8): PgStore, datetime, timedelta, PostgreSQL/TimescaleDB deposu (psycopg 3 baglanti havuzu). Baglanti/zaman asimi…, [start, end) araligindaki TEMIZ (q = 0) olcumlerin `step` kovasi ortalamasi.…, Panonun alarm denetim izi, `at` [start, end] araliginda, zaman sirasiyla…, JournalEntry, alarm_journal satiri + ait oldugu alarmin kimligi (kara kutu zaman cizelgesi).
+Cohesion: 0.07
+Nodes (24): _alarm_from_row(), _alarm_params(), PgStore, Any, datetime, Protocol, timedelta, Depolama katmani (Kisi B). `Store` sozlesmesini hem uretimdeki PgStore hem de… (+16 more)
 
-### Community 76 - "db.py"
-Cohesion: 0.14
-Nodes (19): _alarm_params(), Depolama katmani (Kisi B). `Store` sozlesmesini hem uretimdeki PgStore hem de…, EventRecord, Ic veri tipleri: ingest ciktilari ve depodan okunan pano kayitlari., events tablosu: olayi acan ilk alarm (kara kutu bu andan geriye bakar)., Delivery, notifications tablosu satiri: alici maskelidir., db() (+11 more)
+### Community 76 - "test_insight_store.py"
+Cohesion: 0.24
+Nodes (12): db(), ingest(), manager(), observe(), pano_id(), fixture, TB3 — analiz uclarinin PgStore sorgulari gercek TimescaleDB'de: series,…, store() (+4 more)
 
-### Community 77 - "MqttSubscriber"
-Cohesion: 0.12
-Nodes (14): MqttSubscriber, Broker'a baglanir, sozlesmedeki telemetri topic'lerine abone olur, mesajlari…, FakePahoClient, TB1 — MQTT abonesi: topic'ler sozlesmeden gelir, mesajlar boru hattina aynen…, paho.mqtt.client.Client'in MqttSubscriber'in kullandigi yuzeyi (ag yok)., Merkez -> kenar komutu (SCADA bakim modu / test alarmi): x-topics cmd sablonu…, Kopukken kuyruga alinmaz: gec teslim edilen eski komut sahada surpriz yaratir,…, _subscriber() (+6 more)
+### Community 77 - "test_mqtt_subscriber.py"
+Cohesion: 0.18
+Nodes (12): FakePahoClient, TB1 — MQTT abonesi: topic'ler sozlesmeden gelir, mesajlar boru hattina aynen…, paho.mqtt.client.Client'in MqttSubscriber'in kullandigi yuzeyi (ag yok)., Merkez -> kenar komutu (SCADA bakim modu / test alarmi): x-topics cmd sablonu…, Kopukken kuyruga alinmaz: gec teslim edilen eski komut sahada surpriz yaratir,…, _subscriber(), test_disconnect_marks_subscriber_offline(), test_edge_command_is_published_on_contract_cmd_topic() (+4 more)
 
 ### Community 78 - "rls.c"
 Cohesion: 0.24
 Nodes (20): pano_real_t, clamp_a(), has_excitation(), pano_rls_excited(), pano_rls_freeze_baseline(), pano_rls_init(), pano_rls_k(), pano_rls_k_ratio() (+12 more)
 
 ### Community 79 - "AlarmManager"
-Cohesion: 0.18
-Nodes (10): AlarmManager, Change, _Event, Any, datetime, Panonun `ts` anindaki TUM dogru kosullari; listede olmayan kod o an yok sayilir., Merkezde uretilen kosul (or. haberlesme kopuklugu) `ts` aninda dogru.…, Basarili teslimde kanal alarmin `notified` listesine bir kez eklenir… (+2 more)
+Cohesion: 0.16
+Nodes (11): AlarmManager, Change, _Event, Any, datetime, Depodan yuklenen acik alarmlari geri koyar (yeniden baslatma). Depodaki…, Panonun `ts` anindaki TUM dogru kosullari; listede olmayan kod o an yok sayilir., Merkezde uretilen kosul (or. haberlesme kopuklugu) `ts` aninda dogru.… (+3 more)
 
 ### Community 80 - "test_seed_demo.py"
 Cohesion: 0.13
 Nodes (20): dry_summary(), fixture, integration, skipif, F-01 — scripts/seed_demo.py: altin demo veritabani TEKRAR URETILEBILIR olmali.…, Gelecege tarihli satir canli veriyi backfill kuraline takar (app/db.py…, Tekrar uretilebilirlik: yazma yolu da (COPY + upsert + alarm yoneticisi)…, Sabit bir pencere sonu: iki kosunun ozeti ancak ayni pencerede birebir ayni… (+12 more)
 
-### Community 81 - "test_devices.py"
-Cohesion: 0.14
-Nodes (18): date, days_since_epoch(), decode_hhmm(), encode_hhmm(), Cihaz register modelleri (TA3 Adim 1-2, Kisi A): TVOC-2 ve MPR-53CS. Iki gercek…, Tek register okur. None = ILLEGAL DATA ADDRESS (tanimsiz adres)., TVOC-2 tarih kodlamasi: 1970-01-01'den beri gun sayisi. Kilavuz ornegi: 0x42B6…, Saat kodlamasi: MSB saat, LSB dakika — IKILIK, BCD DEGIL. Kilavuz ornegi:… (+10 more)
+### Community 81 - "Tasarım Revizyonu Planı — "RAL 7035 + Aydem kimliği""
+Cohesion: 0.05
+Nodes (38): 16 — UX Tasarımı, 1. Tasarım yönü: "RAL 7035", 2.1 Filo ekranı: "sınıra kalan süre" ekseni, 2.2 Pano detay: olay modu, 2. Ekran envanteri (rapor §6.7), 3. Bilinçli kapsam sınırları (dürüstlük kuralı, Bölüm C), 4. Erişilebilirlik, 5.1 3D dijital ikiz ve tasarım revizyonu (14 Eylül) (+30 more)
 
 ### Community 82 - "modbus_map.c"
 Cohesion: 0.19
 Nodes (20): pano_gateway_t, pano_real_t, fully_inside_command(), is_read(), is_register_write(), pano_gateway_init(), pano_gateway_offer_password(), pano_k_ratio_register() (+12 more)
 
-### Community 83 - "backend/tests/helpers.py"
-Cohesion: 0.13
-Nodes (17): load_contracts(), Path, publish(), api_contract(), contracts(), modem_log(), modem_server(), fixture (+9 more)
-
-### Community 84 - "encode_submit"
+### Community 83 - "backend/tests/conftest.py"
 Cohesion: 0.17
-Nodes (19): decode_deliver(), decode_submit(), encode_submit(), _strip_smsc(), GSM modem SMS surucusu (TB2 Adim 5, Kisi B) — URETIM surucusudur. AT komutlari…, parametrize, TB2 Adim 5 — SMS PDU kodlayici (3GPP TS 23.040 / 23.038): app.notify.pdu.…, Elle kodlandi: OA 0B D0 'GRIDUP' (6 septet), SCTS 26-09-13 12:41:05 +12 ceyrek,… (+11 more)
+Nodes (14): api_contract(), modem_log(), modem_server(), fixture, Path, Ortak test donatilari. Sozlesmeler repodaki `contracts/` dizininden okunur —…, Sanal modemin kayit dosyasi (demodaki AT komut kaydi)., Gercek TCP uzerinde sanal GSM modem; bos portlarda acilir. (+6 more)
+
+### Community 84 - "pdu.py"
+Cohesion: 0.12
+Nodes (35): _concat_info(), _decode_address(), decode_deliver(), decode_submit(), _decode_timestamp(), _decode_user_data(), _encode_address(), encode_deliver() (+27 more)
 
 ### Community 85 - "x-topics"
 Cohesion: 0.10
 Nodes (21): icerik, periyot, qos, retain, icerik, periyot, qos, retain (+13 more)
 
 ### Community 86 - "mockSeries.ts"
-Cohesion: 0.22
-Nodes (19): bucketStarts(), CONDENSE, connPointValue(), dailyHumidity(), dailyLoad(), elecValue(), envValue(), fnv1a() (+11 more)
+Cohesion: 0.19
+Nodes (21): ARC_EVENT, bucketStarts(), CONDENSE, connPointValue(), dailyHumidity(), dailyLoad(), elecValue(), envValue() (+13 more)
 
-### Community 87 - "IngestPipeline"
-Cohesion: 0.18
-Nodes (8): Tek transaction: telemetri satirlari + son durum + karantina. - Bilinmeyen pano…, IngestPipeline, Son 60 s'de alinan mesaj hizi (reddedilenler dahil: broker'dan gelen yuk)., Kuyrugu partiler halinde yazar. True = kuyruk bosaldi. False = gecici depolama…, Semadan gecmis, zaman damgasi ayristirilmis tek telemetri mesaji., Karantinaya giden mesaj: dusurulmez, nedeniyle birlikte saklanir., Rejection, Sample
+### Community 87 - "Grid Up Hackathon — Fazlı Uygulama Planı ve Çakışmasız İş Bölümü"
+Cohesion: 0.06
+Nodes (36): A.1 Üç kulvar, A.2 Branch modeli, A.3 Doküman sahipliği (çakışmanın en büyük kaynağı buydu — dosya başına tek sahip), A.4 `CODEOWNERS` (Faz 0'da oluşturulur), Bölüm A — Takım, Branch ve Dosya Sahipliği, Bölüm B — Çakışma Önleme Protokolü (13 kural), Bölüm C — "En iyi donanımsız proje" stratejisi, Bölüm D — Faz Haritası (+28 more)
 
-### Community 88 - "ExceptionCode"
-Cohesion: 0.17
-Nodes (20): ExceptionCode, IntEnum, exception_code(), Alarm yoneticisi yuklenmeden alarm bitleri 0 okunursa SCADA 'alarm yok' sanar:…, Harita statiktir: hedefin verisi olmasa da gecersiz adres 0x02'dir (0x0B degil)., test_ack_before_alarm_state_is_loaded_is_target_failed(), test_address_check_comes_before_unit_data(), test_address_outside_blocks_is_illegal_address() (+12 more)
+### Community 88 - "GELISTIRME-BACKLOGU.md"
+Cohesion: 0.13
+Nodes (7): 11 — Standartlar ve Uyum, Kapsanmayan standartlar (bilinçli, MoSCoW Won't/Could), Pano Beyni — I/O Tablosu (v1), Yalıtım koordinasyonu özeti, Diğer donanım dizinleri, hardware/pano-beyni/ — Kenar kontrolcü donanım tasarımı, KiCad şeması hakkında dürüstlük notu
 
 ### Community 89 - "risk"
 Cohesion: 0.10
 Nodes (20): type, additionalProperties, description, type, description, type, contributions, mode (+12 more)
 
-### Community 90 - "gen_grafana_dashboards.py"
-Cohesion: 0.26
-Nodes (17): alarm_kpi(), build(), dashboard(), Layout, main(), olcek(), series(), _panel() (+9 more)
+### Community 90 - "OlayAnalizi.tsx"
+Cohesion: 0.13
+Nodes (21): OlayAnalizi, buildPath(), ChartMarker, ChartSeries, CizgiGrafik(), fmtDay, fmtFull, fmtTime (+13 more)
 
-### Community 91 - "PointValue"
-Cohesion: 0.12
-Nodes (8): PointValue, datetime, Protocol, StationSource, loop(), fixture, Iki istasyon (ortak adres 1 ve 2); deger listesi test icinde degistirilir., Stations
+### Community 91 - "iec104_server.py"
+Cohesion: 0.10
+Nodes (13): group_objects(), PointValue, Ayni tipteki ardisik degerleri ASDU basina en cok `limit` nesnelik gruplara…, _addressed(), _changed(), datetime, Protocol, IEC 60870-5-104 kontrollu istasyon (slave) sunucusu (TB3 Adim 8, Could, Kisi… (+5 more)
 
 ### Community 92 - "panoalgo/tests/conftest.py"
 Cohesion: 0.15
-Nodes (17): Ortak test donatilari. Sozlesmeler repodaki `contracts/` dizininden okunur —…, alarm_codes(), assert_valid_labels(), assert_valid_telemetry(), check(), label_schema(), fixture, contracts/alarm-codes.yaml tamami. (+9 more)
+Nodes (17): alarm_codes(), assert_valid_labels(), assert_valid_telemetry(), check(), label_schema(), fixture, Ortak test donatilari. Sozlesmeler repodaki `contracts/` dizininden okunur —…, contracts/alarm-codes.yaml tamami. (+9 more)
 
 ### Community 93 - "test_db_integration.py"
-Cohesion: 0.22
-Nodes (18): db(), ingest(), make_payload(), pano_id(), fixture, TB1 — PgStore'un gercek PostgreSQL/TimescaleDB'ye karsi davranisi. Yigin…, DB yokken API 503 donebilsin ve ingest veriyi tekrar denemek uzere tutabilsin., store() (+10 more)
+Cohesion: 0.26
+Nodes (16): db(), ingest(), make_payload(), pano_id(), fixture, TB1 — PgStore'un gercek PostgreSQL/TimescaleDB'ye karsi davranisi. Yigin…, store(), test_backfill_keeps_latest_state_but_refreshes_last_rx() (+8 more)
 
 ### Community 94 - "prognostics.py"
 Cohesion: 0.15
@@ -612,21 +661,21 @@ Nodes (16): backtest(), _median(), Prediction, PrognosisResult, Prognoz geri tes
 Cohesion: 0.16
 Nodes (11): Any, WS /api/v1/stream — sunucudan istemciye tek yonlu canli akis (openapi.yaml…, Olay dongusu icinden cagrilir., Herhangi bir thread'den cagrilabilir., _send_updates(), stream(), StreamHub, _wait_for_disconnect() (+3 more)
 
-### Community 96 - "pdu.py"
-Cohesion: 0.18
-Nodes (17): _concat_info(), _decode_address(), _decode_timestamp(), _decode_user_data(), _encode_address(), encode_deliver(), _encode_timestamp(), _gsm7_user_data() (+9 more)
+### Community 96 - "4. 🟠 Yüksek (17 Eylül 23:59'dan önce)"
+Cohesion: 0.08
+Nodes (24): 1. Birleştirme özeti, 2. Doğrulama sonuçları (`main` = `5c969d1` üzerinde), 3. 🔴 Kritik, 4. 🟠 Yüksek (17 Eylül 23:59'dan önce), 5. 🟡 Orta (M4 18 Eylül – M5 19 Eylül), 6. ⚪ Düşük / defter tutma, 7. Karar gündemi (tek toplantıda kapatılabilir), 8. Önerilen sıra (+16 more)
 
 ### Community 97 - "test_sms_modem.py"
-Cohesion: 0.14
-Nodes (14): log_path(), modem(), fixture, TB2 Adim 5 — uretim SMS surucusu (app.notify.sms_modem) + sanal GSM modem…, Gercek modem gibi: AT+CMGS uzunlugu tutmazsa +CMS ERROR 304 (surucu hesabini…, Onceki oturum AT+CMGS yazip PDU'yu yazamadan koptu: modem hala '> ' isteminde…, sent_pdus(), server() (+6 more)
+Cohesion: 0.08
+Nodes (24): ModemError, RuntimeError, GSM modem SMS surucusu (TB2 Adim 5, Kisi B) — URETIM surucusudur. AT komutlari…, Modem erisilemiyor, yanit vermedi ya da komutu reddetti., log_path(), modem(), PromptCheckingPort, fixture (+16 more)
 
-### Community 98 - "Store"
-Cohesion: 0.12
-Nodes (9): Protocol, `since` sonrasi olusan her alarm icin telefona (sms/whatsapp) ILK basarili…, Tek transaction, verilen sirayla: yeni olaylar -> alarm satirlari (upsert) ->…, Temizlenmemis tum alarmlar (yeniden baslatmada alarm yoneticisine geri…, En yeni once (raised_at, esitlikte id)., Alarm kimligini tek yazici alarm yoneticisi verir: acilista max(id) + 1., Bildirim denetim izi (KVKK): kanal, maskeli alici, zaman, sonuc., `since` ve sonrasinda olusan (raised_at, olay zamani) alarmlarin oncelik basina… (+1 more)
+### Community 98 - "05. Anomali Tespiti — Formüller, Eşikler ve Katmanlar"
+Cohesion: 0.09
+Nodes (23): 05. Anomali Tespiti — Formüller, Eşikler ve Katmanlar, 0. Tek cümlelik özet, 10. Bilinen sınırlar (dürüstlük bölümü), 11.1 Tarama neyi yeniden koşturuyor, 11.2 Tek eşik taraması (`S0_normal`, 168 h, 672 örnek), 11.3 Eşik çifti taraması, 11.4 Aynı senaryo, üç mevsim (eşik sabit), 11.5 Sonuç: eşik veriyle savunuluyor, değiştirilmiyor (+15 more)
 
 ### Community 99 - "Notifier"
-Cohesion: 0.18
-Nodes (7): normalize_msisdn(), Notifier, datetime, Alarm servisi dinleyicisi: yalnizca is kuyruguna ekler, beklemez., Vadesi gelen isleri bir kez gonderir, ardindan gelen SMS yanitlarini `wait_s`…, Karsilastirma icin: yalnizca rakamlar, ulusal 0 onekli Turkiye numarasi 90 ile., Sms
+Cohesion: 0.13
+Nodes (11): _Job, normalize_msisdn(), Notifier, datetime, Alarm servisi dinleyicisi: yalnizca is kuyruguna ekler, beklemez., Gunluk ozet: alarm servisi gunde bir kez cagirir, saha ekibine tek parca SMS…, Vadesi gelen isleri bir kez gonderir, ardindan gelen SMS yanitlarini `wait_s`…, Karsilastirma icin: yalnizca rakamlar, ulusal 0 onekli Turkiye numarasi 90 ile. (+3 more)
 
 ### Community 100 - "properties"
 Cohesion: 0.12
@@ -648,9 +697,9 @@ Nodes (16): phase_compare(), Akimla duzeltilmis faz karsilastirmasi (rapor 6.5 L
 Cohesion: 0.17
 Nodes (15): dew_point(), dew_point_margin(), Fiziksel donusumler. Kaynak: HACKATHON_ANALIZ_RAPORU.md 15.1., Magnus formuluyle ciy noktasi (degC). gamma = ln(RH/100) + b*T/(c+T); Td =…, Yuzey sicakligi ile ciy noktasi arasindaki marj (K). Negatif = yogusma., parametrize, Ciy noktasi (Magnus) testleri — PLAN.md TA1 Adim 1. Referans degerler…, Rapor 15.1 tablosundaki dort referans deger. (+7 more)
 
-### Community 105 - "make_rig"
-Cohesion: 0.15
-Nodes (14): loop(), make_rig(), make(), fixture, ModbusTcpClient, 10.000 panoluk filoda ilk periyot: birim atamasi pano basina degil parti basina…, IEC 104 istasyonu ayni goruntuyu kullanir: eslenmemis birim KeyError, verisi…, Rig (+6 more)
+### Community 105 - "Kişi C — Durum Takibi (Arayüz, Donanım Tasarımı, Teslim)"
+Cohesion: 0.10
+Nodes (21): 0.1 ⚠️ Ekip riski (öneri seçilerek not düşüldü, aksiyon ekipte), 0. Bu oturumun hedefi, 10. Oturum 4 — Tasarım revizyonu uygulaması: R4 (14 Eylül, "Devam et"), 11. Oturum 5 — Tasarım revizyonu uygulaması: R5 (14 Eylül, "Devam et"), 12. Oturum 6 — Kullanıcı geri bildirimi: "tasarımda değişiklik göremiyorum" + düzen revizyonu, 13. Oturum 6 devamı — zemin ve tipografi: tek standart, 14. Oturum 6 devamı — "hâlâ grimsi": iki kök neden, 15. Oturum 6 devamı — "panoları daha gerçekçi yap" (+13 more)
 
 ### Community 106 - "properties"
 Cohesion: 0.12
@@ -665,36 +714,36 @@ Cohesion: 0.16
 Nodes (15): 70 K sinirina tahmini kalan saat (rapor 15.1). K(t) ~ K_simdi + Kdot * t…, time_to_limit(), _flat_profile(), Uyarim yoksa K guncellenmez, dolayisiyla egim guvenilmez (rapor 15.1 uyarisi)., K = 2.0e-4, Kdot = 1.0e-5 / saat, I^2 = 250000, sinir 70 K. dT(t) = (2.0e-4 +…, Kdot <= 0 ise sinir asilmaz; sema ttl_h icin null bekliyor ('tahmin yok')., Cok yavas buyume 'yuz yil sonra' gibi anlamsiz bir sayi uretmemeli., Sinir zaten asilmissa 'kalan sure' sifirdir, negatif degil. (+7 more)
 
 ### Community 109 - "DeviceReader"
-Cohesion: 0.17
-Nodes (9): DeviceReader, ModbusReadError, ModbusTcpClient, RuntimeError, Iki cihaz simulatorunden okuyan Modbus master dongusu., Kilavuz: 32-bit olcum iki register, word_order high_first., MPR-53CS'ten faz/notr akimlari ve akim THD'si (gercek register adresleri)., TVOC-2'den sistem durumu ve trip sayaci; cevap yoksa comm_ok=False. (+1 more)
+Cohesion: 0.14
+Nodes (11): DeviceReader, ModbusReadError, ModbusTcpClient, RuntimeError, Iki cihaz simulatorunden okuyan Modbus master dongusu., Kilavuz: 32-bit olcum iki register, word_order high_first., MPR-53CS'ten faz/notr akimlari ve akim THD'si (gercek register adresleri)., TVOC-2'den sistem durumu ve trip sayaci; cevap yoksa comm_ok=False. (+3 more)
 
 ### Community 110 - "test_alarm_store.py"
-Cohesion: 0.22
-Nodes (13): db(), manager(), pano_id(), fixture, raise_k_warn(), TB2 — alarm kaliciligi: PgStore'un gercek PostgreSQL/TimescaleDB'ye karsi…, store(), test_list_alarms_filters_by_state_priority_and_panel_newest_first() (+5 more)
+Cohesion: 0.16
+Nodes (16): Bildirim denetim izi (KVKK): kanal, maskeli alici, zaman, sonuc., Delivery, notifications tablosu satiri: alici maskelidir., db(), manager(), pano_id(), fixture, raise_k_warn() (+8 more)
 
 ### Community 111 - "Client"
-Cohesion: 0.20
-Nodes (3): Client, start(), test_stop_closes_open_connections()
+Cohesion: 0.13
+Nodes (6): Iec104Server, StreamReader, StreamWriter, Client, start(), test_stop_closes_open_connections()
 
 ### Community 112 - "detect.py"
-Cohesion: 0.24
-Nodes (12): default_contracts_dir(), load_thresholds(), Path, L1 fizik tabanli tespit (TA2, Kisi A): K indeksi kestirimi ve faz…, contracts/alarm-codes.yaml thresholds blogu. Dizin basina bir kez okunur…, _repo_contracts_dir(), _thresholds(), default_output() (+4 more)
+Cohesion: 0.20
+Nodes (14): default_contracts_dir(), load_thresholds(), Path, L1 fizik tabanli tespit (TA2, Kisi A): K indeksi kestirimi ve faz…, Repo icindeki contracts/ dizini — dosya sistemi sorgusu bir kez yapilir.…, CONTRACTS_DIR ortam degiskeni, yoksa repo icindeki contracts/ dizini., contracts/alarm-codes.yaml thresholds blogu. Dizin basina bir kez okunur…, _repo_contracts_dir() (+6 more)
 
 ### Community 113 - "test_loadtest_storage.py"
 Cohesion: 0.14
 Nodes (13): fixture, TB3 Adim 6 — loadtest/storage.py veri butcesi hesaplari (olcum docs/09'da).…, 1000 baytlik yuk, 25 karakterlik topic: 1 + 2 + 2 + 25 + 2 + 1000 = 1032., Kalan uzunluk 16384 ve ustunde 3 bayttir: 1 + 3 + 2 + 25 + 2 + 20000 = 20033., 30 gun / 10 s = 259.200 mesaj x 1032 B = 267,4944 MB., Gunde 1.000.000 satir; 7 gun sikistirmasiz (100 B), 83 gun sikistirilmis (10…, Kalan uzunluk 16383 -> 2 bayt, 16384 -> 3 bayt (25 karakterlik topic: kalan =…, storage() (+5 more)
 
-### Community 114 - ".__init__"
-Cohesion: 0.18
-Nodes (11): CONTRACTS_DIR ortam degiskeni, yoksa repo icindeki contracts/ dizini., contract_point_names(), default_contracts_dir(), _pano_id_pattern(), _point_names(), datetime, Path, ProfileKind (+3 more)
+### Community 114 - "generator.py"
+Cohesion: 0.14
+Nodes (16): contract_point_names(), default_contracts_dir(), _pano_id_pattern(), _point_names(), PointSpec, datetime, Path, ProfileKind (+8 more)
 
 ### Community 115 - "Tvoc2Block"
 Cohesion: 0.18
 Nodes (9): ModbusServerContext, build_context(), main(), ModbusSparseDataBlock, ABB TVOC-2 Modbus simulatoru (TA3 Adim 1, Kisi A). Cihazin GERCEK register…, Register okumalarini canli cihaz modeline yonlendirir. Tanimsiz adres icin…, ID 248 ise HICBIR slave kaydedilmez -> sunucu sessiz kalir. Sessizlik iki…, _trip_after() (+1 more)
 
-### Community 116 - "LoopThread"
-Cohesion: 0.15
-Nodes (5): LoopThread, Arka plan thread'inde calisan asyncio dongusu: sunucular gercek TCP'de, testler…, EdgeCommands, FakeMonotonic, Kenara komut kanalinin test cifti: gonderilenleri kaydeder; accept=False…
+### Community 116 - "Rig"
+Cohesion: 0.12
+Nodes (10): LoopThread, Arka plan thread'inde calisan asyncio dongusu: sunucular gercek TCP'de, testler…, EdgeCommands, FakeMonotonic, loop(), make(), fixture, ModbusTcpClient (+2 more)
 
 ### Community 117 - "_ortak.sh"
 Cohesion: 0.24
@@ -705,24 +754,24 @@ Cohesion: 0.18
 Nodes (8): _feed_from_generator(), main(), MprBlock, ModbusSparseDataBlock, ENTES MPR-53CS Modbus simulatoru (TA3 Adim 2, Kisi A). Cihazin GERCEK register…, Register okumalarini canli cihaz modeline yonlendirir., Enerji sayaclari ve min/max gercek cihazda yazilabilir (sifirlama), ama bizim…, Analizoru panoalgo uretecinin akimlariyla besler (panosim ile ayni fizik).
 
 ### Community 119 - "RateMeter"
-Cohesion: 0.20
-Nodes (7): Pattern, gridup/pano/{pano_id}/tel' -> pano_id grubunu yakalayan tam eslesme deseni., topic_regex(), RateMeter, Son `window_s` saniyedeki olay hizi (1 s kovalari); /fleet/kpi…, /fleet/kpi ingest_msgs_per_s: son 60 s'de alinan mesaj / 60 (1 s kovalari,…, test_rate_meter_averages_the_last_window()
+Cohesion: 0.32
+Nodes (4): RateMeter, Son `window_s` saniyedeki olay hizi (1 s kovalari); /fleet/kpi…, /fleet/kpi ingest_msgs_per_s: son 60 s'de alinan mesaj / 60 (1 s kovalari,…, test_rate_meter_averages_the_last_window()
 
 ### Community 120 - "panoalgo/tests/helpers.py"
 Cohesion: 0.20
-Nodes (11): Testlerde tekrar eden kucuk yardimcilar (conftest'ten import etmek yerine)., lag1_autocorr(), mean(), datetime, Kisa UTC zaman damgasi kurucusu: utc(2026, 9, 16, 20)., Lag-1 ornek otokorelasyonu r1 = sum((x[k]-m)(x[k+1]-m)) / sum((x[k]-m)^2).…, utc(), PLAN.md TA1 Adim 6c: lag-1 > 0.9. Verilen Excel'de bu deger 0,00 (rapor 3.4a). (+3 more)
+Nodes (11): lag1_autocorr(), mean(), datetime, Testlerde tekrar eden kucuk yardimcilar (conftest'ten import etmek yerine).…, Kisa UTC zaman damgasi kurucusu: utc(2026, 9, 16, 20)., Lag-1 ornek otokorelasyonu r1 = sum((x[k]-m)(x[k+1]-m)) / sum((x[k]-m)^2).…, utc(), PLAN.md TA1 Adim 6c: lag-1 > 0.9. Verilen Excel'de bu deger 0,00 (rapor 3.4a). (+3 more)
 
-### Community 121 - "test_gen_modbus_doc.py"
-Cohesion: 0.18
-Nodes (7): gen(), fixture, TB3 Adim 3 — scripts/gen_modbus_doc.py: contracts/modbus-map.yaml -> docs/03 +…, Sozlesme degisip dokuman yeniden uretilmediyse (kural 10 ihlali) burada patlar., regmap(), test_committed_doc_and_csv_are_up_to_date(), test_render_fills_marked_blocks_and_keeps_narrative()
+### Community 121 - "load_map"
+Cohesion: 0.11
+Nodes (14): load_map(), Path, gen(), fixture, TB3 Adim 3 — scripts/gen_modbus_doc.py: contracts/modbus-map.yaml -> docs/03 +…, Sozlesme degisip dokuman yeniden uretilmediyse (kural 10 ihlali) burada patlar., regmap(), test_committed_doc_and_csv_are_up_to_date() (+6 more)
 
 ### Community 122 - "pano_dew_point"
 Cohesion: 0.21
 Nodes (4): pano_real_t, pano_dew_point(), pano_dew_point_margin(), main()
 
-### Community 123 - "RingBuffer"
-Cohesion: 0.17
-Nodes (7): Broker yokken mesajlari bekletir; dolunca EN ESKIyi dusurur ve sayar., Bekleyenleri sirayla gonderir; ilk basarisizlikta durur ve kalani tutar., RingBuffer, Broker yoksa hicbir sey kaybolmaz; sira bozulmaz., test_the_ring_buffer_drops_the_oldest_and_counts_it(), test_the_ring_buffer_keeps_everything_when_sending_fails(), test_the_ring_buffer_stops_at_the_first_failure_and_keeps_the_rest()
+### Community 123 - "insights.py"
+Cohesion: 0.23
+Nodes (19): _aware(), bucket_starts(), event_blackbox(), fill(), fleet_kpi(), nearest_rank(), panel_series(), parse_step() (+11 more)
 
 ### Community 124 - "test_gen_iec104_doc.py"
 Cohesion: 0.18
@@ -752,9 +801,9 @@ Nodes (11): _feed(), _light_profile(), Saglikli baglantida K sabittir; ttl_h nul
 Cohesion: 0.31
 Nodes (7): db(), ingest(), pano_id(), fixture, TB3 Adim 6 — telemetri sikistirmasi (deploy/initdb/005_compression.sql) gercek…, store(), test_writes_and_series_work_on_a_compressed_chunk()
 
-### Community 131 - "acked_codes"
-Cohesion: 0.25
-Nodes (9): acked_codes(), parametrize, Rafa alinmis alarm da onaylanabilir (alarm_manager.ack ile ayni kural)., test_ack_all_with_password_in_same_request(), test_ack_includes_shelved_alarms(), test_ack_value_zero_is_no_op(), test_edge_command_without_channel_is_target_failed_and_nothing_runs(), test_invalid_command_value_rejects_whole_request() (+1 more)
+### Community 131 - "04 — IEC 60870-5-104 Nokta Planı"
+Cohesion: 0.10
+Nodes (19): 04 — IEC 60870-5-104 Nokta Planı, 1. Neden IEC 104, neden aynı veri?, 2. İstasyon parametreleri (üretilmiş), 3. Desteklenen ASDU tipleri ve iletim nedenleri (üretilmiş), 4. Adres planı kuralları, 5. Ölçülen değerler (üretilmiş), 6. Tek noktalar (üretilmiş), 7.1 Genel bilgi (sistem veya cihaz) (+11 more)
 
 ### Community 132 - "mqtt-telemetry.schema.json"
 Cohesion: 0.22
@@ -764,13 +813,13 @@ Nodes (8): additionalProperties, description, $id, required, $schema, title, typ
 Cohesion: 0.22
 Nodes (8): additionalProperties, description, $id, required, $schema, title, type, x-purpose
 
-### Community 135 - "GatewayStations"
-Cohesion: 0.29
-Nodes (3): GatewayStations, datetime, IEC 104 istasyon kaynagi: ortak adres = Modbus birimi; degerler ag gecidinin…
+### Community 135 - "14. Sentetik Veri Üreteci — Spesifikasyon ve Senaryo Kataloğu"
+Cohesion: 0.11
+Nodes (19): 0. Neden üreteç, 14. Sentetik Veri Üreteci — Spesifikasyon ve Senaryo Kataloğu, 1. Zincir, 2.1 AR(1) gürültü — bir slayt değerinde, 2. Yük profili, 3. Isıl model, 4. Ortam ve elektriksel büyüklükler, 5.1 S1 kalibrasyonu (kabul kriterinin dayanağı) (+11 more)
 
-### Community 136 - "PromptCheckingPort"
-Cohesion: 0.25
-Nodes (3): PromptCheckingPort, pyserial port cifti: AT+CMGS'e '> ' istemiyle yanit verir, istem OKUNMADAN…, test_pdu_is_written_only_after_the_prompt_has_been_read()
+### Community 136 - "tazminat_maruziyeti.py"
+Cohesion: 0.20
+Nodes (17): ArgumentParser, _amount(), avoided_items(), build_parser(), exposure(), main(), _missing(), _number() (+9 more)
 
 ### Community 137 - "t_conn"
 Cohesion: 0.25
@@ -796,9 +845,9 @@ Nodes (3): baslik(), kontrol(), duman-testi.sh script
 Cohesion: 0.52
 Nodes (6): pano_limits_t, default_limits(), main(), median_of(), point_current(), point_topology()
 
-### Community 143 - "format_pano_id"
-Cohesion: 0.29
-Nodes (7): format_pano_id(), Sozlesme desenine uyan pano kimligi: format_pano_id("adm", 1) -> "ADM-00001"., parametrize, Sema ^[A-Z]{3}-[0-9]{5}$ — 'ADM-1' degil 'ADM-00001'., test_pano_id_is_zero_padded_to_the_contract_pattern(), test_pano_id_prefix_is_upper_cased(), test_pano_id_rejects_values_the_contract_cannot_express()
+### Community 143 - "09 — Ölçeklenebilirlik, Yük Testi ve Veri Bütçesi"
+Cohesion: 0.11
+Nodes (17): 09 — Ölçeklenebilirlik, Yük Testi ve Veri Bütçesi, 1. Özet, 2. Test düzeneği, 3. Yöntem, 4.1 Gecikme ve kayıp, 4.2 Kaynak kullanımı, 4.3 Alarm zinciri, 4.4 Kapasite sınırı ve darboğaz (+9 more)
 
 ### Community 144 - "alpha_lambda"
 Cohesion: 0.29
@@ -812,9 +861,9 @@ Nodes (7): RA = 1 - |RUL* - RUL^| / RUL*. KIRPILMAZ: literaturde bazi uygulamala
 Cohesion: 0.48
 Nodes (6): alarm_catalog(), main(), priority_matrix(), docs/06-alarm-matrisi.md icindeki URETILMIS tablolari contracts/alarm-…, render(), _yes()
 
-### Community 147 - ".add_listener"
-Cohesion: 0.33
-Nodes (4): Degisiklik dinleyicisi. `digest` metodu olan dinleyici (bildirim ag gecidi)…, Gunluk ozet (DIGEST_AT) dinleyicisi; AYNI dinleyici iki kez kaydedilmez.…, ChangeListener, DigestListener
+### Community 147 - "PanelEncoder"
+Cohesion: 0.16
+Nodes (9): PanelEncoder, PanelImage, Register'in "yok" ham degeri (kaynagi bos oldugunda yazilan); bayraklarin "yok"…, MeasuredPoint, PointCatalog, Pano Beyni haritasi -> IEC 60870-5-104 bilgi nesneleri (TB3 Adim 8, Could, Kisi…, SinglePoint, Sozlesmeye register eklenip kaynak tablosu unutulursa SCADA'ya sessizce 0… (+1 more)
 
 ### Community 148 - "expect"
 Cohesion: 0.33
@@ -824,17 +873,17 @@ Nodes (6): description, items, minItems, type, pattern, expect
 Cohesion: 0.47
 Nodes (4): pano_real_t, pano_thermal_a(), pano_thermal_steady(), pano_thermal_step()
 
-### Community 150 - "parse_units"
-Cohesion: 0.40
-Nodes (5): parse_units(), Pattern, MODBUS_UNITS: '1=ADM-00001, 2=GDZ-00123' -> {1: 'ADM-00001', 2: 'GDZ-00123'};…, test_parse_units(), test_parse_units_rejects_invalid()
+### Community 150 - "17 — Donanım Olmadan Neyi, Nasıl Kanıtladık?"
+Cohesion: 0.12
+Nodes (17): 17 — Donanım Olmadan Neyi, Nasıl Kanıtladık?, 1. Neden donanımsız?, 2. Ne simüle edildi, ne gerçek?, 3. Beş hamle — durum ve kanıt, 4.1 Üç kulvarın test sayıları (16 Eylül 2026'da yeniden ölçüldü), 4.2 Birleşmeden sonra canlı yığında ölçülenler, 4. B kulvarının kanıt özeti, 5. Jüri cevap kartı — 17 soru, her cevabın yanında kanıt dosyası (+9 more)
 
 ### Community 151 - "alarms"
 Cohesion: 0.40
 Nodes (5): description, items, type, pattern, alarms
 
-### Community 152 - ".record_trip"
-Cohesion: 0.40
-Nodes (4): datetime, Yeni ark tripi: log basa eklenir, sayac artar, 1300 bit0 set edilir., Bir trip kaydi (kilavuz 4.4.1)., Tvoc2Trip
+### Community 152 - ".on_alarm_changes"
+Cohesion: 0.14
+Nodes (9): _Panel, Any, /health icin ozet: eslenen birim, bellekte izlenen pano, yazma durumu, kilitli…, Kilit altinda: panonun kaydi; sabit eslemede eslenmemis pano izlenmez. Yeni…, Kilit altinda, parti sonunda BIR KEZ: pano basina yeniden siralama 10.000…, Ingest dinleyicisi (yazici thread'i)., Alarm servisi dinleyicisi: mandal bitleri ve olay blogu (alarm servisinin…, Depodan pano listesi, tip ve (bellekte olmayan) son durum. Engelleyicidir;… (+1 more)
 
 ### Community 154 - "l0_breach_at"
 Cohesion: 0.50
@@ -848,9 +897,9 @@ Nodes (4): scenario_id, description, enum, type
 Cohesion: 0.50
 Nodes (3): Path, ProfileKind, period_s verilirse ornekleme periyodu zaman damgalarindan TURETILMEZ. Kenar…
 
-### Community 157 - "UnknownTypeError"
-Cohesion: 0.67
-Nodes (3): ValueError, Bu istasyonun cozmedigi tip; sunucu ASDU'yu COT 44 ile geri doner., UnknownTypeError
+### Community 157 - "15 — Siber Güvenlik ve KVKK"
+Cohesion: 0.12
+Nodes (15): 15 — Siber Güvenlik ve KVKK, 1. Neyi koruyoruz?, 2. IEC 62443 bölgeler ve iletkenler, 3.1 Girdi doğrulama (sahte veya bozuk veri), 3.2 Modbus (rapor §7.4: "Modbus güvensizdir"), 3.3 Kimlik, yetki ve denetim izi, 3.4 Sırlar ve yapılandırma, 3.5 Cihaz güvenliği (kenar) (+7 more)
 
 ### Community 158 - "generated_at"
 Cohesion: 0.67
@@ -872,20 +921,168 @@ Nodes (3): seed, description, type
 Cohesion: 0.67
 Nodes (3): t_start, format, type
 
+### Community 186 - "UFrame"
+Cohesion: 0.23
+Nodes (15): decode_apdu(), encode_u(), IntEnum, UFrame, UFunction, parametrize, test_malformed_apdu_is_rejected(), test_u_frames() (+7 more)
+
+### Community 187 - "03 — Pano Beyni Modbus Haritası ve SCADA Ağ Geçidi"
+Cohesion: 0.13
+Nodes (15): 03 — Pano Beyni Modbus Haritası ve SCADA Ağ Geçidi, 10. Birim eşlemesi ve yapılandırma, 11. Jüri demosu: QModMaster ile okuma, 12. RS485 hat bütçesi (üretilmiş), 13. Neden kendi Modbus TCP sunucumuz?, 14. Doğrulama — donanım olmadan neyi kanıtladık, 1. Amaç: SCADA tek bir cihaz okusun, 2. Tek master kısıtı: sahada üç bağlantı senaryosu (+7 more)
+
+### Community 188 - "test_loadtest_fleet.py"
+Cohesion: 0.16
+Nodes (9): fleet(), fixture, parametrize, TB3 Adim 4 — loadtest/fleet.py yuk aracinin saf parcalari (canli olcum…, 100 B/satir, mesaj basina 86 satir, 10 s periyot: 100 pano -> 100 x 8640 x 86 x…, test_parse_docker_stats(), test_payloads_follow_telemetry_schema(), test_storage_projection() (+1 more)
+
+### Community 189 - "run_cli"
+Cohesion: 0.23
+Nodes (12): published_payloads(), parametrize, K3: `ts` artik duvar saatinin ONUNE GECMEZ; arayuzun `to = new Date()`…, --sim-clock eski davranisi geri verir (uzun vadeli veri uretimi icin)., panosim.py'yi GERCEK CLI'siyla kosturur; stdout satirlarini doner., --dry-run ciktisindaki '[panosim] <topic> <json>' satirlarini cozer., demo/senaryo/s0-s6.sh tam olarak bu bayraklari geciyor., run_cli() (+4 more)
+
+### Community 190 - "02 — Mimari"
+Cohesion: 0.18
+Nodes (10): 02 — Mimari, 1. Bir bakışta, 2. Bileşenler, 3. Bir telemetri mesajının yolculuğu, 4. Alarm ve onay akışı, 5. SCADA entegrasyonu, 6. Dağıtım, 7. Dayanıklılık (+2 more)
+
+### Community 191 - "06 — Alarm Matrisi, ISA-18.2 Alarm Yönetimi ve Bildirim"
+Cohesion: 0.18
+Nodes (11): 06 — Alarm Matrisi, ISA-18.2 Alarm Yönetimi ve Bildirim, 10. Doğrulama (ölçülmüş, 13 Eylül 2026), 1. Neden bir alarm yöneticisi?, 2. Öncelik matrisi (üretilmiş), 3. ISA-18.2 yaşam döngüsü, 4. Alarm seli önlemleri, 5. Açıklanabilirlik — her alarm kartı üç soruyu cevaplar, 6. Bildirim kanalları ve eskalasyon (+3 more)
+
+### Community 192 - "13 — Donanım Tasarımı"
+Cohesion: 0.18
+Nodes (11): 13 — Donanım Tasarımı, 1. Blok diyagram ve I/O, 2. Güç bütçesi, 3. Manyetik alan hesabı (rapor §7.2, §15.1), 4. Yalıtım koordinasyonu (clearance/creepage, IEC 60664-1), 5. Çevresel dayanım özeti, 6. Mekanik, 7.1 Verilen HFCT veri sayfaları — kendi sayılarıyla (+3 more)
+
+### Community 193 - "(a) Konumlandırma ve özellik matrisi"
+Cohesion: 0.18
+Nodes (10): 18 — Konumlandırma ve Analitik Standart İzi, a.1 Neden cihaz değil, platform karşılaştırması, a.2 Karşılaştırılan platformlar ve doğrulama durumu, a.3 Özellik matrisi, a.4 Sensör katmanı: aynı satıra konmayanlar, a.5 ADM/GDZ'nin EcoStruxure ADMS alımına konumlanma, (a) Konumlandırma ve özellik matrisi, b.1 İzin tek cümlelik özeti (+2 more)
+
+### Community 194 - "Grid Up Hackathon — "Pano/Hücre İçi Anomali Erken Uyarı Sistemi""
+Cohesion: 0.18
+Nodes (11): 0. Yönetici Özeti (TL;DR), 10. Teslim Paketi ve Repo Yapısı, 11. Zaman Planı ve Görev Dağılımı, 13. Jüri Soru Bankası, 14. Yenilik Backlog'u (Öne Geçirecek Ekstralar), 4. Pazardaki Çözümler ve Boşluk Analizi, 5. Diğer Takımlar Muhtemelen Ne Yapacak? (ve Nasıl Öne Geçeriz), 9. Değerlendirme Kriterlerine Göre Kazanma Stratejisi (+3 more)
+
+### Community 195 - "Sozlesme degisiklik onerisi — esigi olmayan uc alarm kodu + uyarim olcutu"
+Cohesion: 0.20
+Nodes (9): 15 Eylul guncellemesi — riskin buyuklugu OLCULDU, karar kolaylasti, 1. `ALM-DQ-BELOW-AMBIENT` — olu bant, 2. `ALM-NEUTRAL-THD` — iki kosullu kural, 3. `ALM-PD-TREND` — kapsam disi birakilmasi onerilir, 4. `excitation_min_var_i2` — mutlak esik olcege bagimli, Kabul edilmezse ne olur, Neden, Onaylar (+1 more)
+
+### Community 196 - "Sunum Taslağı — ~12 dakika (rapor §8.2)"
+Cohesion: 0.20
+Nodes (9): Prova notları (T5.4), Slayt 1 — Problem ve saha hikâyesi (30 sn), Slayt 2 — 5 kritik içgörü (1 dk), Slayt 3 — Donanımsızlık: bilinçli bir mühendislik kararı (güçlü konumlandırma), Slayt 4 — Mimari (1,5 dk), Slayt 5 — Canlı demo (7 dk), Slayt 6 — Ölçek + maliyet/ROI + kurulum (1,5 dk), Slayt 7 — PoC teklifi (30 sn) (+1 more)
+
+### Community 197 - "10 — BOM, Maliyet ve ROI"
+Cohesion: 0.20
+Nodes (9): 10 — BOM, Maliyet ve ROI, 1. Ürün paketleri (SKU), 2. Malzeme listesi (BOM), 3. Maliyet ve fayda (ROI) — parametrik formül, 4. Ölçeklenebilirlik ile ilişkisi, 5.1 Formül — EPDK Kalite Yönetmeliği'nin süre ve sayı kalemleri, 5.2 Eklenmediği için ödenmeyen kalemler (BOM farkı), 5. Tazminat maruziyeti hesaplayıcısı (parametreli) (+1 more)
+
+### Community 198 - "19 — TEDAŞ Şartname Uyum Haritası"
+Cohesion: 0.20
+Nodes (10): 19 — TEDAŞ Şartname Uyum Haritası, 1. Önce bir ayrım: ortada iki ayrı şartname var, 2. Tablo (a) — TEDAŞ-MLZ/2003-06.B madde madde, 3.1 Bu tablonun kapsamadıkları (BOM'da satırı olmayanlar), 3. Tablo (b) — BOM parçası ↔ şartname ortam sınırı, 4.1 Önce veri sayfası çekilecek parçalar (öncelik sırasıyla), 4.2 Tip testi listesi (hiçbiri yapılmadı), 4.3 Belge ve süreç işleri (+2 more)
+
+### Community 199 - "6. Önerilen Çözüm Mimarisi"
+Cohesion: 0.20
+Nodes (10): 6.1 Tasarım ilkeleri, 6.2 Fiziksel mimari ve sensör seti, 6.3 Haberleşme katmanları — seçenek karşılaştırması, 6.4 Modbus haritalama ve SCADA entegrasyonu, 6.5 Anomali ve risk tespiti — katmanlı yaklaşım (kazandıracak kısım), 6.6 Alarm, bildirim ve otomatik aksiyonlar, 6.7 Operasyon arayüzü (UX), 6.8 Ölçeklenebilirlik ve kaynak kullanımı (+2 more)
+
+### Community 200 - "12. Dogrulama Sonuclari"
+Cohesion: 0.22
+Nodes (9): 12. Dogrulama Sonuclari, 1. Senaryo bazinda tespit basarisi, 2. Sabit 70 K esigi ile karsilastirma, 3. Yanlis alarm yuku, 4.1 alfa-lambda noktalari, 4.2 Tahmin ne zaman guvenilir hale geldi, 4.3 Durustluk kayitlari, 4. Prognoz geri testi (+1 more)
+
+### Community 201 - "Pano Beyni — Ana Döngü ve Durum Makinesi"
+Cohesion: 0.22
+Nodes (8): 1. Durum makinesi, 2. 1 saniyelik işleme döngüsü, 3. Haberleşme kopması ve tampon, 4. Bellek ve hesap bütçesi, 5.1 Aynı kaynak, ikinci hedef, 5. Aynı algoritma iddiasının kanıtı, Durumların anlamı, Pano Beyni — Ana Döngü ve Durum Makinesi
+
+### Community 202 - "`contracts/` — Kilitli Bölge"
+Cohesion: 0.25
+Nodes (7): `contracts/` — Kilitli Bölge, Değişiklik süreci (çakışmasız), Dosyalar ve kim okur, Doğrulama, Faz 3'ten sonra, Üç demir kural, Şablon
+
+### Community 203 - "3. Verilen Dökümanların Derin Analizi"
+Cohesion: 0.25
+Nodes (8): 3.1 TEDAŞ AG Dağıtım Panoları Şartnamesi — tasarımı doğrudan etkileyen maddeler, 3.2 1600 kVA Donanım Listesi (EK-I/8, Tablo 8) ve tek hat şeması, 3.3 Teknik Çizim (EK-II/14) — 1250–1600 kVA dahili tip pano, 3.4 "İstenen Veriler.xlsx" — sayfa sayfa, 3.5 ABB TVOC-2 Arc Guard System (katalog + Modbus kılavuzu), 3.6 ENTES MPR-53CS Şebeke Analizörü — Modbus register haritası, 3.7 Techimp HFCT30 / HFCT50 — Kısmi deşarj sensörleri, 3. Verilen Dökümanların Derin Analizi
+
+### Community 204 - "Pano/Hücre İçi Anomali Erken Uyarı Sistemi"
+Cohesion: 0.25
+Nodes (8): Aynı değeri üç protokolden kendiniz okuyun, Beklenen teknik çıktılar → nerede, Ekip, Hızlı başlangıç, Jüri kanıt haritası, Nasıl doğrularsınız, Pano/Hücre İçi Anomali Erken Uyarı Sistemi, Repo haritası
+
+### Community 205 - "generate"
+Cohesion: 0.29
+Nodes (8): DemoPanel, generate(), _plan(), Sozlesmedeki periyodik telemetri topic'i; topic metni burada YAZILI DEGILDIR…, Taban ogrenme suresi SOZLESMEDEN gelir, senaryonun `duration/3` kisaltmasindan…, Filonun gecmisini ZAMAN SIRASINDA verir: her adimda tum panolarin o andaki…, 001_schema.sql'deki baslangic panolariyla ayni kimlikler: demo hep ayni filoyu…, _telemetry_topic()
+
+### Community 207 - "01 — Problem Analizi (Jüri Özeti)"
+Cohesion: 0.29
+Nodes (6): 01 — Problem Analizi (Jüri Özeti), Bizi ayıran 5 şey, Donanımsız teslim (bilinçli karar), Neden zor: çoğu takımın kaçıracağı gerçekler, Sorunun tek cümlesi, Önerilen çözüm (özet)
+
+### Community 208 - "08 — Kurulum Prosedürü"
+Cohesion: 0.29
+Nodes (6): 08 — Kurulum Prosedürü, 1. Kesinti öncesi (pano enerjili, dokunmasız), 2. Planlı kesinti penceresi (hedef ≤ 45 dk, 2 kişilik ekip), 3. Kesinti sonrası (pano enerjili, dokunmasız), 4. Kontrol listesi (saha ekibi imzalar), 5. Uzaktan yönetim (kesintisiz işletme)
+
+### Community 209 - "7. Saha Uygulanabilirliği, FMEA, Güvenlik ve Standartlar"
+Cohesion: 0.29
+Nodes (7): 7.1 Kurulum ve devreye alma (tek planlı kesinti penceresi), 7.2 Çevresel ve elektriksel dayanım, 7.3 FMEA (Hata Türleri ve Etkileri Analizi) — başlangıç tablosu, 7.4 Siber güvenlik ve veri gizliliği, 7.5 İşletme ve bakım modeli, 7.6 Atıf yapılacak standartlar ve rehberler, 7. Saha Uygulanabilirliği, FMEA, Güvenlik ve Standartlar
+
+### Community 210 - "WhatsAppStub"
+Cohesion: 0.33
+Nodes (4): Request, Response, Meta API yerine gecen HTTP tasiyicisi: sirayla verilen durum kodlarini…, WhatsAppStub
+
+### Community 211 - "2026-09-14 — Toplu cihaz sağlığı ucu (öneri)"
+Cohesion: 0.33
+Nodes (5): 15 Eylül güncellemesi — önerilen karar: **sonraki sürüme**, 2026-09-14 — Toplu cihaz sağlığı ucu (öneri), Onaylanana kadar geçici çözüm, Onaylar (karar toplantısında), Önerilen yanıt şeması (taslak)
+
+### Community 212 - "demo/senaryo/ — Belirlenimli demo betikleri (T5.1)"
+Cohesion: 0.33
+Nodes (5): demo/senaryo/ — Belirlenimli demo betikleri (T5.1), Gereksinimler ve otomatik geri dönüş, İki dürüstlük notu, Kullanım, Oynatılan veri gerçekten nedir?
+
+### Community 213 - "vitest"
+Cohesion: 0.33
+Nodes (5): appCss, olayAnalizi, printCss, themeCss, vitest
+
+### Community 214 - "Pano Beyni — Blok Diyagramı (v1)"
+Cohesion: 0.33
+Nodes (6): 1. Sistem blok diyagramı, 2. Fiziksel yerleşim (kutu), 3. Neden bu seçimler (GK5 — geliştirme kartı değil), 4. Güç bütçesi (taslak), 5. Değişiklik günlüğü, Pano Beyni — Blok Diyagramı (v1)
+
+### Community 215 - "07b — FMEA: Yazılım ve Sistem"
+Cohesion: 0.40
+Nodes (4): 07b — FMEA: Yazılım ve Sistem, 1. Rapor §7.3 yazılım / sistem satırları, 2. Uygulama sırasında ortaya çıkan hata türleri, 3. Özet
+
+### Community 216 - "2. Komite Tam Olarak Ne Talep Ediyor? — Gereksinim Matrisi"
+Cohesion: 0.40
+Nodes (5): 2.1 Açık gereksinimler (dökümanda yazanlar), 2.2 Çözümün cevaplaması gereken 9 soru (PDF'teki liste) → rapordaki karşılığı, 2.3 Final sunumunda gösterilmesi beklenenler (checklist), 2.4 Satır arası (yazılmamış ama puanlanacak) gereksinimler, 2. Komite Tam Olarak Ne Talep Ediyor? — Gereksinim Matrisi
+
+### Community 217 - "CentralDetector"
+Cohesion: 0.50
+Nodes (3): CentralDetector, Protocol, Merkezde calisan tespit (or. panoalgo.quality.check + limits.evaluate).
+
+### Community 218 - "İstenen Veriler_613618b1.md"
+Cohesion: 0.50
+Nodes (3): Sheet: Akım Sensörü, Sheet: ARC, Sheet: PD
+
+### Community 219 - "15. Ekler: Formüller, Hesaplar, Sentetik Veri Spesifikasyonu"
+Cohesion: 0.50
+Nodes (4): 15.1 Formüller ve hesaplar, 15.2 Sentetik veri üreteci spesifikasyonu, 15.3 Sunum için yardımcı istatistikler (ikincil kaynak — dikkatli kullanın), 15. Ekler: Formüller, Hesaplar, Sentetik Veri Spesifikasyonu
+
+### Community 220 - "1. Yarışma Bağlamı: Kim, Neden, Ne Zaman?"
+Cohesion: 0.50
+Nodes (4): 1.1 Organizatörler ve program, 1.2 Hackathon künyesi (Patika.dev sayfasına göre), 1.3 Müşterinin ölçeği (çözümün boyutlandırılması için), 1. Yarışma Bağlamı: Kim, Neden, Ne Zaman?
+
+### Community 223 - "12. Proje Riskleri ve Komiteye Sorulacak Sorular"
+Cohesion: 0.67
+Nodes (3): 12.1 Proje riskleri, 12.2 Mentorlara/komiteye hemen sorulacak sorular, 12. Proje Riskleri ve Komiteye Sorulacak Sorular
+
+### Community 224 - "16. Kaynaklar"
+Cohesion: 0.67
+Nodes (3): 16.1 Komitenin paylaştığı dökümanlar (repo içinde), 16.2 Web kaynakları, 16. Kaynaklar
+
+### Community 225 - "8. Demo Senaryosu (Final Sunumu)"
+Cohesion: 0.67
+Nodes (3): 8.1 Fiziksel demo düzeneği ("mini pano"), 8.2 Senaryo akışı (7–10 dakika, zaman sıkıştırmalı), 8. Demo Senaryosu (Final Sunumu)
+
 ## Knowledge Gaps
-- **367 isolated node(s):** `HistorySample`, `Toggles`, `ImportMeta`, `ImportMetaEnv`, `ChartSeries` (+362 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1533 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **789 isolated node(s):** `$schema`, `$id`, `title`, `description`, `periyot` (+784 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1980 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PanelSimulator` connect `PanelSimulator` to `test_profiles.py`, `scenarios.py`, `test_generator.py`, `fleet.py`, `EdgePipeline`, `panosim.py`, `run`, `.__init__`, `MprBlock`, `panoalgo/tests/conftest.py`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
-- **Why does `Contracts` connect `Contracts` to `fleet.py`, `views.py`, `Alarm`, `ScadaGateway`, `dispatcher.py`, `seed_demo.py`, `RiskEngine`, `test_iec104_points.py`, `alarm_service.py`, `main.py`, `encoder.py`, `ingest.py`, `MqttSubscriber`, `AlarmManager`, `backend/tests/helpers.py`, `IngestPipeline`, `gen_grafana_dashboards.py`, `Notifier`, `RateMeter`?**
-  _High betweenness centrality (0.068) - this node is a cross-community bridge._
-- **Why does `PhysicsPayloadFactory` connect `fleet.py` to `Contracts`, `PanelSimulator`?**
+- **Why does `PanelSimulator` connect `PanelSimulator` to `test_profiles.py`, `scenarios.py`, `test_generator.py`, `fleet.py`, `EdgePipeline`, `panosim.py`, `run`, `generator.py`, `MprBlock`, `panoalgo/tests/conftest.py`?**
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
+- **Why does `Contracts` connect `Contracts` to `threshold_sweep.py`, `Notifier`, `fleet.py`, `IngestPipeline`, `seed_demo.py`, `RiskEngine`, `generate`, `Alarm`, `AlarmManager`, `ScadaGateway`, `dispatcher.py`, `PanelEncoder`, `main.py`, `load_map`, `insights.py`, `encoder.py`?**
   _High betweenness centrality (0.057) - this node is a cross-community bridge._
+- **Why does `PhysicsPayloadFactory` connect `fleet.py` to `Contracts`, `PanelSimulator`?**
+  _High betweenness centrality (0.050) - this node is a cross-community bridge._
 - **Are the 12 inferred relationships involving `MemoryStore` (e.g. with `StoreError` and `EventRecord`) actually correct?**
   _`MemoryStore` has 12 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 12 inferred relationships involving `PanelSimulator` (e.g. with `Ar1Noise` and `_inject()`) actually correct?**

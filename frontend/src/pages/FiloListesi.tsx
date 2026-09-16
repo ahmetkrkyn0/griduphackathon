@@ -21,6 +21,7 @@ const initialHeroView = (): HeroView =>
 export function FiloListesi() {
   const { panels, loaded, error } = useFleet();
   const [heroView, setHeroView] = useState<HeroView>(initialHeroView);
+  const [search, setSearch] = useState("");
   useNow(5000);
 
   const worklist = useMemo(() => sortWorklist(panels), [panels]);
@@ -28,6 +29,17 @@ export function FiloListesi() {
     () => panels.filter((p) => !needsAttention(p)).sort((a, b) => a.name.localeCompare(b.name, "tr")),
     [panels],
   );
+
+  const query = search.trim().toLowerCase();
+  const filteredWorklist = useMemo(() => {
+    if (!query) return worklist;
+    return worklist.filter((p) => p.name.toLowerCase().includes(query) || p.pano_id.toLowerCase().includes(query));
+  }, [worklist, query]);
+
+  const filteredNormal = useMemo(() => {
+    if (!query) return normal;
+    return normal.filter((p) => p.name.toLowerCase().includes(query) || p.pano_id.toLowerCase().includes(query));
+  }, [normal, query]);
 
   if (!loaded) {
     return (
@@ -60,13 +72,32 @@ export function FiloListesi() {
     );
   }
 
+  const noResults = query && filteredWorklist.length === 0 && filteredNormal.length === 0;
+
   return (
     <main className="page">
       <section className="hero" aria-labelledby="filo-baslik">
         <h1 id="filo-baslik">{fleetHeadline(worklist)}</h1>
         <p>Panolar sorunun ne zaman kritik hale geleceğine göre dizilir. {normal.length} pano normal çalışıyor.</p>
-        {worklist.length > 0 && (
-          <>
+        
+        <div className="filo-toolbar">
+          <div className="search-wrap">
+            <span className="search-icon" aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              className="search-input"
+              placeholder="Pano adı veya kimliği ile ara (ör. TR-04, Bornova)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Panolarda ara"
+            />
+            {search && (
+              <button type="button" className="search-clear" onClick={() => setSearch("")} aria-label="Aramayı temizle">
+                ✕
+              </button>
+            )}
+          </div>
+          {worklist.length > 0 && !query && (
             <div className="chart-range" role="group" aria-label="Filo görünümü">
               <button type="button" aria-pressed={heroView === "eksen"} onClick={() => setHeroView("eksen")}>
                 Zaman ekseni
@@ -75,18 +106,27 @@ export function FiloListesi() {
                 Risk matrisi
               </button>
             </div>
-            {heroView === "eksen" ? <SureEkseni worklist={worklist} /> : <RiskMatrisi panels={worklist} />}
-          </>
+          )}
+        </div>
+
+        {worklist.length > 0 && !query && (
+          heroView === "eksen" ? <SureEkseni worklist={worklist} /> : <RiskMatrisi panels={worklist} />
         )}
       </section>
 
-      {worklist.length > 0 && (
+      {noResults && (
+        <div className="empty search-empty" role="status">
+          <p>"{search}" ile eşleşen pano bulunamadı.</p>
+        </div>
+      )}
+
+      {filteredWorklist.length > 0 && (
         <section id="yapilacaklar" aria-labelledby="yapilacaklar-baslik">
           <h2 id="yapilacaklar-baslik" className="section-title">
-            Şimdi yapılacaklar
+            {query ? `Eşleşen sorunlu panolar (${filteredWorklist.length})` : "Şimdi yapılacaklar"}
           </h2>
           <ul className="work">
-            {worklist.map((panel) => (
+            {filteredWorklist.map((panel) => (
               <li key={panel.pano_id}>
                 <WorkRow panel={panel} />
               </li>
@@ -95,9 +135,12 @@ export function FiloListesi() {
         </section>
       )}
 
-      {normal.length > 0 && (
-        <details className="normal">
-          <summary>{normal.length} pano normal çalışıyor</summary>
+      {filteredNormal.length > 0 && (
+        <details className="normal" open={!!query}>
+          <summary>
+            {filteredNormal.length} pano normal çalışıyor
+            {query ? " (filtrelendi)" : ""}
+          </summary>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
@@ -110,7 +153,7 @@ export function FiloListesi() {
                 </tr>
               </thead>
               <tbody>
-                {normal.map((p) => (
+                {filteredNormal.map((p) => (
                   <tr key={p.pano_id}>
                     <td>
                       <Link to={`/pano/${p.pano_id}`}>{p.name}</Link>

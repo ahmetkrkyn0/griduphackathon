@@ -1,22 +1,4 @@
 {
-  ".claude/settings.json": {
-    "mtime": 1789556727.0314298,
-    "seen": 1789556767.1785386,
-    "ast_hash": "00a1c338998d48d925cd77d55b06d81f",
-    "semantic_hash": "00a1c338998d48d925cd77d55b06d81f"
-  },
-  ".graphify_buckets.json": {
-    "mtime": 1789555271.928187,
-    "seen": 1789556767.1785386,
-    "ast_hash": "564758e3187f6ef9fe2eb3aa0097e8e6",
-    "semantic_hash": "564758e3187f6ef9fe2eb3aa0097e8e6"
-  },
-  ".graphify_detect.json": {
-    "mtime": 1789555166.1348734,
-    "seen": 1789556767.1785386,
-    "ast_hash": "be7469f0f015753cdec798e38ab023c4",
-    "semantic_hash": "be7469f0f015753cdec798e38ab023c4"
-  },
   "backend/app/__init__.py": {
     "mtime": 1789238352.628202,
     "seen": 1789556767.1785386,
@@ -744,10 +726,10 @@
     "semantic_hash": "979cae3955f68f7b05e86a3999e0aa23"
   },
   "frontend/src/App.tsx": {
-    "mtime": 1789457983.3515134,
-    "seen": 1789556767.1790447,
-    "ast_hash": "ce3d55eef84c7607573f53752799e207",
-    "semantic_hash": "ce3d55eef84c7607573f53752799e207"
+    "mtime": 1789558163.627302,
+    "seen": 1789558378.119295,
+    "ast_hash": "3764318f21bad2b6eb620eb94c3e6ee6",
+    "semantic_hash": ""
   },
   "frontend/src/api/client.ts": {
     "mtime": 1789457983.3515134,
@@ -798,16 +780,16 @@
     "semantic_hash": "40a07b2a4a0d98f06e43f9d820d1d704"
   },
   "frontend/src/components/CizgiGrafik.tsx": {
-    "mtime": 1789457983.3545952,
-    "seen": 1789556767.1790447,
-    "ast_hash": "7e64a5f28205d301a01673d451c8419a",
-    "semantic_hash": "7e64a5f28205d301a01673d451c8419a"
+    "mtime": 1789558223.4855492,
+    "seen": 1789558378.119295,
+    "ast_hash": "d0afbd6a8a8390ef03ce59cf5d49a934",
+    "semantic_hash": ""
   },
   "frontend/src/components/Ikiz3D.tsx": {
-    "mtime": 1789457983.3545952,
-    "seen": 1789556767.1790447,
-    "ast_hash": "a6466c193f4585ba2e0d541e95fdb584",
-    "semantic_hash": "a6466c193f4585ba2e0d541e95fdb584"
+    "mtime": 1789558153.2914362,
+    "seen": 1789558378.119295,
+    "ast_hash": "7aa642ac77506f77772d58ffb448cb4a",
+    "semantic_hash": ""
   },
   "frontend/src/components/OnGorunus.tsx": {
     "mtime": 1789457983.3561287,
@@ -900,10 +882,10 @@
     "semantic_hash": "0da16d12609681dba89fab66a2628e0d"
   },
   "frontend/src/pages/AlarmKonsolu.tsx": {
-    "mtime": 1789457983.3593028,
-    "seen": 1789556767.1790447,
-    "ast_hash": "a139822f586538acfef8a79124d98bd6",
-    "semantic_hash": "a139822f586538acfef8a79124d98bd6"
+    "mtime": 1789558323.019244,
+    "seen": 1789558378.119295,
+    "ast_hash": "086dd786965ec46ae83de77d1e1fbd3e",
+    "semantic_hash": ""
   },
   "frontend/src/pages/BolgeHaritasi.tsx": {
     "mtime": 1789457983.3603103,
@@ -918,16 +900,16 @@
     "semantic_hash": "9c252532d34e798b82483f586c0f2ac7"
   },
   "frontend/src/pages/FiloListesi.tsx": {
-    "mtime": 1789457983.360815,
-    "seen": 1789556767.1790447,
-    "ast_hash": "608d00dba2bb8e4173e0c9117320d21c",
-    "semantic_hash": "608d00dba2bb8e4173e0c9117320d21c"
+    "mtime": 1789558175.3820677,
+    "seen": 1789558378.119295,
+    "ast_hash": "22d122059c55405035283b2a2212d8e8",
+    "semantic_hash": ""
   },
   "frontend/src/pages/OlayAnalizi.tsx": {
-    "mtime": 1789556568.7323482,
-    "seen": 1789556767.1790447,
-    "ast_hash": "a470f81eb22ddc46d7587687fa0f4490",
-    "semantic_hash": "a470f81eb22ddc46d7587687fa0f4490"
+    "mtime": 1789558246.4073682,
+    "seen": 1789558378.119295,
+    "ast_hash": "c44d802f0005ff5e1fa1fff6f7d2cf4c",
+    "semantic_hash": ""
   },
   "frontend/src/pages/PanoDetay.tsx": {
     "mtime": 1789457983.360815,
@@ -948,10 +930,10 @@
     "semantic_hash": "6ac400bbe2e8f8a1501dbf61993b3db1"
   },
   "frontend/src/state/fleet.tsx": {
-    "mtime": 1789457983.3618197,
-    "seen": 1789556767.1790447,
-    "ast_hash": "45dd055d4b2789ae3c156dfdd3651abd",
-    "semantic_hash": "45dd055d4b2789ae3c156dfdd3651abd"
+    "mtime": 1789558035.156767,
+    "seen": 1789558378.119295,
+    "ast_hash": "a8da5931a7c115c4a7b9c56f9a4af580",
+    "semantic_hash": ""
   },
   "frontend/src/vite-env.d.ts": {
     "mtime": 1789457983.3618197,
@@ -966,10 +948,10 @@
     "semantic_hash": "d51bb17d4eaf03db0a527e3ecd5fbf1d"
   },
   "frontend/vite.config.ts": {
-    "mtime": 1789457983.3618197,
-    "seen": 1789556767.1790447,
-    "ast_hash": "a2bd4f560f17d894c27548e86045f862",
-    "semantic_hash": "a2bd4f560f17d894c27548e86045f862"
+    "mtime": 1789558018.6298134,
+    "seen": 1789558378.119295,
+    "ast_hash": "728053d5fc408d3f517fe96656a0d550",
+    "semantic_hash": ""
   },
   "hardware/mekanik/uret-stl.sh": {
     "mtime": 1789556568.732855,
@@ -1300,5 +1282,473 @@
     "seen": 1789556767.1790447,
     "ast_hash": "bd3522314f781f8006e19b91ee0a88f7",
     "semantic_hash": "bd3522314f781f8006e19b91ee0a88f7"
+  },
+  "frontend/src/lib/audio.ts": {
+    "mtime": 1789558024.211283,
+    "seen": 1789558378.119295,
+    "ast_hash": "fe69e178f411f4149286872e5f31181b",
+    "semantic_hash": ""
+  },
+  ".agents/rules/graphify.md": {
+    "mtime": 1789556727.1720867,
+    "seen": 1789558378.119295,
+    "ast_hash": "a0e4d192b9e2e17256124dbfc8e24e6a",
+    "semantic_hash": ""
+  },
+  ".agents/workflows/graphify.md": {
+    "mtime": 1789556727.1731112,
+    "seen": 1789558378.119295,
+    "ast_hash": "a831cf3669f1e6ab85d8a80ebe655f99",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1789556727.0304093,
+    "seen": 1789558378.119295,
+    "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
+    "semantic_hash": ""
+  },
+  "GELISTIRME-BACKLOGU.md": {
+    "mtime": 1789556568.709159,
+    "seen": 1789558378.119295,
+    "ast_hash": "07371f642569cbdd72ff4f3211112b1f",
+    "semantic_hash": ""
+  },
+  "HACKATHON_ANALIZ_RAPORU.md": {
+    "mtime": 1789076065.3543913,
+    "seen": 1789558378.119295,
+    "ast_hash": "b10bc4bcea5a68a6a77c8ca9d91b068b",
+    "semantic_hash": ""
+  },
+  "KALAN-EKSIKLER.md": {
+    "mtime": 1789457983.3143024,
+    "seen": 1789558378.119295,
+    "ast_hash": "3af9686c400a8d984d4bf588b595fe21",
+    "semantic_hash": ""
+  },
+  "PLAN.md": {
+    "mtime": 1789556568.7101755,
+    "seen": 1789558378.119295,
+    "ast_hash": "4422393e76c5ec4262cf6fff8d37db33",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1789556568.7101755,
+    "seen": 1789558378.119295,
+    "ast_hash": "e598cbeb616b2cd22c1de764dff395c6",
+    "semantic_hash": ""
+  },
+  "STATUS.md": {
+    "mtime": 1789457983.315881,
+    "seen": 1789558378.119295,
+    "ast_hash": "53c7877338853017bd2e67e854209ef1",
+    "semantic_hash": ""
+  },
+  "backend/requirements.txt": {
+    "mtime": 1789417965.6659606,
+    "seen": 1789558378.119295,
+    "ast_hash": "2b90ff27ba39a6ff4033538c451373e5",
+    "semantic_hash": ""
+  },
+  "contracts/README.md": {
+    "mtime": 1789238621.444771,
+    "seen": 1789558378.119295,
+    "ast_hash": "91edd31c4aeb7730cf0d7703a14f78e7",
+    "semantic_hash": ""
+  },
+  "contracts/alarm-codes.yaml": {
+    "mtime": 1789238089.8739896,
+    "seen": 1789558378.119295,
+    "ast_hash": "ad0182687b0458591b546118ec254d91",
+    "semantic_hash": ""
+  },
+  "contracts/changes/2026-09-14-eksik-esikler.md": {
+    "mtime": 1789556568.7184656,
+    "seen": 1789558378.119295,
+    "ast_hash": "f3d1a7c95b9c66659154ad6afad1e8a8",
+    "semantic_hash": ""
+  },
+  "contracts/changes/2026-09-14-fleet-health-bulk.md": {
+    "mtime": 1789556568.7184656,
+    "seen": 1789558378.119295,
+    "ast_hash": "490d55cd5ca913a4c971c211c7a4293e",
+    "semantic_hash": ""
+  },
+  "contracts/modbus-map.yaml": {
+    "mtime": 1789238552.5263925,
+    "seen": 1789558378.119295,
+    "ast_hash": "62bd2923ebbc67fea928b7b7ca3cf896",
+    "semantic_hash": ""
+  },
+  "contracts/openapi.yaml": {
+    "mtime": 1789238153.0872006,
+    "seen": 1789558378.119295,
+    "ast_hash": "da552a234086067a7b3cb5013262c230",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/README.md": {
+    "mtime": 1789556568.718977,
+    "seen": 1789558378.119295,
+    "ast_hash": "be6072ab38b14bf2800366430190fad7",
+    "semantic_hash": ""
+  },
+  "demo/sunum/sunum-taslagi.md": {
+    "mtime": 1789556568.722556,
+    "seen": 1789558378.119295,
+    "ast_hash": "33ecdd68a23c07246597cd2629de7296",
+    "semantic_hash": ""
+  },
+  "deploy/compose.frontend.yaml": {
+    "mtime": 1789238287.5557187,
+    "seen": 1789558378.119295,
+    "ast_hash": "fa450fdf88f0c3d5fc6c7e7b513442ff",
+    "semantic_hash": ""
+  },
+  "deploy/compose.sim.yaml": {
+    "mtime": 1789556568.723067,
+    "seen": 1789558378.119295,
+    "ast_hash": "ea24d03f5a8c71db3fc135437972f7f4",
+    "semantic_hash": ""
+  },
+  "deploy/compose.yaml": {
+    "mtime": 1789556568.7235787,
+    "seen": 1789558378.119295,
+    "ast_hash": "c8e0e04a2376a5404ba2e8562f27c2a0",
+    "semantic_hash": ""
+  },
+  "deploy/grafana/dashboards/provider.yaml": {
+    "mtime": 1789238343.4002867,
+    "seen": 1789558378.119295,
+    "ast_hash": "8efdbd888e27c1edd916e757c82f4dd9",
+    "semantic_hash": ""
+  },
+  "deploy/grafana/datasources/timescale.yaml": {
+    "mtime": 1789238337.8596172,
+    "seen": 1789558378.119295,
+    "ast_hash": "529617eb6b15ea577d05d42dbcd3e35f",
+    "semantic_hash": ""
+  },
+  "docs/01-problem-analizi.md": {
+    "mtime": 1789457983.3388295,
+    "seen": 1789558378.119295,
+    "ast_hash": "bea3d30b6afbc1a986cd6866faef2ede",
+    "semantic_hash": ""
+  },
+  "docs/02-mimari.md": {
+    "mtime": 1789556568.7246075,
+    "seen": 1789558378.119295,
+    "ast_hash": "62a83b16e575d91d181179a5f1148f15",
+    "semantic_hash": ""
+  },
+  "docs/03-modbus-haritasi.md": {
+    "mtime": 1789417972.5460613,
+    "seen": 1789558378.119295,
+    "ast_hash": "c92197c08ce7afc79557d103a4d95109",
+    "semantic_hash": ""
+  },
+  "docs/04-iec104-haritasi.md": {
+    "mtime": 1789556568.7251215,
+    "seen": 1789558378.119295,
+    "ast_hash": "92f5b43d681c7741b1ade669fb276636",
+    "semantic_hash": ""
+  },
+  "docs/05-anomali-tespiti.md": {
+    "mtime": 1789556568.7251215,
+    "seen": 1789558378.119295,
+    "ast_hash": "0ac00de4d9819701cc12c009f693364a",
+    "semantic_hash": ""
+  },
+  "docs/06-alarm-matrisi.md": {
+    "mtime": 1789417965.690598,
+    "seen": 1789558378.119295,
+    "ast_hash": "a36297ffea2970d6540fff35cd735557",
+    "semantic_hash": ""
+  },
+  "docs/07-fmea-donanim-saha.md": {
+    "mtime": 1789457983.3388295,
+    "seen": 1789558378.119295,
+    "ast_hash": "688d39a7d015e48fd74d058217fce300",
+    "semantic_hash": ""
+  },
+  "docs/07b-fmea-yazilim-sistem.md": {
+    "mtime": 1789556568.7256377,
+    "seen": 1789558378.119295,
+    "ast_hash": "761e3d0936cbe0e8161a104d9e4bf6c5",
+    "semantic_hash": ""
+  },
+  "docs/08-kurulum-proseduru.md": {
+    "mtime": 1789457983.3388295,
+    "seen": 1789558378.119295,
+    "ast_hash": "1786f204dcb7d3b839fa5f3eb2bfef9e",
+    "semantic_hash": ""
+  },
+  "docs/09-olceklenebilirlik.md": {
+    "mtime": 1789417972.5505962,
+    "seen": 1789558378.119295,
+    "ast_hash": "a49e5a98775fda84cc0b6f26d1b43e64",
+    "semantic_hash": ""
+  },
+  "docs/10-bom-maliyet-roi.md": {
+    "mtime": 1789556568.7261522,
+    "seen": 1789558378.119295,
+    "ast_hash": "e696094516a71ffd4ff4b6990205f391",
+    "semantic_hash": ""
+  },
+  "docs/11-standartlar-uyum.md": {
+    "mtime": 1789556568.7266624,
+    "seen": 1789558378.119295,
+    "ast_hash": "53aaf8327d6aaa246961ab7bb07b2427",
+    "semantic_hash": ""
+  },
+  "docs/12-dogrulama-sonuclari.md": {
+    "mtime": 1789556568.727173,
+    "seen": 1789558378.119295,
+    "ast_hash": "f20a3b871da03f11af0ba292b8eae05e",
+    "semantic_hash": ""
+  },
+  "docs/13-donanim-tasarimi.md": {
+    "mtime": 1789556568.7276921,
+    "seen": 1789558378.119295,
+    "ast_hash": "5bfb622b938adfd1412c9fea2f8a485f",
+    "semantic_hash": ""
+  },
+  "docs/14-veri-ureteci.md": {
+    "mtime": 1789556568.7282453,
+    "seen": 1789558378.119295,
+    "ast_hash": "11790dc0dd57e36ac805238079f512a7",
+    "semantic_hash": ""
+  },
+  "docs/15-guvenlik-kvkk.md": {
+    "mtime": 1789417972.5516138,
+    "seen": 1789558378.119295,
+    "ast_hash": "377807c384cfeb7a233740633f327889",
+    "semantic_hash": ""
+  },
+  "docs/16-ux-tasarim.md": {
+    "mtime": 1789556568.7282453,
+    "seen": 1789558378.119295,
+    "ast_hash": "3d4516ff5fb8a5ab33bc92a75b358ab0",
+    "semantic_hash": ""
+  },
+  "docs/17-donanimsiz-dogrulama.md": {
+    "mtime": 1789556568.7292724,
+    "seen": 1789558378.119295,
+    "ast_hash": "f1dae386eaaaa11ceca0a7595d6d7e74",
+    "semantic_hash": ""
+  },
+  "docs/18-konumlandirma-ve-standart-izi.md": {
+    "mtime": 1789556568.7292724,
+    "seen": 1789558378.119295,
+    "ast_hash": "06dbfb0450d545e4b7f4b6b9a5b1b5a7",
+    "semantic_hash": ""
+  },
+  "docs/19-tedas-sartname-uyumu.md": {
+    "mtime": 1789556568.729786,
+    "seen": 1789558378.119295,
+    "ast_hash": "9d577fd4ac59fc79b86887941b20c6ce",
+    "semantic_hash": ""
+  },
+  "firmware/CMakeLists.txt": {
+    "mtime": 1789457983.3419282,
+    "seen": 1789558378.119295,
+    "ast_hash": "3cb2c90d95162f17b3927317784c6f35",
+    "semantic_hash": ""
+  },
+  "firmware/akis-diyagramlari/ana-dongu.md": {
+    "mtime": 1789457983.3419282,
+    "seen": 1789558378.119295,
+    "ast_hash": "e0fb6956d1e2f1752796a26436188377",
+    "semantic_hash": ""
+  },
+  "frontend/README.md": {
+    "mtime": 1789457983.3472116,
+    "seen": 1789558378.119295,
+    "ast_hash": "defd7cd0061b4f177c85cb7fd44116cf",
+    "semantic_hash": ""
+  },
+  "frontend/TASARIM-REVIZYONU.md": {
+    "mtime": 1789457983.3472116,
+    "seen": 1789558378.119295,
+    "ast_hash": "6f528c5fdb66e18f48356621d8775ffb",
+    "semantic_hash": ""
+  },
+  "frontend/index.html": {
+    "mtime": 1789457983.3487504,
+    "seen": 1789558378.119295,
+    "ast_hash": "f5902121e43553204062311e4291a1c7",
+    "semantic_hash": ""
+  },
+  "frontend/sketches/ikiz-3d.html": {
+    "mtime": 1789457983.350297,
+    "seen": 1789558378.119295,
+    "ast_hash": "b0e05fe99b86497f65c27899637f095f",
+    "semantic_hash": ""
+  },
+  "frontend/sketches/index.html": {
+    "mtime": 1789457983.350297,
+    "seen": 1789558378.119295,
+    "ast_hash": "f06d53c1aa5a6808d94847331af82e6d",
+    "semantic_hash": ""
+  },
+  "frontend/sketches/yon-a-ral7035.html": {
+    "mtime": 1789457983.350297,
+    "seen": 1789558378.119295,
+    "ast_hash": "7afa2813dc06096f68f324e4b9aeaf91",
+    "semantic_hash": ""
+  },
+  "frontend/sketches/yon-b-tek-hat.html": {
+    "mtime": 1789457983.3515134,
+    "seen": 1789558378.119295,
+    "ast_hash": "843340b9eb8392035e81dfeb3da15645",
+    "semantic_hash": ""
+  },
+  "frontend/sketches/yon-c-sure-ekseni.html": {
+    "mtime": 1789457983.3515134,
+    "seen": 1789558378.119295,
+    "ast_hash": "ae58b6ce169f096c49c25d1049f0026d",
+    "semantic_hash": ""
+  },
+  "graphify-out/converted/\u0130stenen Veriler_613618b1.md": {
+    "mtime": 1789555163.9603684,
+    "seen": 1789558378.119295,
+    "ast_hash": "da6e55abcb827b3cb95c6297fc17b6de",
+    "semantic_hash": ""
+  },
+  "hardware/pano-beyni/README.md": {
+    "mtime": 1789457983.3618197,
+    "seen": 1789558378.119295,
+    "ast_hash": "538fa9020d27e2c0f0c6f6d27765ddec",
+    "semantic_hash": ""
+  },
+  "hardware/pano-beyni/blok-diyagrami.md": {
+    "mtime": 1789457983.363349,
+    "seen": 1789558378.119295,
+    "ast_hash": "8b0dd2757906475d8d62a9093b894401",
+    "semantic_hash": ""
+  },
+  "hardware/pano-beyni/io-tablosu.md": {
+    "mtime": 1789457983.363349,
+    "seen": 1789558378.119295,
+    "ast_hash": "8b7ec36b61387ced039a86d24d2ea9d3",
+    "semantic_hash": ""
+  },
+  "sim/requirements.txt": {
+    "mtime": 1789238369.6385286,
+    "seen": 1789558378.119295,
+    "ast_hash": "2dd5accec9c553ee9d574f2d6b819df7",
+    "semantic_hash": ""
+  },
+  "Grid Up Hackathon Proje Konusu.pdf": {
+    "mtime": 1789069273.5002651,
+    "seen": 1789558378.119295,
+    "ast_hash": "67f670bf2ec36d55bd53b7160bd8f5ed",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/1600kVA AG Pano Teknik \u00d6zellikleri.pdf": {
+    "mtime": 1789069273.4137306,
+    "seen": 1789558378.119295,
+    "ast_hash": "d7c2daeedf58764c41016ff2c76b1d6f",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/1SFC170017M0201_Rev_D_TVOC-2_Modbus_Manual.pdf": {
+    "mtime": 1789069273.4648764,
+    "seen": 1789558378.119295,
+    "ast_hash": "8b76b33b86f48829a45841dc20809856",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/AG PANO MALZEME \u015eARTNAMES\u0130.pdf": {
+    "mtime": 1789069273.4864337,
+    "seen": 1789558378.119295,
+    "ast_hash": "3cf811a815b0c63cb6974852ee40a32f",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/AG Pano Teknik \u00c7izim-1600kVA.pdf": {
+    "mtime": 1789069273.435503,
+    "seen": 1789558378.119295,
+    "ast_hash": "c46d751fdfc1af0bf53817948133a759",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/DS_HFCT30_eng.pdf": {
+    "mtime": 1789069273.426788,
+    "seen": 1789558378.119295,
+    "ast_hash": "189c7e4a5037a3aae738aff6bfd74d9c",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/DS_HFCT50_eng.pdf": {
+    "mtime": 1789069273.431542,
+    "seen": 1789558378.119295,
+    "ast_hash": "070cb5b580c607d4ecdde608ad59dfa4",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/MPR-53CS_Modbus_Register_Map_EN.pdf": {
+    "mtime": 1789069273.4939344,
+    "seen": 1789558378.119295,
+    "ast_hash": "6c99af3e3d75832d5d29793771637a99",
+    "semantic_hash": ""
+  },
+  "Hackathon Verileri/tvoc.pdf": {
+    "mtime": 1789069273.457211,
+    "seen": 1789558378.119295,
+    "ast_hash": "feba5af8828fe4460f6f3fb07c82b08b",
+    "semantic_hash": ""
+  },
+  "assets/ek2-14-pano.svg": {
+    "mtime": 1789457983.315881,
+    "seen": 1789558378.119295,
+    "ast_hash": "e0d3653b58091eba3c385fe479449ef3",
+    "semantic_hash": ""
+  },
+  "assets/ekran/01-filo-listesi.png": {
+    "mtime": 1789457983.3169682,
+    "seen": 1789558378.119295,
+    "ast_hash": "0bb2bc50f61e1385431f5291c9c7de32",
+    "semantic_hash": ""
+  },
+  "assets/ekran/02-pano-detay-alarm.png": {
+    "mtime": 1789457983.3185105,
+    "seen": 1789558378.119295,
+    "ast_hash": "d81131de1a2044db0ee299cc9db8028f",
+    "semantic_hash": ""
+  },
+  "assets/ekran/02-pano-detay-normal.png": {
+    "mtime": 1789457983.3200502,
+    "seen": 1789558378.119295,
+    "ast_hash": "62a4e6318e5118749ff45cb91a370718",
+    "semantic_hash": ""
+  },
+  "assets/ekran/03-alarm-konsolu.png": {
+    "mtime": 1789457983.3215883,
+    "seen": 1789558378.119295,
+    "ast_hash": "7c3373f852d319959c91279197e7f9f4",
+    "semantic_hash": ""
+  },
+  "assets/ekran/04-trend-korelasyon.png": {
+    "mtime": 1789457983.3232765,
+    "seen": 1789558378.119295,
+    "ast_hash": "adb5ddd0ff0f53d9393958afc6b639a5",
+    "semantic_hash": ""
+  },
+  "assets/ekran/05-olay-analizi-kara-kutu.png": {
+    "mtime": 1789457983.3242824,
+    "seen": 1789558378.119295,
+    "ast_hash": "5ca52f5e237772adcf6ecf17c5534b3f",
+    "semantic_hash": ""
+  },
+  "assets/ekran/06-cihaz-sagligi.png": {
+    "mtime": 1789457983.325371,
+    "seen": 1789558378.119295,
+    "ast_hash": "421f9459a8dc0185cfa81109df9bb203",
+    "semantic_hash": ""
+  },
+  "assets/ekran/07-bolge-haritasi.png": {
+    "mtime": 1789457983.3269186,
+    "seen": 1789558378.119295,
+    "ast_hash": "3cfbf776cac97b4a762db35c90fda148",
+    "semantic_hash": ""
+  },
+  "hardware/yerlesim/ek2-14-yerlesim.svg": {
+    "mtime": 1789457983.363349,
+    "seen": 1789558378.119295,
+    "ast_hash": "c71a57f7f41a0dca1a50468ee63a8c3c",
+    "semantic_hash": ""
   }
 }

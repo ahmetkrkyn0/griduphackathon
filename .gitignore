@@ -70,6 +70,7 @@ firmware/build-float/
 # --- Graphify ara onbellek ve gecici dosyalar ---
 graphify-out/cache/
 graphify-out/converted/
+graphify-out/20*/
 graphify-out/.*
 .graphify*
 

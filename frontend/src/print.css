@@ -107,6 +107,22 @@
     margin: 0;
   }
 
+  .report .narrative-box {
+    margin-top: 3mm;
+    padding: 2.5mm 3mm;
+    border: 1px solid #000;
+    font-size: 8.5pt;
+    line-height: 1.35;
+    background: #f9f9f9;
+  }
+  .report .narrative-box strong {
+    display: block;
+    margin-bottom: 1mm;
+  }
+  .report .narrative-box p {
+    margin: 0;
+  }
+
   /* Govde: solda cizgi grafikler, sagda 2B on gorunus + zaman cizelgesi.
      Ekrandaki px tabanli sutun genisligi kagitta anlamsiz; esit iki sutuna gecilir. */
   .report .split {

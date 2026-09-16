@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { num } from "../lib/format";
 
 export interface ChartSeries {
@@ -32,6 +32,7 @@ const WIDTH = 640;
 const PAD = { top: 14, right: 50, bottom: 28, left: 50 };
 const fmtDay = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
 const fmtTime = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
+const fmtFull = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 function niceDomain(min: number, max: number): [number, number] {
   if (min === max) return [min - 1, max + 1];
@@ -55,6 +56,8 @@ function buildPath(points: Array<[number, number | null]>, x: (t: number) => num
 
 /** Kucuk, bagimliliksiz cok-serili cizgi grafik. Birden fazla sayfada kullanilir. */
 export function CizgiGrafik({ series, height = 220, markers = [], yLabelLeft, yLabelRight, thresholdLeft, emptyText }: Props) {
+  const [hover, setHover] = useState<{ xSvg: number; clientPct: number; t: number } | null>(null);
+
   const layout = useMemo(() => {
     const withData = series.filter((s) => s.points.some(([, v]) => v != null));
     const allT = withData.flatMap((s) => s.points.map(([t]) => t));
@@ -79,17 +82,67 @@ export function CizgiGrafik({ series, height = 220, markers = [], yLabelLeft, yL
     const leftTicks = [yl0, (yl0 + yl1) / 2, yl1];
     const rightTicks = [yr0, (yr0 + yr1) / 2, yr1];
 
-    return { x, yLeft, yRight, xTicks, leftTicks, rightTicks, fmt, hasRight: rightVals.length > 0 };
+    return { x, yLeft, yRight, leftTicks, rightTicks, xTicks, fmt, hasRight: rightVals.length > 0, t0, t1, spanMs };
   }, [series, height, thresholdLeft]);
 
   if (!layout) {
     return <p className="dim small chart-empty">{emptyText ?? "Bu aralıkta veri yok."}</p>;
   }
-  const { x, yLeft, yRight, leftTicks, rightTicks, xTicks, fmt, hasRight } = layout;
+  const { x, yLeft, yRight, leftTicks, rightTicks, xTicks, fmt, hasRight, t0, spanMs } = layout;
+
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = e.clientX - rect.left;
+    const clientPct = (relX / rect.width) * 100;
+    const svgX = (relX / rect.width) * WIDTH;
+    if (svgX < PAD.left || svgX > WIDTH - PAD.right) {
+      setHover(null);
+      return;
+    }
+    const innerW = WIDTH - PAD.left - PAD.right;
+    const ratio = (svgX - PAD.left) / innerW;
+    const t = t0 + ratio * spanMs;
+    setHover({ xSvg: svgX, clientPct, t });
+  };
+
+  const onPointerLeave = () => setHover(null);
+
+  // Imlece en yakin degerleri bul
+  const hoveredData = hover
+    ? series
+        .map((s) => {
+          const valid = s.points.filter((p): p is [number, number] => p[1] != null);
+          if (valid.length === 0) return null;
+          let best = valid[0];
+          let minDiff = Math.abs(valid[0][0] - hover.t);
+          for (let i = 1; i < valid.length; i++) {
+            const diff = Math.abs(valid[i][0] - hover.t);
+            if (diff < minDiff) {
+              minDiff = diff;
+              best = valid[i];
+            }
+          }
+          return {
+            key: s.key,
+            label: s.label,
+            color: s.color,
+            val: best[1],
+            ySvg: s.axis === "right" ? yRight(best[1]) : yLeft(best[1]),
+          };
+        })
+        .filter((d): d is NonNullable<typeof d> => d != null)
+    : [];
 
   return (
     <div className="chart">
-      <svg className="chart-svg" viewBox={`0 0 ${WIDTH} ${height}`} role="img" aria-label={series.map((s) => s.label).join(", ")}>
+      <svg
+        className="chart-svg"
+        viewBox={`0 0 ${WIDTH} ${height}`}
+        role="img"
+        aria-label={series.map((s) => s.label).join(", ")}
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
+      >
         {leftTicks.map((v) => (
           <g key={v}>
             <line className="chart-grid" x1={PAD.left} x2={WIDTH - PAD.right} y1={yLeft(v)} y2={yLeft(v)} />
@@ -137,7 +190,51 @@ export function CizgiGrafik({ series, height = 220, markers = [], yLabelLeft, yL
             fill="none"
           />
         ))}
+
+        {hover && (
+          <g className="chart-crosshair-group">
+            <line
+              className="chart-crosshair"
+              x1={hover.xSvg}
+              x2={hover.xSvg}
+              y1={PAD.top}
+              y2={height - PAD.bottom}
+            />
+            {hoveredData.map((d) => (
+              <circle
+                key={d.key}
+                cx={hover.xSvg}
+                cy={d.ySvg}
+                r={3.5}
+                fill={d.color}
+                stroke="var(--surface, #fff)"
+                strokeWidth={1.5}
+              />
+            ))}
+          </g>
+        )}
       </svg>
+
+      {hover && hoveredData.length > 0 && (
+        <div
+          className="chart-tooltip"
+          style={{
+            left: `${Math.min(Math.max(hover.clientPct, 15), 85)}%`,
+          }}
+        >
+          <div className="chart-tooltip-time">{fmtFull.format(hover.t)}</div>
+          <div className="chart-tooltip-rows">
+            {hoveredData.map((h) => (
+              <div key={h.key} className="chart-tooltip-row">
+                <span className="chart-swatch" style={{ background: h.color }} />
+                <span className="chart-tooltip-label">{h.label}:</span>
+                <span className="chart-tooltip-val">{num(h.val, 1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="chart-legend">
         {series.map((s) => (
           <span key={s.key} className="chart-legend-item">

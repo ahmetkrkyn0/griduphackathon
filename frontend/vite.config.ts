@@ -15,8 +15,18 @@ export default defineConfig({
       "/health": BACKEND,
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ["three"],
+        },
+      },
+    },
+  },
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
   },
 });
+

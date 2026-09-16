@@ -20,8 +20,9 @@
 /* Secili durum: grafit dolgu + turuncu alt serit (marka gorunurlugu, alarm rengiyle karismaz). */
 .nav-link.active { background: var(--plate); color: #fff; box-shadow: inset 0 -3px 0 var(--brand); }
 
+.topbar-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 /* KPI seridi: duz metin yerine yukseltilmis "buyuk sayi" karolari (GE Vernova / ABB filo panolari). */
-.kpis { display: flex; gap: 8px; margin: 0 0 0 auto; padding: 0; list-style: none; }
+.kpis { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .kpis li {
   display: flex;
   flex-direction: column;
@@ -35,6 +36,26 @@
 }
 .kpis b { color: var(--ink); font: 700 18px var(--display); font-variant-numeric: tabular-nums; }
 .kpis span { color: var(--dim); font: 600 10px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+
+.audio-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font: 600 12px var(--cond);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.audio-toggle:hover { background: var(--well); border-color: var(--dim); }
+.audio-toggle.muted { color: var(--dim); opacity: 0.75; }
+.audio-label { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+
+.page-loading { padding: 48px 32px; font-size: 15px; color: var(--dim); }
 
 .strip { padding: 7px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .strip.info { background: #e6eaf1; color: #2d3f63; }
@@ -175,6 +196,34 @@
   .i3-time-readout { min-width: 0; }
 }
 .i3-fail { height: 540px; display: grid; place-items: center; color: var(--dim); text-align: center; padding: 16px; margin: 0; position: relative; }
+.i3-thermal-scale {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(246, 246, 244, 0.94);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
+  z-index: 2;
+}
+.i3-thermal-bar {
+  display: block;
+  width: 140px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #3b528b 0%, #21918c 30%, #fde725 65%, #d62728 100%);
+}
+.i3-thermal-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
 @media (max-width: 960px) {
   .i3, .i3-fail { height: 400px; }
 }
@@ -314,7 +363,7 @@
 .riskmx-pt:hover .riskmx-label, .riskmx-pt:focus-visible .riskmx-label { font-weight: 700; }
 
 /* ---------- Grafikler (CizgiGrafik, SacilimGrafik) ---------- */
-.chart { margin-top: 4px; }
+.chart { position: relative; margin-top: 4px; }
 .chart-svg { width: 100%; height: auto; display: block; }
 .chart-grid { stroke: var(--line); stroke-width: 1; }
 .chart-tick { font-size: 11px; fill: var(--dim); font-variant-numeric: tabular-nums; }
@@ -327,6 +376,26 @@
 .chart-threshold-label { font-size: 11px; fill: var(--p2); }
 .chart-marker { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 2 3; }
 .chart-marker-label { font-size: 11px; fill: var(--ink); font-weight: 600; }
+.chart-crosshair { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.65; pointer-events: none; }
+.chart-tooltip {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  z-index: 5;
+  font-size: 12px;
+  min-width: 140px;
+}
+.chart-tooltip-time { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; margin-bottom: 4px; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.chart-tooltip-rows { display: grid; gap: 3px; }
+.chart-tooltip-row { display: flex; align-items: center; gap: 6px; }
+.chart-tooltip-label { color: var(--dim); font-size: 11px; flex: 1; }
+.chart-tooltip-val { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: 13px; color: var(--dim); }
 .chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .chart-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
@@ -336,8 +405,74 @@
 /* Gorunum/zaman-araligi secimi (alarm siddeti degil) — aktif sekme vurgusuyla ayni dil. */
 .chart-range button[aria-pressed="true"] { background: var(--plate); color: #fff; border-color: var(--plate); box-shadow: inset 0 -3px 0 var(--brand); }
 
+/* ---------- Arama ve Araç Çubukları ---------- */
+.filo-toolbar, .console-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0 20px;
+}
+.search-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 260px;
+  flex: 1;
+  max-width: 440px;
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+  font-size: 13px;
+  opacity: 0.6;
+}
+.search-input {
+  width: 100%;
+  padding: 7px 30px 7px 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-input:focus {
+  border-color: var(--ours);
+  box-shadow: 0 0 0 2px rgba(44, 99, 201, 0.18);
+}
+.search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.search-empty { padding: 24px 0; color: var(--dim); font-size: 14px; }
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font: 600 13px var(--cond);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  margin-left: auto;
+}
+.btn-export:hover { background: var(--well); border-color: var(--dim); }
+
 /* ---------- Alarm konsolu ---------- */
-.console-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+.console-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 0; }
 .console-filters button { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
 /* Kasitli olarak turuncu vurgu YOK: bu dugmeler alarm siddetiyle ayni sozcukleri tasir
    (Kritik/Alarm/Uyari) — marka turuncusu buraya tasarsa "turuncu = P2 alarm" izlenimini
@@ -352,6 +487,26 @@
 .badge-shelved { background: var(--well); color: var(--dim); font-size: 12px; padding: 2px 8px; border-radius: 3px; }
 
 /* ---------- Kara kutu (Olay Analizi) ---------- */
+.narrative-card {
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ours);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 16px 0 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.narrative-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 14px var(--cond);
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.narrative-text { margin: 0; color: var(--ink); }
+
 /* Pencere secimi solda, yazdirma dugmesi sagda; ikisi de kagitta gizlenir (print.css). */
 .bb-bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .bb-bar .console-filters { margin-bottom: 0; }

@@ -16,11 +16,39 @@ const VIEW_STATE: Record<ViewFilter, string> = { acik: "active,acked", rafta: "s
 const VIEW_LABEL: Record<ViewFilter, string> = { acik: "Açık", rafta: "Rafta", hepsi: "Tümü" };
 const PRIOS: Prio[] = ["P1", "P2", "P3", "SYS"];
 
+function exportAlarmsCsv(alarmList: Alarm[], nameOf: (id: string) => string) {
+  const headers = ["Zaman", "Pano ID", "Pano Adı", "Öncelik", "Kod", "Nokta", "Durum", "Açıklama", "Tavsiye", "Sınır Saati (TTL)"];
+  const rows = alarmList.map((a) => [
+    `"${a.raised_at}"`,
+    `"${a.pano_id}"`,
+    `"${(nameOf(a.pano_id) || "").replace(/"/g, '""')}"`,
+    `"${a.prio}"`,
+    `"${a.code}"`,
+    `"${a.reason?.point ?? ""}"`,
+    `"${a.state}"`,
+    `"${(a.text ?? a.reason?.basis ?? "").replace(/"/g, '""')}"`,
+    `"${(a.advice ?? "").replace(/"/g, '""')}"`,
+    `"${a.ttl_h != null ? a.ttl_h : ""}"`,
+  ]);
+  const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const dateStr = new Date().toISOString().slice(0, 10);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `gridup-vardiya-raporu-${dateStr}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 /** ISA-18.2 alarm konsolu: oncelik/zaman/konum, Neden/Ne yapmali/Ne kadar acil, onay/raf, eskalasyon. */
 export function AlarmKonsolu() {
   const { panels } = useFleet();
   const [view, setView] = useState<ViewFilter>("acik");
   const [prioFilter, setPrioFilter] = useState<Set<Prio>>(new Set());
+  const [search, setSearch] = useState("");
   const [alarms, setAlarms] = useState<Alarm[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -50,11 +78,21 @@ export function AlarmKonsolu() {
       return next;
     });
 
+  const nameOf = (panoId: string) => panels.find((p) => p.pano_id === panoId)?.name ?? panoId;
+
+  const q = search.trim().toLowerCase();
   const visible = (alarms ?? [])
     .filter((a) => prioFilter.size === 0 || prioFilter.has(a.prio))
+    .filter((a) => {
+      if (!q) return true;
+      const pName = nameOf(a.pano_id).toLowerCase();
+      const pId = a.pano_id.toLowerCase();
+      const code = a.code.toLowerCase();
+      const pt = (a.reason?.point ?? "").toLowerCase();
+      const text = (a.text ?? a.reason?.basis ?? "").toLowerCase();
+      return pName.includes(q) || pId.includes(q) || code.includes(q) || pt.includes(q) || text.includes(q);
+    })
     .sort((a, b) => prioRank(a.prio) - prioRank(b.prio) || Date.parse(b.raised_at) - Date.parse(a.raised_at));
-
-  const nameOf = (panoId: string) => panels.find((p) => p.pano_id === panoId)?.name ?? panoId;
 
   const onAck = async (alarm: Alarm, note: string) => {
     setBusyId(alarm.id);
@@ -89,23 +127,55 @@ export function AlarmKonsolu() {
         <p>ISA-18.2 yaşam döngüsü: açık, rafta ve temizlenmiş alarmlar; her kart üç soruyu cevaplar.</p>
       </div>
 
-      <div className="console-filters" role="group" aria-label="Durum">
-        {(Object.keys(VIEW_STATE) as ViewFilter[]).map((v) => (
-          <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
-            {VIEW_LABEL[v]}
+      <div className="console-toolbar">
+        <div className="search-wrap">
+          <span className="search-icon" aria-hidden="true">🔍</span>
+          <input
+            type="search"
+            className="search-input"
+            placeholder="Alarm, pano veya nokta ara…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Alarmlarda ara"
+          />
+          {search && (
+            <button type="button" className="search-clear" onClick={() => setSearch("")} aria-label="Aramayı temizle">
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="console-filters" role="group" aria-label="Durum">
+          {(Object.keys(VIEW_STATE) as ViewFilter[]).map((v) => (
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
+              {VIEW_LABEL[v]}
+            </button>
+          ))}
+          <span className="dim small">·</span>
+          {PRIOS.map((p) => (
+            <button key={p} type="button" aria-pressed={prioFilter.has(p)} onClick={() => togglePrio(p)}>
+              {PRIO_NAME[p]}
+            </button>
+          ))}
+        </div>
+
+        {visible.length > 0 && (
+          <button
+            type="button"
+            className="btn-export"
+            onClick={() => exportAlarmsCsv(visible, nameOf)}
+            title="Mevcut alarmları Excel uyumlu CSV formatında indir"
+          >
+            📥 CSV İndir (Vardiya Raporu)
           </button>
-        ))}
-        <span className="dim small">·</span>
-        {PRIOS.map((p) => (
-          <button key={p} type="button" aria-pressed={prioFilter.has(p)} onClick={() => togglePrio(p)}>
-            {PRIO_NAME[p]}
-          </button>
-        ))}
+        )}
       </div>
 
       {error && <p className="dim">{error}</p>}
       {!alarms && !error && <p className="dim">Yükleniyor…</p>}
-      {alarms && visible.length === 0 && <p className="console-empty">Bu filtrede alarm yok.</p>}
+      {alarms && visible.length === 0 && (
+        <p className="console-empty">{search ? `"${search}" ile eşleşen alarm yok.` : "Bu filtrede alarm yok."}</p>
+      )}
 
       <ul className="console-list">
         {visible.map((a) => (

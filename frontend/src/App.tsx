@@ -1,15 +1,18 @@
+import { lazy, Suspense, useState } from "react";
 import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { usingMocks } from "./api/client";
+import { isAlarmAudioMuted, setAlarmAudioMuted } from "./lib/audio";
 import { ago, num } from "./lib/format";
 import { useNow } from "./lib/useNow";
-import { AlarmKonsolu } from "./pages/AlarmKonsolu";
-import { BolgeHaritasi } from "./pages/BolgeHaritasi";
-import { CihazSagligi } from "./pages/CihazSagligi";
-import { FiloListesi } from "./pages/FiloListesi";
-import { OlayAnalizi } from "./pages/OlayAnalizi";
-import { PanoDetay } from "./pages/PanoDetay";
-import { TrendKorelasyon } from "./pages/TrendKorelasyon";
 import { FleetProvider, useFleet } from "./state/fleet";
+
+const FiloListesi = lazy(() => import("./pages/FiloListesi").then((m) => ({ default: m.FiloListesi })));
+const PanoDetay = lazy(() => import("./pages/PanoDetay").then((m) => ({ default: m.PanoDetay })));
+const AlarmKonsolu = lazy(() => import("./pages/AlarmKonsolu").then((m) => ({ default: m.AlarmKonsolu })));
+const TrendKorelasyon = lazy(() => import("./pages/TrendKorelasyon").then((m) => ({ default: m.TrendKorelasyon })));
+const OlayAnalizi = lazy(() => import("./pages/OlayAnalizi").then((m) => ({ default: m.OlayAnalizi })));
+const CihazSagligi = lazy(() => import("./pages/CihazSagligi").then((m) => ({ default: m.CihazSagligi })));
+const BolgeHaritasi = lazy(() => import("./pages/BolgeHaritasi").then((m) => ({ default: m.BolgeHaritasi })));
 
 const NAV = [
   { to: "/", label: "Filo", end: true },
@@ -36,23 +39,50 @@ export function App() {
               </NavLink>
             ))}
           </nav>
-          <FleetKpis />
+          <div className="topbar-right">
+            <FleetKpis />
+            <AudioMuteButton />
+          </div>
         </header>
         <StatusStrip />
-        <Routes>
-          <Route path="/" element={<FiloListesi />} />
-          <Route path="/pano/:panoId" element={<PanoDetay />} />
-          <Route path="/alarmlar" element={<AlarmKonsolu />} />
-          <Route path="/trend" element={<TrendKorelasyon />} />
-          <Route path="/trend/:panoId" element={<TrendKorelasyon />} />
-          <Route path="/olay" element={<OlayAnalizi />} />
-          <Route path="/olay/:eventId" element={<OlayAnalizi />} />
-          <Route path="/cihaz-sagligi" element={<CihazSagligi />} />
-          <Route path="/bolge" element={<BolgeHaritasi />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<div className="page-loading">Yükleniyor…</div>}>
+          <Routes>
+            <Route path="/" element={<FiloListesi />} />
+            <Route path="/pano/:panoId" element={<PanoDetay />} />
+            <Route path="/alarmlar" element={<AlarmKonsolu />} />
+            <Route path="/trend" element={<TrendKorelasyon />} />
+            <Route path="/trend/:panoId" element={<TrendKorelasyon />} />
+            <Route path="/olay" element={<OlayAnalizi />} />
+            <Route path="/olay/:eventId" element={<OlayAnalizi />} />
+            <Route path="/cihaz-sagligi" element={<CihazSagligi />} />
+            <Route path="/bolge" element={<BolgeHaritasi />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </FleetProvider>
     </BrowserRouter>
+  );
+}
+
+function AudioMuteButton() {
+  const [muted, setMuted] = useState(isAlarmAudioMuted());
+  const toggle = () => {
+    const next = !muted;
+    setAlarmAudioMuted(next);
+    setMuted(next);
+  };
+  return (
+    <button
+      type="button"
+      className={`audio-toggle ${muted ? "muted" : ""}`}
+      onClick={toggle}
+      title={muted ? "Alarm sesini aç" : "Alarm sesini sustur"}
+      aria-label={muted ? "Alarm sesini aç" : "Alarm sesini sustur"}
+      aria-pressed={!muted}
+    >
+      <span aria-hidden="true">{muted ? "🔇" : "🔊"}</span>
+      <span className="audio-label">{muted ? "Sessiz" : "Ses"}</span>
+    </button>
   );
 }
 

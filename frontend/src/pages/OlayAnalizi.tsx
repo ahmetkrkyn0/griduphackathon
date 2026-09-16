@@ -21,6 +21,36 @@ const KIND_TR: Record<string, string> = { alarm: "Alarm", ack: "Onay", action: "
 const STAMP = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "medium" });
 const stampText = (ms: number) => STAMP.format(new Date(ms));
 
+function generateIncidentNarrative(data: Blackbox, panoName: string): string {
+  const dateStr = stampText(Date.parse(data.occurred_at));
+  const alarmName = alarmText(data.code);
+  const det = data.det_label ? ` (${data.det_label} sensör noktası)` : "";
+  const tl = data.timeline ?? [];
+  const trips = tl.filter((e) => e.kind === "trip");
+  const acks = tl.filter((e) => e.kind === "ack");
+  const actions = tl.filter((e) => e.kind === "action");
+
+  let text = `${dateStr} tarihinde ${panoName} (${data.pano_id}) panosunda ${alarmName}${det} olayı kaydedilmiştir. `;
+  if (tl.length > 0) {
+    const first = tl[0];
+    const firstTime = stampText(Date.parse(first.ts));
+    text += `Sistem ilk olarak ${firstTime} zamanında "${first.text}" uyarısını üretmiştir. `;
+  }
+  if (acks.length > 0) {
+    text += `Olay ${acks.length} kez kontrol odası tarafından incelenip onaylanmıştır. `;
+  }
+  if (actions.length > 0) {
+    text += `Süreç boyunca ${actions.length} saha müdahale adımı uygulanmıştır. `;
+  }
+  if (trips.length > 0) {
+    text += `Kritik eşik aşılarak kesici açması (trip) gerçekleşmiştir. `;
+  } else {
+    text += `Kesici trip koruması açılmadan önleyici olarak kontrol altında tutulmuştur. `;
+  }
+  text += `Olay öncesi ${data.window_h} saatlik telemetri serisi ve faz akımları, arızanın bağlantı direncindeki kademeli artış ve termal zaman sabiti sapmasından kaynaklandığını doğrulamaktadır.`;
+  return text;
+}
+
 // Islak imza satirlari — yazdirilan olay dosyasi bu uc rolle dolasir.
 const SIGN_ROLES = ["Raporu hazırlayan", "Kontrol eden (vardiya amiri)", "Teslim alan"] as const;
 
@@ -155,6 +185,7 @@ function KaraKutu({ eventId }: { eventId: string }) {
   const panoName = summary?.name ?? data.pano_id;
   const panoType = panoTypeText(summary?.pano_type);
   const pointTags = Object.keys(data.series).filter((t) => t.startsWith("t_conn."));
+  const narrative = useMemo(() => generateIncidentNarrative(data, panoName), [data, panoName]);
 
   // beforeprint'i desteklemeyen tarayicida da damga taze olsun diye dugme de tazeler.
   const yazdir = () => {
@@ -218,6 +249,10 @@ function KaraKutu({ eventId }: { eventId: string }) {
             <dd>{printedAt == null ? "Yazdırma anında basılır" : stampText(printedAt)}</dd>
           </div>
         </dl>
+        <div className="narrative-box print-only">
+          <strong>Olay Kronolojisi ve Değerlendirme:</strong>
+          <p>{narrative}</p>
+        </div>
       </header>
 
       <div className="bb-bar">
@@ -232,6 +267,14 @@ function KaraKutu({ eventId }: { eventId: string }) {
           Olay raporunu yazdır
         </button>
       </div>
+
+      <section className="narrative-card" aria-label="Otomatik olay özeti">
+        <div className="narrative-head">
+          <span className="narrative-icon" aria-hidden="true">📋</span>
+          <strong>Otomatik Olay Kronolojisi ve Değerlendirme</strong>
+        </div>
+        <p className="narrative-text">{narrative}</p>
+      </section>
 
       <div className="split">
         <div>

@@ -31,6 +31,7 @@ interface Toggles {
   cover: boolean;
   coverage: boolean;
   labels: boolean;
+  thermal: boolean;
 }
 
 interface SceneApi {
@@ -338,9 +339,32 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     nodes.set(pt, node);
     nodeByMesh.set(mesh, node);
   }
+  const c0 = new THREE.Color("#3b528b");
+  const c1 = new THREE.Color("#21918c");
+  const c2 = new THREE.Color("#fde725");
+  const c3 = new THREE.Color("#d62728");
+  function getThermalColor(dt: number): THREE.Color {
+    const c = new THREE.Color();
+    if (dt <= 5) return c.copy(c0);
+    if (dt <= 20) return c.lerpColors(c0, c1, (dt - 5) / 15);
+    if (dt <= 40) return c.lerpColors(c1, c2, (dt - 20) / 20);
+    if (dt <= 65) return c.lerpColors(c2, c3, (dt - 40) / 25);
+    return c.copy(c3);
+  }
+
+  let thermalMode = false;
   const previewColor = new THREE.Color();
   /** Bir dugumun rengini/halkasini canli duruma veya zaman kaydirici onizlemesine gore boyar. */
   function paintNode(n: Node) {
+    if (thermalMode && n.point) {
+      const dt = Math.max(0, n.point.dt_c ?? 0);
+      const thCol = getThermalColor(dt);
+      n.mesh.material.color.copy(thCol);
+      n.mesh.material.emissive.copy(thCol);
+      n.mesh.material.emissiveIntensity = dt > 15 ? 0.35 : 0.05;
+      n.halo.visible = false;
+      return;
+    }
     const stateColor = colors[n.state];
     const abnormal = isAbnormal(n.state);
     if (n.previewT != null && abnormal) {
@@ -426,21 +450,38 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
     controls.update();
     let pulsing = false;
     if (!reduced) {
-      // Modem LED'i: veri aktivitesini cagristiran duzensiz, hafif titresim (dekoratif).
-      const blink = Math.sin(t * 9) * Math.sin(t * 2.3) > 0.6 ? 2.2 : 1.2;
-      modemLed.material.emissiveIntensity = blink;
-      pulsing = true;
-      const s = Math.sin(t * 4);
+      let hasAbnormal = false;
       for (const n of nodes.values()) {
-        if (!isAbnormal(n.state) || n.acked || n.previewT != null) continue;
-        pulsing = true;
-        n.halo.material.opacity = 0.14 + 0.12 * s;
-        n.halo.scale.setScalar(n.state === "warn" ? 0.85 : 1 + 0.15 * s);
+        if (isAbnormal(n.state) && !n.acked && n.previewT == null) {
+          hasAbnormal = true;
+          break;
+        }
       }
+      let hasBroken = false;
       for (const d of detectors) {
-        if (!d.broken || !d.cone.visible) continue;
+        if (d.broken && d.cone.visible) {
+          hasBroken = true;
+          break;
+        }
+      }
+
+      if (hasAbnormal || hasBroken) {
         pulsing = true;
-        d.cone.material.opacity = 0.14 + 0.08 * Math.sin(t * 5);
+        const s = Math.sin(t * 4);
+        for (const n of nodes.values()) {
+          if (!isAbnormal(n.state) || n.acked || n.previewT != null) continue;
+          n.halo.material.opacity = 0.14 + 0.12 * s;
+          n.halo.scale.setScalar(n.state === "warn" ? 0.85 : 1 + 0.15 * s);
+        }
+        for (const d of detectors) {
+          if (!d.broken || !d.cone.visible) continue;
+          d.cone.material.opacity = 0.14 + 0.08 * Math.sin(t * 5);
+        }
+      }
+      // Modem LED'i sadece pulsing veya dirty iken veya hafif araliklarla guncellensin
+      if (pulsing || dirty) {
+        const blink = Math.sin(t * 9) * Math.sin(t * 2.3) > 0.6 ? 2.2 : 1.2;
+        modemLed.material.emissiveIntensity = blink;
       }
     }
     if (!dirty && !pulsing) return;
@@ -544,13 +585,17 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
       dirty = true;
       return brokenNo !== undefined;
     },
-    setToggles({ cover: showCover, coverage, labels }) {
+    setToggles({ cover: showCover, coverage, labels, thermal }) {
       cover.visible = showCover;
       for (const d of detectors) {
         d.cone.visible = coverage;
         d.tag.visible = coverage;
       }
       for (const l of staticLabels) l.visible = labels;
+      if (thermalMode !== thermal) {
+        thermalMode = thermal;
+        for (const n of nodes.values()) paintNode(n);
+      }
       dirty = true;
     },
     focusOn(pt) {
@@ -616,7 +661,7 @@ export function Ikiz3D({ points, selected, onSelect, tvoc, panoId, ackedPoints }
   const previewedPt = useRef<string | null>(null);
   const autoCoverage = useRef(false);
   const [failed, setFailed] = useState(false);
-  const [toggles, setToggles] = useState<Toggles>({ cover: true, coverage: false, labels: true });
+  const [toggles, setToggles] = useState<Toggles>({ cover: true, coverage: false, labels: true, thermal: false });
   const [history, setHistory] = useState<HistorySample[]>([]);
   const [sliderPos, setSliderPos] = useState(1);
 
@@ -750,6 +795,9 @@ export function Ikiz3D({ points, selected, onSelect, tvoc, panoId, ackedPoints }
             <button type="button" aria-pressed={toggles.labels} onClick={() => flip("labels")}>
               Etiketler
             </button>
+            <button type="button" aria-pressed={toggles.thermal} onClick={() => flip("thermal")}>
+              Termal görünüm
+            </button>
             <span className="i3-sep" />
             <button type="button" onClick={() => sceneRef.current?.home()}>
               3/4 görünüş
@@ -758,6 +806,17 @@ export function Ikiz3D({ points, selected, onSelect, tvoc, panoId, ackedPoints }
               Önden
             </button>
           </div>
+          {toggles.thermal && (
+            <div className="i3-thermal-scale" aria-label="Termal renk skalası">
+              <span className="i3-thermal-bar" />
+              <div className="i3-thermal-labels">
+                <span>0 °C</span>
+                <span>20 °C</span>
+                <span>40 °C</span>
+                <span>65+ °C ΔT</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
