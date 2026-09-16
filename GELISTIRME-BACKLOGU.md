@@ -183,7 +183,7 @@ Türkiye'de bir dağıtım panosuna takılan haberleşme ünitesinin tabi olduğ
 **Ne üretir:** İki tablo: (a) şartname başlığı | karşıladığımızı iddia edebileceklerimiz | fiziksel doğrulama gerektirenler; (b) BOM parçası | çalışma aralığı | şartname sınırı | uygun/uygun değil/doğrulanmadı.
 **Dikkat:** Tam metne erişim yoksa başlık düzeyinde kalınmalı, madde numarası uydurulmamalı. "Karşılıyoruz" yerine "tasarım hedefi, tip testi yapılmadı" dili kullanılmalı (GK3).
 
-### F-17 · Kısmi deşarj ve dalga biçimi: verilen veri sayfalarına dürüst cevap
+### F-17 · Kısmi deşarj ve dalga biçimi: verilen veri sayfalarına dürüst cevap — ✅ tamamlandı
 Komitenin paylaştığı HFCT veri sayfalarının neden kullanılmadığını ve 10 saniyelik mimarinin neyi göremediğini tek yerde kapatır · **Etki:** yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/13-donanim-tasarimi.md](docs/13-donanim-tasarimi.md) yeni bölüm, [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md)'deki mevcut PD sapma notunun hemen yanı
 **Sektörel dayanak:** Texas A&M Distribution Fault Anticipation ve Gridware, arıza öncesi imzayı yarım periyot altı dalga biçiminden çıkarıyor; EA Technology UltraTEV yönetilen PD anketleri sahada yerleşik.
 **Bizdeki boşluk:** Komite dosya paketine iki HFCT veri sayfası koydu, biz PD'yi bilinçli olarak kapsam dışı bıraktık ve bunun gerekçesi tek bir dokümanda toplanmış değil. Ayrıca tüm tespit zincirimiz 10 saniyelik skaler değerler üzerine kurulu ve bu, seri ark ile kontak kıvılcımlanmasını **fiziksel olarak** göremez — bunu jüri bulmadan bizim söylememiz gerekir.
