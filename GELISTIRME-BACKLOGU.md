@@ -148,7 +148,7 @@ Değerlendirme kriterlerinin her biri için tek satırlık kanıt eşlemesi · *
 **Ne üretir:** Tek sayfa: kriter | kanıt dosyası | ölçülmüş sayı (recall 1,00 · 209 saat · 71,4 yanlış alarm/100 pano-gün · p95 657 ms · 1.000 pano · 46-48x sıkıştırma · mutasyon sayıları · 987 test · üç protokolde 0 fark).
 **Dikkat:** Yeni hiçbir iş üretmiyor, yalnızca ölçülmüş olanı hizalıyor. Provada herkesin ezberleyeceği tek sayfa da bu olmalı.
 
-### F-12 · 17 soruluk jüri cevap kartı
+### F-12 · 17 soruluk jüri cevap kartı — ✅ tamamlandı
 Muhtemel jüri sorularının cevaplarını ölçülmüş sayılarla doldurur · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/17-donanimsiz-dogrulama.md](docs/17-donanimsiz-dogrulama.md) §5 genişletmesi veya demo paketinde tek kart
 **Sektörel dayanak:** Yok — sunum hazırlığı.
 **Bizdeki boşluk:** Mevcut cevap seti yalnızca entegrasyon/ölçek/güvenlik tarafını ölçümle güncellemiş; fizik ve saha/maliyet/UX soruları için hazır kart yok. Üstelik en sık sorulacak sorulardan birinin ("yanlış alarm oranınız ne?") cevabında hâlâ bir yer tutucu duruyor — oysa sayı [docs/12-dogrulama-sonuclari.md](docs/12-dogrulama-sonuclari.md) §3'te var.
@@ -162,7 +162,7 @@ Jürinin kendi istemcisiyle üç protokolden aynı değeri okuyup eşitliği do�
 **Ne üretir:** Üç komut (Modbus 502, IEC 104 2404, REST) ve beklenen eşit çıktı; iddiayı cümleden canlı kanıta çeviren en ucuz hamle.
 **Dikkat:** Komutlar demo makinesinde bir kez koşturulup çıktı kaydedilmeli; koşmayan bir komut kartı ters teper.
 
-### F-14 · Bilinçli kapsam sınırları — tek sayfa
+### F-14 · Bilinçli kapsam sınırları — tek sayfa — ✅ tamamlandı
 Dört ayrı dosyaya dağılmış itirafları tek yerde toplar · **Etki:** yüksek · **Efor:** ~1 saat · **Nerede yaşar:** yeni `docs/00-bilincli-sinirlar.md` veya F-11 ile aynı sayfanın ikinci yarısı
 **Sektörel dayanak:** SSEN'in AG fider arıza tespiti projesi kapanış raporunda saha denemelerinin "sınırlı başarı" olarak yazılması gibi; olgun programlar sınırlarını kendileri yazar.
 **Bizdeki boşluk:** Altı bilinçli sapma (ekran sayısı, harita kırılımı, kendi Modbus sunucumuz, firmware bellek sınırı, atlanan emülatörler, cihaz sağlığı istek deseni) artı "kapsanmayan standartlar" artı UX ve donanımsız doğrulama sapmaları dört ayrı dosyada duruyor; jüri hepsini bulamaz.
