@@ -9,11 +9,28 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Toplu okunabilirlik turu: wheel-scroll, buton renkleri, navbar,
-arka plan, kartlar, risk matrisi, §24).
-**Son commit:** Harita wheel'i artık sayfayı kaydırmıyor (native passive:false dinleyici); tüm
-seçili-durum butonları turuncu; navbar ortalandı + turuncu ayırıcılar; arka plan tüm sayfaya
-yayıldı; risk matrisine legend eklendi.
+**Son güncelleme:** 16 Eylül 2026 (Nav çizgi artefaktı, "Pano İzleme" marka metni, harita
+nokta/sürükleme düzeltmeleri, §25).
+**Son commit:** Seçili nav butonundaki tuhaf çizgi giderildi; marka "Pano İzleme" + turuncu oldu;
+haritada nokta artık kendi ilçesi dışına taşmıyor; sürükleme zoom olmadan da çalışıyor.
+
+## 25. Nav çizgisi, marka metni, harita nokta/sürükleme (kullanıcı geri bildirimi)
+
+Dört geri bildirim: (1) seçili nav butonunda tek kenarda tuhaf bir çizgi — ayırıcı `border-right`
+yerine ayrı bir `::after` katmanına taşındı, aktif/hover'da tamamen gizleniyor; (2) "Grid Up Pano
+İzleme" → "Pano İzleme" + turuncu; (3) Yunusemre gibi bazı ilçelerde nokta bölge dışına taşıyordu
+— `separateDots`'un ittiği nokta kendi ilçesinin dışına çıkarsa artık gerçek konumuna geri
+dönüyor (ray-casting nokta-çokgen testi, `pointInRing`); (4) harita yalnızca zoom'luyken
+sürüklenebiliyordu — `scale===ZOOM_MIN` koşulu kaldırıldı, her zoom seviyesinde sürüklenebiliyor.
+
+Ayrıca kullanıcı `PrioMark.tsx`'teki "1/2/3/S" rozetlerinin ne anlama geldiğini sordu — bunların
+ISA-101/ISA-18.2 renk körlüğü kodlaması (renk+şekil+karakter, gerçek DCS/SCADA alarm
+bannerlarındaki gibi) olduğu açıklandı; "daha güzel" bir görsel yön istenirse önce yön netleşsin
+diye kod değişikliği yapılmadı. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §23.
+
+Doğrulama: tsc/test/build temiz, 1440px ve 390px'de kontrol edildi (sürükleme
+pointerdown/pointermove simülasyonuyla da doğrulandı), konsolda hata yok. `assets/ekran/`'daki 8
+dosya (marka metni her sayfada değiştiği için) tekrar yenilendi.
 
 ## 24. Toplu okunabilirlik turu: 7 geri bildirim tek seferde (16 Eylül, aynı tur)
 

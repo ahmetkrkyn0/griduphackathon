@@ -28,7 +28,7 @@ export function App() {
         <header className="topbar">
           <Link to="/" className="brand">
             <BrandMark />
-            Grid Up Pano İzleme
+            Pano İzleme
           </Link>
           <nav className="nav" aria-label="Ana gezinme">
             {NAV.map((n) => (

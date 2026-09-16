@@ -744,6 +744,47 @@ butonlar turuncu, harita wheel'i sayfayı kaydırmıyor, risk matrisi legend+eti
 mobil navbar doğru satırlara bölünüyor), konsolda hata yok. `assets/ekran/`'daki 8 dosyanın
 TAMAMI yenilendi — nav ve arka plan her sayfada değiştiği için hepsi güncel değildi.
 
+## 23. Nav çizgi artefaktı, marka metni, harita nokta/sürükleme düzeltmeleri (16 Eylül, aynı gün)
+
+Kullanıcı dört ayrı geri bildirim daha gönderdi:
+
+**1. Seçili nav butonunda "tek kenarında çizgi varmış gibi" bir görünüm.** Kök neden: her
+`.nav-link`'in ayırıcısı `border-right` olarak KENDİ kutusunun bir parçasıydı — aktif/hover
+durumda arka plan turuncuya dönünce, o kenardaki border rengi (yarı saydam turuncu) arka planla
+karışıp asimetrik bir çizgi izlenimi veriyordu. Ayırıcı artık `.nav-link::after` ile ayrı, dekoratif
+bir katman (mutlak konumlu ince çizgi) — aktif/hover durumda `display:none` ile tamamen kayboluyor,
+buton kutusunun kendisi hiçbir zaman kendi kenarında yabancı bir çizgi taşımıyor.
+
+**2. "Grid Up Pano İzleme" → "Pano İzleme", turuncu.** `App.tsx`'teki marka metni kısaltıldı,
+`.brand`'e `color: var(--brand)` eklendi.
+
+**3. "Yunusemre gibi bazı yerlerin noktaları bölge dışında."** §22'de eklenen `separateDots`
+(çakışan noktaları ayırma) bazı durumlarda bir noktayı kendi ilçesinin sınırının dışına itiyordu
+— küçük/dar ilçelerde itme mesafesi ilçenin kendi genişliğinden büyük olabiliyordu. Ray-casting
+nokta-çokgen testi (`pointInRing`) eklendi: ayrıştırılmış konum kendi ilçesinin içinde değilse,
+noktanın GERÇEK (ayrıştırılmamış) konumuna geri dönülüyor. Öncelik sırası netleşti: gerçek konum
+göstermek, görsel çakışmayı önlemekten önce gelir (dürüstlük kuralı) — bu yüzden çok sıkı
+kümelerde iki nokta yine de yakın kalabilir, ama hiçbir zaman yanlış bölgede görünmez.
+
+**4. "Sadece zoom atınca sürükleme yapabiliyorum, zoom atmadan da sürükleyebileyim."**
+`onPointerDown`'daki `if (view.scale === ZOOM_MIN) return;` koşulu kaldırıldı — harita artık her
+zoom seviyesinde sürüklenebilir. `setPointerCapture` çağrısı olası (nadir) bir istisnaya karşı
+try/catch'e alındı ki sürükleme başlatma hiçbir zaman sessizce engellenmesin.
+
+**Ayrı bir soru (kod değişikliği değil):** Kullanıcı "1, 3, S falan neyi ifade ediyor" diye sordu
+(`PrioMark.tsx`'teki öncelik rozetleri). Yanıt: bunlar rastgele kodlar değil — ISA-101/ISA-18.2
+endüstriyel alarm yönetimi geleneğinde renk körlüğüne karşı **renk + şekil + karakter** üçlü
+kodlaması (P1=kare "1", P2=üçgen "2", P3=daire "3", SYS=çerçeveli daire "S"); gerçek DCS/SCADA
+alarm bannerlarında (Honeywell Experion, ABB 800xA, Yokogawa CENTUM) da aynı mantık kullanılır.
+Kullanıcıya bu açıklandı, "daha güzel" bir görsel yön istenirse (ayrı bir taşer/tercih kararı
+olduğu için) somut bir yön onaylandıktan sonra uygulanacak — kod değişikliği yapılmadı.
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Chrome-devtools ile
+nav çizgisi (artık temiz), Yunusemre noktası (artık ilçe içinde), sürükleme (zoom=1'de de
+çalışıyor, `pointerdown`→`pointermove` simülasyonuyla doğrulandı) 1440px ve 390px'de kontrol
+edildi, konsolda hata yok. `assets/ekran/`'daki 8 dosyanın tamamı (marka metni + nav her sayfada
+değiştiği için) yeniden yenilendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

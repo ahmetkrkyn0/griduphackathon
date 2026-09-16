@@ -74,6 +74,20 @@ function separateDots<T extends { x: number; y: number }>(points: T[], minDist: 
   return pts;
 }
 
+/** Ray-casting nokta-cokgen testi — separateDots'un ittigi bir nokta kendi ilcesinin disina
+ *  tasip tasmadigini kontrol etmek icin (kullanici bulgusu: "Yunusemre gibi bazi yerlerin
+ *  noktalari bolge disinda"). */
+function pointInRing(x: number, y: number, ring: { x: number; y: number }[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i].x, yi = ring[i].y;
+    const xj = ring[j].x, yj = ring[j].y;
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 /** Etiketler birbirine cok yakinsa (ayni kume, ornegin Bornova/Karsiyaka/Cigli/Buca) ustuste binip
  *  okunmaz olur. Yalnizca dikey kaydirma yeterli degildi (birbirine 2 boyutta yakin noktalarda
  *  hala cakisiyordu) — simdi noktanin etrafinda (ust/alt/sag/sol/kose) sirayla aday konum dener,
@@ -213,7 +227,18 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
   const project = projector(allLonLat);
 
   const rawPoints = panels.map((p) => ({ ...project(p.lon, p.lat), p }));
-  const dotPoints = separateDots(rawPoints, 17);
+  const separated = separateDots(rawPoints, 17);
+  // separateDots'un ittigi nokta kendi ilcesinin disina tastiysa, gercek konuma geri don —
+  // gorsel cakisma > yanlis konum gostermek (durustluk kurali). Ilcenin gercek sinirini bu
+  // sekilde asla ihlal etmez, sadece cok siki kumelerde iki nokta yeniden yakin kalabilir.
+  const dotPoints = separated.map((sep, i) => {
+    const raw = rawPoints[i];
+    const geom = TERRITORY[districtKey(sep.p.name)]?.geom;
+    if (!geom) return sep;
+    const rings = ringsOf(geom).map((ring) => ring.map(([lon, lat]) => project(lon, lat)));
+    const inside = rings.some((ring) => pointInRing(sep.x, sep.y, ring));
+    return inside ? sep : raw;
+  });
   const labelOffsets = layoutLabelOffsets(dotPoints.map((d) => ({ x: d.x, y: d.y, text: d.p.name.split(" ")[0] })));
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -252,9 +277,16 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
     return () => svg.removeEventListener("wheel", handler);
   }, [toSvgPoint, zoomAt]);
 
+  // Zoom seviyesinden bagimsiz surukleme (kullanici talebi: "sadece zoom atinca surukleme
+  // yapabiliyorum, zoom atmadan da surukleyebileyim") — scale===ZOOM_MIN kosulu kaldirildi.
+  // setPointerCapture bazi durumlarda (gecersiz pointerId, zaten birakilmis pointer) firlatabilir —
+  // bu, surukleme baslatmayi engellemesin diye try/catch'e alindi.
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (view.scale === ZOOM_MIN) return;
-    (e.target as Element).setPointerCapture(e.pointerId);
+    try {
+      (e.target as Element).setPointerCapture(e.pointerId);
+    } catch {
+      // yakalama takibi olmadan da devam eder, yalnizca eleman disina cikildiginda surukleme kesilebilir
+    }
     dragRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
   };
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -282,7 +314,7 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
-          style={{ cursor: view.scale > ZOOM_MIN ? "grab" : "default" }}
+          style={{ cursor: "grab" }}
         >
           <rect className="geo-frame" x={1} y={1} width={MAP_W - 2} height={MAP_H - 2} rx={12} />
           <g transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`}>
