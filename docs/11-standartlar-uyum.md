@@ -6,21 +6,32 @@
 | Alan | Standart / rehber | Nerede karşılandı |
 |---|---|---|
 | AG panolar | TS EN / IEC 61439-1, -2, -5; TEDAŞ-MLZ/2003-06.B | `contracts/alarm-codes.yaml` L0 eşikleri (terminal/bara sıcaklık artışı); `hardware/yerlesim/`, `assets/ek2-14-pano.svg` (EK-II/14 ölçüleri) |
+| **Cihazın ürün sınıfı** | **IEC 62974-1:2017** — ≤1 kV AC şebekelerde, pano içine veya DIN raya sabitlenen veri toplama / ağ geçidi cihazları (kapsam IEC webstore ürün sayfasından okundu — webstore.iec.ch/28169, kaynak notu `GELISTIRME-BACKLOGU.md` "Ürün ve standart ekosistemi" 8; standardın tam metnine erişilmedi, madde numarası verilmiyor) | Kenar kontrolcü bu ürün sınıfına girer: `hardware/pano-beyni/blok-diyagrami.md`, `io-tablosu.md`, `bom.csv`; DIN ray kutusu `hardware/mekanik/din-kutu.scad`. **"Karşılıyoruz" denmiyor:** bu, cihazın hangi standarda göre üretileceğini söyler; standardın istediği EMC ve ortam **doğrulaması bu teslimde yapılmadı** (`docs/13-donanim-tasarimi.md` §5 tasarım hedefleri, `docs/17-donanimsiz-dogrulama.md` §6) |
 | OG hücreler | IEC 62271-200 | `docs/01` §"PD" notu (Could seviyesi, uygulanmadı) |
-| Kısmi deşarj | IEC 60270; IEC TS 62478 | Rapor §3.7 tasarım notu; donanım üretilmedi (Won't) |
+| Kısmi deşarj | IEC 60270; IEC TS 62478 | Rapor §3.7 tasarım notu; donanım üretilmedi (Won't); kapsam dışı bırakma gerekçesi ve 10 s'lik mimarinin göremedikleri: [`docs/13-donanim-tasarimi.md`](13-donanim-tasarimi.md) §7 |
 | Yalıtım koordinasyonu | IEC 60664-1 | `docs/13-donanim-tasarimi.md` clearance/creepage hesabı; `io-tablosu.md` izolasyon sütunu |
 | Koruma derecesi / yanıcılık | IEC 60529 (IP); IEC 60695-11-10 / UL94 (V-0) | `hardware/mekanik/din-kutu.scad` (V-0 malzeme notu, IP20 dahili); `docs/08` kurulum prosedürü |
 | EMC ve çevre | IEC 61000-6-5; IEC 60068-2 | `docs/13` EMC hedefi ve RS485 izolasyon notu |
 | Fonksiyonel güvenlik (bağlam) | IEC 61508 / IEC 62061 (TVOC-2 SIL-2) | `docs/06-alarm-matrisi.md` (B) — TVOC-2 salt okunur entegrasyon, GK6 |
-| Haberleşme | Modbus Application Protocol v1.1b3; Modbus over Serial Line v1.02; IEC 60870-5-104; MQTT | `contracts/modbus-map.yaml`, `docs/03-modbus-haritasi.md`, `docs/04-iec104-haritasi.md` (B) |
+| Haberleşme | Modbus Application Protocol v1.1b3; Modbus over Serial Line v1.02; IEC 60870-5-104; MQTT | `contracts/modbus-map.yaml`, `docs/03-modbus-haritasi.md`, `docs/04-iec104-haritasi.md` (B). IEC 104 tarafında ayrıca **birlikte çalışabilirlik listesi** var: `docs/04` §7, standardın ek formundaki bölüm başlıklarıyla (genel bilgi, ağ yapılandırması, fiziksel katman, APCI, alan uzunlukları, ASDU seçimi, tip–iletim nedeni matrisi, temel uygulama fonksiyonları, zaman aşımları) ve satırların **tamamı koddan üretilmiş** (`scripts/gen_iec104_doc.py`, kaynak `backend/app/scada/`) |
 | Siber güvenlik | IEC 62443 | `docs/15-guvenlik-kvkk.md` (B); `io-tablosu.md` satır 15 (debug portu üretimde kapalı) |
-| Alarm yönetimi | ANSI/ISA-18.2 / IEC 62682; EEMUA 191 | `docs/06-alarm-matrisi.md` (B); `frontend/src/pages/AlarmKonsolu.tsx` (onay/raf/eskalasyon uygulaması) |
+| Arayüz / HMI | **ANSI/ISA-101.01** — çok seviyeli ekran hiyerarşisi yaklaşımı (depodaki dayanak: `GELISTIRME-BACKLOGU.md` F-18, "ekran hiyerarşisini dört seviye olarak tanımlar"; standardın **tam metnine erişilmedi**, madde numarası verilmiyor) | `docs/16-ux-tasarim.md` §2 (yedi ekranın seviye sütunu: Filo → Pano → Nokta → destek/tanı; **seviye adları bizimdir**, madde düzeyinde uygunluk iddia edilmiyor); `frontend/TASARIM-REVIZYONU.md` §2 (yüksek başarımlı HMI dili: nötr/sakin zemin — 14 Eylül revizyonunda RAL 7035 grisi yerine beyaz, `theme.css` `--bg: #ffffff` — ve renk yalnızca anormal durumda, marka turuncusu veri alanının dışında); `frontend/src/theme.css` (durum token'ları), `frontend/src/components/PrioMark.tsx` (renk + şekil + karakter) |
+| Alarm yönetimi | ANSI/ISA-18.2 / IEC 62682; EEMUA 191 | `docs/06-alarm-matrisi.md` (B); `frontend/src/pages/AlarmKonsolu.tsx` (onay/raf/eskalasyon uygulaması). Başarım ölçümü artık panolu: "Grid Up — Alarm KPI (ISA-18.2 / EEMUA 191)" panosunda **Alarm seli — 10 dakikalık pencere (EEMUA 191)**, **Bayat alarmlar (>24 saat, EEMUA 191)** ve **Chattering (run-length, 7 gün)** panelleri var. **Eşikler nereden geliyor:** operatör/gün sınırı ve öncelik dağılımı hedefi `contracts/alarm-codes.yaml`'dan okunur (`alarms_per_operator_day_acceptable` = 150, `..._max` = 300, `target_distribution_pct`, `heartbeat_timeout_min`); EEMUA 191'in sel / bayat / chattering **sayısal tanımlarının sözleşmede karşılığı yoktur** (sözleşme donmuş, PLAN.md kural 3), bu üç sayı (10 dk pencere, >24 saat, chatter indeksi 0,05) `scripts/gen_grafana_dashboards.py` içinde tek yerde tanımlıdır ve hem SQL'e hem panel açıklamasına aynı sabitten yazılır. Pano JSON'u aynı betikle üretilir (elle düzenlenmez) |
 | Termografi / bakım | NETA MTS; NFPA 70B | `contracts/alarm-codes.yaml` `phase_diff_alarm_k` eşiği; `frontend/src/pages/TrendKorelasyon.tsx` (I²–ΔT eğim karşılaştırması) |
-| Türkiye mevzuatı | Elektrik Kuvvetli Akım Tesisleri Yön.; Topraklamalar Yön.; EPDK kalite yönetmeliği; KVKK; TEDAŞ-MLZ/2019-064.B | `docs/10-bom-maliyet-roi.md` (EPDK tazminat dayanağı); `docs/15-guvenlik-kvkk.md` (B, KVKK) |
+| Türkiye mevzuatı | Elektrik Kuvvetli Akım Tesisleri Yön.; Topraklamalar Yön.; EPDK kalite yönetmeliği; KVKK; TEDAŞ-MLZ/2019-064.B; **Enerji Sektöründe Siber Güvenlik Yetkinlik Modeli Yönetmeliği** (RG 6/6/2023, 32213 — epdk.gov.tr mevzuat sayfasından okundu; depodaki kaynak notunda (`GELISTIRME-BACKLOGU.md`) doğrulandığı belirtilen şey yönetmeliğin **adı ve yükümlü kapsamıdır**, RG tarih/sayısı ayrıca doğrulanmadı) | `docs/10-bom-maliyet-roi.md` (EPDK tazminat dayanağı); `docs/15-guvenlik-kvkk.md` (B, KVKK). TEDAŞ-MLZ/2019-064.B madde eşlemesi: [`docs/19-tedas-sartname-uyumu.md`](19-tedas-sartname-uyumu.md). Siber güvenlik yetkinlik modeli: yükümlülük **elektrik dağıtım lisansı sahibinin** (yani ADM/GDZ'nin), biz o programın içine giren bir tedarikçi bileşeniyiz — **seviye iddiası yazılmadı**, çünkü yönetmelik ekindeki teknik kontrol maddeleri kamuya açık değil ve doğrulayamadık |
+
+**Analitik tarafın standart izi bu tabloda değil.** Durum izleme ve prognoz zincirinin standart
+karşılıkları (ISO 17359 durum izleme programı; ISO 13379-1 veri yorumlama / semptom–arıza izi;
+ISO 13381-1 prognoz; CIGRE TB 858) ayrı bir dokümanda, ticari ürün konumlandırmasıyla birlikte
+işlenir: [`docs/18-konumlandirma-ve-standart-izi.md`](18-konumlandirma-ve-standart-izi.md).
+Yukarıdaki tablo cihaz, pano, haberleşme ve arayüz tarafını kapsar.
 
 ## Kapsanmayan standartlar (bilinçli, MoSCoW Won't/Could)
 
 - **IEC 62271-200** (OG hücreler) ve **IEC 60270/62478** (PD ölçümü): AG pano bu teslimin ana
-  odağı; OG/PD yalnızca kavramsal eklenti olarak ele alındı (rapor §3.7).
+  odağı; OG/PD yalnızca kavramsal eklenti olarak ele alındı (rapor §3.7). Kısmi deşarjın neden
+  kapsam dışı bırakıldığı ve 10 s'lik telemetri mimarisinin yapısı gereği neleri göremediği
+  (PD darbeleri, ark/akım dalga biçimi) ayrıca yazıldı:
+  [`docs/13-donanim-tasarimi.md`](13-donanim-tasarimi.md) §7.
 - Sertifikasyon testleri (EMC, ortam) bu teslimde **yapılmadı** — tasarım hedefleri belgelenmiştir,
   fiziksel doğrulama bir sonraki PoC fazının konusudur (`docs/17-donanimsiz-dogrulama.md`).

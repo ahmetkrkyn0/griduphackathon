@@ -190,7 +190,7 @@ Komitenin paylaştığı HFCT veri sayfalarının neden kullanılmadığını ve
 **Ne üretir:** Bir sayfa: PD neden kapsam dışı (verilen veri sayfalarının kendi sayılarıyla), OG'de ne gerekirdi, ve "tetikli dalga biçimi yakalama bir sonraki donanım revizyonunun konusudur" paragrafı.
 **Dikkat:** "Yapabiliriz" denmeyecek; "bugünkü mimari bunu göremez" denecek. Kod önerilmeyecek (GK2 + GK3 + donmuş şema).
 
-### F-18 · docs/11'e iki standart satırı ve ISA-101 seviye haritası
+### F-18 · docs/11'e iki standart satırı ve ISA-101 seviye haritası — ✅ tamamlandı
 Cihazın kendi ürün sınıfı standardını ve arayüz dilimizin standardını tabloya ekler · **Etki:** orta · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md), [docs/16-ux-tasarim.md](docs/16-ux-tasarim.md) §2 tablosuna bir sütun
 **Sektörel dayanak:** IEC 62974-1:2017 (≤1 kV AC, pano içi/DIN ray, veri toplama ve ağ geçidi cihazları — kapsam doğrulandı; Socomec bu standarda tabi olduğunu beyan ediyor). ANSI/ISA-101.01 ekran hiyerarşisini dört seviye olarak tanımlar.
 **Bizdeki boşluk:** "62974" depoda hiç geçmiyor — jüri "bu cihaz hangi standarda göre üretilir?" diye sorduğunda cevapsızız. ISA-101 docs/11'de hiç yok, oysa tüm arayüz dilimiz ona dayanıyor; seviye eşlemesi ("Filo → Pano → Nokta → Kara kutu") jüriye gitmeyen bir iç dosyada yazılı.
