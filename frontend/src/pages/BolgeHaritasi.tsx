@@ -46,6 +46,60 @@ function pathOf(geom: BoundaryGeom, project: (lon: number, lat: number) => { x: 
     .join(" ");
 }
 
+/** Gercek konumda birbirine cok yakin panolar (ornek: Bornova/Karsiyaka/Cigli, hepsi Izmir
+ *  merkezinde birkac km arayla) noktalari gorsel olarak ust uste bindirir. Kucuk, karsilikli bir
+ *  itme (birkac piksel) ile ayirir — yalnizca NOKTA isaretinin ekran konumu icin, ilcenin gercek
+ *  sinirini etkilemez. Gercek haritalarin da yakinlastirma seviyesine gore yaptigi bir sey. */
+function separateDots<T extends { x: number; y: number }>(points: T[], minDist: number, iterations = 8): T[] {
+  const pts = points.map((p) => ({ ...p }));
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[j].x - pts[i].x;
+        const dy = pts[j].y - pts[i].y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        if (dist < minDist) {
+          const push = (minDist - dist) / 2;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          pts[i].x -= ux * push;
+          pts[i].y -= uy * push;
+          pts[j].x += ux * push;
+          pts[j].y += uy * push;
+        }
+      }
+    }
+  }
+  return pts;
+}
+
+/** Etiketler birbirine cok yakinsa (ayni kume) ustuste binip okunmaz olur — noktanin ustunde
+ *  varsayilan konum calisirsa kullan, calismazsa sirayla alt/daha alt konumlari dene. */
+function layoutLabelOffsets(points: { x: number; y: number; text: string }[]): number[] {
+  const CHAR_W = 6.2;
+  const LINE_H = 13;
+  const CANDIDATES = [-13, 20, 34, 48, -27];
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const offsets: number[] = [];
+  for (const p of points) {
+    const halfW = (p.text.length * CHAR_W) / 2;
+    let chosen = CANDIDATES[0];
+    for (const dy of CANDIDATES) {
+      const cy = p.y + dy;
+      const box = { x0: p.x - halfW, x1: p.x + halfW, y0: Math.min(cy, cy - LINE_H), y1: Math.max(cy, cy - LINE_H) };
+      const collides = placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0);
+      chosen = dy;
+      if (!collides) {
+        placed.push(box);
+        break;
+      }
+      if (dy === CANDIDATES[CANDIDATES.length - 1]) placed.push(box);
+    }
+    offsets.push(chosen);
+  }
+  return offsets;
+}
+
 const MAP_W = 900;
 const MAP_H = 620;
 const MAP_PAD = 64;
@@ -76,8 +130,9 @@ function projector(allPoints: LonLat[]) {
 /** TC3: bölge haritası. Gerçek enlem/boylamı olan panolar varsa (ilçe merkezi hassasiyetinde,
  *  bkz. api/mock.ts DISTRICT_COORDS) yerel ölçekli bir konum grafiğine yerleştirilir. Arka planda
  *  ADM/GDZ'nin hizmet bölgesindeki TÜM ilçeler (src/data/ilce-sinirlari.json, 96 ilçe) pasif gri
- *  zeminde çizilir ki harita "kopuk" görünmesin; panosu olan ilçeler bunun üstünde turuncu+glow
- *  ile öne çıkar. Gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını tamamen
+ *  zeminde çizilir ki harita "kopuk" görünmesin; panosu olan ilçeler bunun üstünde düz turuncu
+ *  kontur ile öne çıkar (blur/glow kaldırıldı — kullanıcı geri bildirimi: "beyazımsı" duruyordu).
+ *  Gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını tamamen
  *  çevrimdışı çalışır — sınır verisi build zamanında pakete gömülü, çalışma zamanında hiçbir ağ
  *  isteği yapılmaz. */
 export function BolgeHaritasi() {
@@ -133,23 +188,13 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
   ];
   const project = projector(allLonLat);
 
+  const rawPoints = panels.map((p) => ({ ...project(p.lon, p.lat), p }));
+  const dotPoints = separateDots(rawPoints, 17);
+  const labelOffsets = layoutLabelOffsets(dotPoints.map((d) => ({ x: d.x, y: d.y, text: d.p.name.split(" ")[0] })));
+
   return (
     <>
       <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="ADM/GDZ hizmet bölgesi ve panoların gerçek konumu">
-        <defs>
-          {/* filterUnits=userSpaceOnUse + tum tuvali kaplayan sabit bolge: objectBoundingBox
-              (varsayilan) kullanilsaydi her ilcenin KENDI (bazen çok ince/uzun kiyi seritli)
-              sinir kutusuna gore % olarak kirpilirdi — bu da bazi kenarlarda glow'un kirpilip
-              duz gorunmesine yol aciyordu (kullanici bulgusu, Fethiye ornegi). Sabit, comert bir
-              bolge tum sekiller icin tutarli glow saglar. */}
-          <filter id="geo-glow" filterUnits="userSpaceOnUse" x={-100} y={-100} width={MAP_W + 200} height={MAP_H + 200}>
-            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
         <rect className="geo-frame" x={1} y={1} width={MAP_W - 2} height={MAP_H - 2} rx={12} />
         <g className="geo-compass" transform={`translate(${MAP_W - 46}, 40)`}>
           <line x1={0} y1={14} x2={0} y2={-14} />
@@ -158,7 +203,7 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
         </g>
 
         {/* ADM/GDZ'nin tum hizmet bolgesi (96 ilce) — pasif/gri zemin, harita "kopuk" gorunmesin
-            diye (kullanici talebi). Panosu olan ilceler asagida ayrica turuncu+glow ile vurgulanir. */}
+            diye (kullanici talebi). Panosu olan ilceler duz turuncu kontur ile vurgulanir. */}
         {territoryEntries.map(([name, t]) => (
           <path
             key={`t-${name}`}
@@ -170,8 +215,7 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           </path>
         ))}
 
-        {panels.map((p) => {
-          const { x, y } = project(p.lon, p.lat);
+        {dotPoints.map(({ x, y, p }, i) => {
           const prio = effectivePrio(p);
           return (
             <g key={p.pano_id}>
@@ -184,7 +228,7 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
                   cy={y}
                   r={6}
                 />
-                <text className="geo-label" x={x} y={y - 11} textAnchor="middle">
+                <text className="geo-label" x={x} y={y + labelOffsets[i]} textAnchor="middle">
                   {p.name.split(" ")[0]}
                 </text>
               </Link>

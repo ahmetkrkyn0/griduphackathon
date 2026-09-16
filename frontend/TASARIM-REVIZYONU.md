@@ -624,6 +624,36 @@ Doğrulama: tsc/test/build temiz. Fethiye özelinde chrome-devtools ile yakınla
 edildi — sınır artık tüm çevresinde tutarlı glow gösteriyor, konsolda hata yok.
 `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
+## 20. Glow tamamen kaldırıldı, etiket kontrastı ve nokta çakışması düzeltildi (16 Eylül, aynı gün)
+
+Kullanıcı §19'daki filtre-bölgesi düzeltmesinden sonra da glow'u beğenmedi: "şu glow beyazımsı
+olan sınırı kaldır turuncu gözüksün ... ilçe isimleri biraz daha görünür olsun gri okunmuyor ve
+dairelerde iç içe girenleri vs. düzelt." Üç ayrı düzeltme:
+
+1. **Glow tamamen kaldırıldı.** `feGaussianBlur`, düşük opasiteli bir turuncu çizgiyi geniş bir
+   alana yayarak doygunluğunu düşürüyor — açık gri zemin üzerinde bu, "turuncu glow" değil
+   "soluk/beyazımsı bulanıklık" gibi okunuyordu (kullanıcının tam olarak belirttiği şey). `<defs>`
+   ve `#geo-glow` filtresi silindi; `.geo-district` artık düz, doygun turuncu bir kontur
+   (`stroke-width` 1.6→2.2, hover'da 2.6→3.2) — daha az "efekt", daha çok okunabilirlik.
+
+2. **Etiket kontrastı.** `.geo-label` rengi `var(--dim)` (soluk gri) → `var(--ink)` (koyu, yüksek
+   kontrast) oldu; ayrıca `paint-order: stroke` ile açık renkli ince bir "hale" eklendi (metin
+   turuncu sınır çizgisinin veya gri zeminin üzerinden geçtiğinde okunabilir kalsın diye) —
+   haritalarda standart bir etiket-okunabilirlik tekniği.
+
+3. **Nokta/etiket çakışması.** Gerçek hayatta birbirine çok yakın panolar (Bornova/Buca/Karşıyaka/
+   Çiğli — hepsi İzmir merkezinde birkaç km arayla) ekranda üst üste biniyordu. İki yeni saf
+   fonksiyon eklendi (`BolgeHaritasi.tsx`): `separateDots` (birbirine çok yakın NOKTA işaretlerini
+   birkaç piksel karşılıklı iterek ayırır — yalnızca görsel işaretin ekran konumu için, ilçenin
+   gerçek sınırını etkilemez) ve `layoutLabelOffsets` (her etiket için önce noktanın üstünü dener,
+   çakışırsa sırayla alt/daha alt konumları dener — kaba bir metin genişliği tahminiyle AABB
+   çakışma testi). Bu, gerçek harita sağlayıcılarının da yakınlaştırma seviyesine göre yaptığı bir
+   "etiket seyreltme" tekniğinin basitleştirilmiş hâli.
+
+**Doğrulama:** tsc/test/build temiz. Bornova/Buca/Karşıyaka/Çiğli kümesi özelinde chrome-devtools
+ile yakınlaştırılıp kontrol edildi — etiketler artık üst üste binmeden dikey olarak ayrışıyor,
+sınırlar düz ve tutarlı turuncu, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>

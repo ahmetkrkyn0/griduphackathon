@@ -385,18 +385,17 @@
 .geo-dot { stroke: #fff; stroke-width: 2; }
 .geo-dot.normal { fill: var(--dot); }
 .geo-halo { fill: none; stroke: var(--p2); stroke-width: 4; animation: og-pulse 1.6s ease-in-out infinite; }
-.geo-label { font: 500 11px var(--sans); fill: var(--dim); pointer-events: none; }
+.geo-label { font: 600 11px var(--sans); fill: var(--ink); paint-order: stroke; stroke: var(--well); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
 .geo-note { margin-top: 8px; }
-/* Gercek ilce siniri (polyline, kullanici talebi 16 Eylul): turuncu + hafif glow (feGaussianBlur,
-   #geo-glow filtresi), hover'da ilcenin kendi merkezine gore hafifce buyur. Nokta/etiket ustte
-   ayri katmanda kalir, sinir onlarin altina cizilir. */
+/* Gercek ilce siniri (polyline, kullanici talebi 16 Eylul): duz turuncu kontur. Onceki feGaussianBlur
+   glow'u kullanici geri bildirimiyle kaldirildi ("beyazimsi" duruyordu, ince/soluk okunuyordu) —
+   duz, doygun turuncu daha okunabilir bulundu. Hover'da ilcenin kendi merkezine gore hafifce buyur. */
 .geo-district {
-  fill: rgba(255, 103, 29, 0.07);
+  fill: rgba(255, 103, 29, 0.1);
   stroke: var(--brand);
-  stroke-width: 1.6;
+  stroke-width: 2.2;
   stroke-linejoin: round;
   stroke-linecap: round;
-  filter: url(#geo-glow);
   transform-box: fill-box;
   transform-origin: center;
   transition: transform 0.18s ease, fill 0.18s ease, stroke-width 0.18s ease;
@@ -404,8 +403,8 @@
 }
 .geo-district:hover {
   transform: scale(1.045);
-  fill: rgba(255, 103, 29, 0.16);
-  stroke-width: 2.6;
+  fill: rgba(255, 103, 29, 0.2);
+  stroke-width: 3.2;
 }
 /* ADM/GDZ hizmet bolgesindeki panosuz ilceler: pasif gri zemin — haritayi "butun" gostermek icin
    (kullanici talebi 16 Eylul), ama alarm/turuncu ile karismasin diye vurgusuz ve etkilesimsiz. */

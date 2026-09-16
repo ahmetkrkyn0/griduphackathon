@@ -9,10 +9,28 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Harita: nokta boyutu küçültüldü, glow tutarsızlığı (SVG filtre
-kırpma hatası) düzeltildi, §21).
-**Son commit:** Pano noktaları küçültüldü, `#geo-glow` filtresi `userSpaceOnUse`'a alınarak
-Fethiye gibi ince/uzun ilçelerde glow'un kırpılması giderildi.
+**Son güncelleme:** 16 Eylül 2026 (Glow tamamen kaldırıldı, etiket kontrastı ve nokta çakışması
+düzeltildi, §22).
+**Son commit:** `.geo-district` glow'suz düz turuncu kontur; etiketler koyu renk + hale ile
+okunabilir; birbirine çok yakın noktalar/etiketler artık çakışmıyor (yeni `separateDots`/
+`layoutLabelOffsets`).
+
+## 22. Glow kaldırıldı, etiket kontrastı ve nokta çakışması düzeltildi (kullanıcı geri bildirimi)
+
+Kullanıcı önceki glow düzeltmesini (§21) de beğenmedi: "şu glow beyazımsı olan sınırı kaldır
+turuncu gözüksün ... ilçe isimleri biraz daha görünür olsun gri okunmuyor ve dairelerde iç içe
+girenleri vs. düzelt." Üç düzeltme: (1) `feGaussianBlur`/`#geo-glow` filtresi tamamen kaldırıldı —
+düşük opasiteli turuncuyu bulanıklaştırmak "glow" değil "soluk beyazımsı" görünüyordu; yerine düz,
+doygun turuncu kontur (stroke-width arttı). (2) Etiket rengi `--dim` (soluk gri) → `--ink` (koyu)
++ okunabilirlik için ince açık "hale" (`paint-order: stroke`). (3) Gerçekte birbirine çok yakın
+panolar (Bornova/Buca/Karşıyaka/Çiğli, İzmir merkezi) için iki yeni saf fonksiyon: `separateDots`
+(çakışan nokta işaretlerini birkaç piksel ayırır, ilçe sınırını etkilemez) ve `layoutLabelOffsets`
+(çakışan etiketleri sırayla alt konumlara kaydırır) — gerçek harita sağlayıcılarının da yaptığı
+basit bir etiket seyreltme tekniği. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §20.
+
+Doğrulama: tsc/test/build temiz, İzmir kümesi özelinde yakınlaştırılarak kontrol edildi (etiketler
+artık çakışmıyor, sınırlar düz turuncu), konsolda hata yok. `assets/ekran/07-bolge-haritasi.png`
+yenilendi.
 
 ## 21. Nokta boyutu ve glow tutarsızlığı düzeltmesi (kullanıcı geri bildirimi, ekran görüntüsüyle)
 
