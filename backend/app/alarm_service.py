@@ -129,7 +129,19 @@ class AlarmService:
         self._listeners.append(listener)
         digest = getattr(listener, "digest", None)
         if callable(digest):
-            self._digest_listeners.append(digest)
+            self.add_digest_listener(digest)
+
+    def add_digest_listener(self, listener: DigestListener) -> None:
+        """Gunluk ozet (DIGEST_AT) dinleyicisi; AYNI dinleyici iki kez kaydedilmez.
+
+        `add_listener` bunu `digest` metodunu goren dinleyiciler icin kendisi cagirir.
+        Kurulumun bu ortuk tespite bagli kalmamasi icin dogrudan da cagrilabilir
+        (bkz. app/main.py `_start_notifier`); tekrar kaydi burasi eler, boylece iki
+        yol birlikte kullanildiginda ozet IKI KEZ gonderilmez.
+        """
+        if listener in self._digest_listeners:
+            return
+        self._digest_listeners.append(listener)
 
     # ------------------------------------------------------------ girdiler
     def on_samples(self, samples: list[Sample]) -> None:

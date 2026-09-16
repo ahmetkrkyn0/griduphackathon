@@ -141,56 +141,56 @@ Alarm kartına, teşhisi kesinleştirmek için eksik olan kanıtı yazar · **Et
 
 GK2 gereği bu pencerede kod yazılmaz. **Doküman bütçesi kararı:** en çok **iki** yeni dosya açılır (`docs/18` ve `docs/19`); sektör taramasından gelen sekiz ayrı yeni doküman önerisi bu ikisinde birleştirilmiştir. Depoda zaten 18 doküman var ve M4'te hepsi çapraz okunacak; yirminci dosya jüriye değer değil, okuma yükü ve çelişki riski ekler.
 
-### F-11 · Jüri kanıt haritası: dokuz kriter → dosya → ölçülmüş sayı
+### F-11 · Jüri kanıt haritası: dokuz kriter → dosya → ölçülmüş sayı — ✅ tamamlandı
 Değerlendirme kriterlerinin her biri için tek satırlık kanıt eşlemesi · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [README.md](README.md) başı veya yeni `docs/00-juri-kanit-haritasi.md`
 **Sektörel dayanak:** Yok — bu bir teslim disiplini maddesi; jürinin kendi değerlendirme cetveline hizalanma.
 **Bizdeki boşluk:** 18 doküman teslim ediyoruz, jüri dokuz kriterden puan veriyor ve aradaki eşlemeyi kurma işini jüriye bırakıyoruz.
 **Ne üretir:** Tek sayfa: kriter | kanıt dosyası | ölçülmüş sayı (recall 1,00 · 209 saat · 71,4 yanlış alarm/100 pano-gün · p95 657 ms · 1.000 pano · 46-48x sıkıştırma · mutasyon sayıları · 987 test · üç protokolde 0 fark).
 **Dikkat:** Yeni hiçbir iş üretmiyor, yalnızca ölçülmüş olanı hizalıyor. Provada herkesin ezberleyeceği tek sayfa da bu olmalı.
 
-### F-12 · 17 soruluk jüri cevap kartı
+### F-12 · 17 soruluk jüri cevap kartı — ✅ tamamlandı
 Muhtemel jüri sorularının cevaplarını ölçülmüş sayılarla doldurur · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/17-donanimsiz-dogrulama.md](docs/17-donanimsiz-dogrulama.md) §5 genişletmesi veya demo paketinde tek kart
 **Sektörel dayanak:** Yok — sunum hazırlığı.
 **Bizdeki boşluk:** Mevcut cevap seti yalnızca entegrasyon/ölçek/güvenlik tarafını ölçümle güncellemiş; fizik ve saha/maliyet/UX soruları için hazır kart yok. Üstelik en sık sorulacak sorulardan birinin ("yanlış alarm oranınız ne?") cevabında hâlâ bir yer tutucu duruyor — oysa sayı [docs/12-dogrulama-sonuclari.md](docs/12-dogrulama-sonuclari.md) §3'te var.
 **Ne üretir:** Provaya hazır tek kart; en çok puanlanan anın (soru-cevap) tek hazırlık artefaktı.
 **Dikkat:** Her cevabın yanında kanıt dosyası adı olmalı; sayısı olmayan soruya "ölçmedik" yazılmalı.
 
-### F-13 · "Kendiniz okuyun" kartı: üç komutla canlı doğrulama
+### F-13 · "Kendiniz okuyun" kartı: üç komutla canlı doğrulama — ✅ tamamlandı
 Jürinin kendi istemcisiyle üç protokolden aynı değeri okuyup eşitliği doğrulaması için komut kartı · **Etki:** yüksek · **Efor:** ~1 saat · **Nerede yaşar:** [docs/03-modbus-haritasi.md](docs/03-modbus-haritasi.md) ve [README.md](README.md)
 **Sektörel dayanak:** Moxa, Beckhoff gibi ürünlerde birlikte çalışabilirlik belgesinin yanında "kendi istemcinizle doğrulayın" akışı standart.
 **Bizdeki boşluk:** [docs/01-problem-analizi.md](docs/01-problem-analizi.md)'deki ayırt edici özellikler listesinde "jüri kendi Modbus istemcisiyle okuyabilir" yazıyor ama bunu nasıl yapacağını söyleyen tek satır yok.
 **Ne üretir:** Üç komut (Modbus 502, IEC 104 2404, REST) ve beklenen eşit çıktı; iddiayı cümleden canlı kanıta çeviren en ucuz hamle.
 **Dikkat:** Komutlar demo makinesinde bir kez koşturulup çıktı kaydedilmeli; koşmayan bir komut kartı ters teper.
 
-### F-14 · Bilinçli kapsam sınırları — tek sayfa
+### F-14 · Bilinçli kapsam sınırları — tek sayfa — ✅ tamamlandı
 Dört ayrı dosyaya dağılmış itirafları tek yerde toplar · **Etki:** yüksek · **Efor:** ~1 saat · **Nerede yaşar:** yeni `docs/00-bilincli-sinirlar.md` veya F-11 ile aynı sayfanın ikinci yarısı
 **Sektörel dayanak:** SSEN'in AG fider arıza tespiti projesi kapanış raporunda saha denemelerinin "sınırlı başarı" olarak yazılması gibi; olgun programlar sınırlarını kendileri yazar.
 **Bizdeki boşluk:** Altı bilinçli sapma (ekran sayısı, harita kırılımı, kendi Modbus sunucumuz, firmware bellek sınırı, atlanan emülatörler, cihaz sağlığı istek deseni) artı "kapsanmayan standartlar" artı UX ve donanımsız doğrulama sapmaları dört ayrı dosyada duruyor; jüri hepsini bulamaz.
 **Ne üretir:** "Neyi yapmadınız?" sorusunun tek kaynağı; dürüstlüğün dağınık değil toplu okunması.
 **Dikkat:** Her satır gerekçeli olmalı; gerekçesiz "yapmadık" listesi eksik listesi gibi okunur.
 
-### F-15 · docs/18 — Ticari ürün karşılaştırması ve analitik standart izi
+### F-15 · docs/18 — Ticari ürün karşılaştırması ve analitik standart izi — ✅ tamamlandı
 Cihaz düzeyindeki mevcut karşılaştırmayı platform düzeyine taşır ve durum izleme standart ailesini kod dosyalarına bağlar · **Etki:** yüksek · **Efor:** 3-4 saat · **Nerede yaşar:** yeni `docs/18-konumlandirma-ve-standart-izi.md`
 **Sektörel dayanak:** Karşılaştırılacak platformlar: ABB Ability EDCS çok-tesisli karşılaştırma, Siemens SENTRON powermanager (EN 50160 raporu, kesici kalan ömür), Eaton Foreseer, Hitachi TXpert, Schneider PME. Standart izi: ISO 17359 (durum izleme programı ve alarm kriteri), ISO 13379-1 (veri yorumlama ve tanı), ISO 13381-1 (prognoz, kalan ömür), CIGRE TB 858 (varlık sağlık indeksleri).
 **Bizdeki boşluk:** Cihaz düzeyinde sekiz satırlık bir karşılaştırma tablosu iç çalışma dosyasında zaten var ama jüriye gitmiyor; platform düzeyi hiç yok. Ayrıca ürünün ANA İŞİ için (durum izleme + prognoz) depoda sıfır standart izi var: K₀ = baz çizgisi, ttl = kalan ömür, risk skoru = sağlık indeksi eşlemesi hiçbir yerde yazılı değil.
 **Ne üretir:** İki bölümlü tek doküman: (a) özellik matrisi + "bizde yok, çünkü GK3/GK4/GK6" sütunu + ADM/GDZ'nin ADMS alımına konumlanma satırı; (b) standart → kod dosyası → ölçülen sonuç → dürüst boşluk tablosu.
 **Dikkat:** Rakip fiyatı ve "onlarınki kötü" iddiası yasak; doğrulanamayan hücre boş bırakılır. Termal bağlantı sensörü ile ortam sensörü aynı satıra konmamalı. ISO madde numarası ve birebir alıntı yazılmayacak (metinlere erişim yok). Sunuma tek cümle çıkar: "onların platformu geliyor, biz onun altındaki ölçüm katmanıyız; bugün IEC 104 ile bağlanırız, koruma devresine asla yazmayız."
 
-### F-16 · docs/19 — TEDAŞ şartname uyum haritası
+### F-16 · docs/19 — TEDAŞ şartname uyum haritası — ✅ tamamlandı
 Türkiye'de bir dağıtım panosuna takılan haberleşme ünitesinin tabi olduğu şartnameyle madde madde karşılaştırma · **Etki:** yüksek · **Efor:** 2-3 saat · **Nerede yaşar:** yeni `docs/19-tedas-sartname-uyumu.md`, [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md)'den atıf
 **Sektörel dayanak:** TEDAŞ-MLZ/2019-064.B haberleşme ünitesi teknik şartnamesi (deponun kendi analiz raporunda "1 Ocak 2025'ten itibaren zorunlu" olarak kaydedilmiş); ayrıca komitenin verdiği AG pano şartnamesinin çalışma koşulları maddesi (dahili/harici sıcaklık aralıkları, 24 saat ortalama, rakım).
 **Bizdeki boşluk:** [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md)'de şartnamenin adı geçiyor ama arkasında hiçbir içerik yok. Ayrıca [hardware/](hardware/) BOM'undaki parçaların şartnamedeki ortam sınırlarına karşı satır satır karşılaştırması hiçbir yerde yok — "saha koşullarında uygulanabilirlik" jüri kriterinin doğrudan konusu.
 **Ne üretir:** İki tablo: (a) şartname başlığı | karşıladığımızı iddia edebileceklerimiz | fiziksel doğrulama gerektirenler; (b) BOM parçası | çalışma aralığı | şartname sınırı | uygun/uygun değil/doğrulanmadı.
 **Dikkat:** Tam metne erişim yoksa başlık düzeyinde kalınmalı, madde numarası uydurulmamalı. "Karşılıyoruz" yerine "tasarım hedefi, tip testi yapılmadı" dili kullanılmalı (GK3).
 
-### F-17 · Kısmi deşarj ve dalga biçimi: verilen veri sayfalarına dürüst cevap
+### F-17 · Kısmi deşarj ve dalga biçimi: verilen veri sayfalarına dürüst cevap — ✅ tamamlandı
 Komitenin paylaştığı HFCT veri sayfalarının neden kullanılmadığını ve 10 saniyelik mimarinin neyi göremediğini tek yerde kapatır · **Etki:** yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/13-donanim-tasarimi.md](docs/13-donanim-tasarimi.md) yeni bölüm, [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md)'deki mevcut PD sapma notunun hemen yanı
 **Sektörel dayanak:** Texas A&M Distribution Fault Anticipation ve Gridware, arıza öncesi imzayı yarım periyot altı dalga biçiminden çıkarıyor; EA Technology UltraTEV yönetilen PD anketleri sahada yerleşik.
 **Bizdeki boşluk:** Komite dosya paketine iki HFCT veri sayfası koydu, biz PD'yi bilinçli olarak kapsam dışı bıraktık ve bunun gerekçesi tek bir dokümanda toplanmış değil. Ayrıca tüm tespit zincirimiz 10 saniyelik skaler değerler üzerine kurulu ve bu, seri ark ile kontak kıvılcımlanmasını **fiziksel olarak** göremez — bunu jüri bulmadan bizim söylememiz gerekir.
 **Ne üretir:** Bir sayfa: PD neden kapsam dışı (verilen veri sayfalarının kendi sayılarıyla), OG'de ne gerekirdi, ve "tetikli dalga biçimi yakalama bir sonraki donanım revizyonunun konusudur" paragrafı.
 **Dikkat:** "Yapabiliriz" denmeyecek; "bugünkü mimari bunu göremez" denecek. Kod önerilmeyecek (GK2 + GK3 + donmuş şema).
 
-### F-18 · docs/11'e iki standart satırı ve ISA-101 seviye haritası
+### F-18 · docs/11'e iki standart satırı ve ISA-101 seviye haritası — ✅ tamamlandı
 Cihazın kendi ürün sınıfı standardını ve arayüz dilimizin standardını tabloya ekler · **Etki:** orta · **Efor:** 1-1,5 saat · **Nerede yaşar:** [docs/11-standartlar-uyum.md](docs/11-standartlar-uyum.md), [docs/16-ux-tasarim.md](docs/16-ux-tasarim.md) §2 tablosuna bir sütun
 **Sektörel dayanak:** IEC 62974-1:2017 (≤1 kV AC, pano içi/DIN ray, veri toplama ve ağ geçidi cihazları — kapsam doğrulandı; Socomec bu standarda tabi olduğunu beyan ediyor). ANSI/ISA-101.01 ekran hiyerarşisini dört seviye olarak tanımlar.
 **Bizdeki boşluk:** "62974" depoda hiç geçmiyor — jüri "bu cihaz hangi standarda göre üretilir?" diye sorduğunda cevapsızız. ISA-101 docs/11'de hiç yok, oysa tüm arayüz dilimiz ona dayanıyor; seviye eşlemesi ("Filo → Pano → Nokta → Kara kutu") jüriye gitmeyen bir iç dosyada yazılı.

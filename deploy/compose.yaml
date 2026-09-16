@@ -83,6 +83,9 @@ services:
       ALERT_ESCALATION: ${ALERT_ESCALATION:-}
       CALL_RING_S: ${CALL_RING_S:-20}
       PORTAL_URL: ${PORTAL_URL:-http://gridup.local}
+      # Gunluk P3/SYS ozetinin saati (HH:MM, SUNUCU saati = konteynerde UTC).
+      # `:-` DEGIL `-`: tanimsizsa kodun varsayilani (08:00), BOS birakilirsa ozet KAPALI.
+      DIGEST_AT: ${DIGEST_AT-08:00}
       # WhatsApp ikincil kanal (sirket disina cikan tek kanal, kapatilabilir)
       WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
       WHATSAPP_PHONE_ID: ${WHATSAPP_PHONE_ID:-}

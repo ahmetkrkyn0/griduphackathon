@@ -96,14 +96,26 @@ doğrulandı (yaz haftası, 15 dk örnekleme):
 - K üç katına çıktığında 70 K aşılabilmeli — yoksa sabit eşik hiç tetiklenmez ve
   "sabit eşikle karşılaştırma" yapılamaz.
 
-| Deneme | Haftalık tepe dT | 50 K altı? | ×3 → 70 K? |
-|---|---:|---|---|
-| 35 K | 34,6 | evet | evet |
-| **40 K** | **39,5** | **evet** | **evet** |
-| 55 K | 54,3 | **hayır** | evet |
+| Deneme | Haftalık tepe dT | 50 K altı? | ×3 → 70 K? | Uyarı çıkan örnek payı |
+|---|---:|---|---|---:|
+| 35 K | 34,6 K | evet | evet (103,8 K) | %0,0 |
+| **40 K** | **39,5 K** | **evet** | **evet (118,6 K)** | **%0,0** |
+| 55 K | 54,3 K | **hayır** | evet (163,0 K) | %6,1 |
+| 60 K | 59,3 K | **hayır** | evet (177,8 K) | **%20,7** |
 
-İlk seçim 60 K'ydı; ölçüldü ki sağlıklı panoyu 59 K'ya çıkarıyor ve örneklerin %20'sinde
-`ALM-THR-TERM-WARN` üretiyordu.
+*Tablonun kaynağı (GK10).* Sayılar 16 Eylül 2026'da bu depoda yeniden üretildi:
+`libs/panoalgo/.venv` içinde `panoalgo.generator.DT_AT_RATED_K` sırayla 35 / 40 / 55 / 60 K
+yapılıp `panoalgo.scenarios.plan("S0_normal", seed=1304, duration_h=168, season="yaz")` +
+`iter_samples()` koşturuldu. "Haftalık tepe dT" = 672 örneğin en büyük `worst_dt_c` değeri;
+"uyarı çıkan örnek payı" = `alarms` listesinde `ALM-THR-TERM-WARN` bulunan örneklerin oranı;
+"×3 → 70 K?" sütunundaki parantez içi tepe dT'nin üç katıdır. Fixture'lar bu taramadan
+etkilenmez; `DT_AT_RATED_K` kodda **40,0** olarak kalır.
+
+İlk seçim 60 K'ydı; tablonun son satırı neden bırakıldığını gösterir: sağlıklı panoyu
+59,3 K'ya çıkarıyor ve örneklerin **%20,7**'sinde `ALM-THR-TERM-WARN` üretiyordu — yani
+"sağlıklı" senaryo sürekli uyarı veren bir senaryo olurdu. Aynı gerekçe kodun kendi
+yorumunda da yazılıdır (`libs/panoalgo/panoalgo/generator.py`, `DT_AT_RATED_K`: 60 K →
+59 K, örneklerin %20'si).
 
 ## 4. Ortam ve elektriksel büyüklükler
 
@@ -127,14 +139,25 @@ doğrulandı (yaz haftası, 15 dk örnekleme):
 |---|---|---|---:|
 | `S0_normal` | yok | yanlış alarm tabanı | 168 h |
 | `S1_loose_conn` | K %0 → %200, sonra plato | `ALM-K-WARN/ALM`, `ALM-THR-TERM-*` | 720 h |
-| `S2_overload` | yük ×1,8, **K sabit** | `ALM-I-OVER`; **`ALM-K-ALM` çıkmamalı** | 168 h |
+| `S2_overload` | yük ×1,8, **K sabit** | `ALM-I-OVER`; yasaklı: `ALM-K-WARN`, `ALM-K-ALM` | 168 h |
 | `S3_condense` | kış + nem +%25 | `ALM-DEW-WARN/ALM` | 168 h |
 | `S4_arc` | TVOC-2 trip sayacı artar | `ALM-ARC-TRIP` | 72 h |
 | `S5_prot_health` | dedektör sağlık biti düşer | `ALM-PROT-HEALTH` | 72 h |
 | `S6_comms_loss` | 6 saat veri boşluğu | `ALM-COMMS-LOST` (**merkezde**) | 168 h |
 | `S7_harmonic` | THD ×3,5 | `ALM-NEUTRAL-THD` | 168 h |
-| `S8_sensor_fault` | donma + sürüklenme + düşme | `ALM-DQ-*`; **pano alarmı çıkmamalı** | 168 h |
+| `S8_sensor_fault` | donma + sürüklenme + düşme | `ALM-DQ-BELOW-AMBIENT`; yasaklı: `ALM-THR-TERM-ALM`, `ALM-K-ALM` | 168 h |
 | `S9_pd_trend` | OG panoda PD etkinliği artar | `ALM-PD-TREND` | 168 h |
+
+Tablo `libs/panoalgo/panoalgo/scenarios.py` içindeki `SCENARIOS` sözlüğünün `expect` /
+`not_expect` alanlarını birebir yansıtır; "yasaklı" sütun parçası `not_expect`tir.
+
+**S8'in yasaklı listesi bir pano alarmını yakalamıyor ve bunu saklamıyoruz.** Ölçüm:
+`S8_sensor_fault` senaryosunda 70 K sınırı **hiç aşılmadığı hâlde 99 prognoz üretildi** ve
+bunların **89'u `ALM-TTL-14D`** olarak açıldı — bu kod `contracts/alarm-codes.yaml`'da
+**P3 / L1**'dir, yani veri kalitesi ya da sistem alarmı değil, tam anlamıyla bir **pano
+alarmıdır**. `not_expect` yalnızca `ALM-THR-TERM-ALM` ve `ALM-K-ALM`'i yasakladığı için
+senaryo bunu kırmızıya düşürmez. Ölçülmüş bir **prognoz yanlış-alarmıdır**:
+[docs/12 §4.3](12-dogrulama-sonuclari.md) ve [docs/05 §10](05-anomali-tespiti.md).
 
 **Enjeksiyon felsefesi:** hiçbir senaryo "şu alarm çıksın" demez. K'yi büyütür, yükü
 artırır, sensörü bozar. Alarmın çıkıp çıkmayacağına tespit katmanları karar verir —
@@ -164,11 +187,27 @@ kalıyor ve 70 K'ya hiç ulaşılmıyordu.
 
 S0 ve diğer ısıl olmayan senaryolar **geçiş mevsiminde** (Nisan) kurulur. Sebep
 ölçülmüştür: Ege yazında ortam 35–42 °C'ye çıktığı için pano iç havası 45 °C eşiğini
-gerçekten aşar ve `ALM-PANEL-TEMP` örneklerin yarısında **doğru** bir şekilde çıkar.
+(`contracts/alarm-codes.yaml`, `panel_temp_alarm_c`) gerçekten aşar ve `ALM-PANEL-TEMP`
+**doğru** bir şekilde çıkar. Ölçüm (16 Eylül 2026, aynı `S0_normal` senaryosu yalnızca
+mevsimi değiştirilerek, seed 1304, 168 h → 672 örnek; `panoalgo.scenarios.plan(...,
+season=...)` + `iter_samples()`):
+
+| Mevsim | `ALM-PANEL-TEMP` taşıyan örnek | En yüksek pano iç hava sıcaklığı |
+|---|---:|---:|
+| yaz | 348 / 672 = **%51,8** | 51,3 °C |
+| geçiş | 0 / 672 = **%0,0** | 28,6 °C |
+
 Bu bir yanlış alarm değildir — şartname ortam varsayımı 40 °C'dir ve aşılmaktadır — ama
 yanlış alarm **tabanı** ölçmek istediğimiz bir senaryoda algoritmayı değil iklimi
 ölçerdi. Yaz koşulunun kendisi ayrı bir bulgu olarak [docs/05](05-anomali-tespiti.md)'te
 ve doğrulama tablosunda durur.
+
+**Fixture ile canlı demo burada ayrışır ve bu bilinçlidir.** Fixture'lar (ve dolayısıyla
+`docs/12`'nin 71,4 alarm/100 pano/gün tabanı) senaryonun kendi mevsiminde — geçişte —
+üretilmeye devam eder; fixture üretimi `--season` bayrağını **almaz**. Canlı demoda S0
+`--season yaz` ile oynatılır (`demo/senaryo/s0.sh`), çünkü aynı sağlıklı pano aynı
+sözleşme eşiğiyle yazda **0,0** çiy olayı üretir (§8.2 tablosu). Eşik değişmedi, oynatılan
+mevsim değişti.
 
 ## 6. Çıktı biçimi ve tekrarlanabilirlik
 
@@ -223,6 +262,7 @@ gönder" davranışının aynısıdır; seyreltme fiziği değil yalnızca rapor
 | `--scenario-hours` | senaryonun **simüle** süresi; varsayılan senaryonun kendi değeri |
 | `--point` | enjeksiyon noktası (S1: `DSYA3_L2`) |
 | `--detector` | S5'te arızalanan TVOC-2 dedektörü (`X2:4`) — PDU 222'de o bit düşer |
+| `--season` | oynatılan mevsim (`kis` / `gecis` / `yaz`); verilmezse senaryonun kendi mevsimi |
 | `--baseline-hours` | taban öğrenmeyi kısaltır (aşağıda) |
 
 Oynatma bitince hangi alarmın kaçıncı simüle saatte çıktığı ve etiketin beklediğiyle
@@ -264,3 +304,114 @@ imkânsızdır.
 2. `--baseline-hours` ile taban öğrenmeyi kısaltın. Bu **sözleşme eşiğini değiştirmez**,
    yalnızca o koşudaki öğrenme penceresini kısaltır; fixture üretimi bu bayrağı asla
    kullanmaz (`docs/12`'nin sayıları sözleşme değeriyle hesaplanmıştır).
+
+## 8. Üreteci kullanan araçlar
+
+Üreteç yalnızca fixture ve canlı yayın üretmez; iki araç onu doğrudan çağırır. İkisi de
+`libs/panoalgo`'yu içeri aktardığı için **kendi sanal ortamlarıyla** koşar.
+
+| Araç | Ne yapar | Sanal ortam | Neden o ortam |
+|---|---|---|---|
+| `scripts/seed_demo.py` (F-01) | Altın demo veritabanı | `backend/.venv` | backend'i (`app.db`, `app.risk`, `app.alarm_manager`) içeri aktarır |
+| `scripts/threshold_sweep.py` (F-06) | Çiy eşiği taraması | `libs/panoalgo/.venv` | yalnızca `panoalgo`'yu içeri aktarır, veritabanına dokunmaz |
+
+### 8.1 `scripts/seed_demo.py` — altın demo veritabanı
+
+```bash
+backend/.venv/Scripts/python scripts/seed_demo.py \
+  --dsn postgresql://postgres:gridup@localhost:5432/gridup --reset
+backend/.venv/Scripts/python scripts/seed_demo.py --dry-run   # veritabanına dokunmaz, özet basar
+```
+
+Tek komutla: bekleyen şema göçleri + **≥7 günlük geçmiş** + **taban öğrenmesi tamamlanmış**,
+tohumlu ve tekrar üretilebilir bir demo veritabanı. Gerekçe §7.4'ün devamıdır: sözleşme
+`baseline_learning_days: 7` der, taze bir `down -v` sonrası K/K₀ bir hafta boyunca 1,0
+döner ve erken uyarı hikâyesinin tamamı ölçülemez. Rapor üreten her madde sessizce "en az
+bir hafta temiz veri" varsayar; bu betik o zemini bir kez üretir. Senaryo `S0_normal`
+(sağlıklı filo — demo zemini temiz veri olmalı).
+
+**Ölçüldü** (16 Eylül 2026, bu makine, `scripts/seed_demo.py` özeti): 3 pano / 21 gün /
+tohum 1304 → **1.142.265 telemetri satırı**, **2 dk 08 sn**; aynı tohum aynı özeti verir
+(`backend/tests/test_seed_demo.py::test_same_seed_and_window_give_the_same_summary`,
+`::test_seeding_twice_writes_the_same_database`).
+
+**Neden veritabanına doğrudan yazıyor, MQTT'den akıtmıyor** (betiğin docstring'i):
+
+1. **Backfill kuralı.** `app/db.py` `_UPSERT_LATEST` ve `alarm_manager.observe`, panonun
+   son işlenen `ts`'inden eski örneğin canlı durumu değiştirmesine izin vermez. MQTT'den
+   akıtırken `panosim` varsayılan olarak `ts`'i duvar saatiyle damgalar (§7.3): geçmiş diye
+   yayınlanan her mesaj "şu an" olarak yazılır, 7 günlük geçmiş oluşmaz. `--sim-clock` ile
+   simüle damga yayınlansa bile örnekler duvar saatinin **önüne** geçer ve bu kez sonradan
+   gelen canlı veri backfill kuralına takılır.
+2. **Tekrar üretilebilirlik.** Broker + kuyruk + toplu yazma yolu kayıplıdır ve zamanlamaya
+   bağlıdır (ingest kuyruğu dolarsa mesaj düşürülür). "Aynı tohum → aynı satır sayısı" sözünü
+   ancak deterministik bir yazma yolu verebilir.
+3. **Süre.** 21 günlük geçmiş, 15 dk örneklemeyle pano başına 2.016 mesajdır; broker
+   üzerinden gerçek zamanlı akıtmak demoyu bir teslimden uzun sürdürürdü.
+
+**Üretim yolundan sapmaz.** Yük, panoalgo fizik üreteci + kenar tespit boru hattından
+(`EdgePipeline`) çıkar, `contracts/mqtt-telemetry.schema.json`'a karşı doğrulanır,
+`app.ingest.flatten` ile ayrılır, `app.db.PgStore.write_batch` ile yazılır; alarmlar
+üretimdeki `app.risk.RiskEngine` + `app.alarm_manager.AlarmManager` ile üretilip
+`PgStore.save_alarm_changes` ile kaydedilir. Betik veriyi **uydurmaz, yalnızca MQTT adımını
+atlar**.
+
+Dürüstlük sınırları, betiğin kendi yazdığı gibi:
+
+- Üretilen her satır **sentetiktir**; künye `demo_seed` tablosunda ve her panonun
+  `panels.notes` alanındadır, betik bitişte aynı cümleyi ekrana basar.
+- Geleceğe tarihli satır **üretilmez** (aksi hâlde canlı simülatörün sonraki mesajları
+  backfill kuralına takılır ve arayüz günlerce güncellenmez).
+- `notifications` tablosu **boş kalır**: teslim gecikmesi ancak gerçek bir bildirim ağ
+  geçidi çalışırken ölçülür, uydurulmaz. Grafana'daki "Uçtan uca bildirim p95" paneli bu
+  yüzden demo veritabanında boştur, canlı yığın açılınca dolar.
+- Taban öğrenme penceresinden kısa bir `--days` değeri **reddedilir**
+  (`::test_a_window_shorter_than_baseline_learning_is_refused`).
+
+### 8.2 `scripts/threshold_sweep.py` — çiy eşiği taraması
+
+```bash
+libs/panoalgo/.venv/Scripts/python scripts/threshold_sweep.py --verify --seasons
+```
+
+Eşiği **değiştirmez, savunur**. `contracts/alarm-codes.yaml` donmuştur (PLAN.md kural 3);
+tarama ya mevcut çifti savunur ya da `contracts/changes/` altına bir öneri için kanıt
+üretir. Motivasyon `docs/12` **§3'te** (yanlış alarm yükü) ölçülen tek gerçek zayıflıktır:
+sağlıklı panoda 71,4 yanlış alarm/100 pano/gün ve tamamı `ALM-DEW-*`.
+
+Sınırı açıkça yazıyoruz: bu, **sistemin tek zayıflığı değildir**. Ölçülmüş ve daha ağır
+olan diğer zayıflık prognoz geri testidir (`docs/12` §4: `S1_loose_conn`'da 790 tahminin
+yalnızca **%5,2**'si alfa = 0,20 konisinde, **prognostik ufuk yok**, CRA **−5,12**, medyan
+tahmin/gerçek 1,69; `S8_sensor_fault`'ta 99 prognoz yanlış-alarmı, bu belgede §5). Bu tarama çiy
+eşiğini savunur, prognoza **dokunmaz** ve onu iyileştirmez.
+
+| Bayrak | Anlamı |
+|---|---|
+| (bayraksız) | ızgara + eşik çifti taraması, tablo ekrana |
+| `--verify` | kestirme yolun kanıtı: sözleşme eşiğiyle hesaplanan kodlar fixture'ın hazır `alarms` sütunuyla satır satır karşılaştırılır |
+| `--rerun` | her ızgara noktası için `contracts/` dizininin geçici kopyası o eşikle yazılır ve senaryo üreteç + kenar boru hattından baştan koşturulur |
+| `--seasons` | aynı senaryo üç mevsimde (kış / geçiş / yaz), eşik sabit |
+| `--out` | markdown çıktısı dosyaya |
+
+**Neden kestirme yol var.** Çiy kararı `limits._environment()` içinde tek bir alan üzerinde
+tek bir kesin küçüktür karşılaştırmasıdır: `env.td_margin_k < eşik`. Eşik ne fiziğe, ne
+üretece, ne de `td_margin_k` değerine girer — yalnızca karşılaştırmaya girer. Bu yüzden her
+ızgara noktasında fixture yeniden üretilmez; karar `td_margin_k` sütunu üzerinde yeniden
+koşturulur. **Ölçüldü** (betiğin docstring'i; 168 h / 672 örnek, 11 noktalı ızgara): hızlı
+yol **0,024 s**, `--rerun` **30,9 s** (nokta başına ~2,8 s) ve iki yol **aynı** sonucu
+veriyor — yani kestirme ~**1.300 kat** ucuz ve bedava değil, kanıtı bu iki bayraktır.
+
+**Mevsim taraması** (aynı sağlıklı senaryo, eşik sabit 3,0 / 1,0 K; `--seasons`):
+
+| Mevsim | Olay/100 pano/gün |
+|---|---:|
+| kış | 28,6 |
+| geçiş | **71,4** |
+| yaz | **0,0** |
+
+Eşiği kısmak yükü **azaltmıyor, artırıyor**: 1,0 / 0,0 çifti 171,4 olay/100 pano/gün üretir
+ve sözleşmenin kabul edilebilir günlük bütçesini (150) aşar. Tam tablolar ve yorumu
+[docs/05 §11](05-anomali-tespiti.md); testleri `libs/panoalgo/tests/test_threshold_sweep.py`
+(ör. `::test_rerunning_the_detection_gives_the_same_numbers_as_the_shortcut`,
+`::test_rerunning_never_touches_the_frozen_contract`,
+`::test_the_dew_thresholds_in_the_contract_are_unchanged`).

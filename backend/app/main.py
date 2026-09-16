@@ -24,7 +24,7 @@ from .alarm_service import AlarmService, PeriodicWorker
 from .api import alarms, insights, panels, stream
 from .api.stream import StreamHub
 from .api.views import REQUIRED_HYPOTHESES, panel_summary
-from .config import Contracts, Settings, load_contracts
+from .config import Contracts, Settings, digest_at_from_env, load_contracts
 from .db import Store, StoreError
 from .ingest import IngestPipeline, MqttSubscriber, utcnow
 from .models import Sample
@@ -201,13 +201,19 @@ def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Ca
         clock=clock,
     )
     alarm_service.add_listener(notifier)
+    # Gunluk P3/SYS ozeti (DIGEST_AT) ACIKCA kaydedilir. add_listener bunu notifier'in
+    # `digest` metodunu gorerek de yapar; kurulumun o ORTUK tespite bagli kalmamasi icin
+    # burada ayrica yaziliyor. Tekrar kaydi add_digest_listener eler.
+    alarm_service.add_digest_listener(notifier.digest)
     notifier.start()
+    digest_at = digest_at_from_env()
     log.info(
-        "bildirim kanallari: sms=%s whatsapp=%s, %d saha + %d eskalasyon alicisi",
+        "bildirim kanallari: sms=%s whatsapp=%s, %d saha + %d eskalasyon alicisi; gunluk ozet %s",
         "acik" if sms else "kapali",
         "acik" if whatsapp else "kapali",
         len(config.recipients),
         len(config.escalation),
+        f"{digest_at:%H:%M} (sunucu saati)" if digest_at is not None else "kapali",
     )
     return notifier
 

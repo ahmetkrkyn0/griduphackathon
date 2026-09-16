@@ -270,8 +270,13 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   kalite bitlerinden bağımsız çalışıyor (`edge.py` kestirimi `q` hesabından önce yapar).
   Bu bir tespit değil **tahmin** yanlış-alarmıdır; docs/12 §3'teki yanlış alarm sayacı
   onu görmez, çünkü etiket penceresinin içinde çıkar. Saklanmıyor, burada duruyor.
-- **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`; rapor §3.7'ye göre
-  400 V'ta Paschen minimumunun (~327 V) altında kalındığı için PD beklenmez.
+- **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`. Gerekçesi sık
+  tekrarlanan "400 V, Paschen minimumunun (~327 V) altındadır" kısayolu **değildir** — o
+  kısayol eksiktir: 400 V sistemde faz-faz tepe gerilimi √2 × 400 ≈ 566 V'tur, yani 327 V'un
+  üstündedir. Doğru gerekçe geometriktir (Paschen eğrisi gerilimi değil basınç × boşluk
+  mesafesini sınırlar) ve bir **literatür kabulüdür, bizim ölçümümüz değildir**: AG panoda PD
+  ölçümü yapılmadı. Tam gerekçe, verilen HFCT veri sayfalarının kendi sayılarıyla birlikte
+  [13-donanim-tasarimi.md](13-donanim-tasarimi.md) §7.1'dedir.
 
 ## 11. Çiy eşiği taraması — ölçülmüş savunma
 
