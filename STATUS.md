@@ -9,10 +9,20 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Nav çizgi artefaktı, "Pano İzleme" marka metni, harita
-nokta/sürükleme düzeltmeleri, §25).
-**Son commit:** Seçili nav butonundaki tuhaf çizgi giderildi; marka "Pano İzleme" + turuncu oldu;
-haritada nokta artık kendi ilçesi dışına taşmıyor; sürükleme zoom olmadan da çalışıyor.
+**Son güncelleme:** 16 Eylül 2026 (P1/P2 renk benzerliği ve Sistem/Normal pasif gri sorunu
+düzeltildi, §26).
+**Son commit:** Kritik (P1) koyulaştırıldı, Alarm (P2) netleştirildi — artık net ayrışıyor; Sistem
+pasif griden maviye (teal), Normal pasif griden yeşile çevrildi.
+
+## 26. P1/P2 renk benzerliği, Sistem/Normal pasif gri sorunu (kullanıcı geri bildirimi)
+
+HSL analizi: eski P1/P2 hue'dan çok PARLAKLIKTA (L≈47%/45%) neredeyse aynıydı — asıl benzerlik
+nedeni buydu. P1 koyulaştırıldı (#a51c1c), P2 netleştirildi (#e3650d). Sistem (#0e7490, teal —
+--ours donanım mavisiyle karışmasın diye ayrı ton) ve Normal (#16a34a, yeşil) artık pasif gri değil,
+pozitif renkler. `Ikiz3D.tsx` fallback'leri de senkron güncellendi. Detay: TASARIM-REVIZYONU.md §24.
+
+`tsc`/71 test/`vite build` temiz; 8 ekran görüntüsü yenilendi; `berke/frontend`'e commit edilecek
+(main'e asla).
 
 ## 25. Nav çizgisi, marka metni, harita nokta/sürükleme (kullanıcı geri bildirimi)
 

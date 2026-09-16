@@ -14,16 +14,22 @@
   --dim: #5f666b;
   --line: #e2e2de;
 
-  --p1: #c62828;
-  --p2: #d9530f; /* marka turuncusundan (#FF671D) kasitli olarak ayristirilmis ton, plan §3.2 */
+  /* P1/P2 daha once cok yakin gorunuyordu (ayni ton ailesi + neredeyse ayni parlaklik,
+     kullanici bulgusu). P1 koyulastirildi, P2 aydinlatilip daha net turuncuya cekildi —
+     artik hem ton hem parlaklikta belirgin fark var; marka turuncusundan (#FF671D) hala
+     kasitli olarak ayristirilmis (plan §3.2). Sistem/Normal artik pasif gri degil, kullanici
+     talebiyle pozitif renkler: Sistem mavi (--ours'tan farkli bir ton — "bizim donanimimiz"
+     mavisiyle karismasin diye), Normal yesil. */
+  --p1: #a51c1c;
+  --p2: #e3650d;
   --p3: #c99700;
-  --sys: #5a6275;
+  --sys: #0e7490;
   --ours: #003da5; /* ADM/GDZ mavisi: bizim donanimimiz, secim, odak halkasi */
 
   --brand: #ff671d; /* ADM/GDZ birincil rengi — YALNIZCA marka katmani */
   --brand-deep: #e2520c; /* acik zeminde grafik oge (3,9:1) */
 
-  --dot: #a3a9ad;
+  --dot: #16a34a;
   --bar: #b9b4a6;
   --device: #5d646a;
   --cap-body: #26292b; /* gercek kompanzasyon kondansatoru govde rengi (referans foto, TASARIM-REVIZYONU.md §15) */

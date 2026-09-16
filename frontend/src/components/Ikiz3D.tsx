@@ -63,10 +63,10 @@ function buildScene(stage: HTMLDivElement, tip: HTMLDivElement, onPick: (pt: str
   const css = getComputedStyle(stage);
   const tok = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
   const colors: Record<PointState, string> = {
-    normal: tok("--dot", "#a3a9ad"),
+    normal: tok("--dot", "#16a34a"),
     warn: tok("--p3", "#c99700"),
-    alarm: tok("--p2", "#dd6418"),
-    critical: tok("--p1", "#c62828"),
+    alarm: tok("--p2", "#e3650d"),
+    critical: tok("--p1", "#a51c1c"),
     stale: tok("--line", "#c7cac3"),
   };
   const ours = tok("--ours", "#2c63c9");

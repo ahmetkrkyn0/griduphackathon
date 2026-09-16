@@ -785,6 +785,41 @@ nav çizgisi (artık temiz), Yunusemre noktası (artık ilçe içinde), sürükl
 edildi, konsolda hata yok. `assets/ekran/`'daki 8 dosyanın tamamı (marka metni + nav her sayfada
 değiştiği için) yeniden yenilendi.
 
+## 24. P1/P2 renk benzerliği, Sistem/Normal pasif gri sorunu (16 Eylül, aynı gün)
+
+Kullanıcı: "Kritik ve alarmın renkleri çok benziyor onları değiştir. Sistem ve normal çok pasif
+gibi duruyor, gri yerine yeşil gibi pozitif bir renk mi seçsek — mesela sistem mavi, normal yeşil
+gibi."
+
+**Kök neden analizi (HSL):** Eski `--p1` (#c62828, hue≈0°) ve `--p2` (#d9530f, hue≈20°) sadece ton
+olarak değil, **parlaklıkta da neredeyse aynıydı** (L≈47% / 45%) — kullanıcının "çok benziyor"
+algısının asıl nedeni muhtemelen bu parlaklık örtüşmesiydi, salt ton yakınlığından çok. Ayrıca eski
+`--p2`'nin hue'su (20.2°) marka turuncusu `--brand`'e (#ff671d, hue≈19.6°) neredeyse özdeşti — ayrı
+bir gözlem, bu turda değişmedi.
+
+**Değişiklik (`theme.css`):**
+
+```css
+--p1: #a51c1c;  /* eskiden #c62828 — koyulaştırıldı (L≈38%), P2'den net ayrıştı */
+--p2: #e3650d;  /* eskiden #d9530f — aydınlatılıp netleştirildi (L≈46%, hue≈23°) */
+--p3: #c99700;  /* değişmedi */
+--sys: #0e7490; /* eskiden #5a6275 (pasif gri) — "sistem" için mavi-yeşil (teal), --ours'un
+                   (ADM/GDZ donanım mavisi) markasıyla karışmasın diye ayrı bir ton seçildi */
+--dot: #16a34a; /* eskiden #a3a9ad (pasif gri) — normal durum için pozitif yeşil */
+```
+
+`Ikiz3D.tsx`'teki `tok()` fallback string'leri (JS içindeki hardcoded renkler, CSS token'ı
+bulunamazsa devreye giren yedek) aynı değerlere güncellendi ki 3D ikiz her zaman 2D ile birebir
+tutarlı kalsın.
+
+Bu değişiklikler tasarım token'ları (sunum katmanı) — kural 10 (alarm eşiklerini frontend'de
+hardcode etme) burada geçerli değil, çünkü hiçbir eşik/iş mantığı değişmedi, sadece renk sabitleri.
+
+**Doğrulama:** `tsc --noEmit` temiz, 71/71 test yeşil, `vite build` başarılı. Chrome-devtools ile
+Filo Listesi, Risk Matrisi, Bölge Haritası, 3D ikiz (normal durum artık yeşil kablo pabucu) ve
+mobil (390px) görsel olarak kontrol edildi, konsolda hata yok. `assets/ekran/`'daki 8 dosyanın
+tamamı (renkler hemen hemen her sayfada görünür olduğu için) yeniden yenilendi.
+
 ## Kaynaklar
 
 - ADM Elektrik: <https://www.admelektrik.com.tr/> · GDZ Elektrik: <https://www.gdzelektrik.com.tr/>
