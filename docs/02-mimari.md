@@ -44,8 +44,12 @@ flowchart LR
 ```
 
 **Tasarım ilkesi — tespit kenarda, yönetim merkezde.** Pano Beyni ölçer ve karar verir (`alarms` alanı, nokta `q` bitleri); merkez
-bu kararı açıklar (Neden / Ne yapmalı / Ne kadar acil), ISA-18.2'ye göre yönetir, insanlara ulaştırır ve SCADA'ya açar. Merkez algoritmayı
+bu kararı açıklar (Neden / Ne doğrulanmalı / Ne yapmalı / Ne kadar acil — kartın gerçek sırası), ISA-18.2'ye göre yönetir, insanlara ulaştırır ve SCADA'ya açar. Merkez algoritmayı
 yeniden yazmaz. Kenarın kendi başına bilemeyeceği tek şeyi üretir: **haberleşme kopukluğu** (`ALM-COMMS-LOST`).
+
+Dördüncü blok karşı-olgusaldır: **"Ne doğrulanmalı?"** baskın hipotezin sözleşmedeki kanıtlarından bu örnekte **henüz görülmeyenleri**
+listeler (`backend/app/risk.py` `_verify` → `reason.verify`, arayüzde `frontend/src/components/AlarmNedeni.tsx`). Kenara yeni telemetri alanı
+açılmaz — liste hipotez tanımından merkezde yeniden türetilir.
 
 ## 2. Bileşenler
 
