@@ -54,6 +54,14 @@ WINTER_START = datetime(2026, 1, 5, 0, 0, tzinfo=timezone.utc)   # Pazartesi
 # olcerdi. Yaz kosulunun kendisi docs/12'de ayrica raporlanir.
 SHOULDER_START = datetime(2026, 4, 6, 0, 0, tzinfo=timezone.utc)  # Pazartesi
 
+# Mevsim -> senaryonun baslangic ani. Tek kaynak: plan() ve scripts/threshold_sweep.py
+# ayni esleme uzerinden calisir, yoksa "yaz" iki dosyada ayri tarihe kayabilir.
+SEASON_STARTS: dict[str, datetime] = {
+    "kis": WINTER_START,
+    "gecis": SHOULDER_START,
+    "yaz": SUMMER_START,
+}
+
 
 @dataclass(frozen=True)
 class ScenarioSpec:
@@ -226,11 +234,14 @@ def plan(
     point: str | None = None,
     detector: str | None = None,
     baseline_h: float | None = None,
+    season: str | None = None,
 ) -> ScenarioPlan:
     """Senaryoyu dogrular ve kosturulabilir bir plana cevirir.
 
     `point` / `detector` / `pano_id` demo icin gecersiz kilinabilir (bkz. demo/senaryo).
     `baseline_h` yalnizca CANLI demoda kisaltilir (Y1); fixture uretimi asla vermez.
+    `season` de yalnizca CANLI demo icindir ve fixture uretimi ASLA vermez: docs/12'deki
+    yanlis alarm tabani senaryonun kendi mevsimiyle (S0: gecis) olculur ve oyle kalir.
     """
     spec = SCENARIOS.get(scenario_id)
     if spec is None:
@@ -240,6 +251,10 @@ def plan(
     if duration <= 0.0:
         raise ValueError(f"duration_h pozitif olmali: {duration}")
 
+    if season is not None:
+        if season not in SEASON_STARTS:
+            raise ValueError(f"bilinmeyen mevsim: {season!r}; gecerli: {sorted(SEASON_STARTS)}")
+        spec = replace(spec, season=season)
     if point is not None:
         spec = replace(spec, point=_validated_point(point, contracts_dir))
     if detector is not None:
@@ -256,7 +271,7 @@ def plan(
         pano_id=pano_id or format_pano_id("SIM", DEFAULT_PANO_INDEX),
         duration_h=duration,
         baseline_h=learned if baseline_h is None else min(max(baseline_h, 0.0), duration),
-        start={"kis": WINTER_START, "yaz": SUMMER_START, "gecis": SHOULDER_START}[spec.season],
+        start=SEASON_STARTS[spec.season],
         steps=int(duration * SECONDS_PER_HOUR / EXPORT_PERIOD_S),
         l0_limit=float(thresholds["term_rise_alarm_k"]),
         contracts_dir=contracts_dir,

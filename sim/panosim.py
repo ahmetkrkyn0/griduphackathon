@@ -176,6 +176,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     replay.add_argument("--detector", help="S5 icin arizali TVOC-2 dedektoru (or. X2:4)")
     replay.add_argument("--baseline-hours", type=float, default=None,
                         help="taban ogrenme suresini KISALT (canli demo; sozlesme degeri 168 h)")
+    replay.add_argument("--season", choices=("kis", "gecis", "yaz"), default=None,
+                        help="senaryonun mevsimini gecersiz kil (CANLI demo icin; docs/12 fixture'lari "
+                             "her zaman senaryonun kendi mevsimiyle uretilir)")
     return parser.parse_args(argv)
 
 
@@ -347,6 +350,7 @@ def _run_scenario(args: argparse.Namespace, publisher: Publisher, contracts_dir:
             point=args.point,
             detector=args.detector,
             baseline_h=args.baseline_hours,
+            season=args.season,
         )
     except ValueError as exc:
         raise SystemExit(f"[panosim] {exc}") from exc
