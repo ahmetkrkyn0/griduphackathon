@@ -281,3 +281,28 @@ def test_health_reports_database_and_ingest_counters(client, store):
 
     store.unavailable = True
     assert client.get("/health").json()["db"] is False
+
+
+def test_fleet_health_endpoint(client):
+    response = client.get("/api/v1/fleet/health?limit=10")
+    assert response.status_code == 200
+    items = response.json()
+    assert isinstance(items, list)
+    assert len(items) > 0
+    item = items[0]
+    for key in ("pano_id", "nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "fw", "comms_ok", "last_seen"):
+        assert key in item
+
+
+def test_panel_power_quality_endpoint(client):
+    response = client.get("/api/v1/panels/ADM-00001/power-quality")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pano_id"] == "ADM-00001"
+    pq = data["power_quality"]
+    assert "compliant" in pq
+    assert "score" in pq
+    assert "phases" in pq
+    assert len(pq["phases"]) == 3
+
+

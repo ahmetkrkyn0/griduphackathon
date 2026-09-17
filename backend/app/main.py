@@ -159,6 +159,43 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def rbac_middleware(request: Request, call_next):
+        """IEC 62351-8 Rol Tabanli Erisim Kontrolu (RBAC) middleware'i.
+
+        Roller:
+          - viewer: Yalnizca GET (okuma); alarmlari onaylama/susturma yasak (403)
+          - operator: Okuma + alarmlari onaylama (ack)
+          - supervisor / admin: Tum islemler (alarm askiya alma / shelve dahil)
+        """
+        path = request.url.path
+        if path in ("/health", "/docs", "/openapi.json") or path.startswith("/api/v1/stream"):
+            return await call_next(request)
+
+        role = request.headers.get("X-Operator-Role", "").lower().strip()
+        auth_required = os.getenv("GRIDUP_AUTH_REQUIRED", "0") == "1"
+
+        if auth_required and not role:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Kimlik dogrulama zorunlu: X-Operator-Role veya X-API-Key basligi eksik"},
+            )
+
+        if role == "viewer" and request.method not in ("GET", "HEAD", "OPTIONS"):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Erisim reddedildi: 'viewer' rolu yalnizca okuma yetkisine sahiptir"},
+            )
+
+        if role == "operator" and "/shelve" in path and request.method == "POST":
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Erisim reddedildi: Alarmi askiya alma (shelve) icin 'supervisor' veya 'admin' rolu gereklidir (IEC 62351-8)"},
+            )
+
+        return await call_next(request)
+
     app.add_exception_handler(StoreError, _store_unavailable)
     app.include_router(panels.router)
     app.include_router(insights.router)

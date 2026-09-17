@@ -36,10 +36,10 @@
     "semantic_hash": "13e3f701f062347f91b69b1725f4a7ed"
   },
   "backend/app/api/panels.py": {
-    "mtime": 1789417965.6491356,
-    "seen": 1789556767.1785386,
-    "ast_hash": "6c4e703c1c822caf3e694de67e4b4742",
-    "semantic_hash": "6c4e703c1c822caf3e694de67e4b4742"
+    "mtime": 1789667257.23149,
+    "seen": 1789667412.1302512,
+    "ast_hash": "c49b19c601412a1dd03673bec64ad3fa",
+    "semantic_hash": ""
   },
   "backend/app/api/stream.py": {
     "mtime": 1789417965.650672,
@@ -48,10 +48,10 @@
     "semantic_hash": "9c2faeb3337bc5eceb9ab141ff4e07f8"
   },
   "backend/app/api/views.py": {
-    "mtime": 1789417972.49885,
-    "seen": 1789556767.1785386,
-    "ast_hash": "e0b262d302d40e384d0cb9f417182de0",
-    "semantic_hash": "e0b262d302d40e384d0cb9f417182de0"
+    "mtime": 1789666942.8473997,
+    "seen": 1789667412.1302512,
+    "ast_hash": "355543ef825bbb4a2226670422988cc3",
+    "semantic_hash": ""
   },
   "backend/app/config.py": {
     "mtime": 1789556568.7122557,
@@ -72,10 +72,10 @@
     "semantic_hash": "cbedb51e347cd311261f11e54f836be8"
   },
   "backend/app/main.py": {
-    "mtime": 1789556568.712805,
-    "seen": 1789556767.1785386,
-    "ast_hash": "9bd8c64ccd6d44989c54089b8e90e813",
-    "semantic_hash": "9bd8c64ccd6d44989c54089b8e90e813"
+    "mtime": 1789667289.6051464,
+    "seen": 1789667412.1302512,
+    "ast_hash": "36b0bb86ce1c3b51d895f9034926d0cb",
+    "semantic_hash": ""
   },
   "backend/app/models.py": {
     "mtime": 1789417972.5046177,
@@ -222,10 +222,10 @@
     "semantic_hash": "a20f4bbe4b21df92c52fbe76d2c28a57"
   },
   "backend/tests/test_api_alarms.py": {
-    "mtime": 1789556568.71436,
-    "seen": 1789556767.1785386,
-    "ast_hash": "efb9af4a18c0ed9c619a09d2da54220c",
-    "semantic_hash": "efb9af4a18c0ed9c619a09d2da54220c"
+    "mtime": 1789667336.1161036,
+    "seen": 1789667412.1302512,
+    "ast_hash": "9dcfb767ea3533453f5603c85dcc3f04",
+    "semantic_hash": ""
   },
   "backend/tests/test_api_insights.py": {
     "mtime": 1789556568.7148764,
@@ -234,10 +234,10 @@
     "semantic_hash": "626c8e193d7a2bd16aaac8d86bb4ecf8"
   },
   "backend/tests/test_api_panels.py": {
-    "mtime": 1789417965.6752248,
-    "seen": 1789556767.1785386,
-    "ast_hash": "3fe63896912d1e2400cd6d86f6f922de",
-    "semantic_hash": "3fe63896912d1e2400cd6d86f6f922de"
+    "mtime": 1789667263.9678912,
+    "seen": 1789667412.1302512,
+    "ast_hash": "f44630d5f38a7175545fecfcb7e73878",
+    "semantic_hash": ""
   },
   "backend/tests/test_central_detector.py": {
     "mtime": 1789556568.7153955,
@@ -732,10 +732,10 @@
     "semantic_hash": ""
   },
   "frontend/src/api/client.ts": {
-    "mtime": 1789457983.3515134,
-    "seen": 1789556767.1790447,
-    "ast_hash": "099e4e1a15063e0e29be2bf98fbe072f",
-    "semantic_hash": "099e4e1a15063e0e29be2bf98fbe072f"
+    "mtime": 1789666993.3820658,
+    "seen": 1789667412.1302512,
+    "ast_hash": "5844bbf8b2193aa748d776e39d27b63e",
+    "semantic_hash": ""
   },
   "frontend/src/api/errors.ts": {
     "mtime": 1789457983.3515134,
@@ -744,9 +744,9 @@
     "semantic_hash": "054c6d54b7a5b5cc822d7b0ee8e94d66"
   },
   "frontend/src/api/mock.ts": {
-    "mtime": 1789665911.7502103,
-    "seen": 1789666263.620079,
-    "ast_hash": "a963a0287e6c4c47240bb2ffcf715abe",
+    "mtime": 1789667005.138922,
+    "seen": 1789667412.1302512,
+    "ast_hash": "782a60b2a9b97d0a72133c183eca56f9",
     "semantic_hash": ""
   },
   "frontend/src/api/mockSeries.test.ts": {
@@ -768,10 +768,10 @@
     "semantic_hash": "a6a68f624d07847749a931fe145da625"
   },
   "frontend/src/api/types.ts": {
-    "mtime": 1789556568.7308185,
-    "seen": 1789556767.1790447,
-    "ast_hash": "4c37a70ab19ff505928462778848bb47",
-    "semantic_hash": "4c37a70ab19ff505928462778848bb47"
+    "mtime": 1789666985.0627642,
+    "seen": 1789667412.1302512,
+    "ast_hash": "5a0a6e6c6a9f7b11389d0e287c179d65",
+    "semantic_hash": ""
   },
   "frontend/src/components/AlarmNedeni.tsx": {
     "mtime": 1789556568.7318366,
@@ -894,9 +894,9 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/CihazSagligi.tsx": {
-    "mtime": 1789665911.7606573,
-    "seen": 1789666263.620079,
-    "ast_hash": "9128db023c302de3b76fd5d4295e5b89",
+    "mtime": 1789667038.970737,
+    "seen": 1789667412.1302512,
+    "ast_hash": "11f069dbbefcce186c1eac2bd5fff25a",
     "semantic_hash": ""
   },
   "frontend/src/pages/FiloListesi.tsx": {
@@ -1805,10 +1805,154 @@
     "ast_hash": "6f7f09e44c73ea92ad3f5a62cf20e0fa",
     "semantic_hash": ""
   },
+  "frontend/src/assets/gdz-logo.svg": {
+    "mtime": 1789665911.7515857,
+    "seen": 1789666263.620079,
+    "ast_hash": "f7013ca696c2d8715885c9b628b08837",
+    "semantic_hash": ""
+  },
+  "gdzlogo.svg": {
+    "mtime": 1789665911.7621944,
+    "seen": 1789666263.620079,
+    "ast_hash": "f7013ca696c2d8715885c9b628b08837",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/_ortak.ps1": {
+    "mtime": 1789667090.4631107,
+    "seen": 1789667412.1302512,
+    "ast_hash": "0d3e48d48444a62224ffa9db277b93c9",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s0.ps1": {
+    "mtime": 1789667103.633693,
+    "seen": 1789667412.1302512,
+    "ast_hash": "935605c6d834d4bda6a0be69bea6e12d",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s1.ps1": {
+    "mtime": 1789667108.063775,
+    "seen": 1789667412.1302512,
+    "ast_hash": "e33ea0e23576103383f80f0798965efb",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s2.ps1": {
+    "mtime": 1789667112.126754,
+    "seen": 1789667412.1302512,
+    "ast_hash": "2bc5107c68cfcabbcb685f71bedacd6c",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s3.ps1": {
+    "mtime": 1789667116.9310396,
+    "seen": 1789667412.1302512,
+    "ast_hash": "a8ee00676afb142ed4f88d6978c95e35",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s4.ps1": {
+    "mtime": 1789667121.1714942,
+    "seen": 1789667412.1302512,
+    "ast_hash": "f627746a9b11073fba2a35c5bbaaeae9",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s5.ps1": {
+    "mtime": 1789667127.0507457,
+    "seen": 1789667412.1302512,
+    "ast_hash": "cac990707dbc1b70f73ae4bd11615e0d",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s6.ps1": {
+    "mtime": 1789667133.3476448,
+    "seen": 1789667412.1302512,
+    "ast_hash": "166c36910c496cb644fce144993b9a74",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s7.ps1": {
+    "mtime": 1789667137.1029415,
+    "seen": 1789667412.1302512,
+    "ast_hash": "133fcabf21c556936b43cc9dc27d3af3",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/s8.ps1": {
+    "mtime": 1789667141.564581,
+    "seen": 1789667412.1302512,
+    "ast_hash": "06eaa99c778a4f48327461d9fe996517",
+    "semantic_hash": ""
+  },
+  "demo/senaryo/senaryo.ps1": {
+    "mtime": 1789667098.606135,
+    "seen": 1789667412.1302512,
+    "ast_hash": "57528f8c13c24a6d724bac96f373cec3",
+    "semantic_hash": ""
+  },
+  "hardware/mekanik/generate_stl.py": {
+    "mtime": 1789667062.436942,
+    "seen": 1789667412.1302512,
+    "ast_hash": "f585859f35b3bdd3db26c618d11a2576",
+    "semantic_hash": ""
+  },
+  "libs/panoalgo/panoalgo/power_quality.py": {
+    "mtime": 1789667238.890847,
+    "seen": 1789667412.1302512,
+    "ast_hash": "16014f2ab5904fe3ce1c9360a48b54e7",
+    "semantic_hash": ""
+  },
+  "libs/panoalgo/tests/test_power_quality.py": {
+    "mtime": 1789667244.9232607,
+    "seen": 1789667412.1302512,
+    "ast_hash": "2ac83210be56592ac74a6d4823e94010",
+    "semantic_hash": ""
+  },
   "graphify-out/converted/\u0130stenen Veriler_613618b1.md": {
     "mtime": 1789555163.9603684,
     "seen": 1789558378.119295,
     "ast_hash": "da6e55abcb827b3cb95c6297fc17b6de",
+    "semantic_hash": ""
+  },
+  "hardware/pd-karti/README.md": {
+    "mtime": 1789667199.7593095,
+    "seen": 1789667412.1302512,
+    "ast_hash": "134e6232e9c32f7592588daaf3190d13",
+    "semantic_hash": ""
+  },
+  "hardware/pd-karti/blok-diyagrami.md": {
+    "mtime": 1789667207.2924366,
+    "seen": 1789667412.1302512,
+    "ast_hash": "f6905921af633bf615247fbd58d818b4",
+    "semantic_hash": ""
+  },
+  "hardware/pd-karti/hf-analog-frontend.md": {
+    "mtime": 1789667227.7930713,
+    "seen": 1789667412.1302512,
+    "ast_hash": "dd5d5025d9b7cb989917884da3c08b63",
+    "semantic_hash": ""
+  },
+  "hardware/pd-karti/io-tablosu.md": {
+    "mtime": 1789667220.5097876,
+    "seen": 1789667412.1302512,
+    "ast_hash": "46718a954bd7c385a49efc23e37cb7d7",
+    "semantic_hash": ""
+  },
+  "hardware/sensor-dugumu/README.md": {
+    "mtime": 1789667157.8402598,
+    "seen": 1789667412.1302512,
+    "ast_hash": "548283cf7e6d1a89694ad915c56bfe37",
+    "semantic_hash": ""
+  },
+  "hardware/sensor-dugumu/blok-diyagrami.md": {
+    "mtime": 1789667166.183617,
+    "seen": 1789667412.1302512,
+    "ast_hash": "c1f8b11c04464db2f14d905faa644ee3",
+    "semantic_hash": ""
+  },
+  "hardware/sensor-dugumu/enerji-ve-termal-hesap.md": {
+    "mtime": 1789667190.6483533,
+    "seen": 1789667412.1302512,
+    "ast_hash": "c35c75b7b4efe99dc040eb89245ec98c",
+    "semantic_hash": ""
+  },
+  "hardware/sensor-dugumu/io-tablosu.md": {
+    "mtime": 1789667180.8764064,
+    "seen": 1789667412.1302512,
+    "ast_hash": "a8bfb46385d0a240a6d28e77c9b07fbd",
     "semantic_hash": ""
   },
   "Hackathon Verileri/1600kVA AG Pano Teknik \u00d6zellikleri.pdf": {
@@ -1827,18 +1971,6 @@
     "mtime": 1789069273.435503,
     "seen": 1789558378.119295,
     "ast_hash": "c46d751fdfc1af0bf53817948133a759",
-    "semantic_hash": ""
-  },
-  "frontend/src/assets/gdz-logo.svg": {
-    "mtime": 1789665911.7515857,
-    "seen": 1789666263.620079,
-    "ast_hash": "f7013ca696c2d8715885c9b628b08837",
-    "semantic_hash": ""
-  },
-  "gdzlogo.svg": {
-    "mtime": 1789665911.7621944,
-    "seen": 1789666263.620079,
-    "ast_hash": "f7013ca696c2d8715885c9b628b08837",
     "semantic_hash": ""
   }
 }

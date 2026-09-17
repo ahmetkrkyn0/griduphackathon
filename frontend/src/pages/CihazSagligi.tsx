@@ -5,9 +5,8 @@ import { ago, num } from "../lib/format";
 import { useFleet } from "../state/fleet";
 import { Icon } from "../components/Icon";
 
-// API'de toplu "cihaz sagligi" ucu yok (yalnizca pano-basina detay); bu yuzden gorunen
-// panolar sirayla, sinirli eszamanlilikla cekilir. Kalici cozum icin bkz.
-// contracts/changes/2026-09-14-fleet-health-bulk.md (3 onay bekliyor).
+// Toplu "cihaz sagligi" ucu (contracts/changes/2026-09-14-fleet-health-bulk.md)
+// eklendi. Geriye donuk uyum icin api.fleetHealth yoksa tek tek (concurrency 6) cekilir.
 const CONCURRENCY = 6;
 
 interface Row {
@@ -50,14 +49,48 @@ export function CihazSagligi() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  const [usedBulk, setUsedBulk] = useState(false);
   const cancelled = useRef(false);
   const [query, setQuery] = useState("");
   const [onlyAttention, setOnlyAttention] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   const load = async () => {
     cancelled.current = false;
     setLoading(true);
     setLoadedCount(0);
+
+    // 1. Oncelikle yuksek verimli toplu filo ucunu dene
+    if (api.fleetHealth) {
+      try {
+        const bulk = await api.fleetHealth();
+        if (!cancelled.current) {
+          const bulkRows: Row[] = bulk.map((item) => ({
+            pano_id: item.pano_id,
+            name: item.name ?? item.pano_id,
+            commsOk: item.comms_ok,
+            lastSeen: item.last_seen,
+            nodesOk: item.nodes_ok,
+            nodesTotal: item.nodes_total,
+            rssi: item.rssi_dbm,
+            vbak: item.vbak_pct,
+            buffered: item.buffered,
+            fw: item.fw,
+            baselineDay: item.baseline_day ?? null,
+          }));
+          setRows(bulkRows);
+          setLoadedCount(bulkRows.length);
+          setUsedBulk(true);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Toplu uc yoksa veya hata aldiysa tek tek cekim dongusune dus
+      }
+    }
+
+    setUsedBulk(false);
     const results = await withConcurrency(panels, CONCURRENCY, async (p) => {
       try {
         const d = await api.panel(p.pano_id);
@@ -131,6 +164,10 @@ export function CihazSagligi() {
         Number(isWarn(b)) - Number(isWarn(a)),
     );
 
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paged = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <main className="page">
       <div className="hero">
@@ -147,12 +184,18 @@ export function CihazSagligi() {
             aria-label="Cihazlarda ara"
             placeholder="Pano veya kimlik ara"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
           />
         </label>
         <button
           aria-pressed={onlyAttention}
-          onClick={() => setOnlyAttention(!onlyAttention)}
+          onClick={() => {
+            setOnlyAttention(!onlyAttention);
+            setPage(1);
+          }}
         >
           İnceleme gerekenler ·{" "}
           {rows.filter((r) => isBad(r) || isWarn(r)).length}
@@ -160,6 +203,26 @@ export function CihazSagligi() {
         <button onClick={() => void load()} disabled={loading}>
           {loading ? "Yenileniyor…" : "Verileri yenile"}
         </button>
+        {usedBulk && (
+          <span className="tag-ok small" title="Tek HTTP isteğiyle toplu çekildi">
+            ✓ Toplu Uç (O(1))
+          </span>
+        )}
+        <select
+          value={pageSize}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+          className="small"
+          style={{ background: "transparent", border: "1px solid var(--border)", color: "inherit", borderRadius: 4, padding: "2px 6px" }}
+          aria-label="Sayfa boyutu"
+        >
+          <option value={25}>Sayfa: 25</option>
+          <option value={50}>Sayfa: 50</option>
+          <option value={100}>Sayfa: 100</option>
+          <option value={2000}>Tümü</option>
+        </select>
         <span className="dim small">
           {sorted.length} / {panels.length} pano
         </span>
@@ -185,7 +248,7 @@ export function CihazSagligi() {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r) => (
+            {paged.map((r) => (
               <tr key={r.pano_id} className={isBad(r) ? "sel" : undefined}>
                 <td>
                   <Link to={`/pano/${r.pano_id}`}>{r.name}</Link>{" "}
@@ -221,6 +284,19 @@ export function CihazSagligi() {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center", margin: "16px 0" }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} className="small">
+            Önceki
+          </button>
+          <span className="small dim">
+            Sayfa {currentPage} / {totalPages} ({(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, sorted.length)} / {sorted.length})
+          </span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="small">
+            Sonraki
+          </button>
+        </div>
+      )}
       <p className="dim small" style={{ marginTop: 12 }}>
         Düğüm ve iletişim değerleri son sorgulama anını gösterir. Güncel durumu
         almak için verileri yenileyin.

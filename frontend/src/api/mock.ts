@@ -380,6 +380,25 @@ export const mockApi: Api = {
       code: event.code, det_label: event.det_label, window_h: windowH, series, timeline: event.timeline,
     };
   },
+  async fleetHealth(limit = 2000) {
+    await delay(60);
+    return SEEDS.slice(0, limit).map((s) => {
+      const d = details.get(s.pano_id);
+      return {
+        pano_id: s.pano_id,
+        name: s.name,
+        nodes_ok: d?.health.nodes_ok ?? 25,
+        nodes_total: d?.health.nodes_total ?? 25,
+        rssi_dbm: d?.health.rssi_dbm ?? -70,
+        vbak_pct: d?.health.vbak_pct ?? 100,
+        buffered: d?.health.buffered ?? 0,
+        fw: d?.health.fw ?? "0.3.1",
+        comms_ok: s.comms_ok,
+        last_seen: isoAgo(10_000),
+        baseline_day: s.baseline_day,
+      };
+    });
+  },
 };
 
 /** 3 sn'de bir rastgele bir panonun olcumlerini oynatir ve `tel` mesaji yayinlar. */

@@ -207,10 +207,25 @@ export type StreamMessage =
   | { type: "alarm"; payload: Alarm }
   | { type: "kpi"; payload: FleetKpi };
 
+export interface FleetHealthItem {
+  pano_id: string;
+  name?: string;
+  nodes_ok: number | null;
+  nodes_total: number | null;
+  rssi_dbm: number | null;
+  vbak_pct: number | null;
+  buffered: number | null;
+  fw: string | null;
+  comms_ok: boolean;
+  last_seen: string;
+  baseline_day?: number | null;
+}
+
 export interface Api {
   panels(signal?: AbortSignal): Promise<PanelSummary[]>;
   panel(panoId: string, signal?: AbortSignal): Promise<PanelDetail>;
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
+  fleetHealth?(limit?: number, signal?: AbortSignal): Promise<FleetHealthItem[]>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
   alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;
   shelve(alarmId: string, body: ShelveBody): Promise<{ ok?: boolean }>;

@@ -109,6 +109,26 @@ def panel_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> d
     }
 
 
+def panel_health_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
+    payload = record.payload or {}
+    health = payload.get("health") or {}
+    fw = payload.get("fw") or health.get("fw")
+    baseline_day = health.get("baseline_day")
+    return {
+        "pano_id": record.pano_id,
+        "name": record.name,
+        "nodes_ok": health.get("nodes_ok"),
+        "nodes_total": health.get("nodes_total"),
+        "rssi_dbm": health.get("rssi_dbm"),
+        "vbak_pct": health.get("vbak_pct"),
+        "buffered": health.get("buffered"),
+        "fw": fw,
+        "comms_ok": is_comms_ok(record, contracts, now),
+        "last_seen": last_seen(record).isoformat(),
+        "baseline_day": record.baseline_day if baseline_day is None else baseline_day,
+    }
+
+
 def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool) -> dict[str, Any]:
     view = {
         "pt": point["pt"],

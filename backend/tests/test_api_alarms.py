@@ -367,3 +367,37 @@ def test_failed_alarm_save_is_retried_on_tick_without_duplicates(client, app, st
 
     assert set(by_code(list_alarms(client))) == EDGE_CODES
     assert [entry[2] for entry in store.journal].count("raised") == 2
+
+
+def test_rbac_middleware_permissions(client, app, tel_payload):
+    send(app, tel_payload)
+    alarms = list_alarms(client)
+    alarm_id = alarms[0]["id"]
+
+    # 1. Viewer rolu okur, degisiklik yapamaz (403)
+    res_viewer_get = client.get("/api/v1/alarms", headers={"X-Operator-Role": "viewer"})
+    assert res_viewer_get.status_code == 200
+
+    res_viewer_post = client.post(
+        f"/api/v1/alarms/{alarm_id}/ack",
+        json={"by": "izleyici"},
+        headers={"X-Operator-Role": "viewer"},
+    )
+    assert res_viewer_post.status_code == 403
+
+    # 2. Operator rolu onaylar (ack), askiya alamaz (shelve) (403)
+    res_op_shelve = client.post(
+        f"/api/v1/alarms/{alarm_id}/shelve",
+        json={"by": "operator1", "minutes": 60, "reason": "test"},
+        headers={"X-Operator-Role": "operator"},
+    )
+    assert res_op_shelve.status_code == 403
+
+    # 3. Supervisor rolu askiya alabilir (shelve)
+    res_sup_shelve = client.post(
+        f"/api/v1/alarms/{alarm_id}/shelve",
+        json={"by": "super1", "minutes": 60, "reason": "test"},
+        headers={"X-Operator-Role": "supervisor"},
+    )
+    assert res_sup_shelve.status_code == 200
+
