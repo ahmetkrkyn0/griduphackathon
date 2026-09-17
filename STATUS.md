@@ -9,10 +9,127 @@
 > PLAN.md'de yalnızca kutucuk işaretleme ve "Günlük Kayıt" satırı ekleme yapılır (kural: ortak dosya).
 > Her önemli adımdan sonra bu dosya güncellenir. Dal: `berke/frontend` (origin'e push edildi).
 
-**Son güncelleme:** 16 Eylül 2026 (Bölge haritasına gerçek ilçe sınırları + aktif nav sekmesi tam
-turuncu, §19).
-**Son commit:** `BolgeHaritasi.tsx`'e gerçek ilçe poligonları (UN OCHA HDX COD-AB-TUR, CC BY-IGO)
-eklendi, hover'da büyüme + turuncu glow; `.nav-link.active` grafitten tam marka turuncusuna çekildi.
+**Son güncelleme:** 16 Eylül 2026 (P1/P2 renk benzerliği ve Sistem/Normal pasif gri sorunu
+düzeltildi, §26).
+**Son commit:** Kritik (P1) koyulaştırıldı, Alarm (P2) netleştirildi — artık net ayrışıyor; Sistem
+pasif griden maviye (teal), Normal pasif griden yeşile çevrildi.
+
+## 26. P1/P2 renk benzerliği, Sistem/Normal pasif gri sorunu (kullanıcı geri bildirimi)
+
+HSL analizi: eski P1/P2 hue'dan çok PARLAKLIKTA (L≈47%/45%) neredeyse aynıydı — asıl benzerlik
+nedeni buydu. P1 koyulaştırıldı (#a51c1c), P2 netleştirildi (#e3650d). Sistem (#0e7490, teal —
+--ours donanım mavisiyle karışmasın diye ayrı ton) ve Normal (#16a34a, yeşil) artık pasif gri değil,
+pozitif renkler. `Ikiz3D.tsx` fallback'leri de senkron güncellendi. Detay: TASARIM-REVIZYONU.md §24.
+
+`tsc`/71 test/`vite build` temiz; 8 ekran görüntüsü yenilendi; `berke/frontend`'e commit edilecek
+(main'e asla).
+
+## 25. Nav çizgisi, marka metni, harita nokta/sürükleme (kullanıcı geri bildirimi)
+
+Dört geri bildirim: (1) seçili nav butonunda tek kenarda tuhaf bir çizgi — ayırıcı `border-right`
+yerine ayrı bir `::after` katmanına taşındı, aktif/hover'da tamamen gizleniyor; (2) "Grid Up Pano
+İzleme" → "Pano İzleme" + turuncu; (3) Yunusemre gibi bazı ilçelerde nokta bölge dışına taşıyordu
+— `separateDots`'un ittiği nokta kendi ilçesinin dışına çıkarsa artık gerçek konumuna geri
+dönüyor (ray-casting nokta-çokgen testi, `pointInRing`); (4) harita yalnızca zoom'luyken
+sürüklenebiliyordu — `scale===ZOOM_MIN` koşulu kaldırıldı, her zoom seviyesinde sürüklenebiliyor.
+
+Ayrıca kullanıcı `PrioMark.tsx`'teki "1/2/3/S" rozetlerinin ne anlama geldiğini sordu — bunların
+ISA-101/ISA-18.2 renk körlüğü kodlaması (renk+şekil+karakter, gerçek DCS/SCADA alarm
+bannerlarındaki gibi) olduğu açıklandı; "daha güzel" bir görsel yön istenirse önce yön netleşsin
+diye kod değişikliği yapılmadı. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §23.
+
+Doğrulama: tsc/test/build temiz, 1440px ve 390px'de kontrol edildi (sürükleme
+pointerdown/pointermove simülasyonuyla da doğrulandı), konsolda hata yok. `assets/ekran/`'daki 8
+dosya (marka metni her sayfada değiştiği için) tekrar yenilendi.
+
+## 24. Toplu okunabilirlik turu: 7 geri bildirim tek seferde (16 Eylül, aynı tur)
+
+Kullanıcı art arda yedi ayrı geri bildirim gönderdi (aynı tur içinde): (1) bölge haritasında zoom
+atarken sayfa da kayıyor, (2) isim çakışmaları hâlâ var, (3) "ne kadar buton varsa turuncu yap"
+(3D ikiz + zaman/risk toggle + grafik aralığı butonları), (4) navbar ortalansın + turuncu
+ayırıcılar + hafif turuncu hover + bold, (5) arka plandaki turuncu yalnızca sayfanın bir yerinde,
+tüm sayfaya yayılsın, (6) "Şimdi" panelindeki gri dolgu kaldırılsın + kartlara gölge, (7) risk
+matrisi grafiği anlaşılır değil.
+
+Hepsi tek seferde düzeltildi. İki tanesi gerçek kök nedenli buglardı: (1) React'in `onWheel`'i
+pasif dinleyici — native `addEventListener(..., {passive:false})` gerekiyordu; (5) `body`
+arka planına `background-repeat` verilmemişti, gradyan sayfa boyunca tekrarlanıp rastgele bir
+yerde görünüyordu. Ayrıca kendi bulduğumuz bir regresyon da düzeltildi: navbar'ı ortalamak için
+eklenen `flex:1`, dar ekranda navbar'ı bozuyordu — mobil medya sorgusunda ayrıca ele alındı.
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §22. Doğrulama: tsc/test/build temiz, 1440px ve 390px'de
+görsel kontrol edildi (mobil navbar dahil), konsolda hata yok. `assets/ekran/`'daki 8 dosyanın
+TAMAMI yenilendi (nav ve arka plan her sayfada değişti).
+
+## 23. Zoom/pan, turuncu Kuzey oku, sınırlardaki "beyaz çizgi" hatası (kullanıcı geri bildirimi)
+
+Kullanıcı Menteşe ekran görüntüsüyle üç şey istedi: haritayı büyüt + zoom in/out eklensin, Kuzey
+oku turuncu olsun, sınırlarda "kenarı turuncu içi beyaz çizgi" görünen kısımlar düzelsin.
+
+Zoom/pan: `view={scale,tx,ty}` state'i + tek bir `<g transform>` katmanı, fare tekerleğiyle
+imlecin altındaki noktayı sabit tutarak yakınlaştırma, sürükleyerek kaydırma, +/−/sıfırla
+düğmeleri. Nokta/etiket boyutu zoom'la büyümesin diye `/view.scale` ile telafi edildi, sınır ve
+nokta konturlarına `vectorEffect="non-scaling-stroke"` eklendi. `MAP_PAD` düşürülerek varsayılan
+görünüm de biraz büyütüldü. Kuzey oku rengi turuncuya çekildi.
+
+"Beyaz çizgi" sorununun gerçek bir kök nedeni vardı: `fillRule="evenodd"`, Douglas-Peucker
+sadeleştirmesinin bazı ilçelerde ürettiği kendine-kesişen kenarları "delik" gibi yorumluyordu.
+Gerçek il/ilçe sınırlarında delik/enklav pratikte yok; `fillRule` kaldırıldı (varsayılan
+`nonzero`), sorun düzeldi. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §21.
+
+Doğrulama: tsc/test/build temiz, zoom/pan/reset 1440px ve 390px'de test edildi, hiçbir ilçede
+beyaz çizgi kalmadı, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
+
+## 22. Glow kaldırıldı, etiket kontrastı ve nokta çakışması düzeltildi (kullanıcı geri bildirimi)
+
+Kullanıcı önceki glow düzeltmesini (§21) de beğenmedi: "şu glow beyazımsı olan sınırı kaldır
+turuncu gözüksün ... ilçe isimleri biraz daha görünür olsun gri okunmuyor ve dairelerde iç içe
+girenleri vs. düzelt." Üç düzeltme: (1) `feGaussianBlur`/`#geo-glow` filtresi tamamen kaldırıldı —
+düşük opasiteli turuncuyu bulanıklaştırmak "glow" değil "soluk beyazımsı" görünüyordu; yerine düz,
+doygun turuncu kontur (stroke-width arttı). (2) Etiket rengi `--dim` (soluk gri) → `--ink` (koyu)
++ okunabilirlik için ince açık "hale" (`paint-order: stroke`). (3) Gerçekte birbirine çok yakın
+panolar (Bornova/Buca/Karşıyaka/Çiğli, İzmir merkezi) için iki yeni saf fonksiyon: `separateDots`
+(çakışan nokta işaretlerini birkaç piksel ayırır, ilçe sınırını etkilemez) ve `layoutLabelOffsets`
+(çakışan etiketleri sırayla alt konumlara kaydırır) — gerçek harita sağlayıcılarının da yaptığı
+basit bir etiket seyreltme tekniği. Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §20.
+
+Doğrulama: tsc/test/build temiz, İzmir kümesi özelinde yakınlaştırılarak kontrol edildi (etiketler
+artık çakışmıyor, sınırlar düz turuncu), konsolda hata yok. `assets/ekran/07-bolge-haritasi.png`
+yenilendi.
+
+## 21. Nokta boyutu ve glow tutarsızlığı düzeltmesi (kullanıcı geri bildirimi, ekran görüntüsüyle)
+
+Kullanıcı Fethiye'nin ekran görüntüsünü gönderip iki sorun bildirdi: pano noktaları fazla büyük,
+sınır çizgisi bazı yerlerde glow'lu bazı yerlerde düz (hover olmadan bile). İkincisinin gerçek bir
+kök nedeni vardı: `#geo-glow` filtresi varsayılan `objectBoundingBox` birimindeydi, bölge her
+ilçenin KENDİ sınır kutusuna göre % hesaplanıyordu — ince/uzun kıyı şeritli ilçelerde blur bazı
+kenarlarda filtre bölgesi dışında kalıp kırpılıyordu. `filterUnits="userSpaceOnUse"` + tüm haritayı
+kapsayan sabit bölgeyle düzeltildi. Noktalar `r=10→6` küçültüldü. Ayrıntı:
+`frontend/TASARIM-REVIZYONU.md` §19. Doğrulama: tsc/test/build temiz, Fethiye özelinde
+yakınlaştırılarak kontrol edildi, konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
+
+## 20. Haritayı tamamlama (96 ilçe) + gerçek GDZ logosu (kullanıcı talebi, 16 Eylül)
+
+Kullanıcı §19'daki haritada "kopukluk" gördü (yalnızca panosu olan 20 ilçe çiziliyordu) ve iki şey
+istedi: (1) ADM (Aydın/Denizli/Muğla) ve GDZ'nin (İzmir/Manisa) hizmet verdiği TÜM ilçeleri ekle,
+aradaki kopukluk için gerekirse pasif gri bir "bağlayıcı" bölge koy; (2) kendi sağladığı
+`gdzlogo.svg`'yi sol üste, gerçek sitedeki boyutuna yakın koy.
+
+(1) için `plate_code` ile ADM/GDZ'nin 5 iline ait 96 ilçenin tamamı çıkarıldı, sadeleştirildi ve
+`company` etiketiyle `ilce-sinirlari.json`'a yazıldı. Meğer bu 5 il zaten birbirine komşuymuş
+(İzmir–Aydın, Manisa–Aydın, Manisa–Denizli sınırdaş) — 96 ilçe çizilince harita zaten tek parça
+oluyor, ayrı bir "bağlayıcı" bölgeye gerek çıkmadı (var olmayan bir bölgeyi uydurup eklemedim).
+Panosu olan ilçeler eski turuncu+glow stilini korudu, diğer 76'sı yeni `.geo-territory` (pasif
+gri, etkileşimsiz) sınıfıyla çizildi.
+
+(2) için gerçek siteyi (`gdzelektrik.com.tr`) inceledim — header logosu orada 126×70 px vektör
+SVG. Kullanıcının verdiği dosya farklı bir dışa aktarım (raster gömülü) olduğundan piksel-birebir
+değil, kendi oranı korunarak 40px yüksekliğinde topbar'a yerleştirildi; önceki "logo dosyası
+gömülmez" kararı kullanıcının açık talimatıyla geçersiz kılındı.
+
+Ayrıntı: `frontend/TASARIM-REVIZYONU.md` §18. Doğrulama: tsc temiz, 71/71 test yeşil, build
+başarılı, `/bolge` 1440px ve 390px'de görsel kontrol edildi (harita artık tek parça, logo doğru
+oranda), konsolda hata yok. `assets/ekran/07-bolge-haritasi.png` yenilendi.
 
 ## 19. Gerçek ilçe sınırları (polyline) + aktif sekmede tam turuncu (kullanıcı talebi, 16 Eylül)
 

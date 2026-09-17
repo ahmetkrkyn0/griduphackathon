@@ -1,93 +1,79 @@
-/* Tasarim token'lari — Yon A "RAL 7035" + ADM/GDZ (Aydem) kurumsal kimligi.
-   Revizyon gerekcesi: frontend/TASARIM-REVIZYONU.md (14 Eylul 2026, onaylandi).
-   ISA-101 yuksek performansli HMI: renk YALNIZCA anormal durumda; bu kural
-   VERI ALANI icin gecerliligini korur. Marka turuncusu (--brand) yalnizca
-   MARKA KATMANINDA kullanilir (ust bant, urun isareti, bos durumlar) —
-   veri alaninda, grafiklerde ve 3D sahnede asla kullanilmaz (plan §3.2).
-   Kaynak: admelektrik.com.tr ve gdzelektrik.com.tr hesaplanmis CSS token'lari. */
+﻿/* Shared visual language: quiet work surfaces, graphite navigation, ADM/GDZ orange. */
 :root {
-  --bg: #ffffff; /* tam beyaz zemin — grimsi RAL7035 tonu tamamen kaldirildi */
-  --surface: #ffffff;
-  --well: #f4f4f2; /* yalnizca kart ICINDE cukur alanlar icin (ph-track, "Simdi" paneli) */
-  --plate: #4d4d4d; /* ADM/GDZ ikincil rengi: kimlik plakalari, birincil dugmeler */
-  --ink: #1f2224;
-  --dim: #5f666b;
-  --line: #e2e2de;
-
-  --p1: #c62828;
-  --p2: #d9530f; /* marka turuncusundan (#FF671D) kasitli olarak ayristirilmis ton, plan §3.2 */
-  --p3: #c99700;
-  --sys: #5a6275;
-  --ours: #003da5; /* ADM/GDZ mavisi: bizim donanimimiz, secim, odak halkasi */
-
-  --brand: #ff671d; /* ADM/GDZ birincil rengi — YALNIZCA marka katmani */
-  --brand-deep: #e2520c; /* acik zeminde grafik oge (3,9:1) */
-
-  --dot: #a3a9ad;
-  --bar: #b9b4a6;
-  --device: #5d646a;
-  --cap-body: #26292b; /* gercek kompanzasyon kondansatoru govde rengi (referans foto, TASARIM-REVIZYONU.md §15) */
-  --screen: #0d1210; /* HMI ekranlarinin (TVOC-2, MPR-53CS) koyu cam yuzeyi */
-
-  /* Tek font ailesi (Barlow) — kullanici talebi: "fontta tek bir standarttan ilerleyelim".
-     --display artik --cond ile ayni yigin; ayri bir marka fontu (eskiden Nunito) yok. */
+  --bg: #f5f6f8;
+  --surface: #fff;
+  --well: #f2f4f6;
+  --plate: #25313a;
+  --ink: #202b34;
+  --dim: #65717d;
+  --line: #e4e8ed;
+  --p1: #bc3542;
+  --p2: #bd5a18;
+  --p3: #a37a12;
+  --sys: #38758a;
+  --info: #65717d;
+  --ours: #28728a;
+  --brand: #ff671d;
+  --brand-deep: #c64c12;
+  --dot: #24836a;
+  --bar: #b98a62;
+  --device: #454d55;
+  --cap-body: #26292b;
+  --screen: #102c2c;
   --sans: "Barlow", system-ui, sans-serif;
-  --cond: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
-  --display: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
-
-  /* Kart sistemi: duz sinirlardan yukselti/derinlige (Hitachi APM, ABB SWICOM, Cognite Canvas
-     tarzi kart+golge dashboard'lari) — bkz. TASARIM-REVIZYONU.md §10 "Duzen revizyonu". */
+  --cond: "Barlow", system-ui, sans-serif;
+  --display: "Barlow", system-ui, sans-serif;
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow-sm: 0 1px 2px rgba(31, 34, 36, 0.05);
-  --shadow: 0 1px 2px rgba(31, 34, 36, 0.04), 0 8px 20px rgba(31, 34, 36, 0.08);
-
+  --shadow-sm: 0 2px 3px #14233303;
+  --shadow: 0 8px 24px #1423330b;
   color-scheme: light;
 }
-
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
-
 html,
 body {
   margin: 0;
 }
-
 body {
-  /* Tam beyaz zeminde tek gorsel ilgi noktasi: ust banttan sarkan turuncu parilti.
-     Opakligi dusuk kalir (durum renkleriyle yarismaz) ama beyaz zeminde gorunur kalacak
-     kadar da guclu — ikinci, daha genis ve soluk bir katman ekrana yayilir. */
-  background:
-    radial-gradient(900px 420px at 16% -80px, rgba(255, 103, 29, 0.14), transparent 65%),
-    radial-gradient(1600px 900px at 50% -300px, rgba(255, 103, 29, 0.05), transparent 70%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
-  font: 15px/1.45 var(--sans);
+  font: 14px/1.5 var(--sans);
   -webkit-font-smoothing: antialiased;
 }
-
-button {
+button,
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
-
 a {
   color: inherit;
 }
-
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
 :focus-visible {
   outline: 3px solid var(--ours);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
-
+::selection {
+  background: #ffe2d0;
+  color: #202b34;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation: none !important;
     transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

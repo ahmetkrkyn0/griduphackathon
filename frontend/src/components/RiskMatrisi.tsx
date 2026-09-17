@@ -1,114 +1,167 @@
-import type { KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useChartWidth } from "../lib/useChartWidth";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { PanelSummary } from "../api/types";
+import { PRIO_NAME } from "../lib/labels";
 import { axisFraction, effectivePrio } from "../lib/worklist";
+import { ttlText } from "../lib/format";
 
-interface Props {
-  panels: PanelSummary[];
-}
-
-const WIDTH = 700;
-const HEIGHT = 340;
-const PAD = { top: 20, right: 20, bottom: 46, left: 46 };
-const X_TICKS_H = [0, 24, 72, 24 * 7, 24 * 14];
-
-const xTickLabel = (h: number) => (h === 0 ? "şimdi" : h < 24 ? `${h} sa` : `${h / 24} gün`);
-
-/**
- * Filo ekranının ikinci görünümü (Y3): x = sınıra kalan süre (log, worklist.ts'teki eksenle
- * aynı ölçek), y = risk skoru (API'den, 0-100). SOL-ÜST köşe en acil + en yüksek risk demektir
- * (x soldan sağa zaman arttığı için — ilk taslakta "sağ üst" yazılmıştı, uygulama sırasında
- * düzeltildi). İlham: Hitachi Lumada APM olasılık×etki risk matrisi (TASARIM-REVIZYONU.md §2, Y3).
- *
- * "Etki" için plan trafo gücünü (kVA) öneriyordu, ama sözleşmede filodaki tüm panolar aynı
- * `pano_type` (1600 kVA, docs/10-bom-maliyet-roi.md) — bu alan hiç değişmiyor, y ekseni sabit
- * olurdu. Bunun yerine gerçekten değişen ve API'nin verdiği `risk_score` kullanıldı; kVA
- * KULLANILMADI (dürüstlük kuralı — sabit bir alanı "etki" gibi göstermek yanıltıcı olurdu).
- * Ttl'i olmayan (ör. ark, koruma sağlığı kaybı) alarmlar x=0 (şimdi) noktasına yerleşir: bunlar
- * zaten anlık müdahale gerektirir, bir geri sayımları yoktur.
- */
-export function RiskMatrisi({ panels }: Props) {
-  const navigate = useNavigate();
-  const innerW = WIDTH - PAD.left - PAD.right;
-  const innerH = HEIGHT - PAD.top - PAD.bottom;
-  const x = (ttlH: number | null) => PAD.left + axisFraction(ttlH ?? 0) * innerW;
-  const y = (risk: number) => PAD.top + innerH - (Math.min(100, Math.max(0, risk)) / 100) * innerH;
-
-  const go = (panoId: string) => navigate(`/pano/${panoId}`);
-  const onKey = (event: KeyboardEvent, panoId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      go(panoId);
-    }
-  };
-
+const H = 286;
+const L = 65,
+  R = 36,
+  T = 24,
+  B = 48;
+const ticks = [0, 24, 72, 168, 336];
+export function RiskMatrisi({ panels }: { panels: PanelSummary[] }) {
+  const { ref, width: W } = useChartWidth();
+  const [active, setActive] = useState<string | null>(null);
+  const x = (hours: number) => L + 95 + axisFraction(hours) * (W - L - R - 95);
+  const y = (risk: number) =>
+    T + (1 - Math.max(0, Math.min(100, risk)) / 100) * (H - T - B);
+  const focused = panels.find((p) => p.pano_id === active);
   return (
-    <div className="riskmx">
-      <svg
-        className="chart-svg"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label="Risk matrisi: yatay eksende sınıra kalan süre, dikey eksende risk skoru. Sol üst köşe en acil ve en yüksek riskli panoları gösterir."
-      >
-        <rect className="riskmx-quad" x={PAD.left} y={PAD.top} width={innerW / 2} height={innerH / 2} />
-
-        {X_TICKS_H.map((h) => (
-          <g key={h}>
-            <line className="chart-grid" x1={x(h)} x2={x(h)} y1={PAD.top} y2={HEIGHT - PAD.bottom} />
-            <text className="chart-tick" x={x(h)} y={HEIGHT - PAD.bottom + 18} textAnchor="middle">
-              {xTickLabel(h)}
-            </text>
-          </g>
-        ))}
-        {[0, 50, 100].map((r) => (
-          <g key={r}>
-            <line className="chart-grid" x1={PAD.left} x2={WIDTH - PAD.right} y1={y(r)} y2={y(r)} />
-            <text className="chart-tick" x={PAD.left - 8} y={y(r) + 4} textAnchor="end">
-              {r}
-            </text>
-          </g>
-        ))}
-        <text className="chart-axis-label" x={PAD.left + innerW / 2} y={HEIGHT - 6} textAnchor="middle">
-          Sınıra kalan süre
-        </text>
-        <text
-          className="chart-axis-label"
-          x={14}
-          y={PAD.top + innerH / 2}
-          textAnchor="middle"
-          transform={`rotate(-90, 14, ${PAD.top + innerH / 2})`}
+    <div className="riskmx" ref={ref}>
+      <div className="chart-viewport">
+        <svg
+          className="chart-svg"
+          viewBox={`0 0 ${W} ${H}`}
+          role="group"
+          aria-label="Pano risk dağılımı: düşey risk skoru, yatay sınıra kalan süre. Süre tahmini olmayanlar ayrı sütundadır."
         >
-          Risk skoru
-        </text>
-
-        {panels.map((p) => {
-          const prio = effectivePrio(p);
-          const px = x(p.ttl_h);
-          const py = y(p.risk_score);
-          const nearRight = px > WIDTH - PAD.right - 90;
-          return (
-            <g
-              key={p.pano_id}
-              className={`riskmx-pt${prio ? ` p-${prio}` : ""}`}
-              role="button"
-              tabIndex={0}
-              aria-label={`${p.name}, risk ${p.risk_score}${p.ttl_h != null ? `, sınıra ${Math.round(p.ttl_h)} saat` : ", süre tahmini yok"}`}
-              onClick={() => go(p.pano_id)}
-              onKeyDown={(event) => onKey(event, p.pano_id)}
-            >
-              <circle className="riskmx-hit" cx={px} cy={py} r={14} />
-              <circle className="riskmx-dot" cx={px} cy={py} r={6} />
-              <text className="riskmx-label" x={px + (nearRight ? -10 : 10)} y={py + 4} textAnchor={nearRight ? "end" : "start"}>
-                {p.name}
+          <rect
+            x={L - 19}
+            y={T}
+            width={77}
+            height={H - T - B}
+            rx={5}
+            fill="#f3f5f7"
+          />
+          {[0, 25, 50, 75, 100].map((n) => (
+            <g key={n}>
+              <line
+                className="chart-grid"
+                x1={L - 19}
+                x2={W - R}
+                y1={y(n)}
+                y2={y(n)}
+              />
+              <text
+                className="chart-tick"
+                x={L - 28}
+                y={y(n) + 4}
+                textAnchor="end"
+              >
+                {n}
               </text>
             </g>
-          );
-        })}
-      </svg>
-      <p className="dim small riskmx-caption">
-        Gölgeli alan: sınırına yakın ve riski yüksek panolar — önce bunlara bakın. Sınıra kalan süre tahmini olmayan
-        alarmlar (ör. ark, koruma sağlığı kaybı) "şimdi" ucuna yerleşir.
-      </p>
+          ))}
+          {ticks
+            .filter((h) => W > 460 || (W < 360 ? [0, 336] : [0, 72, 336]).includes(h))
+            .map((h) => (
+              <g key={h}>
+                <line
+                  className="chart-grid"
+                  x1={x(h)}
+                  x2={x(h)}
+                  y1={T}
+                  y2={H - B}
+                />
+                <text
+                  className="chart-tick"
+                  x={x(h)}
+                  y={H - B + 21}
+                  textAnchor="middle"
+                >
+                  {h === 0 ? "Şimdi" : `${h / 24} gün`}
+                </text>
+              </g>
+            ))}
+          <text
+            className="chart-tick"
+            x={L + 19}
+            y={H - B + 21}
+            textAnchor="middle"
+          >
+            Tahmin yok
+          </text>
+          <text className="chart-units" x={L - 19} y={12}>
+            RİSK SKORU
+          </text>
+          <text className="chart-units" x={W - R} y={H - 4} textAnchor="end">
+            SINIRA KALAN SÜRE · LOG ÖLÇEK
+          </text>
+          {panels.map((p) => {
+            const prio = effectivePrio(p);
+            const px = p.ttl_h == null ? L + 19 : x(p.ttl_h);
+            const py = y(p.risk_score);
+            const selected = active === p.pano_id;
+            return (
+              <Link
+                key={p.pano_id}
+                to={`/pano/${p.pano_id}`}
+                className={`riskmx-pt${prio ? ` p-${prio}` : ""}`}
+                aria-label={`${p.name}, risk ${p.risk_score}, ${ttlText(p.ttl_h) || "süre tahmini yok"}`}
+                onMouseEnter={() => setActive(p.pano_id)}
+                onMouseLeave={() => setActive(null)}
+                onFocus={() => setActive(p.pano_id)}
+                onBlur={() => setActive(null)}
+              >
+                <title>
+                  {p.name}: risk {p.risk_score},{" "}
+                  {ttlText(p.ttl_h) || "Süre tahmini yok"}
+                </title>
+                <circle className="riskmx-hit" cx={px} cy={py} r={15} />
+                <circle
+                  cx={px}
+                  cy={py}
+                  r={selected ? 13 : 10}
+                  fill={prio ? `var(--${prio.toLowerCase()})` : "var(--dot)"}
+                  opacity={0.1}
+                />
+                <circle
+                  className="riskmx-dot"
+                  cx={px}
+                  cy={py}
+                  r={selected ? 6 : 4.5}
+                />
+                {(selected || (W > 460 && p.risk_score >= 70)) && (
+                  <text
+                    className="riskmx-label"
+                    x={px > W - 100 ? px - 13 : px + 13}
+                    textAnchor={px > W - 100 ? "end" : "start"}
+                    y={py - 9}
+                    paintOrder="stroke"
+                    stroke="white"
+                    strokeWidth={4}
+                    strokeLinejoin="round"
+                  >
+                    {p.name.split(" ")[0]}
+                  </text>
+                )}
+              </Link>
+            );
+          })}
+        </svg>
+      </div>
+      <p className="chart-scroll-hint">Grafiğin tamamı için yatay kaydırın.</p>
+      <div className="risk-footer">
+        {focused ? (
+          <span>
+            <strong>{focused.name}</strong> · Risk {focused.risk_score} ·{" "}
+            {ttlText(focused.ttl_h) || "Süre tahmini yok"}
+          </span>
+        ) : (
+          <span>Noktalara odaklanın veya pano ayrıntısını açın.</span>
+        )}
+        <div>
+          {(["P1", "P2", "P3", "SYS"] as const).map((p) => (
+            <span key={p}>
+              <i style={{ background: `var(--${p.toLowerCase()})` }} />
+              {PRIO_NAME[p]}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,8 @@ import type { Alarm, Blackbox, PanelDetail } from "../api/types";
 import { CizgiGrafik, type ChartMarker } from "../components/CizgiGrafik";
 import { OnGorunus } from "../components/OnGorunus";
 import { ago } from "../lib/format";
-import { alarmText, panoTypeText } from "../lib/labels";
+import { Icon } from "../components/Icon";
+import { PRIO_NAME, alarmText, panoTypeText } from "../lib/labels";
 import "../print.css";
 import { useFleet } from "../state/fleet";
 
@@ -15,7 +16,13 @@ import { useFleet } from "../state/fleet";
 // erken uyariyi kara kutuda geriye dogru takip edebilmek icin gerekli olan pencere.
 const WINDOWS = [24, 72, 168, 336] as const;
 
-const KIND_TR: Record<string, string> = { alarm: "Alarm", ack: "Onay", action: "Aksiyon", note: "Not", trip: "Trip" };
+const KIND_TR: Record<string, string> = {
+  alarm: "Alarm",
+  ack: "Onay",
+  action: "Aksiyon",
+  note: "Not",
+  trip: "Trip",
+};
 
 // Kagitta goreli zaman ("3 sa once") okunmaz: rapor mutlak damga basar.
 const STAMP = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "medium" });
@@ -77,37 +84,73 @@ function OlaySecici() {
   const events = useMemo(() => {
     if (!alarms) return [];
     const seen = new Map<string, Alarm>();
-    for (const a of alarms) if (a.event_id && !seen.has(a.event_id)) seen.set(a.event_id, a);
-    return [...seen.values()].sort((a, b) => Date.parse(b.raised_at) - Date.parse(a.raised_at));
+    for (const a of alarms)
+      if (a.event_id && !seen.has(a.event_id)) seen.set(a.event_id, a);
+    return [...seen.values()].sort(
+      (a, b) => Date.parse(b.raised_at) - Date.parse(a.raised_at),
+    );
   }, [alarms]);
 
-  const nameOf = (panoId: string) => panels.find((p) => p.pano_id === panoId)?.name ?? panoId;
+  const nameOf = (panoId: string) =>
+    panels.find((p) => p.pano_id === panoId)?.name ?? panoId;
 
   return (
     <main className="page">
       <div className="hero">
         <h1>Olay analizi — kara kutu</h1>
-        <p>Bir olayı seçin; olay öncesi sinyaller ve olayla ilgili tüm adımlar tek zaman çizelgesinde görünür.</p>
+        <p>
+          Bir olayı seçin; olay öncesi sinyaller ve olayla ilgili tüm adımlar
+          tek zaman çizelgesinde görünür.
+        </p>
       </div>
       {error && <p className="dim">{error}</p>}
       {!alarms && !error && <p className="dim">Yükleniyor…</p>}
-      {alarms && events.length === 0 && <p className="console-empty">Henüz olay kaydı yok.</p>}
-      <ul className="work">
-        {events.map((a) => (
-          <li key={a.event_id}>
-            <Link to={`/olay/${a.event_id}`} className="work-row">
-              <span className="work-name-cell">
-                <span className="work-name">{nameOf(a.pano_id)}</span>
-                <span className="work-id">{a.pano_id}</span>
-              </span>
-              <span className="work-body">
-                <span className="work-head">{alarmText(a.code, a.text)}</span>
-                <span className="work-meta">{ago(a.raised_at)}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {alarms && events.length === 0 && (
+        <p className="console-empty">Henüz olay kaydı yok.</p>
+      )}
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Olay kayıtları</h2>
+            <p>{events.length} kayıt · En yeni olay önce</p>
+          </div>
+        </div>
+        <div className="tbl-wrap">
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Öncelik</th>
+                <th>Pano</th>
+                <th>Olay</th>
+                <th>Zaman</th>
+                <th>İnceleme</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((a) => (
+                <tr key={a.event_id}>
+                  <td>
+                    <span className={`status-badge tone-${a.prio}`}>
+                      {PRIO_NAME[a.prio]}
+                    </span>
+                  </td>
+                  <td>
+                    <Link to={`/pano/${a.pano_id}`}>{nameOf(a.pano_id)}</Link>
+                    <div className="dim small">{a.pano_id}</div>
+                  </td>
+                  <td>{alarmText(a.code, a.text)}</td>
+                  <td className="numeric">{ago(a.raised_at)}</td>
+                  <td>
+                    <Link className="btn ghost" to={`/olay/${a.event_id}`}>
+                      Olayı incele <Icon name="arrow" size={14} />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </main>
   );
 }
@@ -276,7 +319,7 @@ function KaraKutu({ eventId }: { eventId: string }) {
         <p className="narrative-text">{narrative}</p>
       </section>
 
-      <div className="split">
+      <div className="split event-investigation">
         <div>
           {pointTags.length > 0 && (
             <section className="phases">
@@ -284,11 +327,28 @@ function KaraKutu({ eventId }: { eventId: string }) {
               <CizgiGrafik
                 markers={markers}
                 series={[
-                  { key: "dt", label: "ΔT (K)", color: "#DD6418", points: data.series[pointTags.find((t) => t.endsWith(".dt_c")) ?? ""] ?? [] },
-                  { key: "k", label: "K/K₀", color: "#2C63C9", points: data.series[pointTags.find((t) => t.endsWith(".k_ratio")) ?? ""] ?? [], axis: "right" },
+                  {
+                    key: "dt",
+                    label: "ΔT (K)",
+                    color: "#D9530F",
+                    points:
+                      data.series[
+                        pointTags.find((t) => t.endsWith(".dt_c")) ?? ""
+                      ] ?? [],
+                    axis: "right",
+                  },
+                  {
+                    key: "k",
+                    label: "K/K₀",
+                    color: "#003DA5",
+                    points:
+                      data.series[
+                        pointTags.find((t) => t.endsWith(".k_ratio")) ?? ""
+                      ] ?? [],
+                  },
                 ]}
-                yLabelLeft="ΔT (K)"
-                yLabelRight="K/K₀"
+                yLabelLeft="K/K₀"
+                yLabelRight="ΔT (K)"
               />
             </section>
           )}
@@ -298,9 +358,24 @@ function KaraKutu({ eventId }: { eventId: string }) {
             <CizgiGrafik
               markers={markers}
               series={[
-                { key: "i0", label: "L1", color: "#003DA5", points: data.series["elec.i_ph.0"] ?? [] },
-                { key: "i1", label: "L2", color: "#D9530F", points: data.series["elec.i_ph.1"] ?? [] },
-                { key: "i2", label: "L3", color: "#1F8A70", points: data.series["elec.i_ph.2"] ?? [] },
+                {
+                  key: "i0",
+                  label: "L1 (A)",
+                  color: "#003DA5",
+                  points: data.series["elec.i_ph.0"] ?? [],
+                },
+                {
+                  key: "i1",
+                  label: "L2 (A)",
+                  color: "#D9530F",
+                  points: data.series["elec.i_ph.1"] ?? [],
+                },
+                {
+                  key: "i2",
+                  label: "L3 (A)",
+                  color: "#1F8A70",
+                  points: data.series["elec.i_ph.2"] ?? [],
+                },
               ]}
               yLabelLeft="A"
             />
@@ -310,18 +385,37 @@ function KaraKutu({ eventId }: { eventId: string }) {
             <h3>Ortam</h3>
             <CizgiGrafik
               markers={markers}
-              series={[{ key: "td", label: "Çiy noktası marjı (K)", color: "#1F8A70", points: data.series["env.td_margin_k"] ?? [] }]}
+              series={[
+                {
+                  key: "td",
+                  label: "Çiy noktası marjı (K)",
+                  color: "#1F8A70",
+                  points: data.series["env.td_margin_k"] ?? [],
+                },
+              ]}
               yLabelLeft="K"
             />
           </section>
 
           <section className="phases">
             <h3>Risk skoru</h3>
-            <CizgiGrafik markers={markers} series={[{ key: "risk", label: "Risk (0-100)", color: "#7A4FBE", points: data.series["risk.score"] ?? [] }]} />
+            <CizgiGrafik
+              markers={markers}
+              yDomainLeft={[0, 100]}
+              yLabelLeft="Risk (0–100)"
+              series={[
+                {
+                  key: "risk",
+                  label: "Risk (0-100)",
+                  color: "#7A4FBE",
+                  points: data.series["risk.score"] ?? [],
+                },
+              ]}
+            />
           </section>
         </div>
 
-        <div>
+        <div className="event-timeline panel">
           {/* 3B ikiz tuvali kagitta bos cikar; rapora 2B on gorunus konur. Yalnizca yazdirmada. */}
           {panel && (
             <figure className="front print-only">
@@ -332,7 +426,7 @@ function KaraKutu({ eventId }: { eventId: string }) {
               </figcaption>
             </figure>
           )}
-
+          <span className="eyebrow">OLAY AKIŞI</span>
           <h3>Zaman çizelgesi</h3>
           <ul className="timeline">
             {data.timeline.map((entry, i) => (
@@ -341,7 +435,10 @@ function KaraKutu({ eventId }: { eventId: string }) {
                 {/* Imzalanan raporda goreli zaman ise yaramaz; kagitta bunun yerine mutlak damga cikar. */}
                 <span className="tl-time print-only">{stampText(Date.parse(entry.ts))}</span>
                 <span className="tl-text">
-                  <span className="dim small">{KIND_TR[entry.kind] ?? entry.kind}</span> — {entry.text}
+                  <span className="dim small">
+                    {KIND_TR[entry.kind] ?? entry.kind}
+                  </span>{" "}
+                  — {entry.text}
                 </span>
               </li>
             ))}

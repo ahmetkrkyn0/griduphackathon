@@ -4,6 +4,15 @@
 
 ## 1. Tasarım yönü: "RAL 7035"
 
+> **17 Eylül 2026 arayüz güncellemesi:** Kullanıcının yoğun kontrol merkezi kullanımına yönelik
+> talebiyle nötr çalışma yüzeyleri, kompakt envanter/alarmlar ve GDZ turuncusunun küçük gezinme
+> vurguları benimsendi. Aşağıdaki ilk tasarım kararları tarihsel bağlamdır; güncel uygulama ve
+> araştırma [tasarım notlarında](../frontend/TASARIM-ARASTIRMASI-2026-09.md) açıklanır.
+> Bölge haritasındaki il/ilçe araması, paketteki çevrimdışı sınır geometrisi ve plaka kodlarıyla
+> çalışır; API sözleşmesine yeni adres alanı eklemez. Mahalle verisi bulunmadığından mahalle
+> filtresi sunulmaz. İlçe adları coğrafi alanları içinde, pano noktaları ise gelen koordinatlarda
+> gösterilir. Marka vurguları alarm öncelik renklerinden ayrı tutulur.
+
 Üç yön denendi (`frontend/sketches/`, atılabilir): A) pano gövdesinin RAL 7035 açık grisi zemin
 alan, ISA-101 tarzı bir kontrol odası ekranı; B) mühendislik çizim kâğıdı üzerinde canlı tek hat
 şeması; C) açılışta 14 günlük "sınıra kalan süre" zaman ekseni. **A seçildi**, C'nin zaman ekseni

@@ -218,7 +218,9 @@ const DISTRICT_COORDS: Record<string, [number, number]> = {
   Selçuk: [37.95, 27.3667],
   Buca: [38.3667, 27.1667],
   Çiğli: [38.495, 27.07],
-  Yunusemre: [38.617, 27.44],
+  // Demo reference: municipality location, https://www.yunusemre.bel.tr/iletisim.
+  // The old Manisa-centre coordinate fell inside neighbouring Sehzadeler.
+  Yunusemre: [38.6148669, 27.4023208],
   Turgutlu: [38.5, 27.7],
   Alaşehir: [38.35, 28.5167],
   Salihli: [38.4833, 28.1333],
