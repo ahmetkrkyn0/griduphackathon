@@ -1,0 +1,140 @@
+.chart-viewport .chart-svg {
+  min-width: 0;
+  width: 100%;
+  display: block;
+}
+.chart-viewport {
+  overflow: hidden;
+}
+.chart .chart-svg {
+  height: auto;
+}
+.chart-scroll-hint {
+  display: none !important;
+}
+.chart .chart-grid,
+.riskmx .chart-grid {
+  stroke: #e8edf2;
+  stroke-dasharray: none;
+}
+.chart-tick {
+  font-size: 11px;
+  fill: #607080;
+  font-variant-numeric: tabular-nums;
+}
+.chart .chart-units {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #45576a;
+}
+.chart .chart-axis-label {
+  font-size: 11px;
+  fill: #45576a;
+}
+.chart .chart-readout {
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: #f5f8fc;
+  border-left: 2px solid #003da5;
+  gap: 8px 18px;
+  min-height: 48px;
+}
+.chart .chart-readout > span:first-child {
+  font-size: 11px;
+}
+.chart .chart-readout-value {
+  font-size: 12px;
+}
+.chart .chart-readout strong {
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.chart .chart-legend {
+  gap: 8px 16px;
+  align-items: center;
+}
+.chart .chart-legend button {
+  padding: 5px 0;
+  font-size: 12px;
+}
+.chart .chart-legend button:focus-visible {
+  outline: 2px solid #003da5;
+  outline-offset: 3px;
+}
+.chart .chart-line {
+  stroke-width: 2;
+}
+.chart .chart-dot {
+  transition: opacity 120ms;
+}
+.chart .chart-dot:hover,
+.chart .chart-dot:focus {
+  opacity: 1;
+  stroke: #152e4f;
+  stroke-width: 1.5;
+  outline: none;
+}
+.chart .chart-fit {
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
+}
+.scatter-summary {
+  display: flex;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+  padding: 10px 0 12px;
+  color: #607080;
+  font-size: 12px;
+}
+.scatter-summary strong {
+  color: #263e55;
+}
+.analysis-grid > .phases {
+  border-top: 2px solid #dce5f2;
+}
+.analysis-grid > .phases > h3 {
+  font-size: 16px;
+}
+.analysis-grid > .phases > .dim {
+  min-height: 32px;
+  line-height: 1.5;
+}
+.analytics-context {
+  display: flex;
+  gap: 8px 24px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  color: #607080;
+  font-size: 12px;
+}
+.analytics-context strong {
+  color: #203b59;
+}
+.console-filters .analysis-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.console-filters .analysis-field select {
+  max-width: 100%;
+}
+.console-filters .analysis-field label {
+  font-size: 11px;
+  color: #607080;
+}
+.riskmx .chart-svg {
+  max-height: none;
+}
+@media (max-width: 600px) {
+  .analysis-field {
+    width: 100%;
+  }
+  .chart .chart-readout strong {
+    font-size: 17px;
+  }
+  .chart .chart-legend > .dim {
+    display: none;
+  }
+}

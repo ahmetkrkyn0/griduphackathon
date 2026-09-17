@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { PanelSummary, Prio } from "../api/types";
 import ilceSinirlari from "../data/ilce-sinirlari.json";
+import {
+  insidePolygons,
+  prepareLabelCandidates,
+  placePreparedLabel,
+  normalizeMapSearch as normalize,
+} from "../lib/mapGeometry";
+import "../mapRefinement.css";
 import { PRIO_NAME } from "../lib/labels";
 import { effectivePrio } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
@@ -12,8 +19,17 @@ import { useFleet } from "../state/fleet";
 // olmayabilir (opsiyonel alan, backend telemetriyi oldugu gibi aktarir) — bu yuzden en az iki
 // noktada koordinat varsa gercek konum tabanli gorunum, yoksa eski dagitim sirketi gruplamasina
 // duser (durustluk kurali: olmayan veriyi olmus gibi gostermemek).
-const COMPANY: Record<string, string> = { ADM: "ADM Elektrik", GDZ: "GDZ Elektrik" };
-const PRIO_COLOR: Record<Prio, string> = { P1: "var(--p1)", P2: "var(--p2)", P3: "var(--p3)", SYS: "var(--sys)", INFO: "var(--dim)" };
+const COMPANY: Record<string, string> = {
+  ADM: "ADM Elektrik",
+  GDZ: "GDZ Elektrik",
+};
+const PRIO_COLOR: Record<Prio, string> = {
+  P1: "var(--p1)",
+  P2: "var(--p2)",
+  P3: "var(--p3)",
+  SYS: "var(--sys)",
+  INFO: "var(--dim)",
+};
 
 function companyOf(panoId: string): string {
   return COMPANY[panoId.slice(0, 3)] ?? panoId.slice(0, 3);
@@ -29,111 +45,36 @@ const hasCoords = (p: PanelSummary): p is Geo => p.lat != null && p.lon != null;
 // talebi, 16 Eylul). Bu 5 il gercekte birbirine komsu (Izmir-Aydin, Manisa-Aydin, Manisa-Denizli
 // sinirdas) oldugundan ayri bir "baglayici" ile eklemeye gerek kalmadi — bkz. TASARIM-REVIZYONU.md.
 type LonLat = [number, number];
-type BoundaryGeom = { type: "Polygon"; coordinates: LonLat[][] } | { type: "MultiPolygon"; coordinates: LonLat[][][] };
-type TerritoryEntry = { company: "ADM" | "GDZ"; province: string; plate: string; geom: BoundaryGeom };
+type BoundaryGeom =
+  | { type: "Polygon"; coordinates: LonLat[][] }
+  | { type: "MultiPolygon"; coordinates: LonLat[][][] };
+type TerritoryEntry = {
+  company: "ADM" | "GDZ";
+  province: string;
+  plate: string;
+  geom: BoundaryGeom;
+};
 const TERRITORY = ilceSinirlari as unknown as Record<string, TerritoryEntry>;
-
-function districtKey(name: string): string {
-  return name.split(" ")[0];
-}
 
 function ringsOf(geom: BoundaryGeom): LonLat[][] {
   return geom.type === "Polygon" ? geom.coordinates : geom.coordinates.flat();
 }
 
-function pathOf(geom: BoundaryGeom, project: (lon: number, lat: number) => { x: number; y: number }): string {
+function pathOf(
+  geom: BoundaryGeom,
+  project: (lon: number, lat: number) => { x: number; y: number },
+): string {
   return ringsOf(geom)
-    .map((ring) => `M${ring.map(([lon, lat]) => { const { x, y } = project(lon, lat); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join("L")}Z`)
+    .map(
+      (ring) =>
+        `M${ring
+          .map(([lon, lat]) => {
+            const { x, y } = project(lon, lat);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+          })
+          .join("L")}Z`,
+    )
     .join(" ");
-}
-
-/** Gercek konumda birbirine cok yakin panolar (ornek: Bornova/Karsiyaka/Cigli, hepsi Izmir
- *  merkezinde birkac km arayla) noktalari gorsel olarak ust uste bindirir. Kucuk, karsilikli bir
- *  itme (birkac piksel) ile ayirir — yalnizca NOKTA isaretinin ekran konumu icin, ilcenin gercek
- *  sinirini etkilemez. Gercek haritalarin da yakinlastirma seviyesine gore yaptigi bir sey. */
-function separateDots<T extends { x: number; y: number }>(points: T[], minDist: number, iterations = 8): T[] {
-  const pts = points.map((p) => ({ ...p }));
-  for (let iter = 0; iter < iterations; iter++) {
-    for (let i = 0; i < pts.length; i++) {
-      for (let j = i + 1; j < pts.length; j++) {
-        const dx = pts[j].x - pts[i].x;
-        const dy = pts[j].y - pts[i].y;
-        const dist = Math.hypot(dx, dy) || 0.01;
-        if (dist < minDist) {
-          const push = (minDist - dist) / 2;
-          const ux = dx / dist;
-          const uy = dy / dist;
-          pts[i].x -= ux * push;
-          pts[i].y -= uy * push;
-          pts[j].x += ux * push;
-          pts[j].y += uy * push;
-        }
-      }
-    }
-  }
-  return pts;
-}
-
-/** Ray-casting nokta-cokgen testi — separateDots'un ittigi bir nokta kendi ilcesinin disina
- *  tasip tasmadigini kontrol etmek icin (kullanici bulgusu: "Yunusemre gibi bazi yerlerin
- *  noktalari bolge disinda"). */
-function pointInRing(x: number, y: number, ring: { x: number; y: number }[]): boolean {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i].x, yi = ring[i].y;
-    const xj = ring[j].x, yj = ring[j].y;
-    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-/** Etiketler birbirine cok yakinsa (ayni kume, ornegin Bornova/Karsiyaka/Cigli/Buca) ustuste binip
- *  okunmaz olur. Yalnizca dikey kaydirma yeterli degildi (birbirine 2 boyutta yakin noktalarda
- *  hala cakisiyordu) — simdi noktanin etrafinda (ust/alt/sag/sol/kose) sirayla aday konum dener,
- *  ilk cakismayanı kullanir; hicbiri bos degilse en az cakisani secer. */
-function layoutLabelOffsets(points: { x: number; y: number; text: string }[]): { dx: number; dy: number }[] {
-  const CHAR_W = 6.2;
-  const LINE_H = 13;
-  const CANDIDATES: Array<[number, number]> = [
-    [0, -13],
-    [0, 20],
-    [26, -13],
-    [-26, -13],
-    [26, 20],
-    [-26, 20],
-    [0, 34],
-    [0, -27],
-    [34, 6],
-    [-34, 6],
-  ];
-  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
-  const offsets: { dx: number; dy: number }[] = [];
-  for (const p of points) {
-    const halfW = (p.text.length * CHAR_W) / 2 + 2;
-    let chosen: [number, number] = CANDIDATES[0];
-    let chosenBox = { x0: 0, x1: 0, y0: 0, y1: 0 };
-    let found = false;
-    for (const [dx, dy] of CANDIDATES) {
-      const cx = p.x + dx;
-      const cy = p.y + dy;
-      const box = { x0: cx - halfW, x1: cx + halfW, y0: Math.min(cy, cy - LINE_H), y1: Math.max(cy, cy - LINE_H) };
-      const collides = placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0);
-      if (!collides) {
-        chosen = [dx, dy];
-        chosenBox = box;
-        found = true;
-        break;
-      }
-      if (!found) {
-        chosen = [dx, dy];
-        chosenBox = box;
-      }
-    }
-    placed.push(chosenBox);
-    offsets.push({ dx: chosen[0], dy: chosen[1] });
-  }
-  return offsets;
 }
 
 const MAP_W = 900;
@@ -154,7 +95,10 @@ function projector(allPoints: LonLat[]) {
   const lonScale = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180));
   const spanX = Math.max((maxLon - minLon) * lonScale, 0.02);
   const spanY = Math.max(maxLat - minLat, 0.02);
-  const scale = Math.min((MAP_W - 2 * MAP_PAD) / spanX, (MAP_H - 2 * MAP_PAD) / spanY);
+  const scale = Math.min(
+    (MAP_W - 2 * MAP_PAD) / spanX,
+    (MAP_H - 2 * MAP_PAD) / spanY,
+  );
   const drawW = spanX * scale;
   const drawH = spanY * scale;
   const offX = (MAP_W - drawW) / 2;
@@ -165,17 +109,45 @@ function projector(allPoints: LonLat[]) {
   });
 }
 
-/** TC3: bölge haritası. Gerçek enlem/boylamı olan panolar varsa (ilçe merkezi hassasiyetinde,
- *  bkz. api/mock.ts DISTRICT_COORDS) yerel ölçekli bir konum grafiğine yerleştirilir. Arka planda
- *  ADM/GDZ'nin hizmet bölgesindeki TÜM ilçeler (src/data/ilce-sinirlari.json, 96 ilçe) pasif gri
- *  zeminde çizilir ki harita "kopuk" görünmesin; panosu olan ilçeler bunun üstünde düz turuncu
- *  kontur ile öne çıkar (blur/glow kaldırıldı — kullanıcı geri bildirimi: "beyazımsı" duruyordu).
- *  Gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını tamamen
- *  çevrimdışı çalışır — sınır verisi build zamanında pakete gömülü, çalışma zamanında hiçbir ağ
- *  isteği yapılmaz. */
+const territoryEntries = Object.entries(TERRITORY);
+const polygonsOf = (geom: BoundaryGeom) =>
+  geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+const project = projector(
+  territoryEntries.flatMap(([, t]) => ringsOf(t.geom)).flat(),
+);
+const mapGeometry = Object.fromEntries(
+  territoryEntries.map(([name, t]) => [
+    name,
+    {
+      path: pathOf(t.geom, project),
+      geographic: polygonsOf(t.geom).map((polygon) =>
+        polygon.map((ring) => ring.map(([x, y]) => ({ x, y }))),
+      ),
+      projected: polygonsOf(t.geom).map((polygon) =>
+        polygon.map((ring) => ring.map(([lon, lat]) => project(lon, lat))),
+      ),
+    },
+  ]),
+);
+const boundaryPath = territoryEntries
+  .map(([name]) => mapGeometry[name].path)
+  .join(" ");
+let preparedLabels:
+  | Record<string, ReturnType<typeof prepareLabelCandidates>>
+  | undefined;
+function getPreparedLabels() {
+  return (preparedLabels ??= Object.fromEntries(
+    territoryEntries.map(([name]) => [
+      name,
+      prepareLabelCandidates(mapGeometry[name].projected),
+    ]),
+  ));
+}
+
+/** Offline regional map using bundled district boundaries and panel coordinates. */
 export function BolgeHaritasi() {
   const { panels } = useFleet();
-  const geoPanels = panels.filter(hasCoords);
+  const geoPanels = useMemo(() => panels.filter(hasCoords), [panels]);
 
   return (
     <main className="page">
@@ -183,16 +155,16 @@ export function BolgeHaritasi() {
         <h1>Bölge haritası</h1>
         {geoPanels.length >= 2 ? (
           <p>
-            ADM (Aydın, Denizli, Muğla) ve GDZ'nin (İzmir, Manisa) hizmet bölgesindeki tüm ilçeler,
-            gerçek sınırlarıyla çizilir; panosu olan ilçeler turuncu ve vurgulu, diğerleri pasif
-            gri gösterilir. Nokta konumu ilçe merkezi hassasiyetindedir (gerçek trafo GPS pini
-            değil); gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü yığın tamamen
-            internetten bağımsız çalışır (GK4).
+            ADM ve GDZ hizmet bölgelerindeki panoları haritada keşfedin. İlçe
+            sınırları turuncu, pano bulunan ilçeler hafif dolguyla gösterilir.
+            Pano ayrıntıları için noktalara tıklayın; il ve ilçe seçerek
+            görünümü daraltın.
           </p>
         ) : (
           <p>
-            Dağıtım şirketine göre özet görünüm. Bu filoda konum verisi (<code>lat</code>/<code>lon</code>)
-            henüz yeterli sayıda pano için dolu değil; gerçek harita karosu kullanılmaz (GK4: çevrimdışı).
+            Dağıtım şirketine göre özet görünüm. Bu filoda konum verisi (
+            <code>lat</code>/<code>lon</code>) henüz yeterli sayıda pano için
+            dolu değil; gerçek harita karosu kullanılmaz (GK4: çevrimdışı).
           </p>
         )}
       </div>
@@ -200,55 +172,224 @@ export function BolgeHaritasi() {
       <div className="region-legend">
         {(["P1", "P2", "P3", "SYS"] as Prio[]).map((p) => (
           <span key={p}>
-            <span className="region-dot" style={{ background: PRIO_COLOR[p], width: 12, height: 12, display: "inline-block", borderRadius: 3, marginRight: 4 }} />
+            <span
+              className="region-dot"
+              style={{
+                background: PRIO_COLOR[p],
+                width: 12,
+                height: 12,
+                display: "inline-block",
+                borderRadius: 3,
+                marginRight: 4,
+              }}
+            />
             {PRIO_NAME[p]}
           </span>
         ))}
         <span>
-          <span className="region-dot normal" style={{ width: 12, height: 12, display: "inline-block", borderRadius: 3, marginRight: 4 }} />
+          <span
+            className="region-dot normal"
+            style={{
+              width: 12,
+              height: 12,
+              display: "inline-block",
+              borderRadius: 3,
+              marginRight: 4,
+            }}
+          />
           Normal
         </span>
       </div>
 
-      {geoPanels.length >= 2 ? <GeoHarita panels={geoPanels} allCount={panels.length} /> : <SirketGruplari panels={panels} />}
+      {geoPanels.length >= 2 ? (
+        <GeoHarita panels={geoPanels} allCount={panels.length} />
+      ) : (
+        <SirketGruplari panels={panels} />
+      )}
     </main>
   );
 }
 
 function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
+  const [view, commitView] = useState({ scale: 1, tx: 0, ty: 0 });
+  const pendingView = useRef(view);
+  const frame = useRef<number | null>(null);
+  const setView = useCallback(
+    (next: typeof view | ((current: typeof view) => typeof view)) => {
+      pendingView.current =
+        typeof next === "function" ? next(pendingView.current) : next;
+      if (frame.current !== null) return;
+      frame.current = requestAnimationFrame(() => {
+        frame.current = null;
+        commitView(pendingView.current);
+      });
+    },
+    [],
+  );
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
+  const [province, setProvince] = useState("");
+  const [district, setDistrict] = useState("");
+  const [query, setQuery] = useState("");
+  const [hovered, setHovered] = useState<string | null>(null);
   const missing = allCount - panels.length;
-  const panelDistricts = new Set(panels.map((p) => districtKey(p.name)));
-  const territoryEntries = Object.entries(TERRITORY);
-
-  const allLonLat: LonLat[] = [
-    ...panels.map((p): LonLat => [p.lon, p.lat]),
-    ...territoryEntries.flatMap(([, t]) => ringsOf(t.geom)).flat(),
-  ];
-  const project = projector(allLonLat);
-
-  const rawPoints = panels.map((p) => ({ ...project(p.lon, p.lat), p }));
-  const separated = separateDots(rawPoints, 17);
-  // separateDots'un ittigi nokta kendi ilcesinin disina tastiysa, gercek konuma geri don —
-  // gorsel cakisma > yanlis konum gostermek (durustluk kurali). Ilcenin gercek sinirini bu
-  // sekilde asla ihlal etmez, sadece cok siki kumelerde iki nokta yeniden yakin kalabilir.
-  const dotPoints = separated.map((sep, i) => {
-    const raw = rawPoints[i];
-    const geom = TERRITORY[districtKey(sep.p.name)]?.geom;
-    if (!geom) return sep;
-    const rings = ringsOf(geom).map((ring) => ring.map(([lon, lat]) => project(lon, lat)));
-    const inside = rings.some((ring) => pointInRing(sep.x, sep.y, ring));
-    return inside ? sep : raw;
+  const provinceNames: Record<string, string> = {
+    "09": "Aydın",
+    "20": "Denizli",
+    "35": "İzmir",
+    "45": "Manisa",
+    "48": "Muğla",
+  };
+  const geographicDistrict = (p: Geo) =>
+    territoryEntries.find(([name]) =>
+      insidePolygons({ x: p.lon, y: p.lat }, mapGeometry[name].geographic),
+    )?.[0];
+  const located = useMemo(
+    () =>
+      panels.map((p) => ({
+        p,
+        district: geographicDistrict(p),
+        ...project(p.lon, p.lat),
+      })),
+    [panels],
+  );
+  const matchesRegion = (name: string, t: TerritoryEntry) =>
+    (!province || t.plate === province) && (!district || name === district);
+  const matchesQuery = (name: string, t: TerritoryEntry) =>
+    !query.trim() ||
+    normalize(`${name} ${provinceNames[t.plate]}`).includes(
+      normalize(query.trim()),
+    );
+  const filtered = located.filter(({ p, district: name }) => {
+    const t = name ? TERRITORY[name] : undefined;
+    return (
+      ((!province && !district) || (!!t && matchesRegion(name!, t))) &&
+      (!query.trim() ||
+        normalize(
+          `${p.name} ${p.pano_id} ${name ?? ""} ${t ? provinceNames[t.plate] : ""}`,
+        ).includes(normalize(query.trim())))
+    );
   });
-  const labelOffsets = layoutLabelOffsets(dotPoints.map((d) => ({ x: d.x, y: d.y, text: d.p.name.split(" ")[0] })));
+  const activeDistricts = new Set(filtered.map((point) => point.district));
+  const matchingTerritories = territoryEntries.filter(
+    ([name, t]) =>
+      matchesRegion(name, t) &&
+      (matchesQuery(name, t) || activeDistricts.has(name)),
+  );
+  const matchingNames = new Set(matchingTerritories.map(([name]) => name));
+  const isFiltered = !!(province || district || query.trim());
+  const panelDistricts = new Set(located.map((point) => point.district));
+  const labelWidths = useMemo(() => {
+    const context = document.createElement("canvas").getContext("2d");
+    if (context) context.font = "600 11px Barlow";
+    return new Map(
+      territoryEntries.map(([name]) => [
+        name,
+        context?.measureText(name).width ?? name.length * 6.5,
+      ]),
+    );
+  }, []);
+  const candidates = useMemo(getPreparedLabels, []);
+  // Panel pins always use supplied coordinates. District names are separate geographic
+  // annotations placed inside their own polygon, never displaced into a neighbour.
+  const visiblePoints = filtered
+    .map((d) => ({
+      ...d,
+      x: d.x * view.scale + view.tx,
+      y: d.y * view.scale + view.ty,
+    }))
+    .filter(
+      (d) => d.x >= 12 && d.x <= MAP_W - 12 && d.y >= 12 && d.y <= MAP_H - 12,
+    );
+  const labelPositions = useMemo(
+    () =>
+      territoryEntries.flatMap(([name]) => {
+        // Compact labels reveal narrow districts sooner; keep a readable minimum.
+        for (const fontSize of [11, 10, 9]) {
+          const width = (labelWidths.get(name)! * fontSize) / 11;
+          const point = placePreparedLabel(
+            candidates[name],
+            width,
+            fontSize,
+            view.scale,
+            located,
+          );
+          if (point)
+            return [
+              {
+                name,
+                width,
+                fontSize,
+                x: point.x * view.scale,
+                y: point.y * view.scale,
+              },
+            ];
+        }
+        return [];
+      }),
+    [view.scale, located, labelWidths, candidates],
+  );
+  const regionLabels = labelPositions
+    .map((label) => ({ ...label, x: label.x + view.tx, y: label.y + view.ty }))
+    .filter(
+      ({ name, x, y, width }) =>
+        matchingNames.has(name) &&
+        x > width / 2 + 8 &&
+        x < MAP_W - width / 2 - 8 &&
+        y > 20 &&
+        y < MAP_H - 20,
+    );
+  const focusRegion = (plate: string, name: string) => {
+    const entries = territoryEntries.filter(
+      ([key, t]) => (!plate || t.plate === plate) && (!name || key === name),
+    );
+    if (!plate && !name) {
+      setView({ scale: 1, tx: 0, ty: 0 });
+      return;
+    }
+    const points = entries.flatMap(([, t]) =>
+      ringsOf(t.geom)
+        .flat()
+        .map(([lon, lat]) => project(lon, lat)),
+    );
+    const minX = Math.min(...points.map((p) => p.x)),
+      maxX = Math.max(...points.map((p) => p.x));
+    const minY = Math.min(...points.map((p) => p.y)),
+      maxY = Math.max(...points.map((p) => p.y));
+    const scale = Math.max(
+      1,
+      Math.min(
+        ZOOM_MAX,
+        (MAP_W - 120) / (maxX - minX),
+        (MAP_H - 100) / (maxY - minY),
+      ),
+    );
+    setView({
+      scale,
+      tx: MAP_W / 2 - ((minX + maxX) / 2) * scale,
+      ty: MAP_H / 2 - ((minY + maxY) / 2) * scale,
+    });
+  };
 
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
-  const [view, setView] = useState({ scale: 1, tx: 0, ty: 0 });
+  const dragRef = useRef<{
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+  } | null>(null);
 
   const toSvgPoint = useCallback((clientX: number, clientY: number) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return { ux: MAP_W / 2, uy: MAP_H / 2 };
-    return { ux: ((clientX - rect.left) / rect.width) * MAP_W, uy: ((clientY - rect.top) / rect.height) * MAP_H };
+    return {
+      ux: ((clientX - rect.left) / rect.width) * MAP_W,
+      uy: ((clientY - rect.top) / rect.height) * MAP_H,
+    };
   }, []);
 
   const zoomAt = useCallback((ux: number, uy: number, factor: number) => {
@@ -271,7 +412,9 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
     const handler = (e: WheelEvent) => {
       e.preventDefault();
       const { ux, uy } = toSvgPoint(e.clientX, e.clientY);
-      zoomAt(ux, uy, e.deltaY < 0 ? 1.18 : 1 / 1.18);
+      const delta =
+        e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 620 : 1);
+      zoomAt(ux, uy, Math.exp(-Math.max(-150, Math.min(150, delta)) * 0.0025));
     };
     svg.addEventListener("wheel", handler, { passive: false });
     return () => svg.removeEventListener("wheel", handler);
@@ -303,6 +446,78 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
 
   return (
     <>
+      <div className="map-filter-bar" aria-label="Harita filtreleri">
+        <label>
+          İl
+          <select
+            value={province}
+            onChange={(e) => {
+              setProvince(e.target.value);
+              setDistrict("");
+              focusRegion(e.target.value, "");
+            }}
+          >
+            <option value="">Tüm iller</option>
+            {Object.entries(provinceNames)
+              .sort((a, b) => a[1].localeCompare(b[1], "tr"))
+              .map(([plate, name]) => (
+                <option value={plate} key={plate}>
+                  {name}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label>
+          İlçe
+          <select
+            value={district}
+            onChange={(e) => {
+              const name = e.target.value;
+              const plate = name ? TERRITORY[name].plate : province;
+              setProvince(plate);
+              setDistrict(name);
+              focusRegion(plate, name);
+            }}
+          >
+            <option value="">Tüm ilçeler</option>
+            {territoryEntries
+              .filter(([, t]) => !province || t.plate === province)
+              .sort((a, b) => a[0].localeCompare(b[0], "tr"))
+              .map(([name]) => (
+                <option key={name}>{name}</option>
+              ))}
+          </select>
+        </label>
+        <label className="map-search">
+          Bölgede ara
+          <input
+            type="search"
+            placeholder="İl, ilçe, pano adı veya kodu"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={() => {
+              setProvince("");
+              setDistrict("");
+              setQuery("");
+              focusRegion("", "");
+            }}
+          >
+            Temizle
+          </button>
+        )}
+      </div>
+      <div className="map-result-summary" aria-live="polite">
+        <strong>{filtered.length} pano</strong>
+        <span>
+          {matchingTerritories.length} ilçe ·{" "}
+          {isFiltered ? "Filtrelenmiş görünüm" : "ADM ve GDZ hizmet bölgesi"}
+        </span>
+      </div>
       <div className="geo-map-wrap">
         <svg
           ref={svgRef}
@@ -313,80 +528,173 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
           onPointerLeave={onPointerUp}
           style={{ cursor: "grab" }}
         >
-          <rect className="geo-frame" x={1} y={1} width={MAP_W - 2} height={MAP_H - 2} rx={12} />
-          <g transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`}>
-            {/* ADM/GDZ'nin tum hizmet bolgesi (96 ilce) — pasif/gri zemin, harita "kopuk" gorunmesin
-                diye (kullanici talebi). Panosu olan ilceler duz turuncu kontur ile vurgulanir.
-                fillRule verilmez (varsayilan nonzero): evenodd, sadelestirmeden kalan kendine-kesisen
-                kenarlarda ilcenin icinde beyaz "cizgiler/delikler" gibi gorunuyordu (kullanici bulgusu). */}
+          <rect
+            className="geo-frame"
+            x={1}
+            y={1}
+            width={MAP_W - 2}
+            height={MAP_H - 2}
+            rx={12}
+          />
+          <g
+            transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`}
+          >
+            {/* Draw all fills first, then one solid orange boundary layer. */}
             {territoryEntries.map(([name, t]) => (
               <path
                 key={`t-${name}`}
-                className={panelDistricts.has(name) ? "geo-district" : "geo-territory"}
-                d={pathOf(t.geom, project)}
+                className={`${panelDistricts.has(name) ? "geo-district" : "geo-territory"} ${isFiltered && !matchingNames.has(name) ? "map-muted" : ""} ${hovered === name ? "map-hovered" : ""}`}
+                onPointerEnter={() => setHovered(name)}
+                onPointerLeave={() => setHovered(null)}
+                fillRule="evenodd"
+                d={mapGeometry[name].path}
                 vectorEffect="non-scaling-stroke"
               >
-                <title>{`${name} (${COMPANY[t.company]})`}</title>
+                <title>{`${name}, ${provinceNames[t.plate]} · ${COMPANY[t.company]}`}</title>
               </path>
             ))}
 
-            {dotPoints.map(({ x, y, p }, i) => {
+            <path
+              className="geo-boundaries"
+              d={boundaryPath}
+              vectorEffect="non-scaling-stroke"
+            />
+          </g>
+          <g className="geo-area-labels" aria-hidden="true">
+            {regionLabels.map(({ name, x, y, fontSize }) => (
+              <text
+                key={name}
+                className="geo-area-name"
+                style={{ fontSize }}
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="central"
+              >
+                {name}
+              </text>
+            ))}
+          </g>
+          <g className="geo-annotations">
+            {visiblePoints.map(({ x, y, p, district: location }) => {
               const prio = effectivePrio(p);
               return (
-                <g key={p.pano_id}>
-                  {prio && !["SYS", "INFO"].includes(prio) && (
-                    <circle className="geo-halo" cx={x} cy={y} r={13 / view.scale} vectorEffect="non-scaling-stroke" />
-                  )}
-                  <Link to={`/pano/${p.pano_id}`} title={`${p.name} (${p.pano_id}), risk ${p.risk_score}`}>
-                    <circle
-                      className={prio ? "geo-dot" : "geo-dot normal"}
-                      style={prio ? { fill: PRIO_COLOR[prio] } : undefined}
-                      cx={x}
-                      cy={y}
-                      r={6 / view.scale}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <text
-                      className="geo-label"
-                      x={x + labelOffsets[i].dx / view.scale}
-                      y={y + labelOffsets[i].dy / view.scale}
-                      textAnchor="middle"
-                      fontSize={11 / view.scale}
-                    >
-                      {p.name.split(" ")[0]}
-                    </text>
-                  </Link>
-                </g>
+                <Link
+                  className="geo-marker"
+                  key={p.pano_id}
+                  to={`/pano/${p.pano_id}`}
+                  onPointerEnter={() => setHovered(location ?? null)}
+                  onPointerLeave={() => setHovered(null)}
+                  onFocus={() => setHovered(location ?? null)}
+                  onBlur={() => setHovered(null)}
+                  aria-label={`${p.name} (${p.pano_id}), ${location ?? "ilçe eşleşmedi"}, risk ${p.risk_score}`}
+                >
+                  <title>{`${p.name} (${p.pano_id}) · Konum: ${location ?? "sınır dışında"} · Risk: ${p.risk_score}`}</title>
+                  <circle className="geo-hit-area" cx={x} cy={y} r={11} />
+                  <circle
+                    className={prio ? "geo-dot" : "geo-dot normal"}
+                    style={prio ? { fill: PRIO_COLOR[prio] } : undefined}
+                    cx={x}
+                    cy={y}
+                    r={5.5}
+                  />
+                </Link>
               );
             })}
           </g>
           <g className="geo-compass" transform={`translate(${MAP_W - 46}, 40)`}>
             <line x1={0} y1={14} x2={0} y2={-14} />
             <path d="M -6 -6 L 0 -16 L 6 -6" />
-            <text y={26} textAnchor="middle">K</text>
+            <text y={26} textAnchor="middle">
+              K
+            </text>
           </g>
         </svg>
+        <div className="map-hover-readout" aria-live="polite">
+          {hovered ? (
+            <>
+              <strong>{hovered}</strong>
+              <span>
+                {provinceNames[TERRITORY[hovered].plate]} ·{" "}
+                {COMPANY[TERRITORY[hovered].company]}
+              </span>
+            </>
+          ) : (
+            <>
+              <strong>
+                {district ||
+                  (province ? provinceNames[province] : "Ege hizmet bölgesi")}
+              </strong>
+              <span>İlçe bilgisi için haritanın üzerine gelin</span>
+            </>
+          )}
+        </div>
         <div className="geo-zoom">
-          <button type="button" onClick={() => zoomAt(MAP_W / 2, MAP_H / 2, 1.4)} aria-label="Yakınlaştır">
+          <button
+            type="button"
+            onClick={() => zoomAt(MAP_W / 2, MAP_H / 2, 1.4)}
+            aria-label="Yakınlaştır"
+          >
             +
           </button>
-          <button type="button" onClick={() => zoomAt(MAP_W / 2, MAP_H / 2, 1 / 1.4)} aria-label="Uzaklaştır">
+          <button
+            type="button"
+            onClick={() => zoomAt(MAP_W / 2, MAP_H / 2, 1 / 1.4)}
+            aria-label="Uzaklaştır"
+          >
             −
           </button>
-          {view.scale > ZOOM_MIN && (
-            <button type="button" onClick={() => setView({ scale: 1, tx: 0, ty: 0 })} aria-label="Haritayı sıfırla">
+          {(view.scale > ZOOM_MIN || view.tx !== 0 || view.ty !== 0) && (
+            <button
+              type="button"
+              onClick={() => setView({ scale: 1, tx: 0, ty: 0 })}
+              aria-label="Haritayı sıfırla"
+            >
               ⟲
             </button>
           )}
         </div>
       </div>
+      {isFiltered && filtered.length === 0 && (
+        <p className="map-empty">
+          Bu seçimde konumu eşleşen pano bulunamadı. İlçe sınırlarını
+          inceleyebilir veya filtreleri temizleyebilirsiniz.
+        </p>
+      )}
+      {isFiltered && filtered.length > 0 && (
+        <div className="map-panel-results">
+          {filtered.map(({ p, district: name }) => (
+            <Link to={`/pano/${p.pano_id}`} key={p.pano_id}>
+              <strong>{p.name}</strong>
+              <span>
+                {p.pano_id} · {name ?? "İlçe eşleşmedi"}
+              </span>
+              <span>Risk {p.risk_score} →</span>
+            </Link>
+          ))}
+        </div>
+      )}
       <p className="dim small geo-note">
-        İlçe sınırları: UN OCHA HDX <a href="https://data.humdata.org/dataset/cod-ab-tur" target="_blank" rel="noreferrer">COD-AB-TUR</a> (CC BY-IGO), sadeleştirilmiş.
-        Fare tekerleğiyle veya +/− ile yakınlaştırabilir, sürükleyerek kaydırabilirsiniz.
-        {missing > 0 && ` ${missing} pano konum verisi olmadığı için haritada gösterilmiyor.`}
+        İlçe sınırları: UN OCHA HDX{" "}
+        <a
+          href="https://data.humdata.org/dataset/cod-ab-tur"
+          target="_blank"
+          rel="noreferrer"
+        >
+          COD-AB-TUR
+        </a>{" "}
+        (CC BY-IGO), sadeleştirilmiş. Noktalar sağlanan koordinatları gösterir;
+        örnek veride ilçe merkezi hassasiyetindedir. İlçe adları kendi sınırları
+        içinde yer alır; dar alanlarda yakınlaştırınca görünür. İl/ilçe filtresi
+        konumu sınırlarla eşleştirir. Mahalle verisi bulunmuyor. Fare
+        tekerleğiyle veya +/− ile yakınlaştırabilir, sürükleyerek
+        kaydırabilirsiniz.
+        {missing > 0 &&
+          ` ${missing} pano konum verisi olmadığı için haritada gösterilmiyor.`}
       </p>
     </>
   );
@@ -408,7 +716,8 @@ function SirketGruplari({ panels }: { panels: PanelSummary[] }) {
             <h3>
               <span>{company}</span>
               <span className="dim small">
-                {list.length} pano{attention ? `, ${attention} ilgi bekliyor` : ""}
+                {list.length} pano
+                {attention ? `, ${attention} ilgi bekliyor` : ""}
               </span>
             </h3>
             <div className="region-dots">
@@ -421,7 +730,9 @@ function SirketGruplari({ panels }: { panels: PanelSummary[] }) {
                       key={p.pano_id}
                       to={`/pano/${p.pano_id}`}
                       className={prio ? "region-dot" : "region-dot normal"}
-                      style={prio ? { background: PRIO_COLOR[prio] } : undefined}
+                      style={
+                        prio ? { background: PRIO_COLOR[prio] } : undefined
+                      }
                       title={`${p.name} (${p.pano_id}), risk ${p.risk_score}`}
                     >
                       {p.risk_score}
