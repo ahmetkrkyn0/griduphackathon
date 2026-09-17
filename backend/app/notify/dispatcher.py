@@ -33,7 +33,8 @@ from ..config import Contracts
 from .pdu import Sms
 from .privacy import mask_number
 from .sms_modem import ModemError, SmsModem
-from .templates import digest_sms, escalation_sms, fold, sms_alarm, whatsapp_alarm
+from .telegram import TelegramClient, TelegramError
+from .templates import digest_sms, escalation_sms, fold, sms_alarm, telegram_alarm, whatsapp_alarm
 from .whatsapp import DEFAULT_API_VERSION, WhatsAppClient, WhatsAppError
 
 if TYPE_CHECKING:
@@ -77,8 +78,8 @@ class NotifyConfig:
         )
 
 
-def channels_from_env() -> tuple[SmsModem | None, WhatsAppClient | None]:
-    """SMS_DEVICE bossa SMS/arama, WHATSAPP_TOKEN veya WHATSAPP_PHONE_ID bossa WhatsApp kapali."""
+def channels_from_env() -> tuple[SmsModem | None, WhatsAppClient | None, TelegramClient | None]:
+    """SMS_DEVICE bossa SMS/arama, WHATSAPP_* bossa WhatsApp, TELEGRAM_* bossa Telegram kapali."""
     device = os.getenv("SMS_DEVICE", "").strip()
     sms = SmsModem(device, baudrate=int(os.getenv("SMS_BAUD", "115200"))) if device else None
     token, phone_id = os.getenv("WHATSAPP_TOKEN", "").strip(), os.getenv("WHATSAPP_PHONE_ID", "").strip()
@@ -91,7 +92,10 @@ def channels_from_env() -> tuple[SmsModem | None, WhatsAppClient | None]:
             template=os.getenv("WHATSAPP_TEMPLATE", "").strip() or None,
             language=os.getenv("WHATSAPP_LANG", "tr"),
         )
-    return sms, whatsapp
+    tg_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    tg_chat = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    telegram = TelegramClient(tg_token, tg_chat) if (tg_token and tg_chat) else None
+    return sms, whatsapp, telegram
 
 
 @dataclass(frozen=True)
@@ -125,6 +129,7 @@ class Notifier:
         *,
         sms: SmsModem | None,
         whatsapp: WhatsAppClient | None,
+        telegram: TelegramClient | None = None,
         on_delivery: Callable[[Delivery], None],
         on_reply: Callable[[int, str, str], None],
         clock: Callable[[], datetime],
@@ -133,6 +138,7 @@ class Notifier:
         self._config = config
         self._sms = sms
         self._whatsapp = whatsapp
+        self._telegram = telegram
         self._on_delivery = on_delivery
         self._on_reply = on_reply
         self._clock = clock
@@ -146,6 +152,10 @@ class Notifier:
         self._thread: threading.Thread | None = None
         self._reply_backoff_s = 0.0  # modem erisilemiyorsa yanit okuma denemeleri seyreltilir
         self._next_reply_read = 0.0
+
+    @property
+    def has_telegram(self) -> bool:
+        return self._telegram is not None
 
     # ------------------------------------------------------ alarm servisi
     def __call__(self, changes: list[Change]) -> None:
@@ -166,6 +176,8 @@ class Notifier:
                 jobs += [_Job(alarm, "sms", n, sms_alarm(alarm, text)) for n in self._config.recipients]
             if spec.get("whatsapp") is True and self._whatsapp is not None:
                 jobs += [self._whatsapp_job(alarm, n, text) for n in self._whatsapp_field_team]
+            if (spec.get("sms") is True or spec.get("whatsapp") is True) and self._telegram is not None:
+                jobs += [self._telegram_job(alarm, text)]
         elif change.kind == "escalated" and change.step == "call" and self._sms is not None:
             jobs += [_Job(alarm, "call", n) for n in self._config.recipients]
         elif change.kind == "escalated" and change.step == "escalate":
@@ -174,6 +186,8 @@ class Notifier:
                 jobs += [_Job(alarm, "sms", n, escalation_sms(alarm, text, minutes)) for n in self._config.escalation]
             if spec.get("whatsapp") is True and self._whatsapp is not None:
                 jobs += [self._whatsapp_job(alarm, n, text) for n in self._config.escalation]
+            if self._telegram is not None:
+                jobs += [self._telegram_job(alarm, f"ESKALASYON ({minutes} dk onaysiz): {text}")]
         return jobs
 
     def digest(self, summary: Digest) -> bool:
@@ -194,6 +208,10 @@ class Notifier:
         body = whatsapp_alarm(alarm, text, self._config.portal_url)
         return _Job(alarm, "whatsapp", number, body, params=(alarm.prio, alarm.pano_id, fold(text)))
 
+    def _telegram_job(self, alarm: Alarm, text: str) -> _Job:
+        body = telegram_alarm(alarm, text, self._config.portal_url)
+        return _Job(alarm, "telegram", self._telegram.chat_id, body)
+
     # ---------------------------------------------------------------- isci
     def start(self) -> None:
         self._stop.clear()
@@ -210,6 +228,8 @@ class Notifier:
             self._sms.close()
         if self._whatsapp is not None:
             self._whatsapp.close()
+        if self._telegram is not None:
+            self._telegram.close()
 
     def _run(self) -> None:
         while not self._stop.is_set():
@@ -241,7 +261,9 @@ class Notifier:
     def _deliver(self, job: _Job) -> None:
         retryable = False
         try:
-            if job.channel == "whatsapp":
+            if job.channel == "telegram":
+                self._telegram.send(job.text)
+            elif job.channel == "whatsapp":
                 self._whatsapp.send(job.recipient, job.text, job.params)
             else:
                 self._ensure_modem()
@@ -250,6 +272,8 @@ class Notifier:
                 else:
                     self._sms.call(job.recipient, ring_s=self._config.call_ring_s)
             ok, detail = True, "gonderildi"
+        except TelegramError as exc:
+            ok, detail, retryable = False, str(exc), exc.retryable
         except ModemError as exc:
             ok, detail, retryable = False, str(exc), True
             self._sms.close()  # sonraki denemede yeniden baglanir

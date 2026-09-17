@@ -227,12 +227,13 @@ def create_app(
 def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Callable[[], datetime]) -> Notifier:
     """Kanallar ortam degiskenlerinden (deploy/.env): SMS_DEVICE, ALERT_*, WHATSAPP_*."""
     config = NotifyConfig.from_env()
-    sms, whatsapp = channels_from_env()
+    sms, whatsapp, telegram = channels_from_env()
     notifier = Notifier(
         contracts,
         config,
         sms=sms,
         whatsapp=whatsapp,
+        telegram=telegram,
         on_delivery=alarm_service.record_delivery,
         on_reply=lambda alarm_id, by, note: alarm_service.ack(alarm_id, by=by, note=note),
         clock=clock,
@@ -245,9 +246,10 @@ def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Ca
     notifier.start()
     digest_at = digest_at_from_env()
     log.info(
-        "bildirim kanallari: sms=%s whatsapp=%s, %d saha + %d eskalasyon alicisi; gunluk ozet %s",
+        "bildirim kanallari: sms=%s whatsapp=%s telegram=%s, %d saha + %d eskalasyon alicisi; gunluk ozet %s",
         "acik" if sms else "kapali",
         "acik" if whatsapp else "kapali",
+        "acik" if telegram else "kapali",
         len(config.recipients),
         len(config.escalation),
         f"{digest_at:%H:%M} (sunucu saati)" if digest_at is not None else "kapali",

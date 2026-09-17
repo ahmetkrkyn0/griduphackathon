@@ -14,15 +14,15 @@ function Write-Title($text) {
 }
 
 function Write-Success($text) {
-    Write-Host "✓ $text" -ForegroundColor Green
+    Write-Host "[+] $text" -ForegroundColor Green
 }
 
 function Write-WarningMsg($text) {
-    Write-Host "! $text" -ForegroundColor Yellow
+    Write-Host "[!] $text" -ForegroundColor Yellow
 }
 
 function Write-ErrorMsg($text) {
-    Write-Host "✗ $text" -ForegroundColor Red
+    Write-Host "[-] $text" -ForegroundColor Red
 }
 
 function Test-StackHealth() {
@@ -39,6 +39,9 @@ function Test-StackHealth() {
 
 function Find-Python() {
     if ($env:GRIDUP_PYTHON) { return $env:GRIDUP_PYTHON }
+    $venvPy = Join-Path $REPO_ROOT "backend\.venv\Scripts\python.exe"
+    if (Test-Path $venvPy) { return $venvPy }
+
     $candidates = @("py", "python", "python3")
     foreach ($cand in $candidates) {
         $cmd = Get-Command $cand -ErrorAction SilentlyContinue
@@ -69,12 +72,12 @@ function Run-Scenario($scenario, $pano, $duration, $extraArgs = @()) {
     $py = Find-Python
     if (-not $py) {
         Write-WarningMsg "Python bulunamadi. Lutfen Python 3.12+ yukleyin veya GRIDUP_PYTHON degiskenini ayarlayin."
-        Write-Host "  Alternatif: cd frontend && npm run dev:mock (tarayicida $FRONTEND_BASE adresine gidin)"
+        Write-Host "  Alternatif: cd frontend; npm run dev:mock (tarayicida $FRONTEND_BASE adresine gidin)"
         return $false
     }
 
     $simScript = Join-Path $REPO_ROOT "sim\panosim.py"
-    Write-Success "Senaryo oynatiliyor (host Python): $pano, $scenario, ${duration} sn"
+    Write-Success "Senaryo oynatiliyor: $pano, $scenario, ${duration} sn"
 
     $argList = @("$simScript", "--scenario", "$scenario", "--pano", "$pano", "--duration", "$duration", "--mqtt", "$MQTT_TARGET") + $extraArgs
     if ($py -eq "py -3") {

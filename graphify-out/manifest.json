@@ -72,9 +72,9 @@
     "semantic_hash": "cbedb51e347cd311261f11e54f836be8"
   },
   "backend/app/main.py": {
-    "mtime": 1789667289.6051464,
-    "seen": 1789667412.1302512,
-    "ast_hash": "36b0bb86ce1c3b51d895f9034926d0cb",
+    "mtime": 1789668368.2730138,
+    "seen": 1789669050.5648985,
+    "ast_hash": "f001cc06e69d46329dbf0e1814924adf",
     "semantic_hash": ""
   },
   "backend/app/models.py": {
@@ -90,10 +90,10 @@
     "semantic_hash": "6318437bf7fe0c2d507fc8f44abe9f6d"
   },
   "backend/app/notify/dispatcher.py": {
-    "mtime": 1789556568.712805,
-    "seen": 1789556767.1785386,
-    "ast_hash": "af88784a3b0a204b3a0ee44e4e422e76",
-    "semantic_hash": "af88784a3b0a204b3a0ee44e4e422e76"
+    "mtime": 1789668341.6026387,
+    "seen": 1789669050.5648985,
+    "ast_hash": "504e93eadcd943dff71e3db70f74476f",
+    "semantic_hash": ""
   },
   "backend/app/notify/pdu.py": {
     "mtime": 1789417965.6598394,
@@ -114,10 +114,10 @@
     "semantic_hash": "a6556ac798926ade3eff12326aa600da"
   },
   "backend/app/notify/templates.py": {
-    "mtime": 1789556568.7133253,
-    "seen": 1789556767.1785386,
-    "ast_hash": "ff641863d14a90f9cb7ffd58475f6c19",
-    "semantic_hash": "ff641863d14a90f9cb7ffd58475f6c19"
+    "mtime": 1789668664.2021005,
+    "seen": 1789669050.5648985,
+    "ast_hash": "a54e1c74d6653115c39ae1c45a173ae1",
+    "semantic_hash": ""
   },
   "backend/app/notify/whatsapp.py": {
     "mtime": 1789417965.6649547,
@@ -564,10 +564,10 @@
     "semantic_hash": "f6cf994402e665348614505839818e1b"
   },
   "deploy/initdb/001_schema.sql": {
-    "mtime": 1789417965.6875432,
-    "seen": 1789556767.1790447,
-    "ast_hash": "f16f4f2b05693cb96679891b6bff2457",
-    "semantic_hash": "f16f4f2b05693cb96679891b6bff2457"
+    "mtime": 1789669477.785205,
+    "seen": 1789669540.6227052,
+    "ast_hash": "4ef7f7e4c25aeb281829aad351ed771c",
+    "semantic_hash": ""
   },
   "deploy/initdb/002_ingest.sql": {
     "mtime": 1789417965.6880572,
@@ -1410,9 +1410,9 @@
     "semantic_hash": ""
   },
   "deploy/compose.yaml": {
-    "mtime": 1789556568.7235787,
-    "seen": 1789558378.119295,
-    "ast_hash": "c8e0e04a2376a5404ba2e8562f27c2a0",
+    "mtime": 1789668496.2589371,
+    "seen": 1789669050.5648985,
+    "ast_hash": "f14b435c6336f5d86c0626dfa53552b3",
     "semantic_hash": ""
   },
   "deploy/grafana/dashboards/provider.yaml": {
@@ -1788,9 +1788,9 @@
     "semantic_hash": ""
   },
   "DEVILS-ADVOCATE-ANALIZI.md": {
-    "mtime": 1789665508.6786554,
-    "seen": 1789666263.620079,
-    "ast_hash": "99613ac23182c8b52fa68ac5441dbcf4",
+    "mtime": 1789667442.0855012,
+    "seen": 1789669050.5648985,
+    "ast_hash": "743d1262fa4831157bb5c53d58043b5b",
     "semantic_hash": ""
   },
   "frontend/GRAFIK-TASARIM-NOTLARI.md": {
@@ -1818,9 +1818,9 @@
     "semantic_hash": ""
   },
   "demo/senaryo/_ortak.ps1": {
-    "mtime": 1789667090.4631107,
-    "seen": 1789667412.1302512,
-    "ast_hash": "0d3e48d48444a62224ffa9db277b93c9",
+    "mtime": 1789669448.00427,
+    "seen": 1789669540.6227052,
+    "ast_hash": "bd244917b2e500dd77083bf8db85f294",
     "semantic_hash": ""
   },
   "demo/senaryo/s0.ps1": {
@@ -1878,9 +1878,9 @@
     "semantic_hash": ""
   },
   "demo/senaryo/senaryo.ps1": {
-    "mtime": 1789667098.606135,
-    "seen": 1789667412.1302512,
-    "ast_hash": "57528f8c13c24a6d724bac96f373cec3",
+    "mtime": 1789669503.7119834,
+    "seen": 1789669540.6227052,
+    "ast_hash": "0414f75acc99c0da7f55ba0eb2a78890",
     "semantic_hash": ""
   },
   "hardware/mekanik/generate_stl.py": {
@@ -1899,12 +1899,6 @@
     "mtime": 1789667244.9232607,
     "seen": 1789667412.1302512,
     "ast_hash": "2ac83210be56592ac74a6d4823e94010",
-    "semantic_hash": ""
-  },
-  "graphify-out/converted/\u0130stenen Veriler_613618b1.md": {
-    "mtime": 1789555163.9603684,
-    "seen": 1789558378.119295,
-    "ast_hash": "da6e55abcb827b3cb95c6297fc17b6de",
     "semantic_hash": ""
   },
   "hardware/pd-karti/README.md": {
@@ -1953,6 +1947,24 @@
     "mtime": 1789667180.8764064,
     "seen": 1789667412.1302512,
     "ast_hash": "a8bfb46385d0a240a6d28e77c9b07fbd",
+    "semantic_hash": ""
+  },
+  "backend/app/notify/telegram.py": {
+    "mtime": 1789668283.03674,
+    "seen": 1789669050.5648985,
+    "ast_hash": "8df8f5299c295d509a3a28a58243994a",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_telegram.py": {
+    "mtime": 1789668958.2002351,
+    "seen": 1789669050.5648985,
+    "ast_hash": "3e486738859ece897505dd17d76a7b46",
+    "semantic_hash": ""
+  },
+  "graphify-out/converted/\u0130stenen Veriler_613618b1.md": {
+    "mtime": 1789555163.9603684,
+    "seen": 1789558378.119295,
+    "ast_hash": "da6e55abcb827b3cb95c6297fc17b6de",
     "semantic_hash": ""
   },
   "Hackathon Verileri/1600kVA AG Pano Teknik \u00d6zellikleri.pdf": {
