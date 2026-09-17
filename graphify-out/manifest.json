@@ -726,9 +726,9 @@
     "semantic_hash": "979cae3955f68f7b05e86a3999e0aa23"
   },
   "frontend/src/App.tsx": {
-    "mtime": 1789558552.8196666,
-    "seen": 1789664976.8478837,
-    "ast_hash": "3764318f21bad2b6eb620eb94c3e6ee6",
+    "mtime": 1789665969.8497415,
+    "seen": 1789666263.620079,
+    "ast_hash": "8b6f2aab8a85b2f849f93bbfbe74a5c3",
     "semantic_hash": ""
   },
   "frontend/src/api/client.ts": {
@@ -744,10 +744,10 @@
     "semantic_hash": "054c6d54b7a5b5cc822d7b0ee8e94d66"
   },
   "frontend/src/api/mock.ts": {
-    "mtime": 1789457983.353053,
-    "seen": 1789556767.1790447,
-    "ast_hash": "47c2bf16d679f92358970e07d712a534",
-    "semantic_hash": "47c2bf16d679f92358970e07d712a534"
+    "mtime": 1789665911.7502103,
+    "seen": 1789666263.620079,
+    "ast_hash": "a963a0287e6c4c47240bb2ffcf715abe",
+    "semantic_hash": ""
   },
   "frontend/src/api/mockSeries.test.ts": {
     "mtime": 1789457983.353053,
@@ -780,22 +780,22 @@
     "semantic_hash": "40a07b2a4a0d98f06e43f9d820d1d704"
   },
   "frontend/src/components/CizgiGrafik.tsx": {
-    "mtime": 1789558552.820696,
-    "seen": 1789664976.8478837,
-    "ast_hash": "d0afbd6a8a8390ef03ce59cf5d49a934",
+    "mtime": 1789666016.1094923,
+    "seen": 1789666263.620079,
+    "ast_hash": "ef8fb5666d9d8c586993510e6a145a01",
     "semantic_hash": ""
   },
   "frontend/src/components/Ikiz3D.tsx": {
-    "mtime": 1789558552.8222282,
-    "seen": 1789664976.8478837,
-    "ast_hash": "7aa642ac77506f77772d58ffb448cb4a",
+    "mtime": 1789666215.053851,
+    "seen": 1789666263.620079,
+    "ast_hash": "aaa67068dcf6cb5201f92df978112804",
     "semantic_hash": ""
   },
   "frontend/src/components/OnGorunus.tsx": {
-    "mtime": 1789457983.3561287,
-    "seen": 1789556767.1790447,
-    "ast_hash": "80e3d05e75ad0e2aa894c053418f1245",
-    "semantic_hash": "80e3d05e75ad0e2aa894c053418f1245"
+    "mtime": 1789665911.7546139,
+    "seen": 1789666263.620079,
+    "ast_hash": "90242847e109cc634e87337d58d5e6f9",
+    "semantic_hash": ""
   },
   "frontend/src/components/PrioMark.tsx": {
     "mtime": 1789457983.3561287,
@@ -804,22 +804,22 @@
     "semantic_hash": "21f811f09ff6ff2d5c2fa262c6788d79"
   },
   "frontend/src/components/RiskMatrisi.tsx": {
-    "mtime": 1789457983.3561287,
-    "seen": 1789556767.1790447,
-    "ast_hash": "99e0ab1df878567d4158a6356f4f7541",
-    "semantic_hash": "99e0ab1df878567d4158a6356f4f7541"
+    "mtime": 1789665911.7551267,
+    "seen": 1789666263.620079,
+    "ast_hash": "2e7f3473c7d5e926e4086381f5e6320b",
+    "semantic_hash": ""
   },
   "frontend/src/components/SacilimGrafik.tsx": {
-    "mtime": 1789457983.3567448,
-    "seen": 1789556767.1790447,
-    "ast_hash": "5e2ffa393837ebf65d8cd2221c71b478",
-    "semantic_hash": "5e2ffa393837ebf65d8cd2221c71b478"
+    "mtime": 1789665911.7551267,
+    "seen": 1789666263.620079,
+    "ast_hash": "3bf576df72f3c5cfbdda584abc63ab6b",
+    "semantic_hash": ""
   },
   "frontend/src/components/SureEkseni.tsx": {
-    "mtime": 1789457983.3567448,
-    "seen": 1789556767.1790447,
-    "ast_hash": "7d880f78aac4f37b75b228fe1dcf36ab",
-    "semantic_hash": "7d880f78aac4f37b75b228fe1dcf36ab"
+    "mtime": 1789665911.7551267,
+    "seen": 1789666263.620079,
+    "ast_hash": "f1e73e7abcfa35bc168d7b3f35a0fcf0",
+    "semantic_hash": ""
   },
   "frontend/src/lib/format.test.ts": {
     "mtime": 1789457983.35726,
@@ -876,52 +876,52 @@
     "semantic_hash": "96b7259b77d3ed443855c82da23a8e2a"
   },
   "frontend/src/main.tsx": {
-    "mtime": 1789457983.3593028,
-    "seen": 1789556767.1790447,
-    "ast_hash": "0da16d12609681dba89fab66a2628e0d",
-    "semantic_hash": "0da16d12609681dba89fab66a2628e0d"
+    "mtime": 1789665911.7581458,
+    "seen": 1789666263.620079,
+    "ast_hash": "6653e3198737ce0c9bedb4047a30d2c9",
+    "semantic_hash": ""
   },
   "frontend/src/pages/AlarmKonsolu.tsx": {
-    "mtime": 1789558552.8222282,
-    "seen": 1789664976.8478837,
-    "ast_hash": "086dd786965ec46ae83de77d1e1fbd3e",
+    "mtime": 1789666073.8605082,
+    "seen": 1789666263.620079,
+    "ast_hash": "8ca5ba87e09c27a4158e4be128fa51ab",
     "semantic_hash": ""
   },
   "frontend/src/pages/BolgeHaritasi.tsx": {
-    "mtime": 1789664937.822475,
-    "seen": 1789664976.8478837,
-    "ast_hash": "92596125666c5312f51a32fdbbe93bd2",
+    "mtime": 1789665911.7596543,
+    "seen": 1789666263.620079,
+    "ast_hash": "e9ceebef11ada9f2b4d70d6a7ee545e3",
     "semantic_hash": ""
   },
   "frontend/src/pages/CihazSagligi.tsx": {
-    "mtime": 1789457983.3603103,
-    "seen": 1789556767.1790447,
-    "ast_hash": "9c252532d34e798b82483f586c0f2ac7",
-    "semantic_hash": "9c252532d34e798b82483f586c0f2ac7"
+    "mtime": 1789665911.7606573,
+    "seen": 1789666263.620079,
+    "ast_hash": "9128db023c302de3b76fd5d4295e5b89",
+    "semantic_hash": ""
   },
   "frontend/src/pages/FiloListesi.tsx": {
-    "mtime": 1789558552.8222282,
-    "seen": 1789664976.8478837,
-    "ast_hash": "22d122059c55405035283b2a2212d8e8",
+    "mtime": 1789666110.2453852,
+    "seen": 1789666263.620079,
+    "ast_hash": "2a0516e14e6826ca6a245d42e294e74c",
     "semantic_hash": ""
   },
   "frontend/src/pages/OlayAnalizi.tsx": {
-    "mtime": 1789558552.82583,
-    "seen": 1789664976.8478837,
-    "ast_hash": "c44d802f0005ff5e1fa1fff6f7d2cf4c",
+    "mtime": 1789666175.4840305,
+    "seen": 1789666263.620079,
+    "ast_hash": "81a07bca1aa87f343b0795a4408eea6a",
     "semantic_hash": ""
   },
   "frontend/src/pages/PanoDetay.tsx": {
-    "mtime": 1789457983.360815,
-    "seen": 1789556767.1790447,
-    "ast_hash": "b279736c12f7d75c0e22869e419e7fbb",
-    "semantic_hash": "b279736c12f7d75c0e22869e419e7fbb"
+    "mtime": 1789665911.7606573,
+    "seen": 1789666263.620079,
+    "ast_hash": "effafee969ac708508914bfa5bc75e0a",
+    "semantic_hash": ""
   },
   "frontend/src/pages/TrendKorelasyon.tsx": {
-    "mtime": 1789457983.360815,
-    "seen": 1789556767.1790447,
-    "ast_hash": "c18ca6b0a5b00279ca0abcb8ff41b607",
-    "semantic_hash": "c18ca6b0a5b00279ca0abcb8ff41b607"
+    "mtime": 1789665911.7621944,
+    "seen": 1789666263.620079,
+    "ast_hash": "a27df74a14c32849706062d6f0394d50",
+    "semantic_hash": ""
   },
   "frontend/src/print.test.ts": {
     "mtime": 1789556568.7323482,
@@ -1338,9 +1338,9 @@
     "semantic_hash": ""
   },
   "STATUS.md": {
-    "mtime": 1789664937.8145044,
-    "seen": 1789664976.8478837,
-    "ast_hash": "b4e21630b830132c961f6dfcc45b967c",
+    "mtime": 1789665911.731879,
+    "seen": 1789666263.620079,
+    "ast_hash": "e138fadedfb9db413bf63077736ec4be",
     "semantic_hash": ""
   },
   "backend/requirements.txt": {
@@ -1524,9 +1524,9 @@
     "semantic_hash": ""
   },
   "docs/16-ux-tasarim.md": {
-    "mtime": 1789556568.7282453,
-    "seen": 1789558378.119295,
-    "ast_hash": "3d4516ff5fb8a5ab33bc92a75b358ab0",
+    "mtime": 1789665911.7477584,
+    "seen": 1789666263.620079,
+    "ast_hash": "13e174ca7bee0cb64039efd3284ec87b",
     "semantic_hash": ""
   },
   "docs/17-donanimsiz-dogrulama.md": {
@@ -1566,9 +1566,9 @@
     "semantic_hash": ""
   },
   "frontend/TASARIM-REVIZYONU.md": {
-    "mtime": 1789664937.8204598,
-    "seen": 1789664976.8478837,
-    "ast_hash": "5f04fe257acbd886f7beb1717037363c",
+    "mtime": 1789665911.7489529,
+    "seen": 1789666263.620079,
+    "ast_hash": "b038259a13fcc49049cc1a1eaf5e7ce6",
     "semantic_hash": ""
   },
   "frontend/index.html": {
@@ -1674,51 +1674,51 @@
     "semantic_hash": ""
   },
   "assets/ekran/01-filo-listesi.png": {
-    "mtime": 1789457983.3169682,
-    "seen": 1789558378.119295,
-    "ast_hash": "0bb2bc50f61e1385431f5291c9c7de32",
+    "mtime": 1789665911.7329543,
+    "seen": 1789666263.620079,
+    "ast_hash": "30e89a37d61570cbbb6946cb5451c5c0",
     "semantic_hash": ""
   },
   "assets/ekran/02-pano-detay-alarm.png": {
-    "mtime": 1789457983.3185105,
-    "seen": 1789558378.119295,
-    "ast_hash": "d81131de1a2044db0ee299cc9db8028f",
+    "mtime": 1789665911.735082,
+    "seen": 1789666263.620079,
+    "ast_hash": "491ec8b6f305b39837b6a70bb46778ef",
     "semantic_hash": ""
   },
   "assets/ekran/02-pano-detay-normal.png": {
-    "mtime": 1789457983.3200502,
-    "seen": 1789558378.119295,
-    "ast_hash": "62a4e6318e5118749ff45cb91a370718",
+    "mtime": 1789665911.7368743,
+    "seen": 1789666263.620079,
+    "ast_hash": "106f678d578ba376c352b199cf4f2508",
     "semantic_hash": ""
   },
   "assets/ekran/03-alarm-konsolu.png": {
-    "mtime": 1789457983.3215883,
-    "seen": 1789558378.119295,
-    "ast_hash": "7c3373f852d319959c91279197e7f9f4",
+    "mtime": 1789665911.7385774,
+    "seen": 1789666263.620079,
+    "ast_hash": "21bdbdc22fa08538bcd13b86bb7c578a",
     "semantic_hash": ""
   },
   "assets/ekran/04-trend-korelasyon.png": {
-    "mtime": 1789457983.3232765,
-    "seen": 1789558378.119295,
-    "ast_hash": "adb5ddd0ff0f53d9393958afc6b639a5",
+    "mtime": 1789665911.7414849,
+    "seen": 1789666263.620079,
+    "ast_hash": "e2062b8c391a14adbc505f7b07eb1c6b",
     "semantic_hash": ""
   },
   "assets/ekran/05-olay-analizi-kara-kutu.png": {
-    "mtime": 1789457983.3242824,
-    "seen": 1789558378.119295,
-    "ast_hash": "5ca52f5e237772adcf6ecf17c5534b3f",
+    "mtime": 1789665911.7430177,
+    "seen": 1789666263.620079,
+    "ast_hash": "b1c9624d71c50b65f225fb83c10c0a89",
     "semantic_hash": ""
   },
   "assets/ekran/06-cihaz-sagligi.png": {
-    "mtime": 1789457983.325371,
-    "seen": 1789558378.119295,
-    "ast_hash": "421f9459a8dc0185cfa81109df9bb203",
+    "mtime": 1789665911.7446358,
+    "seen": 1789666263.620079,
+    "ast_hash": "dbe6e852cf00c034ccfba55770f81509",
     "semantic_hash": ""
   },
   "assets/ekran/07-bolge-haritasi.png": {
-    "mtime": 1789664937.818914,
-    "seen": 1789664976.8478837,
-    "ast_hash": "89b111464a8204c83d89c862960a8da7",
+    "mtime": 1789665911.7472515,
+    "seen": 1789666263.620079,
+    "ast_hash": "6c7b43a2689cdaa0c413730b896fd719",
     "semantic_hash": ""
   },
   "hardware/yerlesim/ek2-14-yerlesim.svg": {
@@ -1728,9 +1728,81 @@
     "semantic_hash": ""
   },
   "frontend/src/data/ilce-sinirlari.json": {
-    "mtime": 1789664937.8219695,
-    "seen": 1789664976.8478837,
-    "ast_hash": "3f12bf7dca620df4683d8ec39feaefa6",
+    "mtime": 1789665911.7566385,
+    "seen": 1789666263.620079,
+    "ast_hash": "ed0d5f2f2208144d5910d80e1fb0901b",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/AppShell.tsx": {
+    "mtime": 1789665988.4518118,
+    "seen": 1789666263.620079,
+    "ast_hash": "9313235adde9241cd3cb3f1826cbd3a3",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/Icon.tsx": {
+    "mtime": 1789665911.7536087,
+    "seen": 1789666263.620079,
+    "ast_hash": "1df6ca0fca847eaa862561a7bae20aa7",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/chartMath.test.ts": {
+    "mtime": 1789665911.7566385,
+    "seen": 1789666263.620079,
+    "ast_hash": "57cc149fe03e7d129266794c51879c6e",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/chartMath.ts": {
+    "mtime": 1789665911.7566385,
+    "seen": 1789666263.620079,
+    "ast_hash": "29df1ff6c8395e3a1caa39ee0d4ab1f2",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/mapGeometry.test.ts": {
+    "mtime": 1789665911.7576427,
+    "seen": 1789666263.620079,
+    "ast_hash": "ca1a557cd483a071693c358d44220ad5",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/mapGeometry.ts": {
+    "mtime": 1789665911.7576427,
+    "seen": 1789666263.620079,
+    "ast_hash": "c0be29078ec9c8e5289c3a044c799a2a",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/mapLabels.test.ts": {
+    "mtime": 1789665911.7581458,
+    "seen": 1789666263.620079,
+    "ast_hash": "88c3e9e02ef1f4468f73b5ccbaad5c47",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/mapLabels.ts": {
+    "mtime": 1789665911.7581458,
+    "seen": 1789666263.620079,
+    "ast_hash": "9dddca1a831d672d07e1a9a6173fc2ef",
+    "semantic_hash": ""
+  },
+  "frontend/src/lib/useChartWidth.ts": {
+    "mtime": 1789665911.7581458,
+    "seen": 1789666263.620079,
+    "ast_hash": "86f0e1d36474d7b79b227755b5adcd27",
+    "semantic_hash": ""
+  },
+  "DEVILS-ADVOCATE-ANALIZI.md": {
+    "mtime": 1789665508.6786554,
+    "seen": 1789666263.620079,
+    "ast_hash": "99613ac23182c8b52fa68ac5441dbcf4",
+    "semantic_hash": ""
+  },
+  "frontend/GRAFIK-TASARIM-NOTLARI.md": {
+    "mtime": 1789665911.7477584,
+    "seen": 1789666263.620079,
+    "ast_hash": "7aef6b9226cbf04cffdb4770e29b6450",
+    "semantic_hash": ""
+  },
+  "frontend/TASARIM-ARASTIRMASI-2026-09.md": {
+    "mtime": 1789665911.7484293,
+    "seen": 1789666263.620079,
+    "ast_hash": "6f7f09e44c73ea92ad3f5a62cf20e0fa",
     "semantic_hash": ""
   },
   "graphify-out/converted/\u0130stenen Veriler_613618b1.md": {
@@ -1755,6 +1827,18 @@
     "mtime": 1789069273.435503,
     "seen": 1789558378.119295,
     "ast_hash": "c46d751fdfc1af0bf53817948133a759",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/gdz-logo.svg": {
+    "mtime": 1789665911.7515857,
+    "seen": 1789666263.620079,
+    "ast_hash": "f7013ca696c2d8715885c9b628b08837",
+    "semantic_hash": ""
+  },
+  "gdzlogo.svg": {
+    "mtime": 1789665911.7621944,
+    "seen": 1789666263.620079,
+    "ast_hash": "f7013ca696c2d8715885c9b628b08837",
     "semantic_hash": ""
   }
 }
