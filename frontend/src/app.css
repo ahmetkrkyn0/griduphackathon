@@ -17,8 +17,8 @@
 .nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav-link { color: var(--dim); text-decoration: none; padding: 6px 10px; border-radius: var(--radius-sm); font-size: 14px; }
 .nav-link:hover { background: var(--well); color: var(--ink); }
-/* Secili durum: grafit dolgu + turuncu alt serit (marka gorunurlugu, alarm rengiyle karismaz). */
-.nav-link.active { background: var(--plate); color: #fff; box-shadow: inset 0 -3px 0 var(--brand); }
+/* Secili durum: tam marka turuncusu + beyaz metin (kullanici talebi, 16 Eylul). */
+.nav-link.active { background: var(--brand); color: #fff; }
 
 .topbar-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 /* KPI seridi: duz metin yerine yukseltilmis "buyuk sayi" karolari (GE Vernova / ABB filo panolari). */
@@ -545,6 +545,27 @@
 .geo-halo { fill: none; stroke: var(--p2); stroke-width: 4; animation: og-pulse 1.6s ease-in-out infinite; }
 .geo-label { font: 500 11px var(--sans); fill: var(--dim); pointer-events: none; }
 .geo-note { margin-top: 8px; }
+/* Gercek ilce siniri (polyline, kullanici talebi 16 Eylul): turuncu + hafif glow (feGaussianBlur,
+   #geo-glow filtresi), hover'da ilcenin kendi merkezine gore hafifce buyur. Nokta/etiket ustte
+   ayri katmanda kalir, sinir onlarin altina cizilir. */
+.geo-district {
+  fill: rgba(255, 103, 29, 0.07);
+  stroke: var(--brand);
+  stroke-width: 1.6;
+  filter: url(#geo-glow);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.18s ease, fill 0.18s ease, stroke-width 0.18s ease;
+  cursor: pointer;
+}
+.geo-district:hover {
+  transform: scale(1.045);
+  fill: rgba(255, 103, 29, 0.16);
+  stroke-width: 2.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .geo-district { transition: none; }
+}
 
 /* ---------- Dar ekran ---------- */
 @media (max-width: 960px) {

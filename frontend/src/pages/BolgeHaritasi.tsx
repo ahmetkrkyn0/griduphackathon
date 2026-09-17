@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { PanelSummary, Prio } from "../api/types";
+import ilceSinirlari from "../data/ilce-sinirlari.json";
 import { PRIO_NAME } from "../lib/labels";
 import { effectivePrio } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
@@ -20,15 +21,29 @@ function companyOf(panoId: string): string {
 type Geo = PanelSummary & { lat: number; lon: number };
 const hasCoords = (p: PanelSummary): p is Geo => p.lat != null && p.lon != null;
 
+// [boylam, enlem] — GeoJSON sozlesmesi. Kaynak: UN OCHA HDX COD-AB-TUR (CC BY-IGO), ilce
+// sinirlari Douglas-Peucker ile sadelestirildi (bkz. frontend/TASARIM-REVIZYONU.md §17).
+type LonLat = [number, number];
+type BoundaryGeom = { type: "Polygon"; coordinates: LonLat[][] } | { type: "MultiPolygon"; coordinates: LonLat[][][] };
+const DISTRICT_BOUNDARIES = ilceSinirlari as unknown as Record<string, BoundaryGeom>;
+
+function districtKey(name: string): string {
+  return name.split(" ")[0];
+}
+
+function ringsOf(geom: BoundaryGeom): LonLat[][] {
+  return geom.type === "Polygon" ? geom.coordinates : geom.coordinates.flat();
+}
+
 const MAP_W = 900;
 const MAP_H = 620;
 const MAP_PAD = 64;
 
 /** Gercek enlem/boylamdan yerel, olcek-korumali bir izdusum (kucuk bolgesel alanda yeterince
  *  dogru — boylam, ortalama enlemin kosinusuyle duzeltilir ki sekil dogu-bati yonunde sikismasin). */
-function projector(points: Geo[]) {
-  const lats = points.map((p) => p.lat);
-  const lons = points.map((p) => p.lon);
+function projector(allPoints: LonLat[]) {
+  const lats = allPoints.map(([, lat]) => lat);
+  const lons = allPoints.map(([lon]) => lon);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
   const minLon = Math.min(...lons);
@@ -41,15 +56,18 @@ function projector(points: Geo[]) {
   const drawH = spanY * scale;
   const offX = (MAP_W - drawW) / 2;
   const offY = (MAP_H - drawH) / 2;
-  return (p: Geo) => ({
-    x: offX + (p.lon - minLon) * lonScale * scale,
-    y: offY + (maxLat - p.lat) * scale,
+  return (lon: number, lat: number) => ({
+    x: offX + (lon - minLon) * lonScale * scale,
+    y: offY + (maxLat - lat) * scale,
   });
 }
 
 /** TC3: bölge haritası. Gerçek enlem/boylamı olan panolar varsa (ilçe merkezi hassasiyetinde,
- *  bkz. api/mock.ts DISTRICT_COORDS) yerel ölçekli bir konum grafiğine yerleştirilir — gerçek
- *  harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını tamamen çevrimdışı çalışır. */
+ *  bkz. api/mock.ts DISTRICT_COORDS) yerel ölçekli bir konum grafiğine yerleştirilir; panonun
+ *  ilçesi için gerçek sınır verisi varsa (bkz. src/data/ilce-sinirlari.json) o ilçenin gerçek
+ *  poligonu da çizilir. Gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü GK4 yığını
+ *  tamamen çevrimdışı çalışır — sınır verisi build zamanında pakete gömülü, çalışma zamanında
+ *  hiçbir ağ isteği yapılmaz. */
 export function BolgeHaritasi() {
   const { panels } = useFleet();
   const geoPanels = panels.filter(hasCoords);
@@ -60,9 +78,10 @@ export function BolgeHaritasi() {
         <h1>Bölge haritası</h1>
         {geoPanels.length >= 2 ? (
           <p>
-            Panoların gerçek enlem/boylamına göre yerel ölçekli konum görünümü. Noktalar ilçe merkezi
-            hassasiyetindedir (gerçek trafo GPS pini değil); gerçek harita karosu (Google/Mapbox/OSM)
-            kullanılmaz, çünkü yığın tamamen internetten bağımsız çalışır (GK4).
+            Panoların gerçek enlem/boylamına göre yerel ölçekli konum görünümü; ilçe sınırları
+            gerçek coğrafi veridir. Nokta konumu ilçe merkezi hassasiyetindedir (gerçek trafo GPS
+            pini değil); gerçek harita karosu (Google/Mapbox/OSM) kullanılmaz, çünkü yığın tamamen
+            internetten bağımsız çalışır (GK4).
           </p>
         ) : (
           <p>
@@ -91,19 +110,49 @@ export function BolgeHaritasi() {
 }
 
 function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
-  const project = projector(panels);
   const missing = allCount - panels.length;
+  const withBoundary = panels
+    .map((p) => ({ p, geom: DISTRICT_BOUNDARIES[districtKey(p.name)] }))
+    .filter((d): d is { p: Geo; geom: BoundaryGeom } => !!d.geom);
+
+  const allLonLat: LonLat[] = [
+    ...panels.map((p): LonLat => [p.lon, p.lat]),
+    ...withBoundary.flatMap((d) => ringsOf(d.geom)).flat(),
+  ];
+  const project = projector(allLonLat);
+
   return (
     <>
-      <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="Panoların yaklaşık coğrafi konumu">
+      <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="Panoların gerçek konumu ve ilçe sınırları">
+        <defs>
+          <filter id="geo-glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
         <rect className="geo-frame" x={1} y={1} width={MAP_W - 2} height={MAP_H - 2} rx={12} />
         <g className="geo-compass" transform={`translate(${MAP_W - 46}, 40)`}>
           <line x1={0} y1={14} x2={0} y2={-14} />
           <path d="M -6 -6 L 0 -16 L 6 -6" />
           <text y={26} textAnchor="middle">K</text>
         </g>
+
+        {withBoundary.map(({ p, geom }) => {
+          const d = ringsOf(geom)
+            .map((ring) => `M${ring.map(([lon, lat]) => { const { x, y } = project(lon, lat); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join("L")}Z`)
+            .join(" ");
+          return (
+            <path key={`b-${p.pano_id}`} className="geo-district" d={d} fillRule="evenodd">
+              <title>{p.name.split(" ")[0]}</title>
+            </path>
+          );
+        })}
+
         {panels.map((p) => {
-          const { x, y } = project(p);
+          const { x, y } = project(p.lon, p.lat);
           const prio = effectivePrio(p);
           return (
             <g key={p.pano_id}>
@@ -124,11 +173,10 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           );
         })}
       </svg>
-      {missing > 0 && (
-        <p className="dim small geo-note">
-          {missing} pano konum verisi olmadığı için haritada gösterilmiyor.
-        </p>
-      )}
+      <p className="dim small geo-note">
+        İlçe sınırları: UN OCHA HDX <a href="https://data.humdata.org/dataset/cod-ab-tur" target="_blank" rel="noreferrer">COD-AB-TUR</a> (CC BY-IGO), sadeleştirilmiş.
+        {missing > 0 && ` ${missing} pano konum verisi olmadığı için haritada gösterilmiyor.`}
+      </p>
     </>
   );
 }
