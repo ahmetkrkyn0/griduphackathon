@@ -2,7 +2,7 @@
 // ESIK DEGERI YOK (kural 10): sayilar API'nin reason.signals[].threshold alanindan gelir.
 // labels.test.ts, sozlesmedeki her kodun burada karsiligi oldugunu denetler.
 
-import type { NotifyChannel, PointState, Prio } from "../api/types";
+import type { Gecerlilik, NotifyChannel, PointState, Prio } from "../api/types";
 
 export const PRIO_NAME: Record<Prio, string> = {
   P1: "Kritik",
@@ -19,6 +19,30 @@ export const STATE_TEXT: Record<PointState, string> = {
   critical: "Kritik",
   stale: "Veri eski",
 };
+
+export const GECERLILIK_TEXT: Record<Gecerlilik, string> = {
+  sensor_supheli: "Sensör şüpheli",
+  sinir_asildi: "Sınır aşıldı",
+  ogreniyor: "Öğreniyor",
+  veri_yetersiz: "Veri yetersiz",
+  model_kapsami_disi: "Model kapsamı dışı",
+  tahmin_gecerli: "Tahmin geçerli",
+};
+
+const GECERLILIK_HINT: Record<Exclude<Gecerlilik, "tahmin_gecerli">, string> = {
+  sensor_supheli: "Bu ölçümde veri kalitesi şüpheli; kalan ömür tahmini gösterilmiyor.",
+  sinir_asildi: "Ölçüm zaten sınırın üstünde; kalan süre yerine acil müdahale önemli.",
+  ogreniyor: "Taban sıcaklık öğrenimi sürüyor; doğrulanmamış süre tahmini gösterilmiyor.",
+  veri_yetersiz: "Bu nokta için güncel veya yeterli veri yok; süre tahmini gösterilmiyor.",
+  model_kapsami_disi: "Eğilim sınıra doğru sürekli kötüleşmiyor; tahmin modeli bu örüntüyü kapsamıyor.",
+};
+
+/** AlarmNedeni.tsx "Ne kadar acil?" dususu: ttl_h yoksa NEDEN yoksa gosterir,
+ * "Sure tahmini yok" gibi bilgisiz bir cumleye duselmez. */
+export function validityHint(gecerlilik: Gecerlilik | undefined, prio: Prio): string {
+  if (gecerlilik && gecerlilik !== "tahmin_gecerli") return GECERLILIK_HINT[gecerlilik];
+  return prio === "P1" ? "Hemen müdahale gerekir." : "Süre tahmini yok.";
+}
 
 export const CHANNEL_TEXT: Record<NotifyChannel, string> = {
   sms: "SMS",
