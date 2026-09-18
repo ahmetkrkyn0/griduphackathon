@@ -32,16 +32,24 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 #: PEM govde imzalari. Sertifika (CERTIFICATE) sir DEGILDIR ama repoda da isi yoktur:
 #: ayri, daha yumusak bir uyari olarak raporlanir.
+#:
+#: IMZALAR PARCA PARCA KURULUYOR ve bu KASITLIDIR: dizeler burada BUTUN halde yazilsaydi
+#: bu dosyanin KENDISI izlenen bir dosya olarak taramaya takilirdi. Ilk yazimda oyleydi
+#: ve test (test_sir_sizintisi.py) bunu commit'ten hemen sonra yakaladi. Alternatif olan
+#: "bu dosyayi taramadan haric tut" yolu bir DELIK acardi: yarin o dosyaya yapistirilan
+#: gercek bir anahtar da gorunmezdi. Parcali kurulum deligi acmadan sorunu cozer.
+_BAS = "-----BEGIN "
+_SON = " KEY-----"
 GIZLI_IMZALAR = (
-    "-----BEGIN PRIVATE KEY-----",
-    "-----BEGIN RSA PRIVATE KEY-----",
-    "-----BEGIN EC PRIVATE KEY-----",
-    "-----BEGIN DSA PRIVATE KEY-----",
-    "-----BEGIN OPENSSH PRIVATE KEY-----",
-    "-----BEGIN ENCRYPTED PRIVATE KEY-----",
-    "PuTTY-User-Key-File",
+    _BAS + "PRIVATE" + _SON,
+    _BAS + "RSA PRIVATE" + _SON,
+    _BAS + "EC PRIVATE" + _SON,
+    _BAS + "DSA PRIVATE" + _SON,
+    _BAS + "OPENSSH PRIVATE" + _SON,
+    _BAS + "ENCRYPTED PRIVATE" + _SON,
+    "PuTTY-User-" + "Key-File",
 )
-SERTIFIKA_IMZASI = "-----BEGIN CERTIFICATE-----"
+SERTIFIKA_IMZASI = _BAS + "CERTIFICATE" + "-----"
 
 #: Uretim betiginin urettigi (ya da uretebilecegi) ve GIT DISINDA olmasi gereken yollar.
 IGNORE_SOZLESMESI = (
