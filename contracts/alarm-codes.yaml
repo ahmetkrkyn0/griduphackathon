@@ -8,7 +8,11 @@
 #   4) frontend/src/api/types.ts (yalnizca kod -> metin)  (Kisi C)
 #
 # Kaynak: HACKATHON_ANALIZ_RAPORU.md 6.5 (L0 limit tablosu), 6.6 (oncelik matrisi), 15.1
-version: 1
+#
+# v2 (18 Eylul 2026): esigi olmayan uc alarm kodunun esikleri sozlesmeye tasindi ve
+# kalici uyarim kosuluna olcekten bagimsiz ikinci olcut eklendi.
+# Gerekce ve olcumler: contracts/changes/2026-09-14-eksik-esikler.md
+version: 2
 
 priorities:
   P1:
@@ -134,7 +138,8 @@ alarms:
     prio: P3
     layer: L1
     text: "Notr akimi ve akim THD birlikte artti — harmonik kaynakli notr isinmasi"
-    basis: "Rapor 6.5 L1-7"
+    basis: "Rapor 6.5 L1-7; iki kosul BIRLIKTE saglanmali (VE)"
+    threshold: [thresholds.neutral_current_ratio_warn, thresholds.neutral_thd_warn_pct]
   - code: ALM-ARC-TRIP
     bit: 11
     prio: P1
@@ -153,6 +158,11 @@ alarms:
     layer: L1
     text: "PD darbe sayisi/genligi trendi artiyor (OG)"
     basis: "EA Technology kalici HFCT trend yaklasimi"
+    # Esik BILEREK tanimlanmadi: PD yalnizca OG hucre/trafo icin anlamlidir ve AG
+    # panoda telemetri semasi geregi pd: null gelir, yani degerlendirilecek veri yok.
+    # MoSCoW'da PD "Could" kumesinde. Esik, PD donanimi kapsama girerse ayri bir
+    # contracts/changes/ dosyasiyla tanimlanir. (docs/05 §10, docs/13 §7.1)
+    scope: "OG eklentisi; AG panoda pd: null oldugu icin degerlendirilmez"
   - code: ALM-DQ-FROZEN
     bit: 14
     prio: SYS
@@ -171,6 +181,8 @@ alarms:
     prio: SYS
     layer: "L-1"
     text: "Baglanti sicakligi ortamin altinda — sensor yerinden dusmus olabilir"
+    basis: "Kural: t_c < T_ortam - dq_below_ambient_deadband_k (olu bant)"
+    threshold: thresholds.dq_below_ambient_deadband_k
   - code: ALM-NODE-LOST
     bit: 17
     prio: SYS
@@ -229,12 +241,33 @@ thresholds:
   dew_margin_warn_k: 3.0
   dew_margin_alarm_k: 1.0
   heater_on_margin_k: 3.0      # otomatik aksiyon esigi
+  # L1 harmonik kaynakli notr isinmasi — IKI KOSUL BIRLIKTE saglanmali (ALM-NEUTRAL-THD):
+  #   i_n / ort(i_ph) > neutral_current_ratio_warn  VE  ort(thd_i) > neutral_thd_warn_pct
+  # Tek basina yuksek THD (dogrusal olmayan yuk) veya tek basina yuksek notr akimi
+  # (dengesizlik) ariza degildir. HER IKI SAYI DA TURETILMISTIR, olculmemistir:
+  # rapor 15.2 harmonik senaryosunu "akim THD %25+" diye tarif ediyor, uyari esigi
+  # bunun altinda secildi; notr orani icin rapor sayi vermiyor.
+  neutral_current_ratio_warn: 0.30   # i_n / ortalama faz akimi
+  neutral_thd_warn_pct: 15.0         # ortalama akim THD (%)
   # RLS / kestirim
   rls_lambda: 0.998
   tau_init_s: 900
   excitation_min_var_i2: 1.0e7  # bunun altinda RLS guncellenmez (kalici uyarim kosulu)
+  # Mutlak esik OLCEGE BAGIMLIDIR: notr iletken faz akiminin ~alti'da birini tasir,
+  # yani var(I^2) ~1000 kat kucuk olur ve GIRIS_N ayni goreli yuk degisimini gorse bile
+  # hicbir zaman "uyarilmis" sayilmazdi. Olculdu (TA1, karma profil, 25 saat, 30 ornek):
+  #   GIRIS_L1 var(I^2) medyan 1,67e9  cv 0,022  -> mutlak esigi geciyor
+  #   GIRIS_N  var(I^2) medyan 1,24e6  cv 0,028  -> GECMIYOR
+  # Ikisi de ayni goreli degisimi goruyor; mutlak esik "uyarim var mi" degil
+  # "iletken kalin mi" sorusunu olcuyordu. Kural: ya mutlak esik ya bu cv saglanir.
+  excitation_min_cv_i2: 0.02   # std(I^2)/ort(I^2); olcege bagimsiz olcut. TURETILMIS.
   baseline_learning_days: 7
   # L-1 veri kalitesi
+  # Olu bant olmadan SAGLIKLI pano surekli SYS alarmi uretir: hafif yuklu noktalar
+  # (ozellikle GIRIS_N) fiziksel olarak ortam sicakliginda oturur ve rapor 15.2'deki
+  # sigma ~0,2 K olcum gurultusu isaret degistirir. Olculdu: S0'da GIRIS_N dt_c ~0,17 K.
+  # 1,0 K = 3 sigma uzeri, yuvarlak. TURETILMIS.
+  dq_below_ambient_deadband_k: 1.0
   dq_frozen_samples: 30
   dq_max_rate_k_per_min: 10.0
   node_silent_min: 15

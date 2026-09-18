@@ -63,8 +63,10 @@ def alarm_catalog(contract: dict) -> str:
     for alarm in sorted(contract["alarms"], key=lambda a: a["bit"]):
         threshold = ""
         if "threshold" in alarm:
-            name = alarm["threshold"].removeprefix("thresholds.")
-            threshold = f"`{name}` = {thresholds[name]}"
+            # Cok kosullu kural liste yazar (or. ALM-NEUTRAL-THD); ikisi de gosterilir.
+            refs = alarm["threshold"]
+            names = [ref.removeprefix("thresholds.") for ref in ([refs] if isinstance(refs, str) else refs)]
+            threshold = " ve ".join(f"`{name}` = {thresholds[name]}" for name in names)
         rows.append(
             f"| {alarm['bit']} | `{alarm['code']}` | {alarm['prio']} | {alarm['layer']} | {alarm['text']} "
             f"| {threshold} | {', '.join(evidence_of.get(alarm['code'], [])) or '-'} | {alarm.get('basis', '-')} |"

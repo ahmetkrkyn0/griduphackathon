@@ -186,14 +186,15 @@ L0/L1'e girmeden burada işaretlenir. Öncelik `SYS`: izleme sistemi arızası, 
 |---|---|---|
 | Donmuş değer | `dq_frozen_samples` = 30 örnek | `ALM-DQ-FROZEN` / 14 |
 | Fiziksel olmayan hız | `dq_max_rate_k_per_min` = 10,0 K/dk | `ALM-DQ-JUMP` / 15 |
-| Ortam altı | **ölü bant** (aşağıda) | `ALM-DQ-BELOW-AMBIENT` / 16 |
+| Ortam altı | `dq_below_ambient_deadband_k` = 1,0 K (ölü bant, aşağıda) | `ALM-DQ-BELOW-AMBIENT` / 16 |
 | Düğüm sessiz | `nodes_ok < nodes_total` | `ALM-NODE-LOST` / 17 |
 
-**Ölü bant sözleşmede yok ve gereklidir.** Hafif yüklü noktalar (özellikle `GIRIS_N`)
-fiziksel olarak ortam sıcaklığında oturur; σ ≈ 0,2 K ölçüm gürültüsüyle `dt_c` ara ara
-negatife düşer. Bu gerçek sensör davranışıdır, kırpılmaz. Ölü bant olmadan sağlıklı
-pano sürekli SYS alarmı üretirdi. Türetilmiş varsayılan 1,0 K (3σ üzeri);
-[sözleşmeye eklenmesi önerildi](../contracts/changes/2026-09-14-eksik-esikler.md).
+**Ölü bant neden var.** Hafif yüklü noktalar (özellikle `GIRIS_N`) fiziksel olarak ortam
+sıcaklığında oturur; σ ≈ 0,2 K ölçüm gürültüsüyle `dt_c` ara ara negatife düşer. Bu gerçek
+sensör davranışıdır, kırpılmaz. Ölü bant olmadan sağlıklı pano sürekli SYS alarmı üretirdi.
+Değer 1,0 K'dır (3σ üzeri, yuvarlak) ve **18 Eylül'de sözleşmeye taşındı**
+(`alarm-codes.yaml` v2, [gerekçe](../contracts/changes/2026-09-14-eksik-esikler.md)) —
+ama **türetilmiştir, ölçülmemiştir** ve sözleşmedeki yorumunda böyle yazar.
 
 **Çift alarm tuzağı.** DQ kodları `alarms[]` listesine **yazılmaz**, yalnızca
 `t_conn[].q` bitine yazılır. Merkez `q` bitlerini okuyup alarmı doğru noktaya bağlar
@@ -249,10 +250,16 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
 - **L2 katmanı henüz kod üretmiyor.** Rapor §6.5'te saat-of-hafta robust z, EWMA/CUSUM
   ve filo karşılaştırması tanımlı; `contracts/alarm-codes.yaml`'da `layer: L2` etiketli
   **hiçbir alarm kodu yok**. Bu, rapor ile donmuş sözleşme arasındaki bir boşluktur.
-- **Üç kodun eşiği sözleşmede yok** (`ALM-DQ-BELOW-AMBIENT`, `ALM-NEUTRAL-THD`,
-  `ALM-PD-TREND`) ve türetilmiş varsayılanlarla çalışıyor. Öneri dosyası açıldı, üç onay
-  bekliyor. Kabul edilene kadar kenar ile merkezin aynı kuralı farklı sayıyla
-  uygulama riski vardır.
+- **İki kodun eşiği 18 Eylül'de sözleşmeye taşındı** (`alarm-codes.yaml` v2):
+  `ALM-DQ-BELOW-AMBIENT` → `dq_below_ambient_deadband_k`, `ALM-NEUTRAL-THD` →
+  `neutral_current_ratio_warn` **ve** `neutral_thd_warn_pct` (iki koşul birlikte).
+  Kenar ile merkezin aynı kuralı farklı sayıyla uygulama riski böylece kalktı.
+  **Ama bu sayılar hâlâ türetilmiştir, ölçülmemiştir** — sözleşmedeki yorumlarında
+  böyle yazıyor; yalnızca `excitation_min_cv_i2 = 0.02` ölçülmüş bir taramadan gelir.
+  `ALM-PD-TREND` **bilerek eşiksiz bırakıldı**: AG panoda `pd` bloğu şema gereği `null`,
+  yani değerlendirilecek veri yok; eşik yerine `scope:` notu düşüldü. PD donanımı
+  kapsama girerse eşik ayrı bir `contracts/changes/` dosyasıyla tanımlanır.
+  Gerekçe ve ölçümler: `contracts/changes/2026-09-14-eksik-esikler.md`.
 - **Aşırı yükte öne alma yoktur** (ölçülen: 1,2 saat). Beklenen davranış: sebep bozulma
   değil yüktür, fizik katmanının bir üstünlüğü yoktur ve olmamalıdır.
 - **`ttl_h` henüz güvenilir bir kalan ömür kestirimi değildir.** Geri testi yapıldı
