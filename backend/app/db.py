@@ -2,7 +2,8 @@
 
 `Store` sozlesmesini hem uretimdeki PgStore hem de testlerdeki bellek ici cift uygular.
 Tablolar: deploy/initdb/001_schema.sql (panels, telemetry, quarantine, events, alarms),
-002_ingest.sql (panel_latest) ve 003_alarms.sql (alarm_journal + durum makinesi zamanlari).
+002_ingest.sql (panel_latest), 003_alarms.sql (alarm_journal + durum makinesi zamanlari)
+ve 007_journal_chain.sql (denetim izi hash zinciri, F-20).
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .alarm_manager import Alarm, Change
+from .journal_chain import GENESIS, link_hash
 from .models import EventRecord, JournalEntry, PanelRecord, Rejection, Sample
 
 if TYPE_CHECKING:
@@ -97,6 +99,10 @@ class Store(Protocol):
 
     def panel_journal(self, pano_id: str, start: datetime, end: datetime) -> list[JournalEntry]:
         """Panonun alarm denetim izi, `at` [start, end] araliginda, zaman sirasiyla (esitlikte kayit sirasi)."""
+        ...
+
+    def journal_chain(self) -> list[dict]:
+        """Denetim izinin tamami, id sirasiyla; hash zinciri dogrulamasi icin (F-20)."""
         ...
 
     def alarm_counts(self, since: datetime) -> dict[str, int]:
@@ -188,7 +194,24 @@ VALUES ({", ".join(f"%({c})s" for c in ALARM_COLUMNS)})
 ON CONFLICT (id) DO UPDATE SET {", ".join(f"{c} = EXCLUDED.{c}" for c in _ALARM_MUTABLE)}
 """
 
-_INSERT_JOURNAL = "INSERT INTO alarm_journal (alarm_id, at, action, state, by_user, note) VALUES (%s, %s, %s, %s, %s, %s)"
+_INSERT_JOURNAL = (
+    "INSERT INTO alarm_journal (alarm_id, at, action, state, by_user, note, prev_hash, hash) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+)
+
+# Zincirin son halkasi (F-20). Goc oncesi satirlarin hash'i NULL oldugu icin filtre sart.
+_LAST_CHAIN_HASH = "SELECT hash FROM alarm_journal WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1"
+
+# Iki transaction ayni `prev_hash`'i okuyup zinciri CATALLAMASIN. Alarm yoneticisi tek
+# yazicidir (docs/09 aktif-pasif) ama bu, veritabani seviyesinde garanti degildir:
+# SCADA onayi, SMS yaniti ve HTTP ayri thread'lerden gelir.
+_CHAIN_LOCK = "SELECT pg_advisory_xact_lock(%s)"
+_CHAIN_LOCK_KEY = 0x6A726E6C  # "jrnl"
+
+_SELECT_CHAIN = (
+    "SELECT id, alarm_id, at, action, state, by_user, note, prev_hash, hash "
+    "FROM alarm_journal ORDER BY id"
+)
 
 _INSERT_NOTIFICATION = (
     "INSERT INTO notifications (alarm_id, channel, recipient, sent_at, ok, detail) VALUES (%s, %s, %s, %s, %s, %s)"
@@ -338,10 +361,27 @@ class PgStore:
             if events:
                 cur.executemany(_INSERT_EVENT, events)
             cur.executemany(_UPSERT_ALARM, [_alarm_params(c.alarm) for c in changes])
-            cur.executemany(
-                _INSERT_JOURNAL,
-                [(c.alarm.id, at, c.kind, c.alarm.state, c.by, c.note) for c in changes],
-            )
+
+            # F-20: denetim izi hash zinciri. executemany KULLANILAMAZ — her satirin
+            # ozeti bir oncekinin ozetine baglidir, yani sirayla hesaplanmak zorunda.
+            cur.execute(_CHAIN_LOCK, (_CHAIN_LOCK_KEY,))
+            row = cur.execute(_LAST_CHAIN_HASH).fetchone()
+            prev = row[0] if row else GENESIS
+            for c in changes:
+                digest = link_hash(
+                    prev, alarm_id=c.alarm.id, at=at, action=c.kind,
+                    state=c.alarm.state, by_user=c.by, note=c.note,
+                )
+                cur.execute(
+                    _INSERT_JOURNAL,
+                    (c.alarm.id, at, c.kind, c.alarm.state, c.by, c.note, prev, digest),
+                )
+                prev = digest
+
+    def journal_chain(self) -> list[dict]:
+        """Denetim izinin tamami, zincir dogrulamasi icin id sirasiyla (F-20)."""
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(_SELECT_CHAIN).fetchall()
 
     def load_open_alarms(self) -> list[Alarm]:
         return self._select_alarms(f"{_SELECT_ALARMS} WHERE state <> 'cleared' ORDER BY id", ())

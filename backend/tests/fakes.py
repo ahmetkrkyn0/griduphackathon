@@ -16,6 +16,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 
 from app.db import PHONE_CHANNELS, SERIES_ORIGIN, StoreError
+from app.journal_chain import GENESIS, link_hash
 from app.models import EventRecord, JournalEntry, PanelRecord
 
 DEFAULT_INSTALLED_AT = datetime(2026, 9, 1, tzinfo=timezone.utc)
@@ -64,6 +65,7 @@ class MemoryStore:
         self.alarms: dict[int, object] = {}  # id -> Alarm
         self.events: dict[str, EventRecord] = {}
         self.journal: list[tuple] = []  # (alarm_id, at, action, state, by, note)
+        self.chain: list[dict] = []     # F-20 hash zinciri satirlari (PgStore.journal_chain karsiligi)
         self.fail_alarm_saves = 0  # >0 ise siradaki N alarm yazimi StoreError atar
         self.notifications: list = []  # Delivery kayitlari
         for panel in panels:
@@ -142,7 +144,23 @@ class MemoryStore:
             if stored is not None:  # PgStore gibi: aciklama olustugu anin kanitidir
                 alarm = replace(alarm, reason=stored.reason, advice=stored.advice, ttl_h=stored.ttl_h)
             self.alarms[alarm.id] = replace(alarm)
+            # F-20: PgStore ile AYNI hesap. Iki taraf ayrisirsa testler yesil kalir ama
+            # uretimde dogrulayici zinciri kopuk gorur — o yuzden ayni fonksiyon cagriliyor.
+            prev = self.chain[-1]["hash"] if self.chain else GENESIS
+            digest = link_hash(
+                prev, alarm_id=alarm.id, at=at, action=change.kind,
+                state=alarm.state, by_user=change.by, note=change.note,
+            )
+            self.chain.append({
+                "id": len(self.chain) + 1, "alarm_id": alarm.id, "at": at,
+                "action": change.kind, "state": alarm.state, "by_user": change.by,
+                "note": change.note, "prev_hash": prev, "hash": digest,
+            })
             self.journal.append((alarm.id, at, change.kind, alarm.state, change.by, change.note))
+
+    def journal_chain(self) -> list[dict]:
+        self._check()
+        return [dict(row) for row in self.chain]
 
     def load_open_alarms(self):
         self._check()

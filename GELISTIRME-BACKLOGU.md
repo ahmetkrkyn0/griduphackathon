@@ -223,12 +223,32 @@ Onaylayan kimliğini istemciden değil kimlik belirtecinden alır ve uçları ro
 > `GRIDUP_OPERATORS` boşsa kimlik doğrulama tamamen kapalıdır ve bunu `GET /health` `auth.enabled` söyler.
 > Ayrıntı: [contracts/changes/2026-09-18-kimlik-dogrulama.md](contracts/changes/2026-09-18-kimlik-dogrulama.md).
 
-### F-20 · Denetim izinde kurcalama kanıtı (hash zinciri)
+### F-20 · Denetim izinde kurcalama kanıtı (hash zinciri) — ✅ tamamlandı (18 Eylül)
 Alarm ve bildirim denetim izini zincirleyip bağımsız bir doğrulayıcıyla sınanabilir kılar · **Etki:** yüksek · **Efor:** 1-2 hafta (F-19 sonrası) · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [backend/app/db.py](backend/app/db.py), yeni `scripts/verify_journal.py`, [backend/tests/](backend/tests/)
 **Sektörel dayanak:** IEC 62443-3-3 denetim bilgisinin korunmasını ayrı bir gereksinim sayar; Siemens SICAM güvenlik denetim izini kalıcı tutup dışa aktarır.
 **Bizdeki boşluk:** Denetim izi düz bir tablo; yetkili bir veritabanı kullanıcısı bir satırı sessizce silebilir.
 **Ne üretir:** Negatif testle **ölçülmüş** bir iddia: bir satır bozulduğunda doğrulayıcının kaçıncı halkada durduğu.
 **Dikkat:** Kimlik doğrulama olmadan zincir yalnızca "kayıt değişmedi"yi kanıtlar, "kim yaptı"yı değil — bu yüzden F-19'dan sonra gelir. Geriye dönük hash üretilemez; göç zinciri o andan başlatır ve bunu kayda geçirir.
+
+> **18 Eylül 2026 — yapılanlar.** Her `alarm_journal` satırı bir öncekinin özetini içine alarak özetleniyor
+> (`hash = sha256(prev_hash ‖ alarm_id ‖ at ‖ action ‖ state ‖ by_user ‖ note)`). Hesap saf bir modülde
+> (`backend/app/auth.py` gibi bağımsız: `backend/app/journal_chain.py`, veritabanı bilmez) ve **hem PgStore hem
+> bellek içi test deposu aynı fonksiyonu çağırıyor** — iki taraf ayrışırsa testler yakalar. Göç:
+> `deploy/initdb/007_journal_chain.sql` (idempotent) + `journal_chain_start` tablosu zincirin nerede başladığını
+> kayda geçiriyor. Bağımsız doğrulayıcı: `scripts/verify_journal.py` (backend'i çalıştırmaz, yalnızca DB okur).
+>
+> **ÖLÇÜLEN — gerçek TimescaleDB'ye karşı, gerçek alarm servisiyle yazılmış satırlar üzerinde:**
+> bir satırın `by_user` alanı psql ile değiştirildiğinde doğrulayıcı **2. halkada** duruyor ve
+> `"saglam: 1 halka"` diyor; aradan bir satır silindiğinde **silinenin ardındaki** halkada duruyor ve
+> `"SILINMIS"` diyor. Çıkış kodu 1. Toplam 18 birim + 7 uçtan uca test.
+>
+> **Bilinçli sınırlar (koda ve dokümana yazıldı, testle kilitlendi):**
+> (1) **Kuyruk kesme görülemez** — zincirin *son* satırları silinirse kalan zincir kendi içinde tutarlıdır;
+> bunu kapatmak zincir başının dışarıya (WORM depo, zaman damgası otoritesi) yayınlanmasını gerektirir ve
+> **yapılmadı**. Bu sınır `test_tail_truncation_is_NOT_detected` ile açıkça kilitli.
+> (2) **Özet anahtarsızdır** (HMAC değil): veritabanına *yazma* yetkisi olan biri satırı değiştirip zinciri
+> baştan hesaplayabilir. Hedef "sessizce bir satır silen yetkili kullanıcı", "zinciri yeniden kuran saldırgan"
+> değildir. (3) Göç öncesi satırların hash'i **NULL** ve bilerek üretilmedi.
 
 ### F-21 · Varlık kütüğü: CBS tekil kodu, künye ve bakım takvimi
 Panonun ne olduğunu ve kimi etkilediğini sisteme getirir · **Etki:** çok yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [backend/app/api/panels.py](backend/app/api/panels.py), [contracts/openapi.yaml](contracts/openapi.yaml), [frontend/src/components/RiskMatrisi.tsx](frontend/src/components/RiskMatrisi.tsx), [frontend/src/pages/FiloListesi.tsx](frontend/src/pages/FiloListesi.tsx)
