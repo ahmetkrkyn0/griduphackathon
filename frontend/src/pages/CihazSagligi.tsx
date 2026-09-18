@@ -205,7 +205,7 @@ export function CihazSagligi() {
         </button>
         {usedBulk && (
           <span className="tag-ok small" title="Tek HTTP isteğiyle toplu çekildi">
-            ✓ Toplu Uç (O(1))
+            <Icon name="check" size={13} /> Toplu Uç (O(1))
           </span>
         )}
         <select

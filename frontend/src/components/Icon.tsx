@@ -18,6 +18,9 @@ const paths = {
   check: "m5 12 4 4L19 6",
   download: "M12 3v12 m-5-5 5 5 5-5 M4 16v5h16v-5",
   help: "M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 17h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
+  volume: "M11 5 6 9H2v6h4l5 4z M15.5 8.5a5 5 0 0 1 0 7 M19 5a9 9 0 0 1 0 14",
+  mute: "M11 5 6 9H2v6h4l5 4z M16 9l6 6 M22 9l-6 6",
+  clipboard: "M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1z M6 6h12v15H6z M9 11h6 M9 15h6",
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({

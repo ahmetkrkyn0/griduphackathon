@@ -313,7 +313,7 @@ function KaraKutu({ eventId }: { eventId: string }) {
 
       <section className="narrative-card" aria-label="Otomatik olay özeti">
         <div className="narrative-head">
-          <span className="narrative-icon" aria-hidden="true">📋</span>
+          <Icon name="clipboard" size={16} className="narrative-icon" />
           <strong>Otomatik Olay Kronolojisi ve Değerlendirme</strong>
         </div>
         <p className="narrative-text">{narrative}</p>

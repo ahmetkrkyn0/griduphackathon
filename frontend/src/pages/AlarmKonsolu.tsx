@@ -195,7 +195,7 @@ export function AlarmKonsolu() {
             title="Mevcut alarmları Excel uyumlu CSV formatında indir"
             style={{ marginLeft: "auto" }}
           >
-            📥 CSV İndir (Vardiya Raporu)
+            <Icon name="download" size={14} /> CSV İndir (Vardiya Raporu)
           </button>
         )}
       </div>
