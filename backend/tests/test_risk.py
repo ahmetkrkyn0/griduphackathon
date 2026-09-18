@@ -386,7 +386,7 @@ def test_condition_reason_carries_point_gecerlilik_alongside_verify(engine, cont
 
 
 def test_panel_wide_conditions_do_not_carry_gecerlilik(engine, contracts, tel_payload):
-    """Nokta kavramı olmayan panel-geneli alarmlarda (or. ALM-DEW-WARN) gecerlilik uydurulmaz."""
+    """Nokta kavrami olmayan panel-geneli alarmlarda (or. ALM-DEW-WARN) gecerlilik uydurulmaz."""
     tel_payload["env"]["td_margin_k"] = 1.0
     tel_payload["alarms"] = ["ALM-DEW-WARN"]
 
