@@ -382,3 +382,139 @@ def test_fleet_health_empty_fleet():
     rig = Rig(MemoryStore(), Clock(T0))
     with rig.http:
         assert rig.http.get("/api/v1/fleet/health").json() == []
+
+
+# ================================================================== /fleet/peers (F-32)
+# K0 semada YOKTUR ve olmayacaktir: t_conn[] `additionalProperties: false` tanimli,
+# kenara alan acmak mesaji reddettirirdi. Merkez tabani k / k_ratio ile YENIDEN
+# TURETIR (F-10 `_verify` ile ayni kacis).
+
+PEER_FLEET = [{"pano_id": f"ADM-1{index:04d}", "name": f"Akran {index}"} for index in range(12)]
+
+
+def _peer_rig() -> Rig:
+    return Rig(MemoryStore(PEER_FLEET), Clock(T0 + timedelta(seconds=2)))
+
+
+def _feed(rig: Rig, tel_payload: dict, k_ratios: list[float], point: str = "GIRIS_L2") -> None:
+    """Her panoya ayni `k` ama farkli `k_ratio` yazar -> K0 = k / k_ratio ayrisir.
+
+    `k` sabit tutulur ki testin olctugu tek sey TURETME ve AKRAN karsilastirmasi olsun.
+    Diger noktalarin k_ratio'su 1,0 birakilir: tabani DONMAMIS sayilirlar ve
+    karsilastirmaya girmezler.
+    """
+    for index, k_ratio in enumerate(k_ratios):
+        payload = copy.deepcopy(tel_payload)
+        payload["pano_id"] = PEER_FLEET[index]["pano_id"]
+        payload["ts"] = T0.isoformat()
+        payload["seq"] = 1
+        payload["alarms"] = []
+        for entry in payload["t_conn"]:
+            if entry["pt"] == point:
+                entry["k"] = 0.000100
+                entry["k_ratio"] = k_ratio
+            elif "k" in entry:
+                entry["k_ratio"] = 1.0
+        rig.ingest(payload, received_at=T0 + timedelta(seconds=2))
+
+
+def _healthy_ratios(count: int = 11) -> list[float]:
+    """K0 = 1e-4 / k_ratio; birbirine yakin tabanlar icin k_ratio da birbirine yakin.
+
+    Hicbiri TAM 1,0 degildir: 1,0 "taban donmadi" isaretidir (edge.py) ve o noktalar
+    karsilastirmaya girmez — bkz. test_fleet_peers_skips_points_whose_baseline_is_not_frozen.
+    """
+    return [1.02 + 0.01 * (index % 5) for index in range(count)]
+
+
+def test_fleet_peers_derives_k0_from_frozen_schema_fields(tel_payload, api_contract):
+    """K0 yayinlanmaz, k / k_ratio ile turetilir; 12 pano da olculur."""
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, _healthy_ratios(12))
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    api_contract(body, "FleetPeers")
+    assert body["panels_compared"] == 12
+    assert body["points_scored"] == 12
+    assert body["rebaseline_suggestions"] == []
+
+
+def test_fleet_peers_flags_a_commissioning_time_bad_baseline(tel_payload, api_contract):
+    """K/K0'in TEK basina goremedigi durum: devreye almada zaten gevsek baglanti.
+    K0 akranlarinin ~3 kati (k_ratio 1/3'u) ama k_ratio 1,0'a yakin — yani L1 esigi
+    hicbir zaman tetiklenmez. Akran karsilastirmasi bunu gorur ve ONERI uretir.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [*_healthy_ratios(11), 0.34])
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    api_contract(body, "FleetPeers")
+
+    assert len(body["rebaseline_suggestions"]) == 1
+    suggestion = body["rebaseline_suggestions"][0]
+    assert suggestion["pano_id"] == "ADM-10011"
+    assert suggestion["point"] == "GIRIS_L2"
+    assert suggestion["robust_z"] > body["outlier_z"]
+    assert suggestion["k0"] > suggestion["peer_median"]
+    assert suggestion["reasons"], "gerekcesiz oneri uretilmemeli"
+    assert any("aykiri" in reason for reason in suggestion["reasons"])
+
+
+def test_fleet_peers_suggestion_does_not_change_anything(tel_payload):
+    """Otomatik yeniden baz alma gercek bozulmayi susturur (docs/07b Y11).
+    Uc yalnizca ONERI uretir: ayni istek iki kez atilinca sonuc AYNI kalir ve
+    hicbir alarm dogmaz.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [*_healthy_ratios(11), 0.34])
+        first = rig.http.get("/api/v1/fleet/peers").json()
+        second = rig.http.get("/api/v1/fleet/peers").json()
+        alarms = rig.http.get("/api/v1/alarms").json()
+    assert first == second
+    assert alarms == []
+
+
+def test_fleet_peers_does_not_claim_anything_with_too_few_peers(tel_payload, api_contract):
+    """"Olcemedik" ile "aykiri degil" ayni sey degildir (GK10): akran sayisi
+    yetersizse skor uretilmez ve bu sayiyla raporlanir.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [*_healthy_ratios(11), 0.34])
+        body = rig.http.get("/api/v1/fleet/peers", params={"min_peers": 50}).json()
+    api_contract(body, "FleetPeers")
+    assert body["points_scored"] == 0
+    assert body["points_unmeasurable"] == 12
+    assert body["rebaseline_suggestions"] == []
+
+
+def test_fleet_peers_skips_points_whose_baseline_is_not_frozen(tel_payload):
+    """Taban donmadan edge.py k_ratio'yu SABIT 1,0 dondurur; oradan cikan sayi bir
+    taban DEGILDIR. Boyle noktalar karsilastirmaya girmemeli.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [1.0] * 12)
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    assert body["panels_compared"] == 0
+    assert body["points_scored"] == 0
+    assert body["rebaseline_suggestions"] == []
+
+
+def test_fleet_peers_reports_the_generator_artifact_warning(tel_payload):
+    """GK10 — sentetik filoda "mukemmel ayrim" uretec artefaktidir. Uyari yanitin
+    icinde DONER, yalnizca dokumanda kalmaz.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, _healthy_ratios(12))
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    assert "1,534" in body["uyari"]
+    assert "artefakt" in body["uyari"]
+
+
+def test_fleet_peers_on_empty_fleet_measures_nothing(rig):
+    body = rig.http.get("/api/v1/fleet/peers").json()
+    assert body["panels_compared"] == 0
+    assert body["rebaseline_suggestions"] == []

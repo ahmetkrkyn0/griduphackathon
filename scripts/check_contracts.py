@@ -199,6 +199,7 @@ required_paths = [
     # kaybolmasini yakalamazdi. F-21 ile birlikte duzeltildi.
     "/api/v1/fleet/health",
     "/api/v1/fleet/assets",
+    "/api/v1/fleet/peers",
     "/api/v1/outages",
 ]
 for path in required_paths:

@@ -22,7 +22,11 @@ info:
   # v1.5.0 (18 Eylul 2026): EPDK Madde 8 kesinti kaydi TASLAGI (F-23). EpdkKaydi semasi ve
   #   GET /outages/{outage_id}/epdk-kaydi. Yalnizca EKLEME, geri uyumlu.
   #   Gerekce: contracts/changes/2026-09-18-epdk-madde8-taslagi.md
-  version: 1.5.0
+  # v1.6.0 (18 Eylul 2026): L2 filo akran karsilastirmasi (F-32). GET /fleet/peers.
+  #   Yalnizca EKLEME, geri uyumlu. YENI ALARM KODU YOK ve telemetri semasi DEGISMEDI:
+  #   K0 kenardan yayinlanmaz, merkezde k / k_ratio ile YENIDEN TURETILIR.
+  #   Gerekce: contracts/changes/2026-09-18-l2-filo-akran.md
+  version: 1.6.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -247,6 +251,41 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/PanelHealth" }
+
+  /api/v1/fleet/peers:
+    get:
+      tags: [system]
+      summary: L2 filo akran karsilastirmasi ve yeniden baz alma onerisi
+      description: >
+        K/K0 bir noktayi yalnizca KENDI gecmisiyle olcer. Devreye alma gununde zaten
+        gevsek olan bir baglantida taban BOZUK degeri dondurur (K yuksek, K0 ayni oranda
+        yuksek, k_ratio 1,0) ve o nokta omru boyunca saglikli gorunur. Bu uc noktayi
+        AKRANLARIYLA olcer: ayni ada sahip nokta baska panolarda hangi K0'lari veriyor?
+        Akran grubu NOKTA ADIDIR (ayni ad = ayni cikis boyu = ayni anma akimi); skor
+        MAD tabanli modifiye z'dir (ortalama/standart sapma kullanilsa bozuk panonun
+        kendisi olcuye girer ve aradigimiz seyi saklardi).
+        ALARM URETMEZ: sozlesmede `layer: L2` etiketli alarm kodu yoktur ve bu uc bir
+        tane ACMAZ. Ciktisi operator onayina sunulan bir ONERIDIR; otomatik yeniden baz
+        alma gercek bozulmayi susturur (docs/07b Y11).
+        `points_unmeasurable` akran sayisi yetersiz oldugu icin SKORLANAMAYAN noktalari
+        sayar: "olcemedik" ile "aykiri degil" ayni sey degildir.
+      parameters:
+        - name: min_peers
+          in: query
+          required: false
+          schema: { type: integer, minimum: 2, maximum: 100, default: 8 }
+          description: >
+            Altinda karsilastirma yapilmayan akran sayisi. MAD ucuncu bir degerle
+            tamamen degisir; varsayilan 8 medyanin her iki yaninda en az dorder deger
+            birakir. Sozlesmede L2 esigi olmadigi icin TURETILMISTIR.
+      responses:
+        "200":
+          description: Akran karsilastirmasi ozeti ve yeniden baz alma onerileri
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FleetPeers" }
+        "503":
+          description: panoalgo kutuphanesi yuklu degil (bu uc kapali, backend calisir)
 
   /api/v1/fleet/assets:
     get:
@@ -592,6 +631,52 @@ components:
         kunyeli:  { type: integer, description: "cbs_kodu girilmis pano" }
         fiderli:  { type: integer, description: "fider_id girilmis pano (F-22 bunu kullanir)" }
         aboneli:  { type: integer, description: "abone_sayisi girilmis pano (etki ekseni)" }
+
+    FleetPeers:
+      type: object
+      required: [panels_compared, points_scored, points_unmeasurable, min_peers, outlier_z, rebaseline_suggestions, uyari]
+      properties:
+        panels_compared:
+          type: integer
+          description: K0'i TURETILEBILEN pano sayisi (tabani donmamis pano sayilmaz).
+        points_scored:
+          type: integer
+          description: Akran sayisi yeterli oldugu icin robust z hesaplanan nokta sayisi.
+        points_unmeasurable:
+          type: integer
+          description: >
+            Akran sayisi yetersiz oldugu icin SKORLANAMAYAN nokta sayisi. Bu noktalar
+            "aykiri degil" DEGIL, "olculemedi" demektir (GK10).
+        min_peers: { type: integer }
+        outlier_z:
+          type: number
+          description: Aykiri sayilma esigi (modifiye z). Sozlesmede L2 esigi yoktur; TURETILMIS.
+        rebaseline_suggestions:
+          type: array
+          description: >
+            Tabani supheli bulunan noktalar. ONERIDIR, uygulanmis bir islem DEGILDIR —
+            yeniden baz alma kararini operator verir.
+          items:
+            type: object
+            required: [pano_id, point, k0, peer_median, n_peers, reasons]
+            properties:
+              pano_id:     { type: string }
+              point:       { type: string, description: "t_conn[].pt nokta adi" }
+              det_label:   { type: string, description: "Insan okur etiket" }
+              k0:          { type: number, description: "Merkezde k / k_ratio ile turetilen taban" }
+              peer_median: { type: number }
+              robust_z:    { oneOf: [{ type: number }, { type: "null" }] }
+              n_peers:     { type: integer }
+              reasons:
+                type: array
+                items: { type: string }
+                description: Onerinin gerekcesi; gerekcesiz oneri uretilmez.
+        uyari:
+          type: string
+          description: >
+            GK10 notu. Sentetik filoda saglikli K0 sinirli duzgun dagilimdan gelir ve
+            saglikli bir pano YAPISAL OLARAK aykiri cikamaz; bu veriden cikan ayrim
+            orani saha basarimi olarak sunulamaz.
 
     AssetFleet:
       type: object

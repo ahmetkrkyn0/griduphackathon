@@ -63,6 +63,14 @@ class Store(Protocol):
         """Tum panolar; payload yalnizca `health` blogunu icerir (GET /fleet/health)."""
         ...
 
+    def list_panel_points(self) -> list[PanelRecord]:
+        """Tum panolar; payload yalnizca `ts` ve `t_conn` dizisini icerir (GET /fleet/peers).
+
+        Filo akran karsilastirmasi (F-32) K0'i nokta basina k / k_ratio ile yeniden
+        turetir; baska hicbir blok gerekmez.
+        """
+        ...
+
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         """Tek pano, tam son yukle."""
         ...
@@ -229,6 +237,22 @@ _GET_PANEL = f"""
 SELECT {_PANEL_COLUMNS}, l.payload
 FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 WHERE p.pano_id = %s
+"""
+
+# Filo akran karsilastirmasi (F-32): yalnizca nokta dizisi cekilir. `/fleet/health` ile
+# ayni gerekce — 1.000 panoda tam yuku cekmek ile blogu cekmek arasindaki fark buradan
+# gelir; ortam, elektrik ve risk bloklari disarida kalir.
+# K0 SEMAYA EKLENMEDI, MERKEZDE YENIDEN TURETILIR: taban k = K0 * k_ratio bagintisindan
+# k / k_ratio ile cikar ve iki alan da donmus semada ZATEN vardir (t_conn[].k, .k_ratio).
+# Ayni kacis F-10'un `_verify` cozumunde kullanildi: sema `additionalProperties: false`
+# oldugu icin kenara alan acmak mesaji reddettirirdi.
+_LIST_PANEL_POINTS = f"""
+SELECT {_PANEL_COLUMNS},
+       CASE WHEN l.pano_id IS NULL THEN NULL
+            ELSE jsonb_build_object('ts', l.payload -> 'ts', 't_conn', l.payload -> 't_conn')
+       END AS payload
+FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
+ORDER BY p.pano_id
 """
 
 
@@ -430,6 +454,10 @@ class PgStore:
     def list_panel_health(self) -> list[PanelRecord]:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
             return cur.execute(_LIST_PANEL_HEALTH).fetchall()
+
+    def list_panel_points(self) -> list[PanelRecord]:
+        with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
+            return cur.execute(_LIST_PANEL_POINTS).fetchall()
 
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:

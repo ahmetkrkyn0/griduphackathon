@@ -36,7 +36,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import fusion, limits, quality
-from .detect import KIndexEstimator, lambda_for_period, load_thresholds
+from .detect import BaselineEvidence, KIndexEstimator, lambda_for_period, load_thresholds
 from .profiles import ProfileKind, load_profile
 
 # Beklenen yuk profili icin gecmis I^2 ortalamasinin penceresi (ornek sayisi).
@@ -97,6 +97,33 @@ class EdgePipeline:
     @property
     def baseline_frozen(self) -> bool:
         return self._frozen
+
+    def baseline_report(self) -> dict[str, dict[str, BaselineEvidence]]:
+        """Donmus tabanlarin kaniti: {pano_id: {nokta: BaselineEvidence}} (F-32).
+
+        Filo akran karsilastirmasi (fleet.peer_scores) ve taban gecerliligi karari
+        (fleet.baseline_verdict) bunu okur. Tabani DONMAMIS nokta listede YER ALMAZ:
+        K0'i olmayan bir nokta akranlariyla kiyaslanamaz ve "aykiri degil" demek
+        olcmedigimiz bir seyi iddia etmek olurdu (GK10).
+        """
+        report: dict[str, dict[str, BaselineEvidence]] = {}
+        for (pano_id, point), estimator in self._estimators.items():
+            evidence = estimator.baseline_evidence
+            if evidence is not None:
+                report.setdefault(pano_id, {})[point] = evidence
+        return report
+
+    def k_histories(self) -> dict[str, dict[str, tuple[float, ...]]]:
+        """Nokta basina saklanan K kestirimleri: {pano_id: {nokta: (K, ...)}} (F-32).
+
+        Taban ogrenme penceresinin KENDI ICINDE kararli olup olmadigi
+        (onset.baseline_window_is_stable) ve bozulmanin baslangic ani
+        (onset.detect_onset) bu seriden hesaplanir.
+        """
+        histories: dict[str, dict[str, tuple[float, ...]]] = {}
+        for (pano_id, point), estimator in self._estimators.items():
+            histories.setdefault(pano_id, {})[point] = estimator.k_history
+        return histories
 
     # ------------------------------------------------------------------ adim
 

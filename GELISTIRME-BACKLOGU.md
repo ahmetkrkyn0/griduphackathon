@@ -406,12 +406,63 @@ Sistemin düğüm sayısını değil düğümün kendisini tanımasını sağlar
 **Ne üretir:** Düğüm listesi ve kimliği, sensör kütüğü, ardışık sapma için yeni bir alarm kodu, düğüm bazına inen cihaz sağlığı ekranı.
 **Dikkat:** Tek başına donmuş sözleşmenin üç dosyasına birden dokunuyor ve üç üretilmiş dokümanın yeniden üretimini gerektiriyor — dondurma öncesi kesinlikle başlanmamalı. "İzlenebilir ölçüm" (metrolojik izlenebilirlik) iddiası akredite kalibrasyon olmadan kurulamaz; yalnızca "kütük ve vade takibi" denebilir.
 
-### F-32 · L2 filo akran karşılaştırması ve taban geçerliliği
+### F-32 · L2 filo akran karşılaştırması ve taban geçerliliği — 🟡 kısmen yapıldı (18 Eylül 2026)
 K₀ körlüğünü akran dağılımı ve değişim noktası tespitiyle kapatır · **Etki:** yüksek · **Efor:** 3-4 hafta (gerçek filo verisiyle) · **Nerede yaşar:** yeni `libs/panoalgo/panoalgo/fleet.py` ve `onset.py`, [libs/panoalgo/panoalgo/detect.py](libs/panoalgo/panoalgo/detect.py), [backend/app/api/insights.py](backend/app/api/insights.py)
 **Sektörel dayanak:** GE Vernova SmartSignal beklenen değeri benzerlik tabanlı modelleyip artığı izliyor; ISO 17359 baz çizgisinin yinelemeli optimize edilmesini istiyor; drift ve değişim noktası için olgun, saf Python, tamamen yerel kütüphaneler mevcut.
 **Bizdeki boşluk:** [docs/05-anomali-tespiti.md](docs/05-anomali-tespiti.md) kendi ifadesiyle "L2 katmanı henüz kod üretmiyor" diyor ve sözleşmede L2 etiketli tek bir alarm kodu yok. Devreye alma anında zaten bozuk olan bir bağlantıda K/K₀ hep 1,0 kalır ve o noktayı ancak akranları ele verir. Taban bir kez donuyor ve bakımdan sonra da güncellenmiyor.
 **Ne üretir:** Akran sıralama skoru, bozulmanın başlangıç anı, operatör onayına sunulan yeniden baz alma önerisi.
 **Dikkat:** Sentetik filoda K₀ sınırlı düzgün dağılımdan geldiği için sağlıklı bir pano yapısal olarak aykırı çıkamaz — sentetik veride "mükemmel ayrım" bir üreteç artefaktıdır, yöntem kanıtı değil. Otomatik yeniden baz alma alarmı susturabilir; yalnızca öneri üretmeli ve yazılım FMEA'sına bir satır girmeli.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** İki yeni saf-stdlib modül:
+> `libs/panoalgo/panoalgo/fleet.py` (MAD tabanlı modifiye z ile akran karşılaştırması; akran
+> grubu **nokta adıdır** — aynı ad = aynı çıkış boyu = aynı anma akımı, yoksa 2312 A ile 250 A
+> kıyaslanırdı) ve `onset.py` (CUSUM değişim noktası; başlangıç anı = birikimin **son
+> sıfırlandığı** örnek, eşiğin aşıldığı an değil). `detect.py` donma anında **kanıt** tutuyor
+> (`BaselineEvidence`: kaç örnek, kaçı uyarılmış, dağılım ne kadar dar) — K₀ **değeri
+> değişmedi**, yanında gerekçesi duruyor. Uç: `GET /api/v1/fleet/peers`, `openapi` **v1.6.0**,
+> gerekçe `contracts/changes/2026-09-18-l2-filo-akran.md`.
+>
+> **Telemetri şemasına dokunulmadı.** `t_conn[]` `additionalProperties: false` tanımlı; kenara
+> `k0` alanı açmak mesajı reddettirir ve üç dosyalık donmuş zinciri tetiklerdi. Gerek yoktu:
+> `k_ratio = k / K₀` olduğundan **K₀ = k / k_ratio** ve iki alan da şemada zaten var — merkez
+> tabanı okumaz, **yeniden türetir** (F-10'un `_verify` kaçışıyla aynı). **Yeni alarm kodu da
+> açılmadı**: her kodun bir `bit` alanı var, yeni kod Modbus tahsisini ve beş üretecin çıktısını
+> tetiklerdi; L2'nin ilk çıktısı bu yüzden alarm değil **öneri**.
+>
+> **Yeniden baz alma asla otomatik uygulanmıyor.** Bozulmakta olan bir noktada tabanı güncellemek
+> `k_ratio`'yu 1,0'a geri çeker ve gerçek bozulmayı görünmez kılar — alarmı susturan bir
+> "düzeltme". Yeni hata türü `docs/07b` **Y11** (RÖS 288 → 18). Uç K₀'a **dokunmaz**; öneri
+> gerekçesiz olamaz ve yalnızca **yukarı** sapma işaretlenir (akranlarından düşük K₀ iyi bir
+> bağlantıdır).
+>
+> **Ölçülen:** panoalgo **438** (410 → +28: `test_fleet.py`, `test_onset.py`, `test_detect.py`
+> taban kanıtı), backend **772** (765 → +7, `test_api_insights.py`), `check_contracts.py`
+> "SOZLESMELER TUTARLI" (15 uç), beş üreteç de "guncel" (F-32 kod/adres açmadığı için hiçbir
+> çıktı değişmedi).
+>
+> **GK10 — sentetik veride ölçülen sınır, gizlenmedi.** `generator.py:342` sağlıklı K₀'ı
+> **sınırlı düzgün dağılımdan** çekiyor (`K_SPREAD = 0.15`) ve düzgün dağılımın **kuyruğu
+> yoktur**: sağlıklı bir pano yapısal olarak aykırı **çıkamaz**. Analitik tavan 1,349; 500
+> panoda (seed 20260918) **ölçülen en büyük |z| = 1,534**, aykırılık eşiği **3,5** — sağlıklı
+> pano eşiğin yarısına bile ulaşmıyor. Yani 1,6'nın üstündeki **her** eşik bu veride kusursuz
+> ayrım verir; bu yöntemin değil **üretecin** özelliğidir. Kilitleyen test
+> `test_sentetik_filoda_saglikli_pano_asla_aykiri_cikamaz`, ve aynı cümle
+> `GET /fleet/peers` yanıtının `uyari` alanında da **döner** — yalnızca dokümanda kalmıyor.
+>
+> **Kalan (bu yüzden ✅ değil):**
+> 1. **Saat-of-hafta robust z yok.** Rapor §6.5 L2 için üç yöntem sayıyor; ikisi yapıldı (filo
+>    karşılaştırması, CUSUM değişim noktası), saat-of-hafta profil sapması **yapılmadı**.
+> 2. **Taban geçerliliğinin üç kanıtından yalnızca biri uçtan görülüyor.** Uyarım oranı ve
+>    pencere kararlılığı **kenarda** ölçülüyor (`BaselineEvidence`, `baseline_window_is_stable`)
+>    ama K serisi merkeze yayınlanmadığı için `GET /fleet/peers` yalnızca **akran** kanıtını
+>    değerlendirebiliyor. Üçünü birden merkeze taşımak telemetri şemasına dokunmayı gerektirir.
+> 3. **Yeniden baz almayı uygulayan operatör akışı yok.** Öneri üretiliyor, onay/denetim izi
+>    akışı (F-33 kapsamı) yazılmadı; taban **elle bile** güncellenmiyor.
+> 4. **`layer: L2` etiketli alarm kodu hâlâ yok** — bilinçli, ayrı bir `contracts/changes/`
+>    önerisi gerektirir.
+> 5. **Gerçek filo verisi yok (GK3).** Yukarıdaki tüm sayılar sentetik filodan; yöntemin saha
+>    başarımı **ölçülmedi**.
+
 
 ### F-33 · Operatör geri bildirimi, olay kapanış kodu ve isabet ölçümü
 "Bu alarm doğru muydu" sorusunun cevabını sisteme geri yazar · **Etki:** yüksek · **Efor:** 3-4 hafta (F-19, F-25 sonrası) · **Nerede yaşar:** [frontend/src/components/AlarmNedeni.tsx](frontend/src/components/AlarmNedeni.tsx), [backend/app/alarm_service.py](backend/app/alarm_service.py), [deploy/initdb/](deploy/initdb/), [libs/panoalgo/panoalgo/validate.py](libs/panoalgo/panoalgo/validate.py)

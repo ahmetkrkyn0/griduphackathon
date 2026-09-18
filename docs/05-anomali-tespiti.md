@@ -114,6 +114,22 @@ seçilir, ortalama değil: taban penceresindeki tek bir sıçrama ortalamayı bo
 
 Taban donmadan `k_ratio` 1,0 döner — devreye alma gününde sahte alarm yağmuru olmaz.
 
+**Tabanın kendisi geçerli mi? (F-32)** `k_ratio`'nun tüm anlamı K₀'a bağlıdır, ama K₀ tek bir
+sayıdır ve donduğu anda "bu sayı nasıl oluştu" bilgisi kayboluyordu. Artık donma anında bir
+kanıt kaydı tutuluyor (`detect.py` → `BaselineEvidence`) ve tabana **üç ayrı kanıtla** bakılıyor:
+
+| Kanıt | Ne sorar | Düşükse ne demek |
+|---|---|---|
+| **Uyarım oranı** | Öğrenme penceresinde kaç örnek kalıcı uyarım koşulunu sağladı | RLS güncellenmedi; K₀ fiziksel bağlantıyı değil başlangıç **önselini** kodluyor |
+| **Pencere kararlılığı** | Pencerenin ikinci yarısı birinciden kalıcı olarak sapıyor mu (CUSUM) | Makine kararlı değildi; **bozulma taban öğrenilirken başladı** |
+| **Akran konumu** | K₀ aynı adlı noktanın filo medyanından yukarı aykırı mı | Devreye alma anında **zaten gevşek** bir bağlantının tabanı olabilir |
+
+Üçüncüsü, `k_ratio`'nun tek başına **göremediği** tek durumdur: devreye alma gününde zaten
+bozuk bir bağlantıda K yüksek, K₀ aynı oranda yüksek ve `k_ratio` 1,0 kalır — nokta ömrü
+boyunca sağlıklı görünür. Onu ancak akranları ele verir (`fleet.py`, `GET /fleet/peers`).
+
+Üçünden biri düşükse **yeniden baz alma önerilir**; asla otomatik uygulanmaz (§10, `docs/07b` Y11).
+
 ## 4. L1 — Sınıra kalan süre (ttl)
 
 ```
@@ -247,9 +263,30 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
 
 ## 10. Bilinen sınırlar (dürüstlük bölümü)
 
-- **L2 katmanı henüz kod üretmiyor.** Rapor §6.5'te saat-of-hafta robust z, EWMA/CUSUM
-  ve filo karşılaştırması tanımlı; `contracts/alarm-codes.yaml`'da `layer: L2` etiketli
-  **hiçbir alarm kodu yok**. Bu, rapor ile donmuş sözleşme arasındaki bir boşluktur.
+- **L2 katmanı kısmen kod üretiyor (18 Eylül, F-32).** Rapor §6.5'te saat-of-hafta robust z,
+  EWMA/CUSUM ve filo karşılaştırması tanımlı. Üçünden **ikisi** artık kodda:
+  **filo akran karşılaştırması** (`libs/panoalgo/panoalgo/fleet.py`, MAD tabanlı modifiye z)
+  ve **CUSUM değişim noktası** (`onset.py`, bozulmanın başlangıç anı). **Saat-of-hafta robust z
+  hâlâ yok.** `contracts/alarm-codes.yaml`'da `layer: L2` etiketli **hiçbir alarm kodu yok** ve
+  F-32 bilerek bir tane açmadı: her kodun bir `bit` alanı var, yani yeni kod Modbus bit
+  tahsisini ve beş üretecin çıktısını birden tetikler. L2'nin çıktısı bu yüzden bir **alarm
+  değil öneri**: `GET /api/v1/fleet/peers` tabanı şüpheli noktaları operatör onayına sunar.
+  Gerekçe: `contracts/changes/2026-09-18-l2-filo-akran.md`.
+- **Filo karşılaştırmasının sentetik veride ölçülen sınırı (GK10).** `generator.py:342`
+  sağlıklı K₀'ı **sınırlı düzgün dağılımdan** çekiyor (`K_SPREAD = 0.15`) ve düzgün dağılımın
+  **kuyruğu yoktur**: sağlıklı bir pano yapısal olarak aykırı **çıkamaz**. Ölçüldü (500 pano,
+  seed 20260918): en büyük |z| = **1,534**, aykırılık eşiği **3,5** — sağlıklı pano eşiğin
+  yarısına bile ulaşmıyor. Yani 1,6'nın üstündeki **her** eşik bu veride kusursuz ayrım verir;
+  bu, yöntemin değil **üretecin** özelliğidir. Buradan çıkan hiçbir ayrım oranı saha başarımı
+  olarak sunulamaz. Kilitleyen test:
+  `libs/panoalgo/tests/test_fleet.py::test_sentetik_filoda_saglikli_pano_asla_aykiri_cikamaz`.
+- **Taban geçerliliği artık ölçülüyor, ama yeniden baz alma UYGULANMIYOR.** `freeze_baseline()`
+  donma anında bir kanıt kaydı tutuyor (`BaselineEvidence`: kaç örnek, kaçı uyarılmış, dağılım
+  ne kadar dar) ve öğrenme penceresinin kendi içinde kararlı olup olmadığı CUSUM ile sınanıyor.
+  Üç kanıttan biri düşükse **yeniden baz alma önerilir** — ama **hiçbir zaman otomatik
+  uygulanmaz**: bozulmakta olan bir noktada tabanı güncellemek `k_ratio`'yu 1,0'a geri çeker ve
+  gerçek bozulmayı görünmez kılar. Bu yeni hata türü `docs/07b-fmea-yazilim-sistem.md` **Y11**
+  satırında.
 - **İki kodun eşiği 18 Eylül'de sözleşmeye taşındı** (`alarm-codes.yaml` v2):
   `ALM-DQ-BELOW-AMBIENT` → `dq_below_ambient_deadband_k`, `ALM-NEUTRAL-THD` →
   `neutral_current_ratio_warn` **ve** `neutral_thd_warn_pct` (iki koşul birlikte).

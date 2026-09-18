@@ -45,6 +45,15 @@ def _health_projection(payload: dict) -> dict:
     return {"health": payload.get("health"), "fw": payload.get("fw")}
 
 
+def _points_projection(payload: dict) -> dict:
+    """PgStore.list_panel_points'in SQL projeksiyonunun aynisi (F-32).
+
+    Yalnizca nokta dizisi ve zaman damgasi; ortam, elektrik ve risk bloklari
+    disarida kalir. strip_nulls UYGULANMAZ — SQL tarafinda da uygulanmiyor.
+    """
+    return {"ts": payload.get("ts"), "t_conn": payload.get("t_conn")}
+
+
 def _strip_nulls(value):
     if isinstance(value, dict):
         return {k: _strip_nulls(v) for k, v in value.items() if v is not None}
@@ -197,6 +206,10 @@ class MemoryStore:
         self._check()
         return [self._record(i, summary=False, health=True) for i in self._meta]
 
+    def list_panel_points(self) -> list[PanelRecord]:
+        self._check()
+        return [self._record(i, summary=False, points=True) for i in self._meta]
+
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         self._check()
         return self._record(pano_id, summary=False) if pano_id in self._meta else None
@@ -317,13 +330,15 @@ class MemoryStore:
         if self.unavailable:
             raise StoreError("yapay baglanti hatasi")
 
-    def _record(self, pano_id: str, summary: bool, health: bool = False) -> PanelRecord:
+    def _record(self, pano_id: str, summary: bool, health: bool = False, points: bool = False) -> PanelRecord:
         meta = self._meta[pano_id]
         latest = self._latest.get(pano_id)
         payload = None
         if latest is not None:
             if health:
                 payload = _health_projection(latest["payload"])
+            elif points:
+                payload = _points_projection(latest["payload"])
             else:
                 payload = _summary_projection(latest["payload"]) if summary else latest["payload"]
         return PanelRecord(
