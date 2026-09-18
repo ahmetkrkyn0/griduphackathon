@@ -53,7 +53,12 @@
 }
 .geo-map .geo-territory,
 .geo-map .geo-district {
-  transition: fill 160ms ease;
+  transition:
+    fill 160ms ease,
+    transform 160ms ease,
+    filter 160ms ease;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .geo-map .map-muted {
   fill: rgba(31, 34, 36, 0.012);
@@ -62,6 +67,8 @@
 .geo-map .geo-district:hover,
 .geo-map .map-hovered {
   fill: rgba(255, 103, 29, 0.23);
+  transform: scale(1.025) translateY(-2px);
+  filter: drop-shadow(0 4px 6px rgba(31, 34, 36, 0.35));
 }
 .geo-map .geo-boundaries {
   stroke: #ff671d;
