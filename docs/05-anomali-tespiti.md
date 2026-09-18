@@ -306,14 +306,26 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   **%0**; ortalama göreli doğruluk **−5,12**. Manşetteki 209 saatlik öne alma **tespit**
   katmanından (K/K₀ eşiği) gelir, bu tahminden değil; ikisi karıştırılmamalıdır. Sonuç
   **tek yörüngeden** (n = 1) gelir, güven aralığı yoktur.
-- **Prognoz yanlış-alarmı (S8, sensör arızası).** Sınır hiç aşılmadığı hâlde **99 tahmin**
-  üretiliyor ve bunların **89'u** `ALM-TTL-14D` (P3) alarmına dönüyor. Ölçüldü: 99 tahminin
-  **tamamı** `DSYA4_L3` noktasından, yani S8'in **sürüklenen** (drift) sensöründen geliyor.
-  L-1 veri kalitesi katmanı bu noktayı 672 örneğin **hiçbirinde** işaretlemiyor — yavaş
-  sürüklenme ne donmuş sensör ne de ortam altı kuralına takılıyor — ve `ttl_h` üretimi
-  kalite bitlerinden bağımsız çalışıyor (`edge.py` kestirimi `q` hesabından önce yapar).
-  Bu bir tespit değil **tahmin** yanlış-alarmıdır; docs/12 §3'teki yanlış alarm sayacı
-  onu görmez, çünkü etiket penceresinin içinde çıkar. Saklanmıyor, burada duruyor.
+- **Prognoz yanlış-alarmı (S8, sensör arızası) — 18 Eylül'de kısmen kapandı (F-31).**
+  Sınır hiç aşılmadığı hâlde **183 tahmin** üretiliyor ve bunların **86'sı** `ALM-TTL-14D`
+  (P3) alarmına dönüyor (`docs/12` §4.3). Tahminlerin kaynağı `DSYA4_L3`, yani S8'in
+  **sürüklenen** sensörü.
+  **Önce üretecin kendisi düzeldi.** `set_sensor_fault` aynı arızayı her çağrıda yeniden
+  kuruyor ve yaşını **sıfırlıyordu**; senaryo yürütücüsü enjeksiyonu her adımda çağırdığı
+  için "sürüklenme" 112 saatlik pencere boyunca **0,5 K'da çakılı** kalıyordu. Yani depo
+  "sensör sürüklenmesi üretiyoruz" diyordu ama fiilen **üretmiyordu**. Ayrıca hız 2 K/saat
+  ile fiziksel değildi (112 saatte 224 K); ölçülerek **0,1 K/saat**e indirildi — bu değer
+  termal alarmı tetiklemez, `ALM-K-ALM` tetiklemez, ama K/K₀'ı 1,49'a şişirir.
+  **Sonra sürüklenme tespit edilir oldu.** Yeni `ALM-DQ-DRIFT` (bit 22, `layer: L-1`, SYS)
+  kuralı bu noktayı artık **işaretliyor**: fixture'da 239 örnekte, enjeksiyondan **26,25
+  saat** sonra. Ayraç fiziktir — `dT = a·I² + b`'de gerçek bağlantı bozulması `a`'yı
+  büyütür, sensör kayması yükten bağımsız `b`'yi. Ölçüldü (seed 42, 10 senaryo): gerçek
+  gevşek bağlantı (S1) ve sağlıklı taban (S0) dahil diğer dokuz senaryoda **sıfır** yanlış
+  pozitif. Gerekçe: `contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md`.
+  **Kalan:** `ttl_h` üretimi hâlâ kalite bitlerinden **bağımsız** çalışıyor (`edge.py`
+  kestirimi `q` hesabından önce yapar), yani nokta "kalibrasyon şüpheli" işaretlenmiş olsa
+  bile tahmin üretilmeye devam eder. Bu bir tespit değil **tahmin** yanlış-alarmıdır ve
+  docs/12 §3'teki yanlış alarm sayacı onu görmez. Saklanmıyor, burada duruyor.
 - **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`. Gerekçesi sık
   tekrarlanan "400 V, Paschen minimumunun (~327 V) altındadır" kısayolu **değildir** — o
   kısayol eksiktir: 400 V sistemde faz-faz tepe gerilimi √2 × 400 ≈ 566 V'tur, yani 327 V'un

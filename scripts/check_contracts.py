@@ -200,6 +200,8 @@ required_paths = [
     "/api/v1/fleet/health",
     "/api/v1/fleet/assets",
     "/api/v1/fleet/peers",
+    "/api/v1/fleet/nodes",
+    "/api/v1/fleet/nodes/blind",
     "/api/v1/outages",
 ]
 for path in required_paths:

@@ -15,7 +15,11 @@
 # v3 (18 Eylul 2026): ust sebeke kesintisi baginti esikleri eklendi (F-22). YENI ALARM KODU
 # YOK — kesinti bir alarm degil, alarmlari aciklayan bir olaydir ve kendi tablosunda yasar.
 # Gerekce: contracts/changes/2026-09-18-kesinti-bagintisi.md
-version: 3
+# v4 (18 Eylul 2026): sensor suruklenmesi icin YENI ALARM KODU ALM-DQ-DRIFT (bit 22,
+# layer L-1, SYS) ve uc esigi (F-31). Mevcut dort L-1 kuralinin dordunden de kacan
+# yuk bagimsiz kayma artik isaretleniyor. Yalnizca EKLEME, geri uyumlu.
+# Gerekce: contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md
+version: 4
 
 priorities:
   P1:
@@ -186,6 +190,17 @@ alarms:
     text: "Baglanti sicakligi ortamin altinda — sensor yerinden dusmus olabilir"
     basis: "Kural: t_c < T_ortam - dq_below_ambient_deadband_k (olu bant)"
     threshold: thresholds.dq_below_ambient_deadband_k
+  - code: ALM-DQ-DRIFT
+    bit: 22
+    prio: SYS
+    layer: "L-1"
+    text: "Sensor yuk bagimsiz kayma biriktirdi — kalibrasyon supheli"
+    basis: >
+      dT = K * I^2 oldugu icin yuk dustukce dT de dusmelidir. Bozulan BAGLANTI dT'yi
+      her yukte ORANTILI buyutur; kayan SENSOR ise yukten bagimsiz bir terim ekler ve
+      dusuk yuk TABANINI yukseltir. Kural bu tabanin pencere icindeki yukselisini olcer.
+      Mevcut dort L-1 kurali bunu kaciriyordu (docs/12 §4.3).
+    threshold: thresholds.dq_drift_rise_k
   - code: ALM-NODE-LOST
     bit: 17
     prio: SYS
@@ -273,6 +288,24 @@ thresholds:
   dq_below_ambient_deadband_k: 1.0
   dq_frozen_samples: 30
   dq_max_rate_k_per_min: 10.0
+  # Yuk bagimsiz kayma (ALM-DQ-DRIFT, F-31). UCU DE TURETILMISTIR.
+  # Pencere: kayma SAATLER boyunca birikir. 15 dk disa aktarimda 192 ornek = 48 saat,
+  # yani en az iki gece-gunduz cevrimi; bir cevrimden kisa pencerede "dusuk yuk tabani"
+  # yalnizca gunun saatini olcerdi.
+  dq_drift_samples: 192
+  # Tabanin pencere basindan sonuna yukselisi bu degeri asarsa kayma ilan edilir.
+  # Olcum gurultusu sigma ~0,2 K (rapor 15.2) -> 2,0 K = 10 sigma.
+  dq_drift_rise_k: 2.0
+  # Yuk katsayisi (a) pencerenin ilk yarisindan ikincisine bu orandan fazla buyuduyse
+  # ortada sensor kaymasi degil GERCEK bir baglanti bozulmasi vardir ve kayma ILAN
+  # EDILMEZ. Olculdu: bu kosul olmadan S1_loose_conn'da 20 kez sahte kayma cikiyordu.
+  dq_drift_max_slope_growth: 1.10
+  # Kosul bu kadar ARDISIK ornekte saglanmadan kayma ilan edilmez. 15 dk disa
+  # aktarimda 16 ornek = 4 saat. OLCULEREK secildi (seed 42, 168 sa, 10 senaryo):
+  # yanlis pozitiflerin en uzun ardisik kosusu 9 (S1 gercek gevsek baglanti) ve 7
+  # (S2 yuk basamagi); gercek kayma 190 ardisik ornek suruyor. 16 ikisinin arasinda
+  # ve her iki tarafa da genis pay birakir.
+  dq_drift_persist_samples: 16
   node_silent_min: 15
   heartbeat_timeout_min: 5
   door_grace_min: 2

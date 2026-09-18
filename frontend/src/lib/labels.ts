@@ -46,6 +46,7 @@ export const ALARM_TEXT: Record<string, string> = {
   "ALM-DQ-FROZEN": "Sensör değeri donmuş",
   "ALM-DQ-JUMP": "Sensörde fiziksel olmayan değişim hızı",
   "ALM-DQ-BELOW-AMBIENT": "Bağlantı sıcaklığı ortamın altında, sensör yerinden düşmüş olabilir",
+  "ALM-DQ-DRIFT": "Sensör yükten bağımsız kayma biriktirdi, kalibrasyon şüpheli",
   "ALM-NODE-LOST": "Sensör düğümü sessiz",
   "ALM-COMMS-LOST": "Merkez bağlantısı koptu",
   "ALM-DOOR-UNAUTH": "Planlı iş emri olmadan kapak açıldı",

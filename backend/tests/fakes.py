@@ -67,6 +67,8 @@ class MemoryStore:
         self.telemetry: list[tuple] = []  # (ts, pano_id, tag, value, q)
         self.quarantined: list[tuple] = []  # (received, topic, reason, raw)
         self.batches: list[tuple[list, list]] = []
+        self._nodes: dict[str, dict] = {}
+        self._node_points: dict[tuple[str, str], str] = {}
         self.fail_writes = 0  # >0 ise siradaki N yazma `fail_exc` atar
         self.fail_exc: Exception = StoreError("yapay yazma hatasi")
         self.poison_pano: str | None = None  # bu panonun mesajini iceren her yazma veri hatasi verir
@@ -209,6 +211,36 @@ class MemoryStore:
     def list_panel_points(self) -> list[PanelRecord]:
         self._check()
         return [self._record(i, summary=False, points=True) for i in self._meta]
+
+    # ------------------------------------------------------ dugum kutugu (F-31)
+    def list_nodes(self) -> list[dict]:
+        self._check()
+        return [dict(self._nodes[node_id]) for node_id in sorted(self._nodes)]
+
+    def node_point_map(self) -> dict[tuple[str, str], str]:
+        self._check()
+        return dict(self._node_points)
+
+    def import_nodes(self, rows, *, kutuk_kaynak: str, at) -> int:
+        self._check()
+        # PgStore ile ayni kural: bir satir bile reddedilirse HICBIRI yazilmaz.
+        # Bellek ici cift bunu once dogrulayarak taklit eder.
+        for row in rows:
+            if row["pano_id"] not in self._meta:
+                raise UnknownPanel(row["pano_id"])
+        for row in rows:
+            node_id = row["node_id"]
+            record = self._nodes.setdefault(node_id, {"node_id": node_id})
+            # GONDERILMEYEN alan DEGISTIRILMEZ.
+            record.update({k: v for k, v in row.items() if k != "points"})
+            record.update(kutuk_kaynak=kutuk_kaynak, kutuk_at=at)
+            if "points" in row:
+                # Esleme TAMAMEN degistirilir (PgStore ile ayni).
+                for key in [k for k, v in self._node_points.items() if v == node_id]:
+                    del self._node_points[key]
+                for point in row["points"]:
+                    self._node_points[(row["pano_id"], point)] = node_id
+        return len(rows)
 
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         self._check()

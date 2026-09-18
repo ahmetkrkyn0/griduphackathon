@@ -35,7 +35,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from . import fusion, limits, quality
+from . import fusion, limits, physics, quality
 from .detect import BaselineEvidence, KIndexEstimator, lambda_for_period, load_thresholds
 from .profiles import ProfileKind, load_profile
 
@@ -164,7 +164,7 @@ class EdgePipeline:
     def _update_points(self, payload: dict, pano_id: str, ts: datetime, period_s: float) -> None:
         for point in payload["t_conn"]:
             key = (pano_id, point["pt"])
-            current = self._point_current(payload, point)
+            current = physics.point_current(payload, point["pt"])
             self._remember_i2(key, current * current)
 
             estimator = self._estimators.get(key)
@@ -198,20 +198,6 @@ class EdgePipeline:
             point["tau_s"] = round(state.tau_s, 1)
             point["ttl_h"] = None if state.ttl_h is None else round(state.ttl_h, 1)
             point["excited"] = state.excited
-
-    def _point_current(self, payload: dict, point: dict) -> float:
-        """Noktadan gecen akim; dT = K*I^2 iliskisinden K geri cozulur.
-
-        Fider noktalarinda ana giris akiminin sabit bir kesri gecer; kesir bilinmedigi
-        icin ana faz akimi kullanilir ve K kestirimi o kesri kendi icine emer. K/K0
-        ORANI bundan etkilenmez — taban da ayni kesirle ogrenilir.
-        """
-        elec = payload["elec"]
-        pt = point["pt"]
-        if pt.endswith("_N"):
-            return float(elec["i_n"])
-        phase = int(pt[-1]) - 1
-        return float(elec["i_ph"][phase])
 
     def _remember_i2(self, key: tuple[str, str], i2: float) -> None:
         window = self._i2_mean.setdefault(key, [])

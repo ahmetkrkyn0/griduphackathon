@@ -4,7 +4,7 @@
 > komutu `data/fixtures/` altindaki seed'li senaryolari yeniden olcer ve bu tabloyu
 > uretir (PLAN.md T4.2). Asagidaki her sayi tekrar uretilebilir.
 
-Uretim zamani: 2026-09-15T22:09:45+03:00
+Uretim zamani: 2026-09-18T19:45:37+03:00
 
 ## 1. Senaryo bazinda tespit basarisi
 
@@ -98,7 +98,7 @@ orani 1'e dogru gitmelidir.
 - **Sonuc 1 yorungeden geliyor (n = 1).** Guven araligi YOKTUR; tek bir seed'li senaryonun tek bir bozulma yorungesi olculmustur. Yukaridaki yuzdeler bu yorungenin ozellikleridir, populasyon istatistigi degildir.
 - **`S1_loose_conn`: ihlalden SONRA 587 tahmin daha uretildi.** Sinir zaten asilmisken sistem hala sonlu bir kalan omur soyluyor; bu tahminler geri testin disinda tutuldu (gercek kalan omur negatif, oran tanimsiz).
 - **`S2_overload`: sinir asildi ama hic tahmin uretilmedi.** Kalici uyarim ve surekli pozitif egim kosullari saglanmadigi icin `ttl_h` null kaldi; prognoz olcumu bu senaryoda YAPILAMAZ.
-- **`S8_sensor_fault`: sinir HIC asilmadigi halde 99 tahmin uretildi — bu bir PROGNOZ YANLIS-ALARMIDIR.** Bunlarin 89 tanesi `ALM-TTL-14D` alarmina dondu ve §3'teki yanlis alarm sayaci bunlari GORMEZ: etiket penceresinin icinde cikiyorlar. Nedeni [05-anomali-tespiti.md](05-anomali-tespiti.md) "bilinen sinirlar" bolumundedir.
+- **`S8_sensor_fault`: sinir HIC asilmadigi halde 183 tahmin uretildi — bu bir PROGNOZ YANLIS-ALARMIDIR.** Bunlarin 86 tanesi `ALM-TTL-14D` alarmina dondu ve §3'teki yanlis alarm sayaci bunlari GORMEZ: etiket penceresinin icinde cikiyorlar. Nedeni [05-anomali-tespiti.md](05-anomali-tespiti.md) "bilinen sinirlar" bolumundedir.
 
 ## 5. Nasil yeniden uretilir
 

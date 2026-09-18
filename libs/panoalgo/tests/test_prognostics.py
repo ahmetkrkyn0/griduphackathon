@@ -257,15 +257,22 @@ def test_the_overload_scenario_breaches_the_limit_without_any_prediction(measure
 
 
 def test_the_sensor_fault_scenario_produces_prognoses_without_any_breach(measured):
-    """PROGNOZ YANLIS-ALARMI: sinir hic asilmadi, 99 tahmin uretildi (docs/05 §10).
+    """PROGNOZ YANLIS-ALARMI: sinir hic asilmadi, 183 tahmin uretildi (docs/12 §4.3).
 
-    Bunlarin 89'u ALM-TTL-14D alarmina donuyor ve etiket penceresinin ICINDE
+    Bunlarin 86'si ALM-TTL-14D alarmina donuyor ve etiket penceresinin ICINDE
     ciktiklari icin docs/12 §3'teki yanlis alarm sayaci onlari gormuyor.
+
+    SAYILAR 18 EYLUL'DE DEGISTI (99/89 -> 183/86), CUNKU URETEC DUZELDI (F-31):
+    `set_sensor_fault` ayni arizayi her cagrida yeniden kuruyor ve yasi SIFIRLIYORDU;
+    senaryo yurutucusu `_inject`'i her adimda cagirdigi icin "suruklenme" 112 saatlik
+    enjeksiyon penceresi boyunca 0,5 K'da (tek adimlik) cakili kaliyordu. Yani depo
+    "sensor suruklenmesi uretiyoruz" diyordu ama fiilen URETMIYORDU. Duzeltme sonrasi
+    kayma gercekten birikiyor ve yanlis-alarm daha buyuk cikiyor.
     """
     result = measured["S8_sensor_fault"]
     assert result.l0_breach_at is None
-    assert result.false_prognoses == 99
-    assert result.false_prognosis_alarms == 89
+    assert result.false_prognoses == 183
+    assert result.false_prognosis_alarms == 86
 
 
 def test_a_healthy_panel_produces_no_prognosis_at_all(measured):

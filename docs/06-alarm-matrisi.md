@@ -29,7 +29,7 @@ bilemeyeceği tek şey üretilir: **haberleşme kopukluğu** (`ALM-COMMS-LOST`, 
 | **P1** | Kritik | 3 | audible | evet | evet | evet | 5 | 15 | evet | siren | **hayir** |
 | **P2** | Alarm | 8 | evet | evet | evet | evet | - | 30 | evet | heater_fan | evet |
 | **P3** | Uyari | 6 | evet | planned | - | - | - | - | optional | - | evet |
-| **SYS** | Sistem | 5 | evet | evet | digest_only | - | - | - | - | - | evet |
+| **SYS** | Sistem | 6 | evet | evet | digest_only | - | - | - | - | - | evet |
 | **INFO** | Bilgi | 0 | evet | - | - | - | - | - | - | - | evet |
 <!-- /URETILMIS:oncelik-matrisi -->
 
@@ -204,6 +204,8 @@ Denetim izi: `alarm_journal` (kim, ne zaman, ne yaptı; onay notu, raf gerekçes
 | 19 | `ALM-DOOR-UNAUTH` | P2 | L0 | Planli is emri olmadan kapak acildi | `door_grace_min` = 2 | - | - |
 | 20 | `ALM-LASTGASP` | P2 | L0 | Besleme kesildi (son nefes mesaji) |  | - | - |
 | 21 | `ALM-PANEL-TEMP` | P2 | L0 | Pano ic ortam sicakligi 45 degC ustu | `panel_temp_alarm_c` = 45 | - | TEDAS sartname Tablo 1 (maks. 40 degC) |
+| 22 | `ALM-DQ-DRIFT` | SYS | L-1 | Sensor yuk bagimsiz kayma biriktirdi — kalibrasyon supheli | `dq_drift_rise_k` = 2.0 | - | dT = K * I^2 oldugu icin yuk dustukce dT de dusmelidir. Bozulan BAGLANTI dT'yi her yukte ORANTILI buyutur; kayan SENSOR ise yukten bagimsiz bir terim ekler ve dusuk yuk TABANINI yukseltir. Kural bu tabanin pencere icindeki yukselisini olcer. Mevcut dort L-1 kurali bunu kaciriyordu (docs/12 §4.3).
+ |
 <!-- /URETILMIS:alarm-katalogu -->
 
 ## 10. Doğrulama (ölçülmüş, 13 Eylül 2026)

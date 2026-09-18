@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 
 from . import __version__
 from .alarm_service import AlarmService, PeriodicWorker
-from .api import alarms, assets, insights, outages, panels, stream
+from .api import alarms, assets, insights, nodes, outages, panels, stream
 from .api.stream import StreamHub
 from .api.views import REQUIRED_HYPOTHESES, panel_summary
 from .auth import OperatorTable, operators_from_env
@@ -168,6 +168,7 @@ def create_app(
     app.include_router(insights.router)
     app.include_router(alarms.router)
     app.include_router(assets.router)
+    app.include_router(nodes.router)
     app.include_router(outages.router)
     app.include_router(stream.router)
 

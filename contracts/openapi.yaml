@@ -26,7 +26,12 @@ info:
   #   Yalnizca EKLEME, geri uyumlu. YENI ALARM KODU YOK ve telemetri semasi DEGISMEDI:
   #   K0 kenardan yayinlanmaz, merkezde k / k_ratio ile YENIDEN TURETILIR.
   #   Gerekce: contracts/changes/2026-09-18-l2-filo-akran.md
-  version: 1.6.0
+  # v1.7.0 (18 Eylul 2026): dugum ve sensor kutugu (F-31). NodeRegistry semasi,
+  #   GET/POST /fleet/nodes ve GET /fleet/nodes/blind. Yalnizca EKLEME, geri uyumlu.
+  #   TELEMETRI SEMASI DEGISMEDI: dugum kimligi kenardan yayinlanmaz, "hangi parca kor"
+  #   sorusu merkezde nokta kalite bitlerinden yeniden turetilir.
+  #   Gerekce: contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md
+  version: 1.7.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -251,6 +256,81 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/PanelHealth" }
+
+  /api/v1/fleet/nodes:
+    get:
+      tags: [nodes]
+      summary: Dugum ve sensor kutugu — kunye, kapsama ve kalibrasyon vadesi
+      description: >
+        `health` blogu yalnizca nodes_ok / nodes_total SAYILARINI tasir: "kac dugum gitti"
+        bilinir, "HANGI FIZIKSEL PARCA gitti" bilinmez. Bu kutuk onu kapatir — seri no,
+        uretim partisi, montaj ve kalibrasyon vadesi.
+        DIKKAT: bu bir KUTUK VE VADE TAKIBIDIR. "Izlenebilir olcum" (metrolojik
+        izlenebilirlik) iddiasi akredite bir kalibrasyon zinciri olmadan kurulamaz ve
+        KURULMUYOR; yanit bunu `uyari` alaninda acikca soyler. Sertifika numarasi alani
+        bilerek ACILMADI: dolduracak gercek bir kaynak olmadan alan acmak GK10 ihlalidir.
+        `kapsama` kac panonun kutugu oldugunu, kac dugumde seri no ve kalibrasyon vadesi
+        BOS kaldigini sayiyla verir — eksiklik gizlenemez.
+      parameters:
+        - name: due_days
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 3650, default: 30 }
+          description: Kalibrasyon vadesine bu kadar gun kala "yaklasiyor" sayilir (TURETILMIS).
+      responses:
+        "200":
+          description: Dugum kutugu, kapsama ozeti ve kalibrasyon vadesi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NodeFleet" }
+    post:
+      tags: [nodes]
+      summary: Dugum kutugunu ice aktar
+      description: >
+        Kutugu toplu yazar. `kutuk_kaynak` ZORUNLUDUR — kaynagi yazilmayan kutuk kabul
+        edilmez. Bilinmeyen pano_id REDDEDILIR (yeni pano yaratmaz). Gonderilmeyen alan
+        DEGISTIRILMEZ; `points` verilirse o dugumun nokta eslemesi TAMAMEN degistirilir.
+        Seri no ve uretim partisi gonderilmezse bos kalir; UYDURULMAZ.
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NodeImport" }
+      responses:
+        "200":
+          description: Ice aktarim ozeti
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guncellenen]
+                properties:
+                  guncellenen: { type: integer }
+        "403":
+          description: Yetersiz rol (muhendis gerekir)
+        "404":
+          description: Taninmayan pano_id; aktarimin TAMAMI geri alindi
+
+  /api/v1/fleet/nodes/blind:
+    get:
+      tags: [nodes]
+      summary: Hangi fiziksel parca kor — bozuk noktalardan dugume
+      description: >
+        F-31'in asil sorusu. Kenar zaten nokta basina kalite bitlerini (`t_conn[].q`)
+        yayinliyor; kutuk nokta -> dugum eslemesini tuttugu icin "su noktalar bozuk"
+        bilgisi burada "su fiziksel parca degismeli"ye cevrilir. Dugum kimligi TELEMETRIDE
+        TASINMAZ (sema additionalProperties: false); merkezde YENIDEN TURETILIR — F-10'un
+        `_verify` cozumuyle ayni kacis.
+        Eslemesi OLMAYAN bozuk nokta gizlenmez: `kutuksuz_noktalar` listesinde doner.
+        "Esleme yok" ile "sorun yok" ayni sey degildir.
+      responses:
+        "200":
+          description: Kor dugumler ve kutuksuz kalan bozuk noktalar
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlindNodes" }
 
   /api/v1/fleet/peers:
     get:
@@ -631,6 +711,112 @@ components:
         kunyeli:  { type: integer, description: "cbs_kodu girilmis pano" }
         fiderli:  { type: integer, description: "fider_id girilmis pano (F-22 bunu kullanir)" }
         aboneli:  { type: integer, description: "abone_sayisi girilmis pano (etki ekseni)" }
+
+    NodeRegistry:
+      type: object
+      required: [node_id, pano_id]
+      description: >
+        Tek bir fiziksel dugum/sensor. Ice aktarilmayan alan null doner — bos hucre
+        "veri yok" demektir, sifir DEGIL. `seri_no` ve `uretim_partisi` uydurulmaz.
+      properties:
+        node_id:        { type: string }
+        pano_id:        { type: string }
+        uretici:        { type: [string, "null"] }
+        model:          { type: [string, "null"] }
+        seri_no:        { type: [string, "null"] }
+        uretim_partisi: { type: [string, "null"] }
+        montaj_at:      { type: [string, "null"], format: date-time }
+        son_kalibrasyon_at:     { type: [string, "null"], format: date-time }
+        sonraki_kalibrasyon_at: { type: [string, "null"], format: date-time }
+        kutuk_kaynak:   { type: [string, "null"] }
+        kutuk_at:       { type: [string, "null"], format: date-time }
+
+    NodeFleet:
+      type: object
+      required: [kapsama, kalibrasyon, dugumler, uyari]
+      properties:
+        kapsama:
+          type: object
+          required: [pano_toplam, kutugu_olan_pano, dugum_toplam, seri_no_bos, kalibrasyon_vadesi_bos]
+          description: Eksiklik SAYIYLA gorunur; kutugu olmayan pano gizlenmez.
+          properties:
+            pano_toplam:      { type: integer }
+            kutugu_olan_pano: { type: integer }
+            dugum_toplam:     { type: integer }
+            seri_no_bos:      { type: integer }
+            kalibrasyon_vadesi_bos: { type: integer }
+        kalibrasyon:
+          type: object
+          required: [pencere_gun, vadesi_gecen, vadesi_yaklasan]
+          properties:
+            pencere_gun:     { type: integer }
+            vadesi_gecen:    { type: array, items: { type: string } }
+            vadesi_yaklasan: { type: array, items: { type: string } }
+        dugumler:
+          type: array
+          items: { $ref: "#/components/schemas/NodeRegistry" }
+        uyari:
+          type: string
+          description: >
+            GK10/GK3 notu: bu kutuk kalibrasyon VADE TAKIBIDIR; akredite kalibrasyon
+            olmadan "izlenebilir olcum" iddiasi kurulamaz.
+
+    NodeImport:
+      type: object
+      required: [kutuk_kaynak, dugumler]
+      properties:
+        kutuk_kaynak:
+          type: string
+          minLength: 1
+          description: Kaynagi yazilmayan kutuk kabul edilmez; satir basina YAZILAMAZ.
+        dugumler:
+          type: array
+          minItems: 1
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NodeRegistry"
+              - type: object
+                properties:
+                  points:
+                    type: array
+                    items: { type: string }
+                    description: >
+                      Dugumun tasidigi olcum noktalari. Verilirse esleme TAMAMEN
+                      degistirilir; kismi esleme eski ve yeni kartin noktalarini karistirirdi.
+
+    BlindNodes:
+      type: object
+      required: [kor_dugumler, kutuksuz_noktalar]
+      properties:
+        kor_dugumler:
+          type: array
+          description: Kalite bayragi tasiyan noktalari olan dugumler, kutuk kunyesiyle.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NodeRegistry"
+              - type: object
+                required: [points]
+                properties:
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      required: [point, q]
+                      properties:
+                        point:     { type: string }
+                        det_label: { type: [string, "null"] }
+                        q:         { type: integer, description: "t_conn[].q bit alani" }
+        kutuksuz_noktalar:
+          type: array
+          description: >
+            Bozuk ama kutuge eslenmemis noktalar. "Esleme yok" ile "sorun yok" ayni sey
+            degildir; bu liste eksikligi gorunur kilar (GK10).
+          items:
+            type: object
+            required: [pano_id, point]
+            properties:
+              pano_id: { type: string }
+              point:   { type: string }
 
     FleetPeers:
       type: object

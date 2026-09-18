@@ -399,12 +399,72 @@ Güncelleme yeteneğinin karşı ağırlığını kurar · **Etki:** yüksek · 
 **Ne üretir:** Üretim hattında anahtar yönetimi, tek yönlü sigorta yakma prosedürü, hata ayıklama portunun kapatılması ve kurtarma senaryosu.
 **Dikkat:** GK3 ihlali — gerçek donanım olmadan gösterilemez ve sigorta yakma geri alınamaz. Bu teslimde kod yazılmamalı; uygulaması olmayan bir başlık dosyası bile "var gibi görünme" üretir.
 
-### F-31 · Düğüm kimliği ve sensör sapması tespiti
+### F-31 · Düğüm kimliği ve sensör sapması tespiti — 🟡 kısmen yapıldı (18 Eylül 2026)
 Sistemin düğüm sayısını değil düğümün kendisini tanımasını sağlar · **Etki:** orta · **Efor:** 4-6 hafta · **Nerede yaşar:** [contracts/mqtt-telemetry.schema.json](contracts/mqtt-telemetry.schema.json), [contracts/modbus-map.yaml](contracts/modbus-map.yaml), [contracts/alarm-codes.yaml](contracts/alarm-codes.yaml), [libs/panoalgo/panoalgo/quality.py](libs/panoalgo/panoalgo/quality.py), [deploy/initdb/](deploy/initdb/), [frontend/src/pages/CihazSagligi.tsx](frontend/src/pages/CihazSagligi.tsx)
 **Sektörel dayanak:** Rittal CMC III sensörleri otomatik tanıyıp tek tek izliyor; Schneider CL110 için batarya ve servis ömrü takip edilen bir veri; OMA LwM2M bağlantı sağlığını ayrı bir nesne olarak standartlaştırıyor.
 **Bizdeki boşluk:** Sağlık bloğu yalnızca "kaç düğüm iyi / kaç düğüm var" taşıyor; düğüm kimliği hiçbir yerde yok, yani bir düğüm kaybolduğunda hangi fiziksel parçanın gittiğini söyleyemiyoruz. Dahası sensör sürüklenmesini **üretiyoruz** ama tespit eden hiçbir kural yok — FMEA'daki en yüksek risklerden birinin azaltıcı önlemi kâğıt üstünde.
 **Ne üretir:** Düğüm listesi ve kimliği, sensör kütüğü, ardışık sapma için yeni bir alarm kodu, düğüm bazına inen cihaz sağlığı ekranı.
 **Dikkat:** Tek başına donmuş sözleşmenin üç dosyasına birden dokunuyor ve üç üretilmiş dokümanın yeniden üretimini gerektiriyor — dondurma öncesi kesinlikle başlanmamalı. "İzlenebilir ölçüm" (metrolojik izlenebilirlik) iddiası akredite kalibrasyon olmadan kurulamaz; yalnızca "kütük ve vade takibi" denebilir.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).**
+>
+> **Önce ayrım yapıldı — yoksa var olan bir yetenek yeniden inşa edilirdi.** Backlog "düğüm
+> kimliği hiçbir yerde yok" diyor; ölçüldüğünde bu **fazla geniş** çıktı. **Ölçüm noktası**
+> kimliği zaten VARDI (`t_conn[].pt` donmuş şemada sabit regex, `q` kalite bitleri nokta
+> bazında). Eksik olan **fiziksel düğüm** kimliğiydi: `health` yalnızca `nodes_ok` /
+> `nodes_total` **sayılarını** taşıyor. Maddenin gerçek işi *"bir düğüm kaybolduğunda hangi
+> fiziksel parçanın gittiğini söyleyebilmek"*ti. Göç `deploy/initdb/010_dugum_kutugu.sql`
+> (`nodes` + `node_points`), uçlar `GET`/`POST /fleet/nodes` ve `GET /fleet/nodes/blind`.
+>
+> **Donmuş şemanın ÜÇ dosyasından İKİSİNE dokunulmadı.** Backlog üç dosya bekliyordu;
+> `mqtt-telemetry.schema.json` ve `modbus-map.yaml` **değişmedi**. Düğüm kimliği 10 saniyede
+> bir akması gereken bir veri değil, F-21'in künyesiyle aynı cinsten **kütük** verisidir; ve
+> "hangi düğüm kör" sorusu zaten yayınlanan `t_conn[].q` bitlerinden + kütüğün nokta↔düğüm
+> eşlemesinden **merkezde yeniden türetilir** (F-10'un `_verify` kaçışı). Yeni alarm biti 22,
+> Modbus'ın **zaten var olan** 32 bitlik alarm alanına düştüğü için harita da değişmedi.
+>
+> **"İzlenebilir ölçüm" iddiası KURULMADI.** Yapılan yalnızca **kütük ve vade takibidir**;
+> `GET /fleet/nodes` bunu kendi `uyari` alanında söyler ve **sertifika numarası alanı bilerek
+> açılmadı** (dolduracak kaynak yokken alan açmak GK10 ihlali olurdu). Demo filosunun düğüm
+> kütüğü **boştur** ve bu `kapsama` alanında sayıyla görünür (GK3).
+>
+> **Sürüklenme: önce ÜRETECİN KENDİSİ düzeldi.** Backlog "sürüklenmeyi üretiyoruz ama tespit
+> eden kural yok" diyordu; ölçüldüğünde premisin **ilk yarısı da tutmuyordu**.
+> `set_sensor_fault` aynı arızayı her çağrıda yeniden kurup yaşını **sıfırlıyordu** ve senaryo
+> yürütücüsü enjeksiyonu her adımda çağırdığı için kayma 112 saatlik pencere boyunca **0,5
+> K'da çakılı** kalıyordu. Ayrıca hız 2,0 K/saat ile fiziksel değildi (112 saatte 224 K;
+> ölçüldü: `ALM-THR-TERM-ALM` 345 kez çıkıp senaryonun `not_expect` kısıtını ihlal ediyordu).
+> İdempotentlik düzeltildi ve hız **0,1 K/saat**e indirildi.
+>
+> **Sonra kural yazıldı ve ayracı FİZİKTİR.** `dT = a·I² + b`'de gerçek bağlantı bozulması
+> `a`'yı büyütür, sensör kayması yükten bağımsız `b`'yi. `ALM-DQ-DRIFT` (bit 22, `layer: L-1`,
+> SYS) yalnızca `b` büyüyüp `a` büyümediğinde tetiklenir. İlk tasarım "düşük yük tabanı"na
+> bakıyordu ve **gerçek gevşek bağlantıyı** (S1) 96 kez sürüklenme sandı — gerçek bir arızayı
+> "kalibrasyon şüpheli" diye raporlamak en kötü yanlış yöndür. Kesişim ayracı + süreklilik
+> şartı + "daha özgül tanı kazanır" kuralı bunu sıfıra indirdi.
+>
+> **Ölçülen — başarı aynı fixture'da:** `S8_sensor_fault`'ta yalnızca `DSYA4_L3`, **230 kez**
+> (seed 42), enjeksiyondan **26,25 saat** sonra. Diğer **dokuz** senaryoda — gerçek gevşek
+> bağlantı S1 ve sağlıklı taban S0 dahil — **sıfır** yanlış pozitif (`test_drift.py`, 10
+> senaryo parametrik). `docs/12` §4.3 yeniden üretildi: S8'in prognoz yanlış-alarmı **99 →
+> 183** tahmin, **89 → 86** `ALM-TTL-14D`; **yalnızca S8 satırı değişti**, diğer dokuz senaryo
+> bit bit aynı kaldı. Sözleşme: `alarm-codes` **v4**, `openapi` **v1.7.0**, gerekçe
+> `contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md`.
+>
+> **Kalan (bu yüzden ✅ değil):**
+> 1. **Düğüm bazına inen cihaz sağlığı EKRANI yazılmadı.** Backlog `CihazSagligi.tsx`'i
+>    listeliyor; frontend'e yalnızca yeni alarm kodunun Türkçe metni eklendi. Uçlar hazır ve
+>    testli, ekran değil.
+> 2. **`ttl_h` üretimi hâlâ kalite bitlerinden bağımsız.** `edge.py` kestirimi `q`
+>    hesabından önce yapar; bir nokta "kalibrasyon şüpheli" işaretlense bile sahte kalan ömür
+>    tahmini üretilmeye devam eder. Prognoz yanlış-alarmı bu yüzden **kapanmadı, görünür
+>    oldu**.
+> 3. **Gerçek bir sensör envanterine erişim yok (GK3).** Kütük boştur; seri no, parti ve
+>    kalibrasyon vadesi hiçbir düğümde doldurulmadı ve **uydurulmadı**.
+> 4. **Ayrım tek yörüngeden (n = 1) ve sentetik veriden.** Üreteç kaymayı sabit hızla ve tek
+>    noktaya enjekte eder; gerçek bir sensörün kayması düzensiz olabilir. Buradaki "kusursuz
+>    ayrım" saha başarımı **değildir**.
+
 
 ### F-32 · L2 filo akran karşılaştırması ve taban geçerliliği — 🟡 kısmen yapıldı (18 Eylül 2026)
 K₀ körlüğünü akran dağılımı ve değişim noktası tespitiyle kapatır · **Etki:** yüksek · **Efor:** 3-4 hafta (gerçek filo verisiyle) · **Nerede yaşar:** yeni `libs/panoalgo/panoalgo/fleet.py` ve `onset.py`, [libs/panoalgo/panoalgo/detect.py](libs/panoalgo/panoalgo/detect.py), [backend/app/api/insights.py](backend/app/api/insights.py)

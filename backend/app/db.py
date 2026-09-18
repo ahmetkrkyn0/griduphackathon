@@ -111,6 +111,28 @@ class Store(Protocol):
         """
         ...
 
+    def list_nodes(self) -> list[dict]:
+        """Dugum kutugu, node_id sirali (F-31). Kutugu olmayan pano listede YOKTUR."""
+        ...
+
+    def node_point_map(self) -> dict[tuple[str, str], str]:
+        """(pano_id, nokta) -> node_id eslemesi (F-31).
+
+        "Hangi fiziksel parca kor" sorusu bundan turetilir; kenar dugum kimligi
+        YAYINLAMAZ (telemetri semasi additionalProperties: false).
+        """
+        ...
+
+    def import_nodes(self, rows: Sequence[dict], *, kutuk_kaynak: str, at: datetime) -> int:
+        """Dugum kutugunu yazar; yazilan dugum sayisini doner (F-31).
+
+        import_assets ile ayni uc kural: tek transaction, bilinmeyen pano_id
+        `UnknownPanel` atar (bu uc yeni pano yaratmaz) ve GONDERILMEYEN alan
+        DEGISTIRILMEZ. `points` verilirse o dugumun nokta eslemesi TAMAMEN degistirilir
+        — kismi bir esleme, eski ve yeni kartin noktalarini karistirirdi.
+        """
+        ...
+
     def ping(self) -> bool: ...
 
     # ------------------------------------------------------------ alarmlar (TB2)
@@ -254,6 +276,22 @@ SELECT {_PANEL_COLUMNS},
 FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 ORDER BY p.pano_id
 """
+
+
+# ----------------------------------------------------------- dugum kutugu (F-31)
+NODE_FIELDS = (
+    "uretici", "model", "seri_no", "uretim_partisi", "montaj_at",
+    "son_kalibrasyon_at", "sonraki_kalibrasyon_at",
+)
+
+_LIST_NODES = """
+SELECT node_id, pano_id, uretici, model, seri_no, uretim_partisi, montaj_at,
+       son_kalibrasyon_at, sonraki_kalibrasyon_at, kutuk_kaynak, kutuk_at
+FROM nodes
+ORDER BY node_id
+"""
+
+_LIST_NODE_POINTS = "SELECT pano_id, point, node_id FROM node_points"
 
 
 # ------------------------------------------------------------- kesinti olayi (F-22)
@@ -519,6 +557,54 @@ class PgStore:
                 if cur.rowcount == 0:
                     raise UnknownPanel(pano_id)
                 updated += cur.rowcount
+        return updated
+
+    # ------------------------------------------------------ dugum kutugu (F-31)
+    def list_nodes(self) -> list[dict]:
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(_LIST_NODES).fetchall()
+
+    def node_point_map(self) -> dict[tuple[str, str], str]:
+        with self._connection() as conn, conn.cursor() as cur:
+            rows = cur.execute(_LIST_NODE_POINTS).fetchall()
+        return {(pano_id, point): node_id for pano_id, point, node_id in rows}
+
+    def import_nodes(self, rows: Sequence[dict], *, kutuk_kaynak: str, at: datetime) -> int:
+        updated = 0
+        # Tek `with`: tum satirlar ayni transaction'da (import_assets ile ayni gerekce) —
+        # yarim ice aktarilmis bir kutuk, hic ice aktarilmamis olandan daha kotudur.
+        with self._connection() as conn, conn.cursor() as cur:
+            for row in rows:
+                node_id, pano_id = row["node_id"], row["pano_id"]
+                cur.execute("SELECT 1 FROM panels WHERE pano_id = %s", (pano_id,))
+                if cur.fetchone() is None:
+                    raise UnknownPanel(pano_id)
+
+                # Kokeni ISTEMCI YAZMAZ: kutuk_kaynak/kutuk_at aktarimin kendisinden gelir.
+                values = {name: row[name] for name in NODE_FIELDS if name in row}
+                values.update(node_id=node_id, pano_id=pano_id, kutuk_kaynak=kutuk_kaynak, kutuk_at=at)
+                columns = ", ".join(values)
+                holders = ", ".join(f"%({name})s" for name in values)
+                # node_id disindaki alanlar guncellenir; GONDERILMEYEN alan burada
+                # `values` icinde olmadigi icin DOKUNULMAZ.
+                assignments = ", ".join(f"{name} = EXCLUDED.{name}" for name in values if name != "node_id")
+                cur.execute(
+                    f"INSERT INTO nodes ({columns}) VALUES ({holders}) "
+                    f"ON CONFLICT (node_id) DO UPDATE SET {assignments}",
+                    values,
+                )
+                updated += 1
+
+                if "points" in row:
+                    # Esleme TAMAMEN degistirilir: kismi bir esleme eski ve yeni kartin
+                    # noktalarini karistirirdi.
+                    cur.execute("DELETE FROM node_points WHERE node_id = %s", (node_id,))
+                    for point in row["points"]:
+                        cur.execute(
+                            "INSERT INTO node_points (pano_id, point, node_id) VALUES (%s, %s, %s) "
+                            "ON CONFLICT (pano_id, point) DO UPDATE SET node_id = EXCLUDED.node_id",
+                            (pano_id, point, node_id),
+                        )
         return updated
 
     def ping(self) -> bool:
