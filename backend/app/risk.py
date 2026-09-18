@@ -19,6 +19,7 @@ from collections.abc import Callable, Iterable
 from typing import Any, Protocol
 
 from .alarm_manager import Condition
+from .api.views import point_state, point_validity
 from .config import Contracts
 from .models import Sample
 
@@ -147,6 +148,10 @@ class RiskEngine:
         verify = _verify(hypothesis, active)
         if verify is not None:
             reason["verify"] = verify
+        if point is not None:
+            state = point_state(point, self._thresholds, comms_ok=True)
+            baseline_day = (payload.get("health") or {}).get("baseline_day")
+            reason["gecerlilik"] = point_validity(point, state, True, self._thresholds, baseline_day)
         ttl_h = point.get("ttl_h") if point else (payload.get("risk") or {}).get("ttl_h")
         advice = hypothesis["advice"] if hypothesis else None
         return Condition(code=code, point=point_name, reason=reason, advice=advice, ttl_h=ttl_h)
