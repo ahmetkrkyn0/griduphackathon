@@ -90,19 +90,24 @@ boş bir başlık gösterilmez.
 
 ## 3. Bilinçli kapsam sınırları (dürüstlük kuralı, Bölüm C)
 
-Bir ekran, sözleşmede eksik bir uç yüzünden tam istenen granülerlikte değil. Bu,
-`contracts/changes/2026-09-14-fleet-health-bulk.md` önerisiyle çözülebilir:
+1. **Cihaz sağlığı** — *18 Eylül 2026'da kapandı.* Bu ekran, toplu bir "filo sağlığı" ucu
+   olmadığı için görünen panoları tek tek (sınırlı eşzamanlılıkla, 6) çekiyordu. Öneri
+   (`contracts/changes/2026-09-14-fleet-health-bulk.md`) üç onayı aldı ve uygulandı:
+   `GET /api/v1/fleet/health` (`openapi.yaml` v1.1.0, yalnızca ekleme) ile ekran artık
+   **tek istek** atıyor (`pages/CihazSagligi.tsx`). Uçun, yerini aldığı pano-başına
+   çağrıdan farklı bir değer döndürmediği backend'de testle kilitli
+   (`test_fleet_health_matches_panel_detail`).
+   **Kalan dürüstlük sınırı:** 100+ panoda beklenen kazanç **ölçülmedi** — demo filosu
+   3–20 pano ve bu ölçekte fark zaten görünmüyordu. Değişen şey **istek sayısıdır**
+   (N → 1); bu bir kod özelliğidir, ölçülmüş bir gecikme iyileştirmesi değildir.
+   Depodaki 1.000 pano ölçümleri backend alım/görünme p95'ine aittir, bu ekranın istek
+   davranışına değil.
 
-1. **Cihaz sağlığı**, toplu bir "filo sağlığı" ucu olmadığı için görünen panoları tek tek
-   (sınırlı eşzamanlılıkla, 6) çeker (`CONCURRENCY = 6`, `pages/CihazSagligi.tsx`). Ekran başına
-   istek sayısı pano sayısıyla doğrusal artar; 20 panoda görünmez, 1.000 panoda yavaşlar
-   (**tahmin — ölçülmedi**: depodaki 1.000 pano ölçümleri backend alım/görünme p95'ine ait, bu
-   ekranın istek davranışına değil). Ekranın altında bu sınır kullanıcıya açıkça yazılır — orada
-   sayı verilmez, "büyük filoda bu ekran yavaş" denir.
-
-**Bölge haritası** (15 Eylül güncellemesi): sözleşmede `lat`/`lon` zaten onaylı bir alan (bu,
-yukarıdaki bekleyen öneriden farklı — o öneri bunun yerine/ek olarak il/ilçe eklemeyi öneriyor,
-ama lat/lon'u kullanmak için o onaya gerek yok). Mock veride (`api/mock.ts`) her panonun adı
+**Bölge haritası** (15 Eylül güncellemesi): sözleşmede `lat`/`lon` zaten onaylı bir alan.
+Yukarıdaki önerinin il/ilçe kısmı **uygulanmadı** ve bu bilinçlidir: `panels` tablosunda
+il/ilçe kolonu yok ve bu depoda dolduracak gerçek bir kaynak da yok (GK3 — CBS içe aktarımı
+yapılmadı). Alan açıp boş bırakmak ya da `pano_id` önekinden il uydurmak GK10 ihlali olurdu;
+o iş varlık künyesi maddesine aittir (`GELISTIRME-BACKLOGU.md` F-21). Mock veride (`api/mock.ts`) her panonun adı
 zaten gerçek bir ilçe/semt (Efeler, Bornova, Söke...) olduğundan, bu ilçelerin gerçek merkez
 koordinatları dolduruldu ve panolar artık gerçek enlem/boylamına göre yerel ölçekli bir konum
 grafiğine yerleştiriliyor (`pages/BolgeHaritasi.tsx`). Konum, ilçe merkezi hassasiyetindedir

@@ -15,6 +15,7 @@ import type {
   Env,
   FleetKpi,
   PanelDetail,
+  PanelHealth,
   PanelSummary,
   Prio,
   SeriesResponse,
@@ -308,6 +309,29 @@ export const mockApi: Api = {
     const detail = details.get(panoId);
     if (!detail) throw new ApiError(404, `pano bulunamadi: ${panoId}`);
     return structuredClone(detail);
+  },
+  async fleetHealth(): Promise<PanelHealth[]> {
+    await delay(150);
+    // Gercek uc gibi davranir: veri gondermemis panoda saglik alanlari null doner,
+    // 0 yazilmaz (0 dBm gecerli bir RSSI'dir).
+    return SEEDS.map((seed) => {
+      const health = details.get(seed.pano_id)?.health;
+      const s = summary(seed);
+      return {
+        pano_id: seed.pano_id,
+        name: seed.name,
+        nodes_ok: health?.nodes_ok ?? null,
+        nodes_total: health?.nodes_total ?? null,
+        rssi_dbm: health?.rssi_dbm ?? null,
+        vbak_pct: health?.vbak_pct ?? null,
+        buffered: health?.buffered ?? null,
+        maint_mode: health?.maint_mode ?? null,
+        fw: health?.fw ?? null,
+        baseline_day: health?.baseline_day ?? seed.baseline_day,
+        last_seen: s.last_seen,
+        comms_ok: seed.comms_ok,
+      };
+    });
   },
   async fleetKpi(): Promise<FleetKpi> {
     const ok = SEEDS.filter((s) => s.comms_ok).length;

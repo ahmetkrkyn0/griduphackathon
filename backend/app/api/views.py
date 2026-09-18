@@ -109,6 +109,36 @@ def panel_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> d
     }
 
 
+#: GET /fleet/health satirinin `health` blogundan gelen alanlari — DeviceHealth ile AYNI adlar.
+#: `fw` bu listede YOK: yukun KOK seviyesinde durur (bkz. panel_detail, asagida).
+#: `baseline_day` de yok: panels tablosunda ayri bir karsiligi var ve
+#: panel_summary'deki gibi telemetri degeri onceliklidir.
+HEALTH_FIELDS = ("nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "maint_mode")
+
+
+def panel_health(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
+    """Cihaz sagligi satiri (TC3). panel_summary ile ayni turetme deseni.
+
+    Telemetri hic gelmemis panoda saglik alanlari None doner — 0 YAZILMAZ:
+    0 dBm gecerli bir RSSI'dir, "bilinmiyor" degildir ve ekran ikisini
+    ayirt edebilmek zorundadir (bkz. CihazSagligi.tsx `isBad`).
+
+    `fw`, panel_detail ile AYNI sekilde yukun kokunden yukseltilir; iki uc
+    ayni alan icin farkli deger dondurmemeli (test_fleet_health_matches_panel_detail).
+    """
+    payload = record.payload or {}
+    health = payload.get("health") or {}
+    view: dict[str, Any] = {"pano_id": record.pano_id, "name": record.name}
+    for field in HEALTH_FIELDS:
+        view[field] = health.get(field)
+    view["fw"] = payload.get("fw")
+    baseline_day = health.get("baseline_day")
+    view["baseline_day"] = record.baseline_day if baseline_day is None else baseline_day
+    view["last_seen"] = last_seen(record).isoformat()
+    view["comms_ok"] = is_comms_ok(record, contracts, now)
+    return view
+
+
 def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool) -> dict[str, Any]:
     view = {
         "pt": point["pt"],

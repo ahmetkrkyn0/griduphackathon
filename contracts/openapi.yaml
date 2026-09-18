@@ -4,7 +4,9 @@
 openapi: 3.1.0
 info:
   title: Grid Up — Pano Beyni Merkez API
-  version: 1.0.0
+  # v1.1.0 (18 Eylul 2026): GET /fleet/health eklendi (yalnizca EKLEME, geri uyumlu).
+  # Gerekce: contracts/changes/2026-09-14-fleet-health-bulk.md
+  version: 1.1.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -191,6 +193,24 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FleetKpi" }
 
+  /api/v1/fleet/health:
+    get:
+      tags: [system]
+      summary: Tum filonun cihaz sagligi — tek istekte
+      description: >
+        Cihaz Sagligi ekrani icin. Bu uctan ONCE ekran gorunen her pano icin ayri ayri
+        GET /panels/{id} cagiriyordu (sinirli eszamanlilikla); 20 panoda sorun degil,
+        100+ panoda (GK7 hedefi) yavasliyordu. PanelSummary gibi HAFIF bir listedir:
+        PanelDetail'in nokta dizisini, ortam ve elektrik bloklarini tasimaz.
+      responses:
+        "200":
+          description: Filo genelinde cihaz sagligi listesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PanelHealth" }
+
 components:
   parameters:
     PanoId:
@@ -306,6 +326,28 @@ components:
         buffered: { type: integer }
         maint_mode: { type: boolean }
         fw: { type: string }
+
+    PanelHealth:
+      type: object
+      description: >
+        GET /fleet/health satiri. Alanlar DeviceHealth ile ayni adlari tasir; pano_id,
+        name, last_seen ve comms_ok PanelSummary ile ayni anlamdadir. Telemetri hic
+        gelmemis bir pano icin saglik alanlari null doner — olmayan veri 0 gibi
+        gosterilmez (0 dBm gecerli bir RSSI'dir, "bilinmiyor" degildir).
+      required: [pano_id, name, last_seen, comms_ok]
+      properties:
+        pano_id: { type: string }
+        name: { type: string }
+        nodes_ok: { type: [integer, "null"] }
+        nodes_total: { type: [integer, "null"] }
+        rssi_dbm: { type: [number, "null"] }
+        vbak_pct: { type: [number, "null"] }
+        buffered: { type: [integer, "null"] }
+        maint_mode: { type: [boolean, "null"] }
+        fw: { type: [string, "null"] }
+        baseline_day: { type: integer }
+        last_seen: { type: string, format: date-time }
+        comms_ok: { type: boolean }
 
     PanelDetail:
       type: object

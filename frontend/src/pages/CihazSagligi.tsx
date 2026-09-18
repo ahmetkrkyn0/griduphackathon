@@ -4,10 +4,11 @@ import { api } from "../api/client";
 import { ago, num } from "../lib/format";
 import { useFleet } from "../state/fleet";
 
-// API'de toplu "cihaz sagligi" ucu yok (yalnizca pano-basina detay); bu yuzden gorunen
-// panolar sirayla, sinirli eszamanlilikla cekilir. Kalici cozum icin bkz.
-// contracts/changes/2026-09-14-fleet-health-bulk.md (3 onay bekliyor).
-const CONCURRENCY = 6;
+// 18 Eylul 2026: bu ekran gorunen her pano icin AYRI GET /panels/{id} cagiriyordu
+// (sinirli eszamanlilikla, 6). Artik tek istek: GET /fleet/health
+// (contracts/changes/2026-09-14-fleet-health-bulk.md kabul edildi, openapi v1.1.0).
+// Ucun pano-basina uctan farkli bir sey sormadigi backend'de kilitli:
+// test_fleet_health_matches_panel_detail.
 
 interface Row {
   pano_id: string;
@@ -24,48 +25,34 @@ interface Row {
   error?: string;
 }
 
-async function withConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let i = 0;
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++;
-      out[idx] = await fn(items[idx]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
-}
-
 /** TC3: cihaz sagligi — dugum/pano bazinda RSSI, yedek guc, tampon, yazilim surumu. */
 export function CihazSagligi() {
   const { panels } = useFleet();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadedCount, setLoadedCount] = useState(0);
   const cancelled = useRef(false);
 
   const load = async () => {
     cancelled.current = false;
     setLoading(true);
-    setLoadedCount(0);
-    const results = await withConcurrency(panels, CONCURRENCY, async (p) => {
-      try {
-        const d = await api.panel(p.pano_id);
-        if (!cancelled.current) setLoadedCount((c) => c + 1);
-        return {
-          pano_id: p.pano_id, name: p.name, commsOk: p.comms_ok, lastSeen: p.last_seen,
-          nodesOk: d.health.nodes_ok ?? null, nodesTotal: d.health.nodes_total ?? null,
-          rssi: d.health.rssi_dbm ?? null, vbak: d.health.vbak_pct ?? null,
-          buffered: d.health.buffered ?? null, fw: d.health.fw ?? null,
-          baselineDay: d.health.baseline_day ?? null,
-        } satisfies Row;
-      } catch {
-        return { pano_id: p.pano_id, name: p.name, commsOk: p.comms_ok, lastSeen: p.last_seen,
-          nodesOk: null, nodesTotal: null, rssi: null, vbak: null, buffered: null, fw: null, baselineDay: null,
-          error: "alınamadı" } satisfies Row;
-      }
-    });
+    let results: Row[];
+    try {
+      results = (await api.fleetHealth()).map((h) => ({
+        pano_id: h.pano_id, name: h.name, commsOk: h.comms_ok, lastSeen: h.last_seen,
+        nodesOk: h.nodes_ok, nodesTotal: h.nodes_total,
+        rssi: h.rssi_dbm, vbak: h.vbak_pct,
+        buffered: h.buffered, fw: h.fw,
+        baselineDay: h.baseline_day,
+      }));
+    } catch {
+      // Tek istek: ya hepsi gelir ya hicbiri. Filo listesinden bilinen alanlarla
+      // (ad, haberlesme, son gorulme) satirlar yine cizilir ki ekran bos kalmasin.
+      results = panels.map((p) => ({
+        pano_id: p.pano_id, name: p.name, commsOk: p.comms_ok, lastSeen: p.last_seen,
+        nodesOk: null, nodesTotal: null, rssi: null, vbak: null, buffered: null, fw: null, baselineDay: null,
+        error: "alınamadı",
+      }));
+    }
     if (!cancelled.current) {
       setRows(results);
       setLoading(false);
@@ -92,11 +79,7 @@ export function CihazSagligi() {
         <h1>Cihaz sağlığı</h1>
         <p>Sensör düğümleri, hücresel sinyal, yedek enerji ve tampon durumu — sessiz arıza kendisi bir alarmdır.</p>
       </div>
-      {loading && (
-        <p className="dim small">
-          Yükleniyor… ({loadedCount} / {panels.length})
-        </p>
-      )}
+      {loading && <p className="dim small">Yükleniyor…</p>}
 
       <div className="tbl-wrap">
         <table className="tbl">
@@ -131,9 +114,10 @@ export function CihazSagligi() {
         </table>
       </div>
       <p className="dim small" style={{ marginTop: 12 }}>
-        Bu tablo görünen {panels.length} panonun her birinin detayını tek tek çeker (API'de henüz toplu düğüm-sağlığı
-        ucu yok — bkz. <code>contracts/changes/2026-09-14-fleet-health-bulk.md</code>). Büyük filoda bu ekran yavaş
-        kalır; kalıcı çözüm bulk uç eklenmesidir.
+        Bu tablo tüm filoyu <strong>tek istekte</strong> çeker (<code>GET /api/v1/fleet/health</code>). Önceki sürümde
+        görünen her pano için ayrı bir detay isteği atılıyordu; 18 Eylül'de toplu uç eklendi (
+        <code>contracts/changes/2026-09-14-fleet-health-bulk.md</code>). “–” işareti <em>veri gelmedi</em> demektir,
+        sıfır demek değildir.
       </p>
     </main>
   );

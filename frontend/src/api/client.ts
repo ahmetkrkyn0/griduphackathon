@@ -1,6 +1,6 @@
 import { ApiError } from "./errors";
 import { mockApi } from "./mock";
-import type { AckBody, Alarm, Api, Blackbox, FleetKpi, PanelDetail, PanelSummary, SeriesResponse, ShelveBody } from "./types";
+import type { AckBody, Alarm, Api, Blackbox, FleetKpi, PanelDetail, PanelHealth, PanelSummary, SeriesResponse, ShelveBody } from "./types";
 
 export const usingMocks = import.meta.env.VITE_USE_MOCKS === "1";
 
@@ -26,6 +26,7 @@ const httpApi: Api = {
   panels: (signal) => request<PanelSummary[]>("/api/v1/panels?sort=risk&limit=2000", { signal }),
   panel: (panoId, signal) => request<PanelDetail>(`/api/v1/panels/${encodeURIComponent(panoId)}`, { signal }),
   fleetKpi: (signal) => request<FleetKpi>("/api/v1/fleet/kpi", { signal }),
+  fleetHealth: (signal) => request<PanelHealth[]>("/api/v1/fleet/health", { signal }),
   ack: (alarmId, body: AckBody) =>
     request<{ ok?: boolean }>(`/api/v1/alarms/${encodeURIComponent(alarmId)}/ack`, {
       method: "POST",

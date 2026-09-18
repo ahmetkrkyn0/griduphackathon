@@ -149,6 +149,28 @@ export interface PanelDetail {
   active_alarms?: Alarm[];
 }
 
+/**
+ * GET /fleet/health satiri (Cihaz Sagligi ekrani).
+ *
+ * Alanlar null OLABILIR ve bu "0" ile ayni sey degildir: veri gondermemis bir pano
+ * icin null gelir, 0 dBm ise gecerli bir RSSI'dir. Bu yuzden tipler `| null` tasir,
+ * `?` degil — eksik alan ile bilinmeyen deger karistirilmasin.
+ */
+export interface PanelHealth {
+  pano_id: string;
+  name: string;
+  nodes_ok: number | null;
+  nodes_total: number | null;
+  rssi_dbm: number | null;
+  vbak_pct: number | null;
+  buffered: number | null;
+  maint_mode: boolean | null;
+  fw: string | null;
+  baseline_day: number;
+  last_seen: string;
+  comms_ok: boolean;
+}
+
 export interface FleetKpi {
   panels_total?: number;
   comms_ok_pct?: number;
@@ -211,6 +233,7 @@ export interface Api {
   panels(signal?: AbortSignal): Promise<PanelSummary[]>;
   panel(panoId: string, signal?: AbortSignal): Promise<PanelDetail>;
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
+  fleetHealth(signal?: AbortSignal): Promise<PanelHealth[]>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
   alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;
   shelve(alarmId: string, body: ShelveBody): Promise<{ ok?: boolean }>;

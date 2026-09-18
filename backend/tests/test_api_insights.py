@@ -275,3 +275,106 @@ def test_fleet_kpi_active_count_excludes_shelved(rig, tel_payload):
     shelve = {"by": "operator", "minutes": 30, "reason": "planli bakim bekleniyor"}
     assert rig.http.post(f"/api/v1/alarms/{k_warn['id']}/shelve", json=shelve).status_code == 200
     assert rig.http.get("/api/v1/fleet/kpi").json()["active_by_prio"]["P3"] == 1
+
+
+# ----------------------------------------------------------------- GET /fleet/health
+# Bu uc, Cihaz Sagligi ekraninin pano-basina GET /panels/{id} dongusunun yerine gecer
+# (contracts/changes/2026-09-14-fleet-health-bulk.md). Asagidaki testlerin en onemlisi
+# test_fleet_health_matches_panel_detail: yerine gecmenin SADIK oldugunu kilitler.
+
+
+def test_fleet_health_returns_one_row_per_panel_and_matches_contract(rig, tel_payload, api_contract):
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+
+    body = rig.http.get("/api/v1/fleet/health").json()
+
+    api_contract(body, "PanelHealth", many=True)
+    assert [row["pano_id"] for row in body] == ["ADM-00001", "ADM-00002", "GDZ-00001"]  # pano_id sirasi
+    adm1 = next(row for row in body if row["pano_id"] == "ADM-00001")
+    assert adm1["name"] == "Efeler TM-14"
+    assert (adm1["nodes_ok"], adm1["nodes_total"]) == (5, 5)
+    assert (adm1["rssi_dbm"], adm1["vbak_pct"], adm1["buffered"]) == (-71.0, 100.0, 0)
+    assert adm1["maint_mode"] is False
+    assert adm1["baseline_day"] == 7
+    assert adm1["comms_ok"] is True
+
+
+def test_fleet_health_reports_unknown_as_null_not_zero(rig, tel_payload, api_contract):
+    """Veri gondermemis pano icin saglik alanlari null olmali.
+
+    0 YAZILAMAZ: 0 dBm gecerli bir RSSI, 0 tamponlanmis mesaj ise SAGLIKLI bir degerdir.
+    Ekranin `isBad` kurali (CihazSagligi.tsx) ikisini ayirt edebilmek zorunda.
+    """
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+
+    body = rig.http.get("/api/v1/fleet/health").json()
+    api_contract(body, "PanelHealth", many=True)
+
+    sessiz = next(row for row in body if row["pano_id"] == "ADM-00002")
+    for field in ("nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "maint_mode", "fw"):
+        assert sessiz[field] is None, field
+    assert sessiz["comms_ok"] is False
+    # baseline_day panels tablosundan gelir; telemetri yoksa bile bir degeri vardir.
+    assert isinstance(sessiz["baseline_day"], int)
+
+
+def test_fleet_health_reports_missing_field_as_null(rig, tel_payload, api_contract):
+    """Yukta olmayan alan null GELMELI, satirdan dusmemeli.
+
+    Ekran alani okurken `?? null` yapiyor; alanin hic gelmemesi ile null gelmesi
+    orada ayni sonucu verir, ama sozlesme alani tanimli tuttugu icin uc de
+    tutarli olmali — yoksa istemci "alan yok" ile "deger bilinmiyor"u ayirmak
+    zorunda kalir.
+    """
+    payload = sample(tel_payload, T0, 1)
+    del payload["fw"]              # eski firmware surumu bildirmiyor
+    del payload["health"]["rssi_dbm"]  # kablolu baglanti: RSSI diye bir sey yok
+    rig.ingest(payload, received_at=T0 + timedelta(seconds=2))
+
+    body = rig.http.get("/api/v1/fleet/health").json()
+    api_contract(body, "PanelHealth", many=True)
+    adm1 = next(row for row in body if row["pano_id"] == "ADM-00001")
+
+    assert "fw" in adm1 and adm1["fw"] is None
+    assert "rssi_dbm" in adm1 and adm1["rssi_dbm"] is None
+    assert adm1["nodes_ok"] == 5  # komsu alanlar etkilenmedi
+
+
+def test_fleet_health_matches_panel_detail(rig, tel_payload):
+    """ASIL KILIT: toplu uc, yerini aldigi pano-basina uctan FARKLI bir sey soylememeli.
+
+    Ekran onceki surumde bu alanlari GET /panels/{id} -> health'ten okuyordu. Iki yol
+    ayrisirsa ekran sessizce baska bir gercek gosterir; bu test onu yakalar.
+    """
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+
+    toplu = {row["pano_id"]: row for row in rig.http.get("/api/v1/fleet/health").json()}
+    ozet = {row["pano_id"]: row for row in rig.http.get("/api/v1/panels").json()}
+
+    for pano_id, row in toplu.items():
+        detay = rig.http.get(f"/api/v1/panels/{pano_id}").json()
+        health = detay["health"]
+        for field in ("nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "maint_mode", "fw"):
+            assert row[field] == health.get(field), f"{pano_id}.{field}"
+        # last_seen ve comms_ok ekranda PanelSummary'den geliyordu; onlarla da ayni olmali.
+        assert (row["last_seen"], row["comms_ok"]) == (ozet[pano_id]["last_seen"], ozet[pano_id]["comms_ok"])
+        assert row["baseline_day"] == ozet[pano_id]["baseline_day"]
+
+
+def test_fleet_health_comms_ok_expires_with_heartbeat_timeout(rig, tel_payload, contracts):
+    """comms_ok, filo listesiyle AYNI esikten (heartbeat_timeout_min) turemeli."""
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+    timeout_min = contracts.thresholds["heartbeat_timeout_min"]
+
+    rig.clock.now = T0 + timedelta(seconds=2) + timedelta(minutes=timeout_min, seconds=1)
+    adm1 = next(row for row in rig.http.get("/api/v1/fleet/health").json() if row["pano_id"] == "ADM-00001")
+
+    assert adm1["comms_ok"] is False
+    # Saglik degerleri kaybolmaz: "haberlesme koptu" ile "veri yok" ayri seylerdir.
+    assert adm1["rssi_dbm"] == -71.0
+
+
+def test_fleet_health_empty_fleet():
+    rig = Rig(MemoryStore(), Clock(T0))
+    with rig.http:
+        assert rig.http.get("/api/v1/fleet/health").json() == []

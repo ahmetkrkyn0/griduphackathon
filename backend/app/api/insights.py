@@ -29,7 +29,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from ..config import PRIO_ORDER, Contracts
 from ..db import SERIES_ORIGIN
 from ..models import JournalEntry
-from .views import is_comms_ok, point_label
+from .views import is_comms_ok, panel_health, point_label
 
 router = APIRouter(prefix="/api/v1")
 
@@ -198,6 +198,19 @@ def timeline_entry(entry: JournalEntry, contracts: Contracts) -> dict[str, str]:
 
 
 # ================================================================== /fleet/kpi
+@router.get("/fleet/health", tags=["system"])
+def fleet_health(request: Request) -> list[dict[str, Any]]:
+    """Tum filonun cihaz sagligi, tek istekte (TC3 Cihaz Sagligi ekrani).
+
+    Bu uctan once ekran gorunen her pano icin ayri GET /panels/{id} cagiriyordu;
+    20 panoda gorunmez, 100+ panoda (GK7) yavasliyordu. Sorgu tam yuku degil
+    yalnizca `health` blogunu cekiyor (db.py `_HEALTH_PAYLOAD`).
+    """
+    state = request.app.state
+    now = state.clock()
+    return [panel_health(record, state.contracts, now) for record in state.store.list_panel_health()]
+
+
 @router.get("/fleet/kpi", tags=["system"])
 def fleet_kpi(request: Request) -> dict[str, Any]:
     state = request.app.state

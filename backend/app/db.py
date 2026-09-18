@@ -44,6 +44,10 @@ class Store(Protocol):
         ts, risk, alarms, health.baseline_day."""
         ...
 
+    def list_panel_health(self) -> list[PanelRecord]:
+        """Tum panolar; payload yalnizca `health` blogunu icerir (GET /fleet/health)."""
+        ...
+
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         """Tek pano, tam son yukle."""
         ...
@@ -137,6 +141,24 @@ _LIST_PANELS = f"""
 SELECT {_PANEL_COLUMNS}, {_SUMMARY_PAYLOAD} AS payload
 FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 WHERE %(ids)s::text[] IS NULL OR p.pano_id = ANY(%(ids)s::text[])
+ORDER BY p.pano_id
+"""
+
+# Cihaz sagligi listesi: _SUMMARY_PAYLOAD saglik blogunu baseline_day'e kirpiyor,
+# bu uc ise tam blogu istiyor. Yine de TAM yuk cekilmez — nokta dizisi, ortam ve
+# elektrik bloklari disarida kalir (1.000 panoda fark buradan gelir).
+# `fw` yukun KOK seviyesindedir, `health` blogunun icinde degil (telemetri semasi);
+# panel_detail onu health'e yukseltiyor ve bu uc da ayni seyi yapmak zorunda.
+_HEALTH_PAYLOAD = """
+CASE WHEN l.pano_id IS NULL THEN NULL ELSE jsonb_build_object(
+    'health', l.payload -> 'health',
+    'fw',     l.payload -> 'fw'
+) END
+"""
+
+_LIST_PANEL_HEALTH = f"""
+SELECT {_PANEL_COLUMNS}, {_HEALTH_PAYLOAD} AS payload
+FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 ORDER BY p.pano_id
 """
 
@@ -285,6 +307,10 @@ class PgStore:
         ids = list(pano_ids) if pano_ids is not None else None
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
             return cur.execute(_LIST_PANELS, {"ids": ids}).fetchall()
+
+    def list_panel_health(self) -> list[PanelRecord]:
+        with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
+            return cur.execute(_LIST_PANEL_HEALTH).fetchall()
 
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:

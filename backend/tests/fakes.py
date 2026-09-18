@@ -32,6 +32,18 @@ def _summary_projection(payload: dict) -> dict:
     return _strip_nulls(projected)
 
 
+def _health_projection(payload: dict) -> dict:
+    """PgStore.list_panel_health'in SQL projeksiyonunun aynisi.
+
+    _summary_projection'dan iki farki var ve ikisi de kasitli: saglik blogu
+    KIRPILMAZ (tam gelir) ve jsonb_strip_nulls UYGULANMAZ — SQL tarafinda da
+    uygulanmiyor, cunku eksik bir saglik alani None olarak gorunmek zorunda.
+
+    `fw` yukun KOK seviyesinden gelir, health'in icinden degil.
+    """
+    return {"health": payload.get("health"), "fw": payload.get("fw")}
+
+
 def _strip_nulls(value):
     if isinstance(value, dict):
         return {k: _strip_nulls(v) for k, v in value.items() if v is not None}
@@ -102,6 +114,10 @@ class MemoryStore:
         self._check()
         ids = self._meta.keys() if pano_ids is None else [i for i in pano_ids if i in self._meta]
         return [self._record(i, summary=True) for i in ids]
+
+    def list_panel_health(self) -> list[PanelRecord]:
+        self._check()
+        return [self._record(i, summary=False, health=True) for i in self._meta]
 
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         self._check()
@@ -207,12 +223,15 @@ class MemoryStore:
         if self.unavailable:
             raise StoreError("yapay baglanti hatasi")
 
-    def _record(self, pano_id: str, summary: bool) -> PanelRecord:
+    def _record(self, pano_id: str, summary: bool, health: bool = False) -> PanelRecord:
         meta = self._meta[pano_id]
         latest = self._latest.get(pano_id)
         payload = None
         if latest is not None:
-            payload = _summary_projection(latest["payload"]) if summary else latest["payload"]
+            if health:
+                payload = _health_projection(latest["payload"])
+            else:
+                payload = _summary_projection(latest["payload"]) if summary else latest["payload"]
         return PanelRecord(
             **meta,
             last_rx=latest["last_rx"] if latest else None,
