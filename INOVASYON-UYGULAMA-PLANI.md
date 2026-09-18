@@ -38,14 +38,14 @@ flowchart TD
 
 **Sahip:** A + B; rapor/sunum C. **Efor:** 0,5–1 kişi-gün; beklenmedik mevcut hata düzeltmeleri ayrıca.
 
-- [ ] Mevcut commit, senaryo seed'i, yapılandırma ve veri sürümünü kaydet.
-- [ ] `docs/12` prognoz sonuçlarını geçici çıktıya yeniden üret; eski raporun üzerine kontrolsüz yazma.
-- [ ] S1 erken uyarısı ile süre tahmininin doğruluğunu ayrı karşılaştır.
-- [ ] S8 sensör arızası ve sınır aşımı sonrasında sonlu TTL üretiminin güncel durumunu doğrula.
-- [ ] README/sunumdaki toplam maliyet, bildirim teslimi ve saha doğrulaması ifadelerini kanıt kapsamıyla eşle.
-- [ ] Mevcut başarılı demo yapılandırmasını ve geri dönüş noktasını kaydet.
+- [x] Mevcut commit, senaryo seed'i, yapılandırma ve veri sürümünü kaydet.
+- [x] `docs/12` prognoz sonuçlarını geçici çıktıya yeniden üret; eski raporun üzerine kontrolsüz yazma.
+- [x] S1 erken uyarısı ile süre tahmininin doğruluğunu ayrı karşılaştır.
+- [x] S8 sensör arızası ve sınır aşımı sonrasında sonlu TTL üretiminin güncel durumunu doğrula.
+- [x] README/sunumdaki toplam maliyet, bildirim teslimi ve saha doğrulaması ifadelerini kanıt kapsamıyla eşle.
+- [x] Mevcut başarılı demo yapılandırmasını ve geri dönüş noktasını kaydet.
 
-**Çıktı:** tek sayfalık “iddia → test/ölçüm → sınır” tablosu; güncel başarım raporu; bilinen açıkların kısa listesi.
+**Çıktı:** tek sayfalık “iddia → test/ölçüm → sınır” tablosu; güncel başarım raporu; bilinen açıkların kısa listesi. → [docs/20-p0-kanit-ve-sinir-raporu.md](docs/20-p0-kanit-ve-sinir-raporu.md) (18 Eylül 2026).
 
 **Bitti ölçütü:** her sayının hangi veri ve sürümden geldiği bulunabiliyor; simülasyon ile saha iddiası ayrılıyor. Bu aşama bitmeden “model şu kadar güvenilir” rozeti tasarlanmaz.
 
@@ -55,12 +55,12 @@ flowchart TD
 
 ### İşler
 
-- [ ] Geçerlilik nedenlerini sözleşmede tanımla: öğreniyor, veri yetersiz, sensör şüphesi, model kapsamı dışında, tahmin geçerli, sınır aşıldı.
-- [ ] Alarm şiddeti ile tahmin geçerliliğini ayrı tut. Ölçülen sınır ihlali varken ayrıca sensör şüphesi de gösterilebilsin.
-- [ ] Sensör şüphesi, bayat veri ve geçersiz model koşullarında TTL davranışını kaynağında düzenle; yalnız UI'da saklama.
-- [ ] Ham ölçüm, türetilmiş gösterge, tahmin ve varsayımı kartta ayır.
-- [ ] API → UI → bildirim/SCADA temsillerindeki tutarlılığı kontrol et. Protokol geçersiz-değer temsilini mevcut sözleşmeye göre ele al.
-- [ ] Varsayılan “%95 güven” gibi kalibrasyonsuz oranlar kullanma; önce koşul ve neden göster.
+- [x] Geçerlilik nedenlerini sözleşmede tanımla: öğreniyor, veri yetersiz, sensör şüphesi, model kapsamı dışında, tahmin geçerli, sınır aşıldı.
+- [x] Alarm şiddeti ile tahmin geçerliliğini ayrı tut. Ölçülen sınır ihlali varken ayrıca sensör şüphesi de gösterilebilsin.
+- [x] Sensör şüphesi, bayat veri ve geçersiz model koşullarında TTL davranışını kaynağında düzenle; yalnız UI'da saklama.
+- [x] Ham ölçüm, türetilmiş gösterge, tahmin ve varsayımı kartta ayır.
+- [x] API → UI → bildirim/SCADA temsillerindeki tutarlılığı kontrol et. Protokol geçersiz-değer temsilini mevcut sözleşmeye göre ele al.
+- [x] Varsayılan “%95 güven” gibi kalibrasyonsuz oranlar kullanma; önce koşul ve neden göster.
 
 **Başlangıç dosyaları:** `libs/panoalgo/panoalgo/{detect,edge,quality}.py`, `contracts/changes/`, `backend/app/api/views.py`, `frontend/src/components/AlarmNedeni.tsx`, `frontend/src/pages/PanoDetay.tsx`.
 
@@ -73,6 +73,8 @@ flowchart TD
 | Sensör sapması | Şüphe nedeni ve geçersiz tahmin durumu; yanıltıcı geri sayım yok |
 | Veri kopması | Son veri zamanı ve izleme kaybı; son değer canlı gibi görünmez |
 | Sınır aşılmış | “Sınır aşıldı”; kritik ölçüm alarmı bağımsız kalır |
+
+**Çıktı:** panoalgo → backend → frontend uçtan uca `gecerlilik` alanı ve Türkçe metinleri; 5 kabul senaryosunun tümünü kanıtlayan uçtan uca testler; S8 bilinen sınırının ölçülüp dürüstçe kayıtlı güncellemesi. → [docs/21-p1-tahmin-gecerliligi-tamamlandi.md](docs/21-p1-tahmin-gecerliligi-tamamlandi.md) (19 Eylül 2026).
 
 **Teslim kapısı:** bu senaryolar geçmeden yeni demo sürümüne alınmaz. Eski sürümde sorun yoksa davranış gereksiz değiştirilmez; kart ve kanıt kapsamı tamamlanır.
 

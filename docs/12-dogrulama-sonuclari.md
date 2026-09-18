@@ -4,7 +4,7 @@
 > komutu `data/fixtures/` altindaki seed'li senaryolari yeniden olcer ve bu tabloyu
 > uretir (PLAN.md T4.2). Asagidaki her sayi tekrar uretilebilir.
 
-Uretim zamani: 2026-09-15T22:09:45+03:00
+Uretim zamani: 2026-09-19T02:03:28+03:00
 
 ## 1. Senaryo bazinda tespit basarisi
 

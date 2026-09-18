@@ -263,13 +263,24 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   katmanından (K/K₀ eşiği) gelir, bu tahminden değil; ikisi karıştırılmamalıdır. Sonuç
   **tek yörüngeden** (n = 1) gelir, güven aralığı yoktur.
 - **Prognoz yanlış-alarmı (S8, sensör arızası).** Sınır hiç aşılmadığı hâlde **99 tahmin**
-  üretiliyor ve bunların **89'u** `ALM-TTL-14D` (P3) alarmına dönüyor. Ölçüldü: 99 tahminin
-  **tamamı** `DSYA4_L3` noktasından, yani S8'in **sürüklenen** (drift) sensöründen geliyor.
-  L-1 veri kalitesi katmanı bu noktayı 672 örneğin **hiçbirinde** işaretlemiyor — yavaş
-  sürüklenme ne donmuş sensör ne de ortam altı kuralına takılıyor — ve `ttl_h` üretimi
-  kalite bitlerinden bağımsız çalışıyor (`edge.py` kestirimi `q` hesabından önce yapar).
-  Bu bir tespit değil **tahmin** yanlış-alarmıdır; docs/12 §3'teki yanlış alarm sayacı
-  onu görmez, çünkü etiket penceresinin içinde çıkar. Saklanmıyor, burada duruyor.
+  üretiliyor ve bunların **89'u** `ALM-TTL-14D` (P3) alarmına dönüyor — bu sayı **P1'den
+  sonra da değişmedi** ([12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §4.3'ün
+  19 Eylül 2026 yeniden üretimi, sıfır sapma). Ölçüldü: 99 tahminin **tamamı** `DSYA4_L3`
+  noktasından, yani S8'in **sürüklenen** (drift) sensöründen geliyor. L-1 veri kalitesi
+  katmanı bu noktayı 672 örneğin **hiçbirinde** işaretlemiyor — yavaş sürüklenme ne donmuş
+  sensör ne de ortam altı kuralına takılıyor, dolayısıyla `q` bu senaryoda hiç sıfırdan
+  çıkmıyor. P1 Task 1 bununla ilgili ama daha dar bir garanti ekledi: zaten VAROLAN bir
+  kalite kuralı tarafından işaretlenmiş bir nokta (`q != 0`) artık hiçbir zaman canlı bir
+  `ttl_h` taşımıyor (`_suppress_ttl_when_quality_suspect`,
+  `libs/panoalgo/panoalgo/edge.py:220-233`, `EdgePipeline.process()` içinde veri kalitesi
+  hesabından hemen sonra çağrılır) — gerçek ve kalıcı bir düzeltme, ama S8'i KAPATMIYOR,
+  çünkü S8'in sorunu `q`'nun yanlış yorumlanması değil, hiç set olmamasıdır: koruma
+  tetiklenecek bir bayrak bulamıyor. Kapatmak sürüklenmeyi yakalayan yeni, özel bir kalite
+  kuralı gerektirir (uzun vadeli eğilimi bir taban/fiziksel zarfla karşılaştıran, muhtemelen
+  yeni bir `ALM-DQ-*` kodu) — 17 Eylül sözleşme dondurmasıyla çakışan, daha büyük ve riskli
+  bir iş kalemi olduğu için P1 kapsamı dışında bırakıldı. Bu bir tespit değil **tahmin**
+  yanlış-alarmıdır; docs/12 §3'teki yanlış alarm sayacı onu görmez, çünkü etiket
+  penceresinin içinde çıkar. Saklanmıyor, burada duruyor.
 - **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`. Gerekçesi sık
   tekrarlanan "400 V, Paschen minimumunun (~327 V) altındadır" kısayolu **değildir** — o
   kısayol eksiktir: 400 V sistemde faz-faz tepe gerilimi √2 × 400 ≈ 566 V'tur, yani 327 V'un
