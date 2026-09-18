@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { OutageEvent, PanelSummary, Prio } from "../api/types";
-import { aboneOzeti, kesintidekiPanolar } from "../lib/kesinti";
+import type { EpdkKaydi, OutageEvent, PanelSummary, Prio } from "../api/types";
+import { EPDK_DURUM_METNI, aboneOzeti, epdkDeger, kesintidekiPanolar } from "../lib/kesinti";
 import { PRIO_NAME } from "../lib/labels";
 import { effectivePrio } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
@@ -138,7 +138,81 @@ function KesintiSeridi({ outage }: { outage: OutageEvent }) {
       <span className="dim">
         Bu bir gruplamadır: alarmlar bastırılmadı, hepsi konsolda duruyor.
       </span>
+      <EpdkTaslagi outageId={outage.outage_id} />
     </div>
+  );
+}
+
+/**
+ * EPDK Madde 8 kesinti kaydı taslağı (F-23).
+ *
+ * Talep üzerine açılır (`<details>`): taslak her kesinti şeridinde otomatik yüklenirse
+ * ekran açılışında gereksiz istek atardı. Tablo, alanın **durumunu** ayrı bir sütunda
+ * gösterir — ISA-101 gereği ayırt edicilik yalnızca renge dayanamaz; "elle doldurulacak"
+ * bilgisi **metin** olarak durur.
+ */
+function EpdkTaslagi({ outageId }: { outageId: string }) {
+  const [kayit, setKayit] = useState<EpdkKaydi | null>(null);
+  const [hata, setHata] = useState(false);
+
+  const yukle = () => {
+    if (kayit || hata) return;
+    api.epdkKaydi(outageId).then(setKayit).catch(() => setHata(true));
+  };
+
+  return (
+    <details className="epdk-taslak" onToggle={yukle}>
+      <summary>EPDK Madde 8 kesinti kaydı taslağı</summary>
+      {hata && <p className="dim small">Taslak alınamadı.</p>}
+      {kayit && (
+        <>
+          <p className="epdk-uyari" role="note">
+            <strong>TASLAK</strong> — {kayit.uyari}
+          </p>
+          <p className="dim small">
+            {kayit.ozet.toplam} alanın {kayit.ozet.olculen} tanesi ölçülüyor,{" "}
+            {kayit.ozet.oneri} tanesi öneri, {kayit.ozet.elle_doldurulacak} tanesi elle doldurulacak.
+          </p>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Alan</th>
+                  <th>Değer</th>
+                  <th>Durum</th>
+                  <th>Açıklama</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kayit.alanlar.map((alan) => (
+                  <tr key={alan.ad} className={`epdk-${alan.durum}`}>
+                    <td>{alan.ad}</td>
+                    {/* Ölçmediğimiz alana SIFIR yazılmaz — kural lib/kesinti.ts'te ve testli. */}
+                    <td className={alan.deger === null ? "dim" : undefined}>{epdkDeger(alan.deger)}</td>
+                    <td>{EPDK_DURUM_METNI[alan.durum]}</td>
+                    <td className="dim small">{alan.aciklama}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {kayit.kanit && kayit.kanit.length > 0 && (
+            <p className="dim small">
+              Kanıt: {kayit.kanit.filter((k) => k.event_id).length} pano için mevcut kara kutu
+              zaman çizelgesi bağlandı{" "}
+              {kayit.kanit
+                .filter((k) => k.event_id)
+                .map((k) => (
+                  <Link key={k.pano_id} to={`/olay/${k.event_id}`} className="epdk-kanit">
+                    {k.name ?? k.pano_id}
+                  </Link>
+                ))}
+              . Yeni bir çizelge üretilmedi.
+            </p>
+          )}
+        </>
+      )}
+    </details>
   );
 }
 

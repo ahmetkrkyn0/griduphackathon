@@ -16,6 +16,7 @@ import type {
   ConnPoint,
   Elec,
   Env,
+  EpdkKaydi,
   FleetKpi,
   OutageEvent,
   PanelDetail,
@@ -290,6 +291,37 @@ const MOCK_OUTAGES: OutageEvent[] = [
   },
 ];
 
+/**
+ * Madde 8/2 taslagi (F-23) — mock. Gercek uc gibi davranir: olcmedigimiz alanlar
+ * `elle_doldurulacak` ve degerleri null; sebep/sinif `oneri`.
+ */
+const MOCK_EPDK: EpdkKaydi = {
+  taslak: true,
+  uyari:
+    "TASLAKTIR — resmi bir kesinti kaydi degildir. 'elle_doldurulacak' isaretli alanlar bu " +
+    "sistemde OLCULMEMEKTEDIR; 'oneri' isaretli alanlar karar degil oneridir.",
+  outage_id: "OUT-F-BORNOVA-02-20260918T0642Z",
+  alanlar: [
+    { ad: "Kesinti numarasi", deger: null, durum: "elle_doldurulacak", aciklama: "Dagitim sirketinin kendi kayit numarasi." },
+    { ad: "Kademe", deger: null, durum: "elle_doldurulacak", aciklama: "Kesinti ust sebekededir; kademesi olculmuyor." },
+    { ad: "Yer (il/ilce ve tekil sebeke unsuru kodu)", deger: "İzmir/Bornova; Manisa/Yunusemre — TR-GDZ-DP-000088, TR-GDZ-DP-000311", durum: "olculen", aciklama: "F-21 varlik kunyesinden (2 pano). 1 panonun kunyesi yok ve listede GORUNMUYOR." },
+    { ad: "Kesinti nedeni", deger: "Pano ici degil, UST SEBEKE kaynakli", durum: "oneri", aciklama: "ONERIDIR, KARAR DEGILDIR." },
+    { ad: "Kesinti sinifi", deger: "Plansiz (ust sebeke)", durum: "oneri", aciklama: "ONERIDIR, KARAR DEGILDIR." },
+    { ad: "Baslama zamani", deger: isoAgo(minutes(38)), durum: "olculen", aciklama: "YAKLASIMDIR: panolarin sustugu andir." },
+    { ad: "Sona erme zamani", deger: null, durum: "elle_doldurulacak", aciklama: "RESTORASYON ANI OLCULMUYOR (haberlesme donusu histerezislidir)." },
+    { ad: "Kesinti suresi", deger: null, durum: "elle_doldurulacak", aciklama: "Sona erme olculmedigi icin sure de uretilemez." },
+    { ad: "Etkilenen kullanici sayisi", deger: 1327, durum: "olculen", aciklama: "DIKKAT: 1 panonun kunyesi olmadigi icin toplam BU KADAR EKSIKTIR." },
+    { ad: "Toplam etkilenme suresi", deger: null, durum: "elle_doldurulacak", aciklama: "Sure olmadigi icin uretilemez." },
+    { ad: "Dagitilmayan enerji", deger: null, durum: "elle_doldurulacak", aciklama: "Sure gerektirir; enerji HESAPLANMAZ." },
+  ],
+  ozet: { toplam: 11, olculen: 3, oneri: 2, elle_doldurulacak: 6 },
+  kanit: [
+    { pano_id: PROT_HEALTH.panoId, name: "Bornova DM-3", event_id: "EVT-51", blackbox: "/api/v1/events/EVT-51/blackbox" },
+    { pano_id: "GDZ-00088", name: "Yunusemre TM-21", event_id: null, blackbox: null },
+    { pano_id: "GDZ-00410", name: "Karşıyaka TM-9", event_id: null, blackbox: null },
+  ],
+};
+
 function summary(seed: Seed): PanelSummary {
   const detail = details.get(seed.pano_id);
   const coords = districtCoords(seed.name);
@@ -381,6 +413,12 @@ export const mockApi: Api = {
     // bir kesinti kaydi degildir (dev:mock modu, docs/16 §5).
     const acik = MOCK_OUTAGES.filter((o) => o.state === "acik");
     return structuredClone(state === "acik" ? acik : MOCK_OUTAGES);
+  },
+  async epdkKaydi(outageId: string): Promise<EpdkKaydi> {
+    await delay(140);
+    const outage = MOCK_OUTAGES.find((o) => o.outage_id === outageId);
+    if (!outage) throw new ApiError(404, `kesinti bulunamadi: ${outageId}`);
+    return structuredClone(MOCK_EPDK);
   },
   async fleetAssets(): Promise<AssetFleet> {
     await delay(150);

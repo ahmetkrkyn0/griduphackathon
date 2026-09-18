@@ -91,6 +91,37 @@ export interface OutageEvent {
   abone_eksik?: number;
 }
 
+/** Madde 8/2'nin TEK bir alani (F-23). `durum` alanin ne oldugunu soyler. */
+export interface EpdkAlan {
+  ad: string;
+  /** Olculen ya da onerilen deger; elle doldurulacaksa null. */
+  deger: string | number | null;
+  /**
+   * olculen = bu depodan turetildi · oneri = sistem bir oneri uretti, KARAR DEGIL ·
+   * elle_doldurulacak = bu alani OLCMUYORUZ
+   */
+  durum: "olculen" | "oneri" | "elle_doldurulacak";
+  /** Degerin nereden geldigi ya da neden olcemedigimiz. Bos birakilmaz. */
+  aciklama?: string;
+}
+
+/**
+ * EPDK Kalite Yonetmeligi Madde 8/2 kesinti kaydi TASLAGI (F-23).
+ *
+ * Cikti TASLAKTIR ve bu, yapinin kendisidir: alan yanittan HICBIR ZAMAN dusurulmez —
+ * olcmedigimiz alani cikarmak "bu alani olcmuyoruz" bilgisini de kaybettirirdi.
+ */
+export interface EpdkKaydi {
+  /** HER ZAMAN true. Bu cikti resmi bir kayit DEGILDIR. */
+  taslak: boolean;
+  uyari: string;
+  outage_id: string;
+  alanlar: EpdkAlan[];
+  ozet: { toplam: number; olculen: number; oneri: number; elle_doldurulacak: number };
+  /** Kanit: MEVCUT kara kutu olayina baglanti. Yeni cizelge URETILMEZ (F-02 zaten 336 saat). */
+  kanit?: { pano_id: string; name?: string; event_id: string | null; blackbox: string | null }[];
+}
+
 export interface AssetFleet {
   kapsama: AssetCoverage;
   panolar: { pano_id: string; name?: string; asset: AssetRegistry | null }[];
@@ -321,6 +352,7 @@ export interface Api {
   fleetHealth(signal?: AbortSignal): Promise<PanelHealth[]>;
   fleetAssets(signal?: AbortSignal): Promise<AssetFleet>;
   outages(state?: "acik" | "hepsi", signal?: AbortSignal): Promise<OutageEvent[]>;
+  epdkKaydi(outageId: string, signal?: AbortSignal): Promise<EpdkKaydi>;
   authStatus(signal?: AbortSignal): Promise<AuthStatus>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
   alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;

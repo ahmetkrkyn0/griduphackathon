@@ -16,6 +16,8 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from ..epdk import kesinti_kaydi
+
 router = APIRouter(prefix="/api/v1", tags=["events"])
 
 
@@ -91,3 +93,56 @@ def get_outage(request: Request, outage_id: str) -> dict[str, Any]:
     if row is None:
         raise HTTPException(status_code=404, detail=f"kesinti bulunamadi: {outage_id}")
     return outage_view(row)
+
+
+# Kanit paketinde aranan alarm durumlari: kesinti alarmi TEMIZLENMIS de olabilir ve
+# kanit yine gecerlidir.
+_ALL_STATES = ("active", "acked", "shelved", "cleared")
+
+
+def _kanit(store, outage: dict) -> list[dict[str, Any]]:
+    """Kesintiye dahil her pano icin MEVCUT kara kutu olayina baglanti (F-23).
+
+    YENI ZAMAN CIZELGESI URETILMEZ: GET /events/{event_id}/blackbox sozlesmede zaten var,
+    OlayAnalizi.tsx yazdirilabilir cizelgeyi uretiyor ve F-02 pencereyi 336 saate cikardi.
+    Burada yapilan tek sey, var olan cizelgeyi Madde 8 kaydina BAGLAMAKTIR.
+    """
+    kanit: list[dict[str, Any]] = []
+    for panel in outage["panolar"]:
+        alarms = store.list_alarms(_ALL_STATES, None, panel["pano_id"], 50)
+        # Kesintinin baslangicindan SONRA acilan ilk olay: oncesindeki alarmlar bu
+        # kesintinin kaniti degildir.
+        event_id = next(
+            (a.event_id for a in sorted(alarms, key=lambda a: a.raised_at)
+             if a.event_id and a.raised_at >= outage["started_at"]),
+            None,
+        )
+        kanit.append({
+            "pano_id": panel["pano_id"],
+            "name": panel.get("name"),
+            "event_id": event_id,
+            "blackbox": f"/api/v1/events/{event_id}/blackbox" if event_id else None,
+        })
+    return kanit
+
+
+@router.get("/outages/{outage_id}/epdk-kaydi")
+def epdk_kaydi(request: Request, outage_id: str) -> dict[str, Any]:
+    """EPDK Madde 8 kesinti kaydi TASLAGI. Resmi bir kayit DEGILDIR."""
+    store = request.app.state.store
+    row = store.get_outage(outage_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"kesinti bulunamadi: {outage_id}")
+
+    # Kunye (il/ilce/cbs_kodu) pano kayitlarindan okunur: outage_panels yalnizca kesinti
+    # anindaki last_rx ve abone sayisini kopyalar (kunye sonradan degisirse gecmis kesinti
+    # kaydinin abone sayisi degismemeli).
+    kunye = {r.pano_id: r for r in store.list_panels([p["pano_id"] for p in row["panolar"]])}
+    view = outage_view(row)
+    for panel in view["panolar"]:
+        record = kunye.get(panel["pano_id"])
+        if record is not None:
+            panel["il"] = record.il
+            panel["ilce"] = record.ilce
+            panel["cbs_kodu"] = record.cbs_kodu
+    return kesinti_kaydi(view, kanit=_kanit(store, row))

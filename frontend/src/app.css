@@ -427,3 +427,10 @@
 .geo-kesinti { fill: none; stroke: var(--p2); stroke-width: 2; stroke-dasharray: 6 4; opacity: 0.85; }
 .kesinti-serit { margin: 10px 0; padding: 10px 12px; border-left: 4px solid var(--p2);
                  background: var(--surface-2, rgba(0,0,0,0.04)); border-radius: 4px; font-size: 14px; }
+/* EPDK Madde 8 taslagi (F-23). "Elle doldurulacak" bilgisi TABLODA METIN olarak da durur;
+   renk yalnizca destekleyicidir (ISA-101). */
+.epdk-taslak { margin-top: 8px; }
+.epdk-taslak > summary { cursor: pointer; font-size: 13px; }
+.epdk-uyari { margin: 8px 0; padding: 8px 10px; border: 1px dashed var(--p2); border-radius: 4px; font-size: 13px; }
+.epdk-elle_doldurulacak td { opacity: 0.75; }
+.epdk-kanit { margin-left: 6px; }

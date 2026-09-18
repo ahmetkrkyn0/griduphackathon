@@ -1,7 +1,7 @@
 import { ApiError } from "./errors";
 import { mockApi } from "./mock";
 import { authHeader, clearToken } from "./session";
-import type { AckBody, Alarm, Api, AssetFleet, AuthStatus, Blackbox, FleetKpi, OutageEvent, PanelDetail, PanelHealth, PanelSummary, SeriesResponse, ShelveBody } from "./types";
+import type { AckBody, Alarm, Api, AssetFleet, AuthStatus, Blackbox, EpdkKaydi, FleetKpi, OutageEvent, PanelDetail, PanelHealth, PanelSummary, SeriesResponse, ShelveBody } from "./types";
 
 export const usingMocks = import.meta.env.VITE_USE_MOCKS === "1";
 
@@ -36,6 +36,7 @@ const httpApi: Api = {
   fleetHealth: (signal) => request<PanelHealth[]>("/api/v1/fleet/health", { signal }),
   fleetAssets: (signal) => request<AssetFleet>("/api/v1/fleet/assets", { signal }),
   outages: (state = "acik", signal) => request<OutageEvent[]>(`/api/v1/outages?state=${state}`, { signal }),
+  epdkKaydi: (outageId, signal) => request<EpdkKaydi>(`/api/v1/outages/${encodeURIComponent(outageId)}/epdk-kaydi`, { signal }),
   authStatus: async (signal) => {
     const body = await request<{ auth?: AuthStatus }>("/health", { signal });
     // Eski bir backend `auth` blogunu hic gondermeyebilir; o durumda "kapali" varsayilir

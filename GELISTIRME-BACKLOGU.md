@@ -311,12 +311,44 @@ Aynı anda susan N panoyu tek bir kesinti olayına çevirir · **Etki:** çok y�
 > eşlemesi F-21 künyesinden gelir; künyesi olmayan pano **gruplanmaz** ve demo filosunun künyesi
 > boş olduğu için bağıntı **demo veritabanında hiç tetiklenmez**. Ayrıntı: `docs/17` §6 md. 23.
 
-### F-23 · EPDK Madde 8 kesinti kaydı üreteci ve sebep kanıt paketi
+### F-23 · EPDK Madde 8 kesinti kaydı üreteci ve sebep kanıt paketi — ✅ tamamlandı (18 Eylül 2026)
 Olayı, mevzuatın saydığı alanlarla doldurulmuş bir kesinti kaydı taslağına çevirir · **Etki:** yüksek · **Efor:** 2 hafta (F-21, F-22 sonrası) · **Nerede yaşar:** yeni `backend/app/api/outage_record.py`, [deploy/initdb/](deploy/initdb/), [frontend/src/pages/OlayAnalizi.tsx](frontend/src/pages/OlayAnalizi.tsx)
 **Sektörel dayanak:** EPDK Kalite Yönetmeliği Madde 8/2'nin alan listesi (doğrulandı); kesinti sebebinin sınıflandırılması doğrudan tazminat hesabına giriyor.
 **Bizdeki boşluk:** Olay tablosunda sebep, sınıf, etkilenen kullanıcı ve dağıtılmayan enerji alanları yok; daha önemlisi **enerjinin geri geldiği an hiç gözlemlenmiyor**, yani süre ve sona erme bu depodan türetilemez.
 **Ne üretir:** Madde 8 alanlarıyla bir kesinti kaydı taslağı + 72 saatlik kanıt zaman çizelgesi; sebep sınıfı için **öneri**, karar değil.
 **Dikkat:** Çıktı kesinlikle "TASLAK" etiketli olmalı ve ölçmediğimiz alanlar "elle doldurulacak" diye işaretlenmeli. Önce enerji dönüşünün gözlemlenmesi (restorasyon tespiti) gerekir. Hackathon penceresinde yalnızca "hangi alanları ölçmüyoruz" tablosu yazılabilir.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** `backend/app/epdk.py` +
+> `GET /outages/{id}/epdk-kaydi`, sözleşme `openapi` **v1.5.0** —
+> gerekçe `contracts/changes/2026-09-18-epdk-madde8-taslagi.md`. Bölge haritasındaki kesinti
+> şeridinde açılır tablo olarak görünür.
+>
+> **"TASLAK" bir etiket değil, yanıtın YAPISI:** her alan `olculen` / `oneri` /
+> `elle_doldurulacak` durumu taşır ve alan yanıttan **hiçbir zaman düşürülmez** — çıkarmak
+> "bu alanı ölçmüyoruz" bilgisini de kaybettirirdi. **On madde, on bir alan:** mevzuat
+> "başlama/sona erme"yi tek kalem sayar, biz ikiye ayırdık çünkü **başlama ölçülüyor,
+> sona erme ölçülmüyor** — ikisini tek alanda birleştirmek taslağın bütün anlamını silerdi.
+>
+> **Üçü ölçülüyor** (yer → F-21 CBS tekil kodu; etkilenen kullanıcı → F-22; başlama → bir
+> **yaklaşım**), **ikisi öneri** (neden, sınıf), **altısı elle doldurulacak**. Bu oran
+> çıktının `ozet` alanında **sayıyla** görünür.
+>
+> **Backlog'un iki eskimiş satırı düzeltildi:** (1) "enerjinin geri geldiği an **hiç**
+> gözlemlenmiyor" — doğrusu *"restorasyon anı ölçülmüyor; elimizdeki tek şey histerezisli
+> haberleşme dönüşüdür"* ve bu, `sona erme` alanının açıklamasında aynen yazıyor;
+> (2) "72 saatlik kanıt zaman çizelgesi üret" **yeni iş değildi** — `/events/{id}/blackbox`
+> zaten vardı ve F-02 pencereyi **336 saate** çıkarmıştı. Madde *"var olan çizelgeyi Madde 8
+> alanlarına bağla"* olarak uygulandı; çizelge kodu **kopyalanmadı**.
+>
+> **Ölçülen:** backend **765** (751 → +14, `test_epdk_kaydi.py`), frontend **115** (111 → +4),
+> `check_contracts.py` "SOZLESMELER TUTARLI" (14 uç), beş üreteç "guncel".
+>
+> **Bilinçli sınır:** tazminat hesabına **girilmedi** (GK10 — formül parametrelidir, `SBSÜRE`
+> literal bir tutar değildir; `scripts/tazminat_maruziyeti.py` zaten parametresiz çalıştırıldığında
+> hesap yapmaz). Sebep önerisi hava/ağaç/hayvan gibi bir şey **tahmin etmez**; tek söylediği
+> arızanın **pano içi değil üst şebeke** kaynaklı olduğudur. Ekran yeri olarak `OlayAnalizi.tsx`
+> değil **bölge haritası** seçildi: `OlayAnalizi` `event_id` ile çalışır ve olaylar **pano
+> içidir**, kesinti ise **panolar arasıdır**. Ayrıntı: `docs/17` §6 md. 24.
 
 ### F-24 · IEC 61968 (CIM) ADMS/OMS adaptörü
 Alarmı, kesinti olayını ve bakım önerisini dağıtım şirketinin kurumsal diline çevirir · **Etki:** yüksek · **Efor:** 3-4 hafta · **Nerede yaşar:** yeni `backend/app/export/cim.py`, `docs/` altında eşleme tablosu (contracts/ altına değil)

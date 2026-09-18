@@ -19,7 +19,10 @@ info:
   #   GET /outages + GET /outages/{outage_id}, Alarm'a outage_id. Yalnizca EKLEME, geri
   #   uyumlu: outage_id required degil ve baginti kurulmayan alarmda bulunmaz.
   #   Gerekce: contracts/changes/2026-09-18-kesinti-bagintisi.md
-  version: 1.4.0
+  # v1.5.0 (18 Eylul 2026): EPDK Madde 8 kesinti kaydi TASLAGI (F-23). EpdkKaydi semasi ve
+  #   GET /outages/{outage_id}/epdk-kaydi. Yalnizca EKLEME, geri uyumlu.
+  #   Gerekce: contracts/changes/2026-09-18-epdk-madde8-taslagi.md
+  version: 1.5.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -332,6 +335,27 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/outages/{outage_id}/epdk-kaydi:
+    get:
+      tags: [events]
+      summary: EPDK Kalite Yonetmeligi Madde 8 kesinti kaydi TASLAGI
+      description: >
+        Kesinti olayini, mevzuatin saydigi alanlarla doldurulmus bir TASLAGA cevirir (F-23).
+        CIKTI TASLAKTIR ve bu, semanin tasiyici yapisidir: her alan bir DURUM tasir —
+        `olculen` / `oneri` / `elle_doldurulacak`. Olcmedigimiz alan yanittan DUSURULMEZ,
+        bos gelir ve neden olcemedigimiz alanin icinde yazar. Sebep ve sinif ONERIDIR,
+        karar degildir. Tazminat hesabi YOKTUR (GK10).
+      parameters:
+        - { name: outage_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Madde 8 kesinti kaydi taslagi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EpdkKaydi" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   parameters:
     PanoId:
@@ -390,6 +414,70 @@ components:
       required: [detail]
       properties:
         detail: { type: string }
+
+    EpdkAlan:
+      type: object
+      description: >
+        Madde 8/2'nin TEK bir alani. `durum` alanin ne oldugunu soyler ve alan yanittan
+        HICBIR ZAMAN dusurulmez: olcmedigimiz alani cikarmak, "bu alani olcmuyoruz"
+        bilgisini de kaybettirirdi.
+      required: [ad, durum]
+      properties:
+        ad: { type: string, description: "mevzuattaki alan adi, or. 'Etkilenen kullanici sayisi'" }
+        deger:
+          description: "Olculen ya da onerilen deger; elle doldurulacaksa null"
+          type: [string, number, "null"]
+        durum:
+          type: string
+          enum: [olculen, oneri, elle_doldurulacak]
+          description: >
+            olculen = bu depodan turetildi · oneri = sistem bir oneri uretti, KARAR DEGIL ·
+            elle_doldurulacak = bu alani OLCMUYORUZ
+        aciklama:
+          type: string
+          description: >
+            Degerin NEREDEN geldigi ya da neden olcemedigimiz. Bos birakilmaz: durumu
+            'elle_doldurulacak' olan alan, sebebini yazmak zorundadir.
+
+    EpdkKaydi:
+      type: object
+      description: >
+        EPDK Kalite Yonetmeligi (RG 29/12/2020, 31349 muk.) Madde 8/2 kesinti kaydi TASLAGI.
+        Alan listesi backlog §2.1'de birebir dogrulandi.
+      required: [taslak, uyari, outage_id, alanlar, ozet]
+      properties:
+        taslak:
+          type: boolean
+          description: "HER ZAMAN true. Bu cikti resmi bir kayit DEGILDIR."
+        uyari: { type: string, description: "Ekranda ve ciktida gorunen TASLAK uyarisi" }
+        outage_id: { type: string }
+        alanlar:
+          type: array
+          description: "Madde 8/2'nin on alani, mevzuattaki sirayla"
+          items: { $ref: "#/components/schemas/EpdkAlan" }
+        ozet:
+          type: object
+          description: "Kac alanin olculdugu SAYIYLA verilir; eksiklik gizlenemez (GK10)."
+          required: [toplam, olculen, oneri, elle_doldurulacak]
+          properties:
+            toplam:             { type: integer }
+            olculen:            { type: integer }
+            oneri:              { type: integer }
+            elle_doldurulacak:  { type: integer }
+        kanit:
+          type: array
+          description: >
+            Kanit paketi: kesintiye dahil her pano icin MEVCUT kara kutu olayina baglanti.
+            Yeni bir zaman cizelgesi URETILMEZ — GET /events/{event_id}/blackbox zaten var
+            ve F-02 penceresini 336 saate cikardi.
+          items:
+            type: object
+            required: [pano_id]
+            properties:
+              pano_id:  { type: string }
+              name:     { type: string }
+              event_id: { type: [string, "null"], description: "null = bu pano icin olay kaydi yok" }
+              blackbox: { type: [string, "null"], description: "var olan kara kutu ucunun yolu" }
 
     OutageEvent:
       type: object

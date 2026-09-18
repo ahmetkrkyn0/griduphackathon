@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OutageEvent } from "../api/types";
-import { aboneOzeti, kesintidekiPanolar } from "./kesinti";
+import { aboneOzeti, epdkDeger, kesintidekiPanolar, taslakMi } from "./kesinti";
 
 /**
  * F-22 — kesinti gosteriminin durustluk kurali.
@@ -61,5 +61,31 @@ describe("aboneOzeti", () => {
     const ozet = aboneOzeti(outage({ abone_toplami: 500, abone_eksik: 0 }));
 
     expect(ozet.metin).toBe("500");
+  });
+});
+
+describe("epdkDeger", () => {
+  it("olculen degeri oldugu gibi gosterir", () => {
+    expect(epdkDeger(1327)).toBe("1327");
+    expect(epdkDeger("Plansiz (ust sebeke)")).toBe("Plansiz (ust sebeke)");
+  });
+
+  it("olcmedigimiz alana SIFIR YAZMAZ", () => {
+    // Asil kilit: 0 yazmak, olcmedigimiz bir alani "olculdu ve sifir cikti" gibi gosterirdi.
+    expect(epdkDeger(null)).toBe("—");
+    expect(epdkDeger(null)).not.toBe("0");
+  });
+
+  it("degeri 0 OLAN alani gizlemez", () => {
+    // 0 gecerli bir olcumdur ve tireye cevrilmemeli.
+    expect(epdkDeger(0)).toBe("0");
+  });
+});
+
+describe("taslakMi", () => {
+  it("taslak bayragini dogrular", () => {
+    expect(taslakMi({ taslak: true })).toBe(true);
+    expect(taslakMi({ taslak: false })).toBe(false);
+    expect(taslakMi({})).toBe(false);
   });
 });

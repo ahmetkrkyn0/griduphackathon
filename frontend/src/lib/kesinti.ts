@@ -46,3 +46,27 @@ export function aboneOzeti(outage: OutageEvent): AboneOzeti {
     metin: eksik > 0 ? `${toplam} (${eksik} panonun künyesi yok)` : String(toplam),
   };
 }
+
+/** EPDK Madde 8 taslagindaki durum etiketlerinin Turkce karsiligi (F-23). */
+export const EPDK_DURUM_METNI = {
+  olculen: "ölçülen",
+  oneri: "öneri",
+  elle_doldurulacak: "elle doldurulacak",
+} as const;
+
+/**
+ * Taslaktaki bir alanin ekranda gosterilecek degeri.
+ *
+ * KURAL: olcmedigimiz alan BOS gelir ve buraya sifir ya da "0" YAZILMAZ. Tire (—) yalnizca
+ * "deger yok" isaretidir; okuyan kisi durum sutununda "elle doldurulacak" yazdigini gorur.
+ * Sifir yazmak, olcmedigimiz bir alani olculmus ve sifir cikmis gibi gosterirdi.
+ */
+export function epdkDeger(deger: string | number | null): string {
+  if (deger === null || deger === undefined) return "—";
+  return String(deger);
+}
+
+/** Taslak gercekten taslak mi — cikti her yerinde bunu soylemek zorunda. */
+export function taslakMi(kayit: { taslak?: boolean }): boolean {
+  return kayit.taslak === true;
+}
