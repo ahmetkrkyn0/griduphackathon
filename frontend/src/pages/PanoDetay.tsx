@@ -22,6 +22,7 @@ import { OnGorunus } from "../components/OnGorunus";
 import { PrioMark } from "../components/PrioMark";
 import { ago, num, ttlText } from "../lib/format";
 import {
+  GECERLILIK_TEXT,
   STATE_TEXT,
   alarmText,
   hypText,
@@ -591,6 +592,7 @@ function OlcumTablosu({
               <th className="r">K/K₀</th>
               <th className="r">Sınıra</th>
               <th>Durum</th>
+              <th>Geçerlilik</th>
             </tr>
           </thead>
           <tbody>
@@ -618,6 +620,9 @@ function OlcumTablosu({
                     <span className={`state st-${state}`}>
                       {STATE_TEXT[state]}
                     </span>
+                  </td>
+                  <td className="dim small">
+                    {p.gecerlilik ? GECERLILIK_TEXT[p.gecerlilik] : "–"}
                   </td>
                 </tr>
               );
