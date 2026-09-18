@@ -100,6 +100,33 @@ def test_data_quality_is_reported_through_the_q_bit_field(alarm_codes):
     assert not [c for c in payload["alarms"] if c.startswith("ALM-DQ-")]
 
 
+def test_ttl_is_suppressed_when_the_point_quality_is_suspect():
+    """S8 bilinen siniri (docs/05 #10): surunen (drift) bir sensor, sinir hic
+    asilmadan onlarca sahte TTL tahmini uretiyordu. Kok neden: _update_points,
+    _update_quality'den ONCE calisiyor, yani TTL hesaplanirken q henuz yok.
+    Bu test, uzlastirma adimindan SONRA ttl_h'in q ile tutarli olmasini ister."""
+    pipeline = EdgePipeline()
+    sim = _sim()
+    payload = _run(pipeline, sim, 400)
+    pipeline.freeze_baselines()
+
+    # Surunen bir sensor, sinira yaklasinca TTL icin alarm uret
+    sim.set_k_multiplier("DSYA3_L2", 2.5)
+    payload = _run(pipeline, sim, 1800)  # cok adim: K'nin buyumesi ve TTL hesaplamasi icin
+    point = next(p for p in payload["t_conn"] if p["pt"] == "DSYA3_L2")
+    # Eger TTL uretildiyse devam et (optional precondition, test ttl_h=None bile halledebilir)
+    had_ttl = point.get("ttl_h") is not None
+
+    # Sensor arizasi: kalite bitini yak
+    sim.set_sensor_fault("DSYA3_L2", "dropped")
+    payload = _run(pipeline, sim, 20)
+    point = next(p for p in payload["t_conn"] if p["pt"] == "DSYA3_L2")
+
+    # TEMEL IDDIA: q != 0 ise ttl_h NULL olmali
+    assert point.get("q", 0) != 0  # kalite bayragi gercekten set oldu
+    assert point["ttl_h"] is None  # supheli veriden TTL uretilmez
+
+
 def test_alarm_codes_are_all_defined_in_the_contract(alarm_codes):
     known = {a["code"] for a in alarm_codes["alarms"]}
     pipeline = EdgePipeline()
