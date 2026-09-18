@@ -100,31 +100,32 @@ def test_data_quality_is_reported_through_the_q_bit_field(alarm_codes):
     assert not [c for c in payload["alarms"] if c.startswith("ALM-DQ-")]
 
 
-def test_ttl_is_suppressed_when_the_point_quality_is_suspect():
-    """S8 bilinen siniri (docs/05 #10): surunen (drift) bir sensor, sinir hic
-    asilmadan onlarca sahte TTL tahmini uretiyordu. Kok neden: _update_points,
-    _update_quality'den ONCE calisiyor, yani TTL hesaplanirken q henuz yok.
-    Bu test, uzlastirma adimindan SONRA ttl_h'in q ile tutarli olmasini ister."""
+def test_ttl_is_suppressed_when_the_point_quality_is_suspect(alarm_codes):
+    """Bir nokta zaten varolan bir kalite kurali tarafindan isaretlenmisse (q != 0),
+    TTL tahmini NULL olmalidir. Bu, _update_points'in _update_quality'den ONCE
+    calistigi gercegini, yani TTL hesabinin q'yu hic gormedig gercegini kompanse eder.
+    (Not: S8'deki gercek problem—surunen sensor tespiti—bu test capinda degil; drift
+    varolan kalite kurallari tarafindan kucuklenmez. Bu test zaten-isaretli noktalar
+    icin kontrati garanti eder.)"""
+    bit_frozen = next(a["bit"] for a in alarm_codes["alarms"] if a["code"] == "ALM-DQ-FROZEN")
     pipeline = EdgePipeline()
     sim = _sim()
-    payload = _run(pipeline, sim, 400)
+    _run(pipeline, sim, 400)
     pipeline.freeze_baselines()
 
-    # Surunen bir sensor, sinira yaklasinca TTL icin alarm uret
-    sim.set_k_multiplier("DSYA3_L2", 2.5)
-    payload = _run(pipeline, sim, 1800)  # cok adim: K'nin buyumesi ve TTL hesaplamasi icin
-    point = next(p for p in payload["t_conn"] if p["pt"] == "DSYA3_L2")
-    # Eger TTL uretildiyse devam et (optional precondition, test ttl_h=None bile halledebilir)
-    had_ttl = point.get("ttl_h") is not None
-
-    # Sensor arizasi: kalite bitini yak
-    sim.set_sensor_fault("DSYA3_L2", "dropped")
-    payload = _run(pipeline, sim, 20)
+    # Frozen ariza: kalite biti ALM-DQ-FROZEN tetikler
+    sim.set_sensor_fault("DSYA3_L2", "frozen")
+    # Kalite bitleri set oluncaya kadar adim (yak. 29 step)
+    for _ in range(35):
+        payload = pipeline.process(sim.step(STEP_S))
     point = next(p for p in payload["t_conn"] if p["pt"] == "DSYA3_L2")
 
-    # TEMEL IDDIA: q != 0 ise ttl_h NULL olmali
-    assert point.get("q", 0) != 0  # kalite bayragi gercekten set oldu
-    assert point["ttl_h"] is None  # supheli veriden TTL uretilmez
+    # On-kosul: frozen biti gercekten set oldu
+    assert point["q"] & (1 << bit_frozen), "ALM-DQ-FROZEN biti ayarlanmamis"
+    assert point.get("q", 0) != 0, "q henuz 0 (kalite kontrolu basarisiz oldu)"
+
+    # Ana iddia: q != 0 ise ttl_h NULL olmali (kontrat)
+    assert point["ttl_h"] is None, "q != 0 oldugunda ttl_h None olmali idi"
 
 
 def test_alarm_codes_are_all_defined_in_the_contract(alarm_codes):
