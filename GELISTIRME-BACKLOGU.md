@@ -432,12 +432,38 @@ Kenar-merkez arasındaki tüm bağlantıları şifreler ve cihazı kendi topic'i
 > tutmak, sahada olmayan bir yalıtımı kanıtlanmış gibi gösterirdi); yük testi hâlâ düz 1883'te koşuyor, **TLS el sıkışma
 > maliyeti ölçülmedi** (`docs/09` §8); anahtarlar dosya sisteminde düz durur — güvenli elemana bağlanması F-28.
 
-### F-28 · Cihaz kimliği: IDevID/LDevID, sıfır-dokunuş kayıt ve PKI işletimi
+### F-28 · Cihaz kimliği: IDevID/LDevID, sıfır-dokunuş kayıt ve PKI işletimi — 📐 yalnızca yol haritası yazıldı, **kod yok** (18 Eylül 2026)
 Sertifikayı elle basılan bir dosyadan işletilebilir bir yaşam döngüsüne çevirir · **Etki:** yüksek · **Efor:** 6-10 hafta (donanım revizyonuyla) · **Nerede yaşar:** `firmware/core/` kimlik modülü, yeni `backend/app/pki/`, [deploy/](deploy/) altında yerel sertifika otoritesi, [hardware/pano-beyni/](hardware/pano-beyni/)
 **Sektörel dayanak:** IEEE 802.1AR-2018 fabrika (IDevID) ve saha (LDevID) kimliğini tanımlar; IETF RFC 8995 (BRSKI) ve RFC 7030 (EST) sıfır-dokunuş kaydı standartlaştırır; IEC 62351-9 güç sistemi ekipmanı için anahtar yaşam döngüsü ve iptali tanımlar.
 **Bizdeki boşluk:** BOM'da güvenli eleman var ama onu kullanan tek bir akış yok. F-27 sertifikaları elle üretir; bu üç panoda çalışır, 100+ modülde çalışmaz.
 **Ne üretir:** Kayıt ucu, sertifika verme ve yenileme takvimi, iptal listesi ve broker yetkisinin sertifikadan türemesi.
 **Dikkat:** GK3 nedeniyle bu teslimde kod yazılamaz; gerçek güvenli eleman ve bir üretim hattı prosedürü gerektirir. Hackathon payı yalnızca bir yol haritası paragrafıdır.
+
+> **Yalnızca yol haritası yazıldı (18 Eylül 2026, `c-varlik-kutugu`) — KOD YOK, bilerek (GK3).** Maddenin "Ne üretir"
+> kalemlerinin **hiçbiri üretilmedi**: kayıt ucu yok, sertifika verme yok, yenileme takvimi yok, iptal listesi yok, broker
+> yetkisi hâlâ elle üretilmiş bir sertifikadan türüyor. Başlıktaki im bilerek 🟡 değil 📐'dir: 🟡 bu backlog'da kodu olan
+> maddeler için kullanılıyor (ör. F-19, F-31) ve bu maddede kod yok.
+>
+> **Yapılanlar:** [`docs/15-guvenlik-kvkk.md`](docs/15-guvenlik-kvkk.md) §3.5 altına tek sayfalık bir yol haritası yazıldı.
+> Yeni doküman **açılmadı** — çünkü "güvenli eleman BOM'da var, ona hiçbir akış bağlanmamış" paragrafı depoda **zaten iki kez**
+> yazılıydı (`docs/19` satır 91 ve `docs/15` §3.5) ve üçüncü kez yazmak aynı içeriği çoğaltmak olurdu. Eklenen sayfa o ikisinin
+> **ötesine geçen** şeyi somutlaştırıyor: (a) F-27'nin elle ürettiği sertifikaların 100+ modülde neden çalışmayacağı — anahtarın
+> cihaz dışında üretilmesi, kayıt otoritesinin olmaması, devreye almadaki insan eli ve iptal mekanizmasının yokluğu, dördü de
+> §5.1'de ölçülen düzeneğin doğrudan sonucu olarak; (b) kayıt / yenileme / iptal takviminin neye benzeyeceği — fabrika kimliği
+> hiç yenilenmez, saha kimliği kısa ömürlü ve otomatik yenilenir, yenileme penceresi en uzun beklenen kopukluktan **uzun**
+> olmak zorundadır (kenarda 7 günlük halka tampon var) ve doğrulama **saate** bağlıdır ama GK4 yığını NTP'siz çalışır;
+> (c) iptalin işletilebilir olması için gereken üç şey — listenin üretilmesi, dağıtılması ve **tazeliğinin doğrulanması**;
+> (d) F-27'den F-28'e geçişte değişmeyecek olan: ACL kuralı **kalıptır** ve kimliği CN'den alır, dolayısıyla değişecek olan
+> kimliğin **kaynağıdır**, yetkinin kuralı değil.
+>
+> **Kalan:** maddenin kendisi. Kayıt ucu, sertifika verme, yenileme zamanlayıcısı, iptal listesi üretimi/dağıtımı ve güvenli
+> elemana bağlanan firmware kimlik modülü **yazılmadı**. Backlog bunu 6-10 hafta ve **donanım revizyonu** olarak işaretliyor;
+> bu teslimde donanım satın alınmadı, yani madde yalnızca yazılım eforuyla kapanamaz.
+>
+> **GK10 uyarısı:** IEEE 802.1AR, RFC 8995 (BRSKI), RFC 7030 (EST) ve IEC 62351-9 metinlerine erişilmedi. Madde numarası,
+> tablo numarası ve birebir alıntı **yazılmadı**. Ancak bu maddenin **yukarıdaki "Sektörel dayanak" satırı** bu standartların
+> ne tanımladığına dair iddialar içerir (ve bir baskı yılı verir); o iddialar **ikincil kaynaklardan** gelir ve tarafımızdan
+> **doğrulanmadı**. `docs/15` §3.5'teki yol haritası da tek dayanak olarak o satırı gösterir.
 
 ### F-29 · İmzalı OTA: manifest, A/B geçiş, anti-rollback ve kanarya kampanyası
 Sahaya çıkmış 1.000 panonun yazılımını güvenle güncellenebilir kılar · **Etki:** çok yüksek · **Efor:** 4-6 hafta · **Nerede yaşar:** yeni `scripts/fw_manifest.py`, kenar tarafında ilk komut tüketicisi, merkezde kampanya uçları ve tabloları

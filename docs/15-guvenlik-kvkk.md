@@ -123,6 +123,62 @@ sözleşme dışı veri karantinaya düşer (✅) ve merkez hiçbir yoldan korum
 cihazın kendisi değil, **bizim ürettiğimiz bir addır**. Donanıma bağlı cihaz kimliği F-28'in konusudur — aşağıda.
 
 
+#### F-28 — Elle üretilen sertifikadan işletilebilir cihaz kimliğine (yol haritası, **kod yazılmadı**)
+
+> **Bu başlıkta kod yok ve bilerek yok** (GK3). Gerçek bir güvenli eleman ve bir üretim hattı prosedürü gerektirir; uygulaması
+> olmayan bir başlık dosyası bile "var gibi görünme" üretirdi. Aşağıdaki tek sayfa, F-27'nin **ölçülmüş** hâliyle 100+ modüllük
+> bir filo arasındaki farkı somutlaştırır. **Standart metinlerine erişilmedi** (IEEE 802.1AR, IETF BRSKI ve EST, IEC 62351-9 —
+> GK10): madde/tablo numarası verilmiyor, birebir alıntı yapılmıyor, yalnızca hangi işin hangi standardın konusuna denk
+> düştüğü bölüm başlığı düzeyinde söyleniyor. **Aşağıdaki standart adları ve içerik özetleri tek bir depo içi kaynaktan
+> gelir:** `GELISTIRME-BACKLOGU.md` F-28 maddesinin "Sektörel dayanak" satırı. Standart metinlerine erişilmediği için bu
+> özetlerin doğruluğu **bizim tarafımızdan doğrulanmadı**; aşağıdaki tarifler **bizim mühendislik okumamızdır**, standartların
+> özeti değildir. Aynı disiplin `docs/11`'deki IEC 62974-1 ve ISA-101 satırlarında da uygulanır.
+
+**F-27'nin ürettiği sertifikalar neden 100+ modülde çalışmaz — dört somut kırılma.** Bunlar tahmin değil, §5.1'de ölçülen
+düzeneğin doğrudan sonuçları:
+
+| # | Üç panoda görünmeyen, 100+ modülde kaçınılmaz olan | Bugünkü hâli (F-27) | Neden ölçek sorunu |
+|---|---|---|---|
+| 1 | **Özel anahtarın cihaza nasıl gittiği** | `scripts/sertifika-uret.sh` merkezde üretir, anahtar dosya sisteminde düz durur | Anahtar cihazın dışında üretildiği sürece üretim hattından sahaya kadar **her elden geçen kopyalanabilir**. Güvenli elemanın varlık sebebi tam olarak budur: anahtar çip içinde doğar ve **hiç çıkmaz**. Bizdeki durum §3.5'in başında yazılı |
+| 2 | **Kimin sertifika alacağına kimin karar verdiği** | Betiği kim çalıştırırsa o; CN çakışmazlığını garanti eden şey **bizim betiğimizdir**, bir kayıt otoritesi değil | Üç panoda liste elle tutulur. 100+ modülde "bu cihaz gerçekten bizim mi" sorusunun makine tarafından yanıtlanması gerekir — fabrikada basılan bir kimlik (IDevID) ile sahada verilen bir kimliğin (LDevID) ayrılması **IEEE 802.1AR**'ın konusudur |
+| 3 | **Devreye alma anındaki insan eli** | Sertifika elle kopyalanır | Her modül için elle kopyalama, filo büyüdükçe **en olası arıza kaynağıdır** ve saha ekibinin özel anahtara dokunmasını gerektirir. Sıfır-dokunuş kayıt (**BRSKI**) ve sertifika verme protokolü (**EST**) bu iki sorunun standart karşılıklarıdır |
+| 4 | **Sızan bir anahtarın dışlanması** | Mekanizma **yok**. İki yol var: ACL satırını silmek (bu **yetki kaldırmadır, iptal değildir**) ya da CA'yı ve tüm sertifikaları yenilemek | Üç panoda ikincisi bir komut. 100+ modülde aynı komut **filo çapında kesinti** demektir. Anahtar yaşam döngüsü ve iptal, güç sistemi ekipmanı için **IEC 62351-9**'un konusudur |
+
+**Takvimin neye benzeyeceği.** Ölçekte asıl iş sertifikayı vermek değil, **süreyi yönetmektir**; bu depoda bugün süreyi izleyen
+hiçbir şey yok — `sertifika-uret.sh` `-days 825` basar ve kimse bakmaz. İşletilebilir bir düzenekte dört saat işler:
+
+- **Fabrika kimliği:** üretim hattında basılır ve cihazın ömrü boyunca değişmemesi **beklenir**. Cihazın "ben bu üreticinin
+  ürettiği şu seri numaralı cihazım" diyebilmesinin dayanağı budur. Fabrika ve saha kimliğinin ayrılması IEEE 802.1AR'ın
+  konusudur; standardın bunları **tam olarak nasıl tanımladığını bilmiyoruz** (metne erişilmedi).
+- **Saha kimliği:** devreye alınırken, fabrika kimliğine dayanarak dağıtım şirketinin kendi CA'sından alınır ve **yenilenebilir
+  olması gerekir**. Ömür ne kadar kısa olursa iptal listesine o kadar az iş düşer. İki uç arasındaki denge (uzun ömürlü
+  sertifika + büyük iptal listesi / kısa ömürlü sertifika + sürekli yenileme trafiği) bir **işletme kararıdır**, teknik bir
+  kısıt değil; bu teslimde alınmadı.
+- **Yenileme penceresi:** cihaz sertifikasının bitişinden önce yenilemeye başlamalı, çünkü kenar uzun süre kopuk kalabilir ve
+  dönen bir cihaz süresi dolmuş bir sertifikayla gelirse **kendi kendini dışlamış olur**. Bu sürenin ne kadar olduğunu
+  **bilmiyoruz**: hücresel hat bu teslimde hiç simüle edilmedi ve firmware'in 7 günlük halka tamponu henüz bir tasarım
+  kalemidir (`docs/02` §mimari, yazılmadı). Pencerenin sayısal değeri bu yüzden burada **verilemiyor**; verilebilmesi için
+  önce en uzun beklenen kopukluğun sahada ölçülmesi gerekir.
+- **Saat.** Sertifika doğrulaması saate bağlıdır ve GK4 yığını internetsiz, NTP'siz çalışır; kenarda RTC kayması vardır. Ölçekte
+  bu, "sertifika süresi doldu" gibi görünen ama aslında saat kayması olan bir arıza sınıfı üretir. Bu teslimde ölçülen süre
+  davranışı **saha davranışı değildir**.
+
+**İptalin gerçekten işletilebilir olması için gereken üç şey** (hiçbiri yapılmadı): listenin **üretilmesi** (hangi seri numarası
+neden dışlandı, kim karar verdi — `alarm_journal` gibi bir denetim izi), listenin **dağıtılması** (broker listeyi nereden ve ne
+sıklıkta okuyacak; `mosquitto`'nun `crlfile` seçeneğinin bu sürümde çalıştığı §5.1'de ölçüldü — eksik olan mekanizma değil,
+işletimdir) ve listenin **taze olduğunun doğrulanması** (bayat bir iptal listesiyle çalışan broker, iptal yokmuş gibi davranır
+ve bunu kimseye söylemez). Broker tarafındaki `crlfile` seçeneği bu teslimde **denenmedi bile**.
+
+**F-27'den F-28'e geçişte değişmeyecek olan.** `deploy/mosquitto.acl`'deki yetki kuralı **kalıptır** (`pattern write
+gridup/pano/%u/tel`) ve kimliği sertifikanın CN'inden alır; bu yüzden filoya pano eklemek ACL dosyasını **değiştirmez**
+(`test_mqtt_acl.py::test_yeni_pano_eklemek_acl_dosyasini_degistirmez`). Yani F-28 broker yetkilendirmesini yeniden yazmayı
+değil, **CN'in nereden geldiğini** değiştirmeyi gerektirir: bugün bizim ürettiğimiz bir ad, yarın çipin içinde doğan bir kimlik.
+Değişecek olan kimliğin **kaynağı**, yetkinin **kuralı** değil.
+
+**Efor ve bağımlılık.** Backlog bunu 6-10 hafta ve **donanım revizyonu** olarak işaretliyor; bu teslimde donanım satın alınmadı
+(`docs/17` §3). Yani F-28 yalnızca yazılım eforuyla kapanabilecek bir madde **değildir** ve bu yüzden burada yol haritası
+düzeyinde bırakılmıştır.
+
 ## 4. KVKK (6698 sayılı Kanun)
 
 ### 4.1 Kişisel veri envanteri
