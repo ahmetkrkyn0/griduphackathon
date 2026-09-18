@@ -76,4 +76,5 @@ graphify-out/.*
 
 # --- Yerel Agent araclari ---
 .claude/
+.superpowers/
 
