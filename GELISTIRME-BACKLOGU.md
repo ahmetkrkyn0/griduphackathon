@@ -250,12 +250,34 @@ Alarm ve bildirim denetim izini zincirleyip bağımsız bir doğrulayıcıyla s�
 > baştan hesaplayabilir. Hedef "sessizce bir satır silen yetkili kullanıcı", "zinciri yeniden kuran saldırgan"
 > değildir. (3) Göç öncesi satırların hash'i **NULL** ve bilerek üretilmedi.
 
-### F-21 · Varlık kütüğü: CBS tekil kodu, künye ve bakım takvimi
+### F-21 · Varlık kütüğü: CBS tekil kodu, künye ve bakım takvimi — ✅ tamamlandı (18 Eylül 2026)
 Panonun ne olduğunu ve kimi etkilediğini sisteme getirir · **Etki:** çok yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [backend/app/api/panels.py](backend/app/api/panels.py), [contracts/openapi.yaml](contracts/openapi.yaml), [frontend/src/components/RiskMatrisi.tsx](frontend/src/components/RiskMatrisi.tsx), [frontend/src/pages/FiloListesi.tsx](frontend/src/pages/FiloListesi.tsx)
 **Sektörel dayanak:** EPDK CBS usul ve esasları dağıtım panosunu tekil kodla ve kullanıcı tesisleriyle eşleştirilmiş tutmayı zorunlu kılıyor; EA Technology CBRM/CNAIM sağlık × kritiklik ile riski parasallaştırıyor; ABB Emax 2 koruma birimi bile son bakım tarihinden sonraki bakımı kestiriyor.
 **Bizdeki boşluk:** `panels` tablosunda sekiz alan var, hiçbiri trafo gücü, fider, abone sayısı, kritiklik veya bakım tarihi değil. Risk matrisinin etki ekseni bu yüzden risk skorunun kendisi — kodda dürüstçe itiraf edilmiş.
 **Ne üretir:** Gerçek iki eksenli risk matrisi, kritikliğe göre önceliklendirme, bakım vadesi rozeti, ve tüm mevzuat çıktılarının (F-22, F-23) veri tabanı.
 **Dikkat:** Paralel bir varlık ana kaydı **kurulmamalı** — birincil alan CBS tekil kodu olmalı ve künye "CBS'den içe aktarılır" diye etiketlenmeli. Üretici/seri no uydurulmaz, boş bırakılır.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** Göç `deploy/initdb/008_varlik_kutugu.sql`:
+> `panels` tablosuna 13 sütun — CBS tekil kodu (UNIQUE ikinci kimlik; **PK `pano_id` olarak kaldı**,
+> değiştirmek dört yabancı anahtarı kırardı), fider, il/ilçe, abone sayısı, trafo gücü, kritiklik,
+> üretici/seri no, son + sonraki bakım, künye kaynağı ve içe aktarım anı. **Paralel varlık ana kaydı
+> kurulmadı** (ayrı tablo yok): backlog §2.5 gereği panonun kimliği CBS'de zaten var, biz kaynak değil
+> tüketiciyiz. Sözleşme `openapi` **v1.3.0** (`AssetRegistry`, `PanelDetail.asset`, `PanelSummary`'ye
+> üç alan, `GET`/`POST /fleet/assets`) — gerekçe `contracts/changes/2026-09-18-varlik-kutugu.md`.
+> Yazma ucu F-19 desenini izler: `Depends(require("muhendis"))`.
+>
+> **Risk matrisinin etki ekseni gerçek oldu:** y artık `abone_sayisi` (EPDK Madde 8/2'nin de istediği
+> sayılabilir büyüklük), eski kVA itirazı aşıldı. **İtiraf silinmedi, daraldı** — matris künye girildiği
+> ölçüde iki boyutludur ve künye yoksa eski davranış aynen korunur (`frontend/src/lib/etki.ts` + testi).
+>
+> **Ölçülen:** backend **735** (721 → +14, `test_asset_registry.py`), frontend **106** (93 → +13),
+> `check_contracts.py` "SOZLESMELER TUTARLI" (11 uç), beş üreteç de "guncel". Göç ayakta olan
+> veritabanına elle uygulandı ve **idempotent** olduğu iki kez koşturularak doğrulandı.
+>
+> **Bilinçli sınır (bu yüzden "kütük dolu" denmiyor):** gerçek bir CBS dışa aktarımına erişim yok (GK3).
+> Demo filosunun künyesi **boştur**, `uretici`/`seri_no` **hiçbir panoda doldurulmadı** ve bu gizlenmiyor —
+> `GET /fleet/assets` kapsama oranını sayıyla verir. `scripts/ornek-cbs-aktarim.json` biçimi gösterir ve
+> **kendiliğinden yüklenmez**. Ayrıntı: `docs/17` §6 md. 22.
 
 ### F-22 · Üst şebeke kesintisi bağıntısı ve OMS'e hazır kesinti olayı
 Aynı anda susan N panoyu tek bir kesinti olayına çevirir · **Etki:** çok yüksek · **Efor:** 2-3 hafta (F-21 sonrası) · **Nerede yaşar:** yeni `backend/app/outage.py`, [backend/app/alarm_manager.py](backend/app/alarm_manager.py), [deploy/initdb/](deploy/initdb/), [frontend/src/pages/BolgeHaritasi.tsx](frontend/src/pages/BolgeHaritasi.tsx)

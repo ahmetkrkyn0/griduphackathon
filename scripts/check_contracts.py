@@ -195,6 +195,10 @@ required_paths = [
     "/api/v1/alarms/{alarm_id}/shelve",
     "/api/v1/events/{event_id}/blackbox",
     "/api/v1/fleet/kpi",
+    # v1.1.0'da eklenmis ama BU LISTEYE yazilmasi atlanmisti: sozlesmede vardi, denetleyici
+    # kaybolmasini yakalamazdi. F-21 ile birlikte duzeltildi.
+    "/api/v1/fleet/health",
+    "/api/v1/fleet/assets",
 ]
 for path in required_paths:
     if path not in openapi["paths"]:

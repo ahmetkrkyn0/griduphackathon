@@ -103,11 +103,22 @@ boş bir başlık gösterilmez.
    Depodaki 1.000 pano ölçümleri backend alım/görünme p95'ine aittir, bu ekranın istek
    davranışına değil.
 
-**Bölge haritası** (15 Eylül güncellemesi): sözleşmede `lat`/`lon` zaten onaylı bir alan.
-Yukarıdaki önerinin il/ilçe kısmı **uygulanmadı** ve bu bilinçlidir: `panels` tablosunda
-il/ilçe kolonu yok ve bu depoda dolduracak gerçek bir kaynak da yok (GK3 — CBS içe aktarımı
-yapılmadı). Alan açıp boş bırakmak ya da `pano_id` önekinden il uydurmak GK10 ihlali olurdu;
-o iş varlık künyesi maddesine aittir (`GELISTIRME-BACKLOGU.md` F-21). Mock veride (`api/mock.ts`) her panonun adı
+**Bölge haritası** (15 Eylül güncellemesi, **18 Eylül'de F-21 ile revize edildi**):
+sözleşmede `lat`/`lon` zaten onaylı bir alan. Yukarıdaki önerinin il/ilçe kısmı 15 Eylül'de
+**uygulanmamıştı** ve gerekçesi şuydu: `panels` tablosunda il/ilçe kolonu yok ve bu depoda
+dolduracak gerçek bir kaynak da yok (GK3 — CBS içe aktarımı yapılmadı); alan açıp boş
+bırakmak ya da `pano_id` önekinden il uydurmak GK10 ihlali olurdu; o iş varlık künyesi
+maddesine aittir (`GELISTIRME-BACKLOGU.md` F-21).
+
+**F-21 o işi yaptı ve itiraz üç koşulla birden karşılandı** (`contracts/changes/2026-09-18-varlik-kutugu.md`):
+`il` ve `ilce` kolonları **açıldı** (göç `deploy/initdb/008_varlik_kutugu.sql`), ama (1) alan
+tek başına açılmadı — doldurma yolu da açıldı: `POST /fleet/assets` doğrulanmış, `muhendis`
+rolüyle korumalı ve testli bir CBS içe aktarım ucudur; (2) **uydurma yok** — `pano_id`
+önekinden il/ilçe türetilmedi, `uretici` ve `seri_no` hiçbir panoda doldurulmadı; (3) boş
+künye **"veri yok" diye görünür** — künyesi olmayan pano `asset: null` döner ve
+`GET /fleet/assets` kapsama oranını **sayıyla** verir. **Bu teslimde demo filosunun künyesi
+boştur**: uç ve şema çalışır, içe aktarılmış gerçek veri yoktur ve bu gizlenmez. Harita hâlâ
+`lat`/`lon` ile çizer; il/ilçe kırılımlı harita ayrı bir maddedir (F-26). Mock veride (`api/mock.ts`) her panonun adı
 zaten gerçek bir ilçe/semt (Efeler, Bornova, Söke...) olduğundan, bu ilçelerin gerçek merkez
 koordinatları dolduruldu ve panolar artık gerçek enlem/boylamına göre yerel ölçekli bir konum
 grafiğine yerleştiriliyor (`pages/BolgeHaritasi.tsx`). Konum, ilçe merkezi hassasiyetindedir

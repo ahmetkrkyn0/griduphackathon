@@ -312,6 +312,9 @@
 .riskmx-pt.p-SYS .riskmx-dot { fill: var(--sys); }
 .riskmx-label { font: 500 12px var(--sans); fill: var(--ink); }
 .riskmx-pt:hover .riskmx-label, .riskmx-pt:focus-visible .riskmx-label { font-weight: 700; }
+/* Kunyesi ice aktarilmamis pano (F-21): ici bos halka. ISA-101 geregi ayirt edicilik yalnizca
+   renge dayanamaz — sekil farki tasiyici, metin ise altyazida. */
+.riskmx-pt--kunyesiz .riskmx-dot { fill: none; stroke: var(--dot); stroke-dasharray: 3 2; }
 
 /* ---------- Grafikler (CizgiGrafik, SacilimGrafik) ---------- */
 .chart { margin-top: 4px; }
@@ -416,3 +419,6 @@
 }
 .btn-link:hover { opacity: 0.8; }
 .btn-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* Bakim vadesi rozeti (F-21). Yalnizca kunyesi ice aktarilmis panoda cizilir. */
+.bakim-rozet { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.bakim-rozet--gecti { color: var(--p2); font-weight: 600; }

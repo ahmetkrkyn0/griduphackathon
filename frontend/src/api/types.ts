@@ -23,6 +23,53 @@ export interface PanelSummary {
   last_seen: string;
   comms_ok: boolean;
   baseline_day?: number;
+  /**
+   * Varlik kutugu (F-21) — ozete giren UC alan. null = "CBS aktarimi yapilmadi",
+   * SIFIR DEGIL. Bu yuzden `| null` tasirlar, `?` degil: eksik alan ile bilinmeyen
+   * deger karistirilmamali (PanelHealth'te de ayni kural yazili).
+   */
+  abone_sayisi?: number | null;
+  kritiklik?: Kritiklik | null;
+  sonraki_bakim_at?: string | null;
+}
+
+/** AssetRegistry.kritiklik sozlugu. CBS'den ICE AKTARILAN etiket; bizim tanimimiz degil. */
+export type Kritiklik = "kritik" | "yuksek" | "orta" | "dusuk";
+
+/**
+ * GET /fleet/assets satirindaki kunye (F-21).
+ *
+ * Kunyesi ice aktarilmamis pano icin `asset` alani null'dur — hepsi null olan bir nesne
+ * DEGIL. Ekran bos hucre gostermek yerine "CBS'den ice aktarilmadi" yazabilsin diye.
+ * `uretici` ve `seri_no` UYDURULMAZ; aktarim doldurmadiysa null kalir.
+ */
+export interface AssetRegistry {
+  cbs_kodu: string | null;
+  fider_id: string | null;
+  il: string | null;
+  ilce: string | null;
+  abone_sayisi: number | null;
+  trafo_kva: number | null;
+  kritiklik: Kritiklik | null;
+  uretici: string | null;
+  seri_no: string | null;
+  son_bakim_at: string | null;
+  sonraki_bakim_at: string | null;
+  kunye_kaynak: string | null;
+  kunye_at: string | null;
+}
+
+/** Kapsama SAYIYLA verilir ki eksiklik gizlenemesin (GK10). */
+export interface AssetCoverage {
+  panolar: number;
+  kunyeli: number;
+  fiderli?: number;
+  aboneli?: number;
+}
+
+export interface AssetFleet {
+  kapsama: AssetCoverage;
+  panolar: { pano_id: string; name?: string; asset: AssetRegistry | null }[];
 }
 
 export interface ConnPoint {
@@ -147,6 +194,8 @@ export interface PanelDetail {
   pd?: Record<string, unknown> | null;
   health: DeviceHealth;
   active_alarms?: Alarm[];
+  /** Varlik kunyesi (F-21). CBS aktarimi yapilmamissa null. */
+  asset?: AssetRegistry | null;
 }
 
 /**
@@ -244,6 +293,7 @@ export interface Api {
   panel(panoId: string, signal?: AbortSignal): Promise<PanelDetail>;
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
   fleetHealth(signal?: AbortSignal): Promise<PanelHealth[]>;
+  fleetAssets(signal?: AbortSignal): Promise<AssetFleet>;
   authStatus(signal?: AbortSignal): Promise<AuthStatus>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
   alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;

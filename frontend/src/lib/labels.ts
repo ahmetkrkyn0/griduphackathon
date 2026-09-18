@@ -137,6 +137,23 @@ export function hypText(code: string | undefined): string {
   return HYP_TEXT[code] ?? code;
 }
 
+/**
+ * AssetRegistry.kritiklik -> gosterim metni (F-21).
+ *
+ * Sozluk CBS/varlik yonetiminden ICE AKTARILIR; bizim tanimladigimiz bir siniflandirma
+ * degildir. Bilinmeyen bir deger gelirse UYDURULMAZ, oldugu gibi gosterilir.
+ */
+const KRITIKLIK_TEXT: Record<string, string> = {
+  kritik: "kritiklik: kritik",
+  yuksek: "kritiklik: yüksek",
+  orta: "kritiklik: orta",
+  dusuk: "kritiklik: düşük",
+};
+
+export function kritiklikText(kritiklik: string): string {
+  return KRITIKLIK_TEXT[kritiklik] ?? `kritiklik: ${kritiklik}`;
+}
+
 export function adviceText(advice: string | undefined): string | null {
   if (!advice || advice === "-") return null;
   return ADVICE_TEXT[advice] ?? advice;

@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 
 from . import __version__
 from .alarm_service import AlarmService, PeriodicWorker
-from .api import alarms, insights, panels, stream
+from .api import alarms, assets, insights, panels, stream
 from .api.stream import StreamHub
 from .api.views import REQUIRED_HYPOTHESES, panel_summary
 from .auth import OperatorTable, operators_from_env
@@ -167,6 +167,7 @@ def create_app(
     app.include_router(panels.router)
     app.include_router(insights.router)
     app.include_router(alarms.router)
+    app.include_router(assets.router)
     app.include_router(stream.router)
 
     @app.get("/health", tags=["system"])

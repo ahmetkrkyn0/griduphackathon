@@ -21,7 +21,7 @@ from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .alarm_manager import Alarm, Change
 from .journal_chain import GENESIS, link_hash
-from .models import EventRecord, JournalEntry, PanelRecord, Rejection, Sample
+from .models import ASSET_FIELDS, EventRecord, JournalEntry, PanelRecord, Rejection, Sample
 
 if TYPE_CHECKING:
     from .notify.dispatcher import Delivery
@@ -29,6 +29,18 @@ if TYPE_CHECKING:
 
 class StoreError(RuntimeError):
     """Gecici depolama hatasi (baglanti yok, zaman asimi). Tekrar denenebilir; API 503 doner."""
+
+
+class UnknownPanel(LookupError):
+    """Varlik kutugu aktariminda taninmayan pano_id (F-21). API 404 doner.
+
+    Gecici bir hata DEGILDIR, bu yuzden StoreError'dan turemez: aktarim dosyasi yanlis
+    ve tekrar denemek ayni sonucu verir.
+    """
+
+    def __init__(self, pano_id: str) -> None:
+        super().__init__(f"varlik kutugu aktariminda taninmayan pano: {pano_id}")
+        self.pano_id = pano_id
 
 
 class Store(Protocol):
@@ -52,6 +64,19 @@ class Store(Protocol):
 
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         """Tek pano, tam son yukle."""
+        ...
+
+    def import_assets(self, rows: Sequence[dict], *, kunye_kaynak: str, at: datetime) -> int:
+        """CBS aktarimindan varlik kunyesini yazar; yazilan pano sayisini doner (F-21).
+
+        - Tek transaction: bir satir bile reddedilirse HICBIRI yazilmaz. Yarim ice
+          aktarilmis bir kutuk, hic ice aktarilmamis olandan daha kotudur — hangi
+          panonun guncel oldugu bilinemez.
+        - Bilinmeyen pano_id `UnknownPanel` atar: bu uc YENI PANO YARATMAZ. Pano
+          kaydi telemetriyle dogar; kutuk yalnizca var olan panoyu zenginlestirir.
+        - GONDERILMEYEN alan DEGISTIRILMEZ. Bir alani temizlemek icin acikca null
+          gonderilir; boylece kismi bir CBS aktarimi dolu alanlari silmez.
+        """
         ...
 
     def ping(self) -> bool: ...
@@ -131,7 +156,15 @@ ON CONFLICT (pano_id) DO UPDATE SET
 
 _INSERT_QUARANTINE = "INSERT INTO quarantine (received, topic, reason, raw) VALUES (%s, %s, %s, %s)"
 
-_PANEL_COLUMNS = "p.pano_id, p.name, p.pano_type, p.lat, p.lon, p.installed_at, p.baseline_day, l.last_rx"
+_PANEL_COLUMNS = (
+    "p.pano_id, p.name, p.pano_type, p.lat, p.lon, p.installed_at, p.baseline_day, l.last_rx, "
+    # Varlik kutugu (F-21). Kolon adlari PanelRecord alan adlariyla BIREBIR ayni olmak
+    # zorunda: psycopg `class_row(PanelRecord)` ada gore esler. Hepsi `panels` satirinda
+    # zaten okunan skaler sutunlardir — ek JOIN ya da ek sorgu YOK, bu yuzden 1.000 panoluk
+    # filo listesinin maliyeti degismez (_SUMMARY_PAYLOAD kirpmasinin gerekcesi JSONB yuktu,
+    # skaler sutun degil).
+    + ", ".join(f"p.{name}" for name in ASSET_FIELDS)
+)
 
 # Filo listesi 1.000 pano icin tam yukleri tasimasin: yalnizca ozetin okudugu alanlar.
 _SUMMARY_PAYLOAD = """
@@ -338,6 +371,29 @@ class PgStore:
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
             return cur.execute(_GET_PANEL, (pano_id,)).fetchone()
+
+    def import_assets(self, rows: Sequence[dict], *, kunye_kaynak: str, at: datetime) -> int:
+        updated = 0
+        # Tek `with`: tum satirlar ayni transaction'da. Ortada bir UnknownPanel atilirsa
+        # psycopg transaction'i geri alir ve onceki satirlar da yazilmamis olur.
+        with self._connection() as conn, conn.cursor() as cur:
+            for row in rows:
+                pano_id = row["pano_id"]
+                # Kokeni ISTEMCI YAZMAZ: kunye_kaynak/kunye_at govdedeki satirdan degil
+                # aktarimin kendisinden gelir (F-19'un "kimlik govdeden okunmaz" ilkesinin
+                # ayni uygulamasi).
+                values = {name: row[name] for name in ASSET_FIELDS if name in row}
+                values["kunye_kaynak"] = kunye_kaynak
+                values["kunye_at"] = at
+                assignments = ", ".join(f"{name} = %({name})s" for name in values)
+                cur.execute(
+                    f"UPDATE panels SET {assignments} WHERE pano_id = %(pano_id)s",
+                    {**values, "pano_id": pano_id},
+                )
+                if cur.rowcount == 0:
+                    raise UnknownPanel(pano_id)
+                updated += cur.rowcount
+        return updated
 
     def ping(self) -> bool:
         try:

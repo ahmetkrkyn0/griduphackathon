@@ -10,7 +10,12 @@ info:
   #   GERI UYUMLU DEGIL: onaylayanin adi artik govdeden degil Authorization basligindan
   #   turer. Eski istemcinin govdeye yazdigi `by` sessizce YOK SAYILIR (reddedilmez).
   #   Gerekce: contracts/changes/2026-09-18-kimlik-dogrulama.md
-  version: 1.2.0
+  # v1.3.0 (18 Eylul 2026): varlik kutugu (F-21). AssetRegistry semasi, PanelDetail.asset,
+  #   PanelSummary'ye uc alan (abone_sayisi, kritiklik, sonraki_bakim_at) ve GET/POST
+  #   /fleet/assets. Yalnizca EKLEME, geri uyumlu: yeni alanlarin hicbiri required degil ve
+  #   kunye ice aktarilmamissa null doner.
+  #   Gerekce: contracts/changes/2026-09-18-varlik-kutugu.md
+  version: 1.3.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -27,6 +32,8 @@ tags:
     description: ISA-18.2 alarm yasam dongusu
   - name: events
     description: Olay ve kara kutu
+  - name: assets
+    description: Varlik kutugu (CBS'den ice aktarilan kunye)
   - name: system
 
 paths:
@@ -234,6 +241,55 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/PanelHealth" }
 
+  /api/v1/fleet/assets:
+    get:
+      tags: [assets]
+      summary: Varlik kutugu — filonun kunyesi ve kapsama orani
+      description: >
+        Panolarin CBS'den ice aktarilan kunyesi (F-21). `kapsama` alani kac panonun
+        kunyesi oldugunu SAYIYLA soyler: eksiklik gizlenemez. Kunyesi olmayan pano
+        listede yine gorunur ve alanlari null doner — bos hucre "veri yok" demektir,
+        sifir demek DEGILDIR.
+      responses:
+        "200":
+          description: Kunye listesi + kapsama ozeti
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetFleet" }
+    post:
+      tags: [assets]
+      summary: CBS aktarimindan varlik kunyesi ice aktar
+      description: >
+        Kunyeyi CBS disa aktarimindan toplu olarak yazar (F-21). Biz KAYNAK DEGIL
+        TUKETICIYIZ: bu uc bir varlik ana kaydi olusturmaz, CBS'deki kaydi buraya
+        kopyalar. `kunye_kaynak` ZORUNLUDUR — kaynagi yazilmayan kunye kabul edilmez.
+        Bilinmeyen pano_id REDDEDILIR (yeni pano yaratmaz).
+        `uretici` ve `seri_no` gonderilmezse bos kalir; UYDURULMAZ.
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssetImport" }
+      responses:
+        "200":
+          description: Ice aktarim ozeti
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guncellenen, kapsama]
+                properties:
+                  guncellenen: { type: integer, description: "kunyesi yazilan pano sayisi" }
+                  kapsama: { $ref: "#/components/schemas/AssetCoverage" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   parameters:
     PanoId:
@@ -293,6 +349,116 @@ components:
       properties:
         detail: { type: string }
 
+    AssetRegistry:
+      type: object
+      description: >
+        Panonun CBS'den ice aktarilan kunyesi (F-21). Bu bir VARLIK ANA KAYDI DEGILDIR:
+        EPDK CBS usul ve esaslari panoyu zaten tekil kodla tutmayi zorunlu kiliyor, yani
+        kimlik musteride var ve biz tuketiciyiz. Ice aktarilmamis her alan null'dur;
+        null "olcmedik/almadik" demektir, sifir demek degildir.
+      properties:
+        cbs_kodu:
+          type: [string, "null"]
+          description: >
+            EPDK CBS tekil sebeke unsuru kodu. Urun seviyesinde BIRINCIL kimliktir;
+            veritabani birincil anahtari pano_id olarak KALIR (yabanci anahtarlar ona bagli).
+            EPDK Kalite Yonetmeligi Madde 8/2'nin "yer" alanindaki tekil kodu besler.
+        fider_id:
+          type: [string, "null"]
+          description: "Panonun beslendigi fider. F-22 es zamanli susmayi bu alana gore gruplar."
+        il:    { type: [string, "null"], description: "Madde 8/2 'yer'; pano_id onekinden TURETILMEZ" }
+        ilce:  { type: [string, "null"] }
+        abone_sayisi:
+          type: [integer, "null"]
+          description: >
+            Madde 8/2 "etkilenen kullanici sayisi". Risk matrisinin ETKI eksenidir:
+            sayilabilir bir buyukluktur ve bir taksonomi icat etmeyi gerektirmez.
+        trafo_kva:
+          type: [integer, "null"]
+          description: >
+            Pano BASINA trafo gucu. pano_type ('1600kVA-dahili') kVA'yi tasir ama filodaki
+            her panoda AYNIDIR; sabit bir alani etki gibi gostermek yaniltici olurdu.
+        kritiklik:
+          type: [string, "null"]
+          enum: [kritik, yuksek, orta, dusuk, null]
+          description: >
+            CBS/varlik yonetiminden ICE AKTARILAN etiket; bizim tanimladigimiz bir sozluk
+            DEGILDIR. Erisilebilir bir standart siniflandirma bulunamadi ve GK10 geregi
+            erisemedigimiz bir metnin madde numarasi yazilmaz. Sinirli sozluk, uydurma veri
+            uretmek icin degil AKTARIMI DOGRULAMAK icindir.
+        uretici:
+          type: [string, "null"]
+          description: >
+            UYDURULMAZ, bos birakilir. Bu teslimde hicbir panoda doldurulmadi ve demo tohumu
+            da doldurmaz (GK3: gercek bir CBS aktarimina erisim yok).
+        seri_no:
+          type: [string, "null"]
+          description: "UYDURULMAZ, bos birakilir (bkz. uretici)."
+        son_bakim_at:     { type: [string, "null"], format: date-time }
+        sonraki_bakim_at: { type: [string, "null"], format: date-time, description: "bakim vadesi rozetini besler" }
+        kunye_kaynak:
+          type: [string, "null"]
+          description: >
+            Kunyenin NEREDEN geldigi (hangi CBS aktarimi). Kaynagi yazilmayan kunye kabul
+            edilmez: "alan acip bos birakmak" ile "tanimli kaynagi olan alan" farki budur.
+        kunye_at: { type: [string, "null"], format: date-time, description: "ice aktarim ani" }
+
+    AssetCoverage:
+      type: object
+      description: "Kapsama SAYIYLA verilir ki eksiklik gizlenemesin (GK10)."
+      required: [panolar, kunyeli]
+      properties:
+        panolar:  { type: integer, description: "filodaki toplam pano" }
+        kunyeli:  { type: integer, description: "cbs_kodu girilmis pano" }
+        fiderli:  { type: integer, description: "fider_id girilmis pano (F-22 bunu kullanir)" }
+        aboneli:  { type: integer, description: "abone_sayisi girilmis pano (etki ekseni)" }
+
+    AssetFleet:
+      type: object
+      required: [kapsama, panolar]
+      properties:
+        kapsama: { $ref: "#/components/schemas/AssetCoverage" }
+        panolar:
+          type: array
+          items:
+            type: object
+            required: [pano_id]
+            properties:
+              pano_id: { type: string }
+              name:    { type: string }
+              asset:   { oneOf: [{ $ref: "#/components/schemas/AssetRegistry" }, { type: "null" }] }
+
+    AssetImport:
+      type: object
+      required: [kunye_kaynak, panolar]
+      properties:
+        kunye_kaynak:
+          type: string
+          minLength: 1
+          description: "ZORUNLU. Aktarimin kimligi, or. 'ADM CBS disa aktarim 2026-09-18'."
+        panolar:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [pano_id]
+            description: >
+              pano_id disindaki her alan istege baglidir; GONDERILMEYEN alan DEGISTIRILMEZ
+              (mevcut deger korunur). Bir alani temizlemek icin acikca null gonderilir.
+            properties:
+              pano_id:      { type: string }
+              cbs_kodu:     { type: [string, "null"] }
+              fider_id:     { type: [string, "null"] }
+              il:           { type: [string, "null"] }
+              ilce:         { type: [string, "null"] }
+              abone_sayisi: { type: [integer, "null"], minimum: 0 }
+              trafo_kva:    { type: [integer, "null"], minimum: 0 }
+              kritiklik:    { type: [string, "null"], enum: [kritik, yuksek, orta, dusuk, null] }
+              uretici:      { type: [string, "null"] }
+              seri_no:      { type: [string, "null"] }
+              son_bakim_at:     { type: [string, "null"], format: date-time }
+              sonraki_bakim_at: { type: [string, "null"], format: date-time }
+
     PanelSummary:
       type: object
       required: [pano_id, name, risk_score, risk_mode, last_seen, comms_ok]
@@ -311,6 +477,13 @@ components:
         last_seen: { type: string, format: date-time }
         comms_ok: { type: boolean }
         baseline_day: { type: integer }
+        # --- varlik kutugu (F-21). Kunye ice aktarilmamissa UCU DE null doner.
+        # Ozete yalnizca bu uc alan girdi: risk matrisinin etki ekseni (abone_sayisi),
+        # onceliklendirme (kritiklik) ve bakim vadesi rozeti (sonraki_bakim_at). Kunyenin
+        # tamami PanelDetail.asset'tedir — filo listesi 1.000 pano tasiyabilmeli.
+        abone_sayisi: { type: [integer, "null"], description: "etki ekseni; null = kunye yok" }
+        kritiklik: { type: [string, "null"], enum: [kritik, yuksek, orta, dusuk, null] }
+        sonraki_bakim_at: { type: [string, "null"], format: date-time }
 
     ConnPoint:
       type: object
@@ -417,6 +590,11 @@ components:
         pd: { type: [object, "null"] }
         health: { $ref: "#/components/schemas/DeviceHealth" }
         active_alarms: { type: array, items: { $ref: "#/components/schemas/Alarm" } }
+        asset:
+          description: "Varlik kunyesi (F-21). CBS aktarimi yapilmamissa null."
+          oneOf:
+            - { $ref: "#/components/schemas/AssetRegistry" }
+            - { type: "null" }
 
     AlarmReason:
       type: object

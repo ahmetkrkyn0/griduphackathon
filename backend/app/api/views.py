@@ -87,6 +87,49 @@ def last_seen(record: PanelRecord) -> datetime:
     return record.last_rx or record.installed_at
 
 
+def _iso(value: datetime | None) -> str | None:
+    """None KORUNUR: "olcmedik/almadik" ile bir tarih arasindaki fark kaybolmamali."""
+    return value.isoformat() if value is not None else None
+
+
+def asset_view(record: PanelRecord) -> dict[str, Any] | None:
+    """AssetRegistry semasi; kunye ice aktarilmamissa None (F-21).
+
+    Bos kunyeyi "hepsi null olan bir sozluk" olarak dondurmek, ekranda bos hucre uretirdi
+    ve bos hucre "degeri sifir/bilinmiyor" gibi okunurdu. `null` donmek ekrani
+    "CBS'den ice aktarilmadi" yazmaya ZORLAR.
+    """
+    if not record.has_asset:
+        return None
+    return {
+        "cbs_kodu": record.cbs_kodu,
+        "fider_id": record.fider_id,
+        "il": record.il,
+        "ilce": record.ilce,
+        "abone_sayisi": record.abone_sayisi,
+        "trafo_kva": record.trafo_kva,
+        "kritiklik": record.kritiklik,
+        # UYDURULMAZ: aktarim doldurmadiysa null kalir (backlog F-21 "Dikkat" satiri).
+        "uretici": record.uretici,
+        "seri_no": record.seri_no,
+        "son_bakim_at": _iso(record.son_bakim_at),
+        "sonraki_bakim_at": _iso(record.sonraki_bakim_at),
+        "kunye_kaynak": record.kunye_kaynak,
+        "kunye_at": _iso(record.kunye_at),
+    }
+
+
+def asset_coverage(records: Iterable[PanelRecord]) -> dict[str, int]:
+    """Kapsama SAYIYLA verilir ki eksiklik gizlenemesin (GK10)."""
+    records = list(records)
+    return {
+        "panolar": len(records),
+        "kunyeli": sum(1 for r in records if r.has_asset),
+        "fiderli": sum(1 for r in records if r.fider_id is not None),
+        "aboneli": sum(1 for r in records if r.abone_sayisi is not None),
+    }
+
+
 def panel_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
     payload = record.payload or {}
     score, mode, ttl_h = _risk(record.payload)
@@ -106,6 +149,11 @@ def panel_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> d
         "last_seen": last_seen(record).isoformat(),
         "comms_ok": is_comms_ok(record, contracts, now),
         "baseline_day": record.baseline_day if baseline_day is None else baseline_day,
+        # Varlik kutugu (F-21) — ozete YALNIZCA uc alan girer: etki ekseni, onceliklendirme
+        # ve bakim vadesi rozeti. Kunyenin tamami panel_detail'dedir.
+        "abone_sayisi": record.abone_sayisi,
+        "kritiklik": record.kritiklik,
+        "sonraki_bakim_at": _iso(record.sonraki_bakim_at),
     }
 
 
@@ -196,6 +244,7 @@ def panel_detail(
         "risk_score": score,
         "risk_mode": mode,
         "active_alarms": [alarm_view(alarm, contracts) for alarm in active_alarms],
+        "asset": asset_view(record),
     }
     payload = record.payload
     if payload is None:

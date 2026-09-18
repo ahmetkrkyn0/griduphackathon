@@ -4,8 +4,9 @@ import type { PanelSummary } from "../api/types";
 import { PrioMark } from "../components/PrioMark";
 import { RiskMatrisi } from "../components/RiskMatrisi";
 import { SureEkseni } from "../components/SureEkseni";
+import { bakimVadesi } from "../lib/etki";
 import { ago, ttlText } from "../lib/format";
-import { hypText } from "../lib/labels";
+import { hypText, kritiklikText } from "../lib/labels";
 import { useNow } from "../lib/useNow";
 import { effectivePrio, fleetHeadline, needsAttention, panelHeadline, sortWorklist } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
@@ -133,6 +134,7 @@ export function FiloListesi() {
 function WorkRow({ panel }: { panel: PanelSummary }) {
   const prio = effectivePrio(panel);
   const ttl = ttlText(panel.ttl_h);
+  const bakim = bakimVadesi(panel.sonraki_bakim_at);
   return (
     <Link to={`/pano/${panel.pano_id}`} className="work-row">
       {prio && <PrioMark prio={prio} />}
@@ -144,7 +146,14 @@ function WorkRow({ panel }: { panel: PanelSummary }) {
         <span className="work-head">{panelHeadline(panel)}</span>
         <span className="work-meta">
           {hypText(panel.risk_mode)}, risk {panel.risk_score}, son veri {ago(panel.last_seen)}
+          {/* Varlik kunyesi (F-21): yalnizca ICE AKTARILMISSA yazilir. Kunyesiz panoda
+              hic cizilmez — bos bir alan "abonesi yok" gibi okunurdu. */}
+          {panel.abone_sayisi != null && <>, {panel.abone_sayisi} abone</>}
+          {panel.kritiklik && <>, {kritiklikText(panel.kritiklik)}</>}
         </span>
+        {bakim && (
+          <span className={`bakim-rozet${bakim.gecti ? " bakim-rozet--gecti" : ""}`}>{bakim.metin}</span>
+        )}
       </span>
       <span className="work-ttl">
         {ttl && (

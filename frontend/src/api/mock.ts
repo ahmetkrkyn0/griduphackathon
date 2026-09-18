@@ -9,6 +9,8 @@ import type {
   Alarm,
   AlarmReason,
   Api,
+  AssetFleet,
+  AssetRegistry,
   AuthStatus,
   Blackbox,
   ConnPoint,
@@ -230,13 +232,48 @@ function districtCoords(name: string): [number, number] | null {
   return DISTRICT_COORDS[name.split(" ")[0]] ?? null;
 }
 
+/**
+ * Varlik kutugu (F-21) — mock kunyeler.
+ *
+ * KASITLI OLARAK KISMI: SEEDS'in yalnizca bir kismi burada. Gercek kurulumda da kutuk
+ * hicbir zaman %100 dolu olmaz ve arayuzun IKI dalini birden gostermek gerekir —
+ * kunyesi olan pano (iki eksenli risk matrisi) ve olmayan pano ("CBS'den ice
+ * aktarilmadi"). Hepsini doldurmak, eksik kunyenin nasil gorundugunu saklardi.
+ *
+ * `uretici` ve `seri_no` mock'ta da BOS: uydurulmaz (backlog F-21 "Dikkat" satiri).
+ */
+const MOCK_ASSETS: Record<string, Partial<AssetRegistry>> = {
+  [PROT_HEALTH.panoId]: { cbs_kodu: "TR-GDZ-DP-000311", fider_id: "F-BORNOVA-02", il: "İzmir", ilce: "Bornova", abone_sayisi: 1240, trafo_kva: 1600, kritiklik: "kritik", sonraki_bakim_at: isoAgo(-minutes(60 * 24 * 12)) },
+  "ADM-00014": { cbs_kodu: "TR-ADM-DP-000014", fider_id: "F-EFELER-03", il: "Aydın", ilce: "Efeler", abone_sayisi: 412, trafo_kva: 1600, kritiklik: "yuksek", sonraki_bakim_at: isoAgo(-minutes(60 * 24 * 45)) },
+  "ADM-00102": { cbs_kodu: "TR-ADM-DP-000102", fider_id: "F-MERKEZEFENDI-01", il: "Denizli", ilce: "Merkezefendi", abone_sayisi: 233, trafo_kva: 1000, kritiklik: "orta", sonraki_bakim_at: isoAgo(minutes(60 * 24 * 6)) },
+  "GDZ-00088": { cbs_kodu: "TR-GDZ-DP-000088", fider_id: "F-YUNUSEMRE-04", il: "Manisa", ilce: "Yunusemre", abone_sayisi: 87, trafo_kva: 630, kritiklik: "dusuk", sonraki_bakim_at: isoAgo(-minutes(60 * 24 * 90)) },
+};
+
+const MOCK_KUNYE_KAYNAK = "ADM/GDZ CBS disa aktarim (mock)";
+
+function assetOf(panoId: string): AssetRegistry | null {
+  const partial = MOCK_ASSETS[panoId];
+  if (!partial) return null;   // kunyesi ice aktarilmamis pano: null, bos nesne DEGIL
+  return {
+    cbs_kodu: null, fider_id: null, il: null, ilce: null, abone_sayisi: null, trafo_kva: null,
+    kritiklik: null, uretici: null, seri_no: null, son_bakim_at: null, sonraki_bakim_at: null,
+    ...partial,
+    kunye_kaynak: MOCK_KUNYE_KAYNAK,
+    kunye_at: isoAgo(minutes(60 * 24 * 3)),
+  };
+}
+
 function summary(seed: Seed): PanelSummary {
   const detail = details.get(seed.pano_id);
   const coords = districtCoords(seed.name);
+  const asset = assetOf(seed.pano_id);
   return {
     pano_id: seed.pano_id, name: seed.name, lat: coords?.[0] ?? null, lon: coords?.[1] ?? null, pano_type: PANO_TYPE,
     risk_score: seed.risk, risk_mode: seed.mode, top_alarm: seed.code, top_prio: seed.prio, ttl_h: seed.ttl_h,
     last_seen: detail?.ts ?? isoAgo(5000), comms_ok: seed.comms_ok, baseline_day: seed.baseline_day,
+    abone_sayisi: asset?.abone_sayisi ?? null,
+    kritiklik: asset?.kritiklik ?? null,
+    sonraki_bakim_at: asset?.sonraki_bakim_at ?? null,
   };
 }
 
@@ -309,7 +346,21 @@ export const mockApi: Api = {
     await delay(120);
     const detail = details.get(panoId);
     if (!detail) throw new ApiError(404, `pano bulunamadi: ${panoId}`);
-    return structuredClone(detail);
+    return { ...structuredClone(detail), asset: assetOf(panoId) };
+  },
+  async fleetAssets(): Promise<AssetFleet> {
+    await delay(150);
+    const panolar = SEEDS.map((seed) => ({ pano_id: seed.pano_id, name: seed.name, asset: assetOf(seed.pano_id) }));
+    return {
+      // Kapsama SAYIYLA: mock'ta da eksik kunye gizlenmez.
+      kapsama: {
+        panolar: panolar.length,
+        kunyeli: panolar.filter((p) => p.asset?.cbs_kodu).length,
+        fiderli: panolar.filter((p) => p.asset?.fider_id).length,
+        aboneli: panolar.filter((p) => p.asset?.abone_sayisi != null).length,
+      },
+      panolar,
+    };
   },
   async fleetHealth(): Promise<PanelHealth[]> {
     await delay(150);

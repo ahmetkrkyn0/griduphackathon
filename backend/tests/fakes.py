@@ -15,9 +15,9 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 
-from app.db import PHONE_CHANNELS, SERIES_ORIGIN, StoreError
+from app.db import PHONE_CHANNELS, SERIES_ORIGIN, StoreError, UnknownPanel
 from app.journal_chain import GENESIS, link_hash
-from app.models import EventRecord, JournalEntry, PanelRecord
+from app.models import ASSET_FIELDS, EventRecord, JournalEntry, PanelRecord
 
 DEFAULT_INSTALLED_AT = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
@@ -80,7 +80,18 @@ class MemoryStore:
         pano_type: str = "1600kVA-dahili",
         installed_at: datetime = DEFAULT_INSTALLED_AT,
         baseline_day: int = 0,
+        **asset,
     ) -> None:
+        """Varlik kutugu alanlari (F-21) `**asset` ile verilir ve VARSAYILAN None'dir.
+
+        Goc 008 her sutunu NULL kabul ettigi icin (bilinmeyen pano ilk telemetri mesajinda
+        yalnizca pano_id + name ile kaydolur) testlerin de kunyesiz pano kurabilmesi sart.
+        Bilinmeyen anahtar SESSIZCE YUTULMAZ: yazim hatasi yuzunden bir alanin hic
+        yazilmamasi, testin yanlis seyi dogrulamasina yol acardi.
+        """
+        unknown = sorted(set(asset) - set(ASSET_FIELDS))
+        if unknown:
+            raise TypeError(f"add_panel: bilinmeyen varlik kutugu alani: {', '.join(unknown)}")
         self._meta[pano_id] = {
             "pano_id": pano_id,
             "name": name,
@@ -89,7 +100,29 @@ class MemoryStore:
             "pano_type": pano_type,
             "installed_at": installed_at,
             "baseline_day": baseline_day,
+            **dict.fromkeys(ASSET_FIELDS),
+            **asset,
         }
+
+    def import_assets(self, rows, *, kunye_kaynak: str, at: datetime) -> int:
+        """PgStore.import_assets'in bellek ici ikizi (F-21).
+
+        PgStore tek transaction'da calisir ve ortada bir UnknownPanel atarsa ONCEKI
+        satirlar da geri alinir. Burada ayni GOZLENEBILIR sonucu vermek icin once TUM
+        satirlar dogrulanir, sonra yazilir — yoksa taklit, gercegin yapmadigi bir kismi
+        yazmayi yapar ve testler yanlis seyi dogrular.
+        """
+        self._check()
+        for row in rows:
+            if row["pano_id"] not in self._meta:
+                raise UnknownPanel(row["pano_id"])
+        for row in rows:
+            meta = self._meta[row["pano_id"]]
+            # GONDERILMEYEN alan DEGISTIRILMEZ; acikca null gonderilen alan temizlenir.
+            meta.update({name: row[name] for name in ASSET_FIELDS if name in row})
+            meta["kunye_kaynak"] = kunye_kaynak
+            meta["kunye_at"] = at
+        return len(rows)
 
     # ----------------------------------------------------------- Store sozlesmesi
     def write_batch(self, samples, rejections) -> None:
