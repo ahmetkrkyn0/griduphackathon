@@ -40,9 +40,11 @@ girdiyle) gerçek, pozitif bir ön-koşul `ttl_h` üretilir; sonra aynı fonksiy
 `q=1` iken `None`'a çektiği ayrı ayrı doğrulanır. İncelemede monkeypatch ile üretim kodu
 nötrleştirilip testin gerçekten kırıldığı, yani ayırt edici olduğu ayrıca kanıtlandı.
 
-Commit'ler: `1d2b9b2` (ilk uygulama), `ac00b60` (kapsam netleştirme), `0528d1b` (test'in
-simülatör-bağımlı/kırılgan halinden `time_to_limit()`'e dayanan deterministik hale getirilmesi —
-bkz. §4'te bu tur değişikliğin neden gerektiği).
+Commit'ler: `1d2b9b2` (ilk uygulama), `ac00b60` (kapsam netleştirme), `0528d1b` (testin
+senaryo-tabanlı ilk hâli — incelemede önkoşulu güvenilir sağlamadığı, yani ispatsız olduğu
+ortaya çıktı — `test_detect.py`'de zaten kanıtlı `time_to_limit()` çağrısına dayanan
+deterministik bir teste dönüştürülmesi; bu, S8'in kendisiyle ilgisiz, ayrı bir test-kalitesi
+düzeltmesidir).
 
 *Bilinen kozmetik iz (düzeltilmedi, bu görev kod değiştirmiyor):* `edge.py:223` docstring'inde bir
 yazım hatası ("hiclbir") ve `edge.py:226`'da tek bir Türkçe karakter (`içerir`) kalmış — dosyanın
@@ -126,7 +128,7 @@ gösterilmiyor." metni gerçekten göründü.
 
 `frontend/src/pages/PanoDetay.tsx`: `OlcumTablosu` bileşenine yeni "Geçerlilik" sütun başlığı
 (satır 595) ve her satırda `p.gecerlilik` varsa `GECERLILIK_TEXT[p.gecerlilik]`, yoksa "–"
-gösteren hücre (satır 619-626).
+gösteren hücre (satır 624-626).
 
 Commit: `80611ab`. Kontrolcü tarafından tarayıcıda görsel olarak doğrulandı: DSYA-3 L2 satırında
 "Sensör şüpheli", diğer (geçerlilik hesaplanmamış) satırlarda "–" gösterdiği doğrulandı.
