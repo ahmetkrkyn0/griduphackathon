@@ -329,7 +329,22 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
               },
             ];
         }
-        return [];
+        // No box fits cleanly at any size (narrow district): fall back to its
+        // widest interior point at the smallest size instead of hiding the
+        // name until the user zooms in — every district should be readable
+        // at the initial view.
+        const fallback = candidates[name]?.[0];
+        if (!fallback) return [];
+        const fontSize = 8;
+        return [
+          {
+            name,
+            width: (labelWidths.get(name)! * fontSize) / 11,
+            fontSize,
+            x: fallback.x * view.scale,
+            y: fallback.y * view.scale,
+          },
+        ];
       }),
     [view.scale, located, labelWidths, candidates],
   );
@@ -689,7 +704,8 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
         </a>{" "}
         (CC BY-IGO), sadeleştirilmiş. Noktalar sağlanan koordinatları gösterir;
         örnek veride ilçe merkezi hassasiyetindedir. İlçe adları kendi sınırları
-        içinde yer alır; dar alanlarda yakınlaştırınca görünür. İl/ilçe filtresi
+        içinde yer alır; çok dar ilçelerde ad daha küçük puntoyla gösterilir.
+        İl/ilçe filtresi
         konumu sınırlarla eşleştirir. Mahalle verisi bulunmuyor. Fare
         tekerleğiyle veya +/− ile yakınlaştırabilir, sürükleyerek
         kaydırabilirsiniz.

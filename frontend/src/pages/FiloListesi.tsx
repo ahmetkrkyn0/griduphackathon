@@ -294,7 +294,7 @@ export function FiloListesi() {
                 onClick={() => exportFleetCsv(visible)}
                 title="Mevcut pano envanterini CSV olarak indir"
               >
-                📥 CSV İndir
+                <Icon name="download" size={14} /> CSV İndir
               </button>
             )}
           </div>

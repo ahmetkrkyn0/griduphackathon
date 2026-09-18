@@ -25,9 +25,9 @@ function AudioMuteButton() {
       title={muted ? "Alarm sesini aç" : "Alarm sesini sustur"}
       aria-label={muted ? "Alarm sesini aç" : "Alarm sesini sustur"}
       aria-pressed={!muted}
-      style={{ fontSize: "15px", padding: "4px 8px" }}
+      style={{ padding: "4px 8px" }}
     >
-      <span aria-hidden="true">{muted ? "🔇" : "🔊"}</span>
+      <Icon name={muted ? "mute" : "volume"} size={16} />
     </button>
   );
 }
