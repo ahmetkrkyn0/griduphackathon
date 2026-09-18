@@ -1,13 +1,20 @@
 import { ApiError } from "./errors";
 import { mockApi } from "./mock";
-import type { AckBody, Alarm, Api, Blackbox, FleetKpi, PanelDetail, PanelHealth, PanelSummary, SeriesResponse, ShelveBody } from "./types";
+import { authHeader, clearToken } from "./session";
+import type { AckBody, Alarm, Api, AuthStatus, Blackbox, FleetKpi, PanelDetail, PanelHealth, PanelSummary, SeriesResponse, ShelveBody } from "./types";
 
 export const usingMocks = import.meta.env.VITE_USE_MOCKS === "1";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  // F-19: belirtec varsa HER istege eklenir. Okuma uclari bugun belirtec istemiyor
+  // (bilincli sinir, docs/15 §5) ama ileride isterse tek yer degisir.
+  const headers: Record<string, string> = { Accept: "application/json", ...authHeader() };
   if (init.body) headers["Content-Type"] = "application/json";
   const res = await fetch(path, { ...init, headers });
+  if (res.status === 401) {
+    // Belirtec yok veya gecersiz: sakli olani at ki giris kapisi yeniden cizilsin.
+    clearToken();
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -27,6 +34,12 @@ const httpApi: Api = {
   panel: (panoId, signal) => request<PanelDetail>(`/api/v1/panels/${encodeURIComponent(panoId)}`, { signal }),
   fleetKpi: (signal) => request<FleetKpi>("/api/v1/fleet/kpi", { signal }),
   fleetHealth: (signal) => request<PanelHealth[]>("/api/v1/fleet/health", { signal }),
+  authStatus: async (signal) => {
+    const body = await request<{ auth?: AuthStatus }>("/health", { signal });
+    // Eski bir backend `auth` blogunu hic gondermeyebilir; o durumda "kapali" varsayilir
+    // ve arayuz kullaniciya giris teklif etmez (yanlis bir kapi cizmektense sessiz kal).
+    return body.auth ?? { enabled: false, users: [], protects: [] };
+  },
   ack: (alarmId, body: AckBody) =>
     request<{ ok?: boolean }>(`/api/v1/alarms/${encodeURIComponent(alarmId)}/ack`, {
       method: "POST",

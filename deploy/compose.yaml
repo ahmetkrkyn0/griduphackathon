@@ -75,6 +75,13 @@ services:
       # Sozlesmeler salt okunur baglanir: esik/adres degisince yeniden build GEREKMEZ
       CONTRACTS_DIR: /contracts
       ALARM_TICK_S: ${ALARM_TICK_S:-5}
+      # --- Operator kimlik dogrulama (F-19). "kullanici:rol:belirtec" uclulerini virgulle ayirin.
+      # Roller: izleyici < operator < muhendis. Yalnizca YAZMA uclarini (onay/raf) korur.
+      # BOS BIRAKILIRSA KIMLIK DOGRULAMA KAPANIR ve onay/raf belirtecsiz kabul edilir;
+      # denetim izine "anonim (kimlik dogrulama kapali)" yazilir. Durum GET /health
+      # `auth.enabled` alaninda GORUNUR ve acilista uyari loglanir.
+      # Belirtecler deploy/.env'den gelir; .env GITIGNORE'DADIR (GK9).
+      GRIDUP_OPERATORS: ${GRIDUP_OPERATORS:-}
       # --- Bildirim (TB2). Degerler deploy/.env'den; bos kanal kapali demektir. ---
       # SMS birincil kanal: sanal modem varsayilan; gercek modemde yalnizca bu satir degisir
       SMS_DEVICE: ${SMS_DEVICE:-socket://gsm-modem:7000}

@@ -203,12 +203,25 @@ Cihazın kendi ürün sınıfı standardını ve arayüz dilimizin standardını
 
 Bu kova, jüri teslimi için değil ürünleşme için. Sıra etki sırasıdır; bağımlılıklar her maddede yazılı.
 
-### F-19 · Kimlik doğrulama, rol ve kurumsal SSO (on-prem)
+### F-19 · Kimlik doğrulama, rol ve kurumsal SSO (on-prem) — 🟡 kısmen yapıldı (18 Eylül)
 Onaylayan kimliğini istemciden değil kimlik belirtecinden alır ve uçları role bağlar · **Etki:** çok yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** yeni `backend/app/auth/`, [contracts/openapi.yaml](contracts/openapi.yaml), [deploy/compose.yaml](deploy/compose.yaml), [frontend/src/api/](frontend/src/api/) ve yedi ekran
 **Sektörel dayanak:** IEC 62351-8 güç sistemi yönetimi için rol tabanlı erişimi tanımlar; Siemens SICAM kişiye bağlı hesapları buna göre rollendirir. IEC 62443-3-3 kullanıcı tanımlama, yetkilendirme ve denetlenebilir olayları ayrı sistem gereksinimleri olarak sayar.
 **Bizdeki boşluk:** Hiçbir kimlik doğrulama yok; onay/raf isteğinde kullanıcı adı serbest metin. [docs/15-guvenlik-kvkk.md](docs/15-guvenlik-kvkk.md) bunu üç ayrı yerde bilinçli boşluk olarak belgeliyor.
 **Ne üretir:** Rol bazlı yetki, kimlik belirtecinden gelen denetim izi, ekranlarda role göre gizlenen eylemler.
 **Dikkat:** Bulut kimlik sağlayıcı GK4 gereği kullanılamaz; on-prem çözüm şart. Bu madde F-20 ve F-26'nın ön koşuludur.
+
+> **18 Eylül 2026 — yapılanlar:** onaylayanın kimliği artık **istemciden gelmiyor**. `by` alanı onay/raf gövdelerinden kaldırıldı
+> (`contracts/openapi.yaml` v1.2.0, `securitySchemes.operatorToken`) ve doğrulanmış `Authorization: Bearer` başlığından türüyor
+> (`backend/app/auth.py`, yeni bağımlılık yok, `hmac.compare_digest`). Roller: izleyici < operator < muhendis. Arayüzde üst
+> çubukta operatör girişi var (`frontend/src/components/OperatorGirisi.tsx`) ve 401'de belirteç düşüyor.
+> **Ölçülen:** backend 23 yeni test; kilit `test_body_by_is_ignored_and_journal_gets_the_token_identity` — istemci gövdeye
+> başkasının adını yazar, denetim izine belirtecin sahibi düşer. Frontend 8 yeni test.
+>
+> **Kalan (bu yüzden ✅ değil):** kurumsal SSO/OIDC yok — belirteçler yapılandırmada duran paylaşılan sırlardır, parola/oturum
+> süresi/yenileme/iptal listesi yok; yalnızca **yazma** uçları korunuyor (okuma uçları ve WS akışı açık); **ekranlarda role göre
+> gizleme yapılmadı** (izleyiciye onay düğmesi görünür, basınca 403 alır); TLS yok; Grafana hâlâ anonim izleyici.
+> `GRIDUP_OPERATORS` boşsa kimlik doğrulama tamamen kapalıdır ve bunu `GET /health` `auth.enabled` söyler.
+> Ayrıntı: [contracts/changes/2026-09-18-kimlik-dogrulama.md](contracts/changes/2026-09-18-kimlik-dogrulama.md).
 
 ### F-20 · Denetim izinde kurcalama kanıtı (hash zinciri)
 Alarm ve bildirim denetim izini zincirleyip bağımsız bir doğrulayıcıyla sınanabilir kılar · **Etki:** yüksek · **Efor:** 1-2 hafta (F-19 sonrası) · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [backend/app/db.py](backend/app/db.py), yeni `scripts/verify_journal.py`, [backend/tests/](backend/tests/)

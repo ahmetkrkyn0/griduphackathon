@@ -24,6 +24,7 @@ from .alarm_service import AlarmService, PeriodicWorker
 from .api import alarms, insights, panels, stream
 from .api.stream import StreamHub
 from .api.views import REQUIRED_HYPOTHESES, panel_summary
+from .auth import OperatorTable, operators_from_env
 from .config import Contracts, Settings, digest_at_from_env, load_contracts
 from .db import Store, StoreError
 from .ingest import IngestPipeline, MqttSubscriber, utcnow
@@ -72,6 +73,7 @@ def create_app(
     *,
     store: Store | None = None,
     clock: Callable[[], datetime] = utcnow,
+    operators: OperatorTable | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if settings.ingest_enabled:
@@ -151,6 +153,8 @@ def create_app(
     app.state.settings = settings
     app.state.contracts = contracts
     app.state.clock = clock
+    # F-19: operator tablosu bos ise kimlik dogrulama kapalidir ve bu /health'te GORUNUR.
+    app.state.operators = operators if operators is not None else operators_from_env()
 
     # Gelistirmede frontend ayri portta (3000); uretimde nginx arkasinda ayni koken.
     app.add_middleware(
@@ -182,6 +186,13 @@ def create_app(
             },
             "ingest": dict(state.pipeline.stats),
             "scada": state.scada.status() if state.scada is not None else None,
+            # Kimlik dogrulamanin kapali oldugu SESSIZ bir varsayilan olmamali:
+            # calisan yigina bakan biri bunu tek istekte gorebilmeli (F-19).
+            "auth": {
+                "enabled": state.operators.enabled,
+                "users": list(state.operators.users),
+                "protects": ["POST /api/v1/alarms/{id}/ack", "POST /api/v1/alarms/{id}/shelve"],
+            },
         }
 
     return app

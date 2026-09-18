@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { usingMocks } from "./api/client";
+import { OperatorGirisi } from "./components/OperatorGirisi";
 import { ago, num } from "./lib/format";
 import { useNow } from "./lib/useNow";
 import { AlarmKonsolu } from "./pages/AlarmKonsolu";
@@ -36,6 +37,7 @@ export function App() {
               </NavLink>
             ))}
           </nav>
+          <OperatorGirisi />
           <FleetKpis />
         </header>
         <StatusStrip />

@@ -171,6 +171,13 @@ export interface PanelHealth {
   comms_ok: boolean;
 }
 
+/** GET /health `auth` blogu (F-19). */
+export interface AuthStatus {
+  enabled: boolean;
+  users: string[];
+  protects: string[];
+}
+
 export interface FleetKpi {
   panels_total?: number;
   comms_ok_pct?: number;
@@ -181,14 +188,17 @@ export interface FleetKpi {
   ingest_msgs_per_s?: number;
 }
 
+/**
+ * F-19: `by` alani KALDIRILDI. Onaylayanin adi sunucuda, dogrulanmis Authorization
+ * basligindan turer (openapi v1.2.0). Buraya bir ad yazmak hicbir sey degistirmez —
+ * sunucu govdedeki `by`'yi yok sayar.
+ */
 export interface AckBody {
-  by: string;
   note?: string;
   channel?: "ui" | "sms" | "scada";
 }
 
 export interface ShelveBody {
-  by: string;
   minutes: number;
   reason: string;
 }
@@ -234,6 +244,7 @@ export interface Api {
   panel(panoId: string, signal?: AbortSignal): Promise<PanelDetail>;
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
   fleetHealth(signal?: AbortSignal): Promise<PanelHealth[]>;
+  authStatus(signal?: AbortSignal): Promise<AuthStatus>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
   alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;
   shelve(alarmId: string, body: ShelveBody): Promise<{ ok?: boolean }>;

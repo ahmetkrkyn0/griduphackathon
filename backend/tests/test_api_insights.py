@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.auth import ANONYMOUS
 from app.notify.dispatcher import Delivery
 from fakes import MemoryStore
 from helpers import CONTRACTS_DIR, Clock, encode, utc
@@ -176,7 +177,10 @@ def test_blackbox_of_arc_trip(rig, incident, api_contract):
     kinds = [(entry["kind"], entry["text"]) for entry in body["timeline"]]
     assert [kind for kind, _ in kinds] == ["alarm", "alarm", "trip", "ack"]
     assert "ALM-K-WARN" in " ".join(text for _, text in kinds[:2])
-    assert "vardiya-amiri" in kinds[3][1] and "ekip yolda" in kinds[3][1]
+    # Onaylayanin adi F-19'dan beri GOVDEDEN degil kimlikten gelir; bu kurulumda
+    # kimlik dogrulama kapali oldugu icin "anonim" yazar. Kara kutunun olctugu sey
+    # zaman cizelgesinin onay satirini TASIYIP tasimadigidir, adin kendisi degil.
+    assert ANONYMOUS.user in kinds[3][1] and "ekip yolda" in kinds[3][1]
 
     trips = [value for _, value in body["series"]["tvoc.trips"] if value is not None]
     assert trips == [0.0, 1.0]  # 09:00 orneginde 0, 09:50 orneginde 1

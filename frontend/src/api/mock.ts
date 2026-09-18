@@ -9,6 +9,7 @@ import type {
   Alarm,
   AlarmReason,
   Api,
+  AuthStatus,
   Blackbox,
   ConnPoint,
   Elec,
@@ -333,6 +334,11 @@ export const mockApi: Api = {
       };
     });
   },
+  async authStatus(): Promise<AuthStatus> {
+    // Ornek veri kipinde dogrulanacak bir sunucu yok; kimlik dogrulama KAPALI gosterilir
+    // ve arayuz calisan bir giris kutusu cizmez (calismayan bir kapi yaniltici olurdu).
+    return { enabled: false, users: [], protects: [] };
+  },
   async fleetKpi(): Promise<FleetKpi> {
     const ok = SEEDS.filter((s) => s.comms_ok).length;
     const active: Record<string, number> = { P1: 0, P2: 0, P3: 0, INFO: 0, SYS: 0 };
@@ -347,12 +353,19 @@ export const mockApi: Api = {
       ingest_msgs_per_s: SEEDS.length / 10,
     };
   },
-  async ack(alarmId, body) {
+  async ack(alarmId) {
     await delay(200);
     const target = findAlarm(alarmId);
     if (!target) throw new ApiError(404, `alarm bulunamadi: ${alarmId}`);
     if (target.state !== "active") throw new ApiError(409, "alarm zaten onayli veya temizlenmis");
-    Object.assign(target, { state: "acked", acked_at: new Date().toISOString(), acked_by: body.by });
+    // F-19: onaylayanin adi govdeden DEGIL kimlikten gelir. Ornek veri kipinde
+    // dogrulanacak bir belirtec yok, o yuzden gercek sunucunun kimlik dogrulama
+    // KAPALIYKEN yazdigi adin aynisi kullanilir (backend/app/auth.py ANONYMOUS).
+    Object.assign(target, {
+      state: "acked",
+      acked_at: new Date().toISOString(),
+      acked_by: "anonim (kimlik dogrulama kapali)",
+    });
     return { ok: true };
   },
   async shelve(alarmId, body: ShelveBody) {

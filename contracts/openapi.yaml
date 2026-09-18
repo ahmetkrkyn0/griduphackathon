@@ -4,9 +4,13 @@
 openapi: 3.1.0
 info:
   title: Grid Up — Pano Beyni Merkez API
-  # v1.1.0 (18 Eylul 2026): GET /fleet/health eklendi (yalnizca EKLEME, geri uyumlu).
-  # Gerekce: contracts/changes/2026-09-14-fleet-health-bulk.md
-  version: 1.1.0
+  # v1.1.0 (18 Eylul 2026): GET /fleet/health eklendi. Yalnizca EKLEME, geri uyumlu.
+  #   Gerekce: contracts/changes/2026-09-14-fleet-health-bulk.md
+  # v1.2.0 (18 Eylul 2026): onay/raf govdesinden `by` KALKTI, securitySchemes eklendi (F-19).
+  #   GERI UYUMLU DEGIL: onaylayanin adi artik govdeden degil Authorization basligindan
+  #   turer. Eski istemcinin govdeye yazdigi `by` sessizce YOK SAYILIR (reddedilmez).
+  #   Gerekce: contracts/changes/2026-09-18-kimlik-dogrulama.md
+  version: 1.2.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -43,6 +47,19 @@ paths:
                   version: { type: string }
                   mqtt: { type: boolean }
                   db: { type: boolean }
+                  auth:
+                    type: object
+                    description: >
+                      Kimlik dogrulamanin ACIK olup olmadigi. Kapali olmak SESSIZ bir
+                      varsayilan olmamali: arayuz ve isletmeci durumu tek istekte
+                      gorebilmeli (F-19).
+                    properties:
+                      enabled: { type: boolean }
+                      users: { type: array, items: { type: string } }
+                      protects:
+                        type: array
+                        items: { type: string }
+                        description: "Belirtec isteyen uclarin listesi"
 
   /api/v1/panels:
     get:
@@ -135,13 +152,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [by]
               properties:
-                by: { type: string, description: "kullanici adi" }
                 note: { type: string }
                 channel: { type: string, enum: [ui, sms, scada], default: ui }
+      security:
+        - operatorToken: []
       responses:
         "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: "Zaten onaylanmis veya temizlenmis"
@@ -158,15 +177,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [by, minutes, reason]
+              required: [minutes, reason]
               properties:
-                by: { type: string }
                 minutes: { type: integer, minimum: 1, maximum: 480 }
                 reason: { type: string, minLength: 3 }
+      security:
+        - operatorToken: []
       responses:
         "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: "P1 alarm rafa alinamaz (alarm-codes.yaml suppressible=false)"
+          description: >
+            P1 alarm rafa alinamaz (alarm-codes.yaml suppressible=false),
+            VEYA belirtecin rolu yetmiyor ('operator' gerekir).
 
   /api/v1/events/{event_id}/blackbox:
     get:
@@ -238,6 +261,30 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: >
+        Belirtec yok, bicimi desteklenmiyor veya gecersiz. `WWW-Authenticate: Bearer`
+        basligi doner. NOT: operator tablosu bos birakilirsa kimlik dogrulama KAPALIDIR
+        ve bu yanit hic uretilmez; durum GET /health `auth.enabled` alanindan okunur.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: "Kimlik dogru ama rol yetmiyor (izleyici < operator < muhendis)"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  securitySchemes:
+    operatorToken:
+      type: http
+      scheme: bearer
+      description: >
+        On-prem operator belirteci (F-19). Kurumsal SSO/OIDC DEGILDIR: belirtecler
+        yapilandirmada duran paylasilan sirlardir; parola, oturum suresi, yenileme ve
+        iptal listesi yoktur. GK4 public cloud kimlik saglayicisini yasakladigi icin
+        bulut IdP kullanilamaz. Yalnizca YAZMA uclarini (onay/raf) korur; okuma uclari
+        ve WebSocket akisi belirtec istemez. Ayrinti: docs/15-guvenlik-kvkk.md §5.
 
   schemas:
     Error:

@@ -95,7 +95,7 @@ Kanıt: 13 Eylül canlı yığında TVOC-2 aynasına geçici şifreyle yazma **0
 | Her bildirim denemesi, kanal, **maskeli** alıcı, sonuç → `notifications` | ✅ | `test_notifier` |
 | SMS onayı yalnızca kayıtlı numaralardan; onaylayan `sms:+90******0001` | ✅ | `test_notifier::test_reply_from_an_unregistered_number_is_ignored` |
 | Rafa alma gerekçesi zorunlu, süresi sınırlı (≤ 480 dk), P1 rafa alınamaz | ✅ | `test_alarm_manager`, `test_api_alarms` |
-| REST API kimlik doğrulaması ve rol | ⚠️ yok · 🧭 | Demo'da `by` alanını istemci yazar. Üretimde kurumsal SSO (OIDC); **onaylayan kimliği token'dan alınır**, istemciden değil |
+| REST API kimlik doğrulaması ve rol | 🟡 **kısmen** (18 Eylül, F-19) | **Onaylayanın kimliği artık istemciden gelmiyor**: `by` alanı gövdeden kaldırıldı (`openapi` v1.2.0) ve doğrulanmış `Authorization: Bearer` başlığından türer (`backend/app/auth.py`). Roller izleyici < operator < muhendis. **Kurumsal SSO/OIDC DEĞİLDİR**: belirteçler yapılandırmada duran paylaşılan sırlardır; parola, oturum süresi, yenileme, iptal listesi yok. Yalnızca yazma uçlarını korur. `GRIDUP_OPERATORS` boşsa kimlik doğrulama **kapalıdır** ve bu `GET /health` `auth.enabled` alanında görünür | `test_auth.py` (23 test); kilit: `test_body_by_is_ignored_and_journal_gets_the_token_identity` |
 | Modbus komutlarının veritabanına yazılması | 🟡 | Onay DB'de; bakım modu ve test alarmı yalnızca kayıtta (log) |
 | Grafana | ⚠️ | İç ağda anonim **izleyici**; düzenleme ve veri kaynağı yönetimi kapalı değil (demo). Üretimde SSO + salt okunur DB kullanıcısı |
 
@@ -157,7 +157,7 @@ Jüri bu soruyu soracak; cevabımız bu tablodur. Demo **bilinçli olarak** tek 
 | Konu | Demo yığını | Üretim |
 |---|---|---|
 | MQTT | 1883, anonim | 8883, cihaz sertifikasıyla mTLS, cihaz başına topic ACL |
-| REST/WS API | HTTP, kimlik doğrulama yok | HTTPS, OIDC/SSO, rol tabanlı yetki, onaylayan kimliği token'dan |
+| REST/WS API | HTTP (**TLS yok**); yazma uçlarında operatör belirteci ve rol **var**, okuma uçları ve WS akışı açık | HTTPS, kurumsal OIDC/SSO, okuma uçlarında da yetki, belirteç yaşam döngüsü (süre, yenileme, iptal) |
 | Grafana | Anonim izleyici | SSO, salt okunur veritabanı kullanıcısı |
 | Modbus TCP | Özel ağların tamamı izinli, salt okunur | SCADA ön-ucunun /32 adresi; komut gerekiyorsa uzun rastgele şifre + ayrı VLAN |
 | IEC 60870-5-104 | Özel ağların tamamı izinli, düz TCP 2404, salt okunur | SCADA ön-ucunun /32 adresi; ön-uç destekliyorsa IEC 62351-3 (TLS), desteklemiyorsa ayrı VLAN / VPN |
