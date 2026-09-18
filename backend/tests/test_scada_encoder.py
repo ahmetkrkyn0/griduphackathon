@@ -229,6 +229,26 @@ def test_unknown_ttl_and_hypothesis(encoder, regmap, tel_payload):
     assert read(image, regmap, "risk.ttl_hours") == NAU16
 
 
+def test_ttl_suppressed_for_quality_encodes_as_na(encoder, regmap, tel_payload):
+    """P1 Task 1 (S8 bilinen siniri, docs/05-anomali-tespiti.md #10): kalite bayragi (q)
+    set olan bir noktanin ttl_h'i artik panoalgo'da kaynaginda None'a cekiliyor
+    (EdgePipeline._suppress_ttl_when_quality_suspect, libs/panoalgo/panoalgo/edge.py).
+    O fonksiyonun kendisi libs/panoalgo/tests/test_edge.py::test_ttl_is_suppressed_when_
+    the_point_quality_is_suspect'te ayrica dogrulanir; bu test EdgePipeline'i calistirmaz,
+    onun ciktisina guvenir (test_p1_validity_scenarios.py'deki S8 senaryosuyla ayni sinir).
+    Burada kilitlenen, Task 1'in urettigi payload seklini (en kotu nokta GIRIS_L2'nin q'su
+    set, ttl_h'i None) elle kurup, ZATEN DOGRU CALISAN SCADA kodlayicisinin (encoder.py
+    _raw: "value is None -> na sentinel") bu None'i eski/sahte bir sayi olarak degil,
+    sozlesmedeki "yok" sentinel'ine (uint16 0xFFFF) kodladigidir -- o None-ise-NA kurali
+    bozulursa (veya risk.ttl_hours icin atlanirsa) risk.ttl_h sayisal/0 kalir ve bu
+    register artik NAU16 donmez, test kirilir."""
+    tel_payload["t_conn"][1]["q"] = 1  # GIRIS_L2: taban veride worst_point/risk.ttl_h bu noktadan gelir
+    tel_payload["t_conn"][1]["ttl_h"] = None  # Task 1'in kaynakta urettigi durum
+    tel_payload["risk"]["ttl_h"] = None  # ayni supheye bagli panel-geneli risk blogu yansimasi
+    image = encoder.encode(snapshot(tel_payload), NOW)
+    assert read(image, regmap, "risk.ttl_hours") == NAU16
+
+
 def test_unknown_panel_type(encoder, regmap, tel_payload):
     image = encoder.encode(snapshot(tel_payload, pano_type=None), NOW)
     assert read(image, regmap, "device_info.pano_type") == 0
