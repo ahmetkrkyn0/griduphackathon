@@ -120,7 +120,11 @@ def create_app(
             alarm_worker = PeriodicWorker(alarm_service.tick, settings.alarm_tick_s, name="alarm-tick")
             alarm_worker.start()
             subscriber = MqttSubscriber(
-                settings.mqtt_host, settings.mqtt_port, contracts, pipeline.handle_message
+                settings.mqtt_host,
+                settings.mqtt_port,
+                contracts,
+                pipeline.handle_message,
+                tls=settings.mqtt_tls,
             )
             subscriber.start()
         app.state.store = active_store
@@ -180,6 +184,10 @@ def create_app(
             "ok": True,
             "version": __version__,
             "mqtt": bool(subscriber and subscriber.connected),
+            # Tasimanin SIFRESIZ oldugu da sessiz bir varsayilan olmamali (F-27,
+            # F-19'daki auth.enabled ile ayni refleks): calisan yigina bakan biri
+            # bunu tek istekte gorebilmeli. false = duz 1883, varsayilan demo yolu.
+            "mqtt_tls": bool(subscriber and subscriber.tls_enabled),
             "db": state.store.ping(),
             "contracts": True,
             "contracts_loaded": {

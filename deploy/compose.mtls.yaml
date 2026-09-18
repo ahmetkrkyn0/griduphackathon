@@ -1,0 +1,57 @@
+# mTLS yetki tezgahi — F-27. VARSAYILAN KAPALI.
+#
+# Ana compose bunu `include` ile ceker (PLAN.md kural 6, compose.sim.yaml ile ayni desen),
+# ama servis "mtls" profilinde oldugu icin bayraksiz `up` onu BASLATMAZ. Emsal:
+# compose.sim.yaml'daki `panobeyni` (profiles: ["cihaz"]).
+#
+#   bash scripts/sertifika-uret.sh
+#   docker compose -f deploy/compose.yaml --profile mtls up -d mosquitto-mtls
+#   backend/.venv/Scripts/python scripts/mtls_yetki_testi.py
+#   GRIDUP_MTLS=1 bash scripts/duman-testi.sh
+#
+# DIKKAT — bu dosya bilerek YALNIZCA bir servis tanimlar:
+#   * Varsayilan profildeki HICBIR servis buna `depends_on` ile baglanmaz. Baglansaydi
+#     Compose "depends on undefined service" der ve profil kapaliyken `config`, `ps`, `up`
+#     dahil BUTUN compose komutlari calismazdi (olculdu). Demo yolu tek satirla olurdu.
+#   * Bu dosya `backend` veya `mosquitto` bloklarina YAMA YAZMAZ. `include` bir
+#     ustune-yazma mekanizmasidir ve `profiles:` yalnizca kendi servisini kapatir,
+#     dosyanin baska servislere yaptigi yamayi DEGIL.
+#   * Adlandirilmis birim (volume) PAYLASMAZ: mosquitto-mtls `persistence false` ile
+#     calisir. Iki broker ayni /mosquitto/data uzerine yazsaydi, mTLS gosterisinden
+#     SONRAKI duz kalkista broker acilmayabilirdi.
+#
+# mTLS kipi duz kipin USTUNE degil, YANINA kosar: 1883 ve 8883 ayri iki brokerdir.
+# Olcum betigi yalnizca 8883'e, yalnizca TLS ile baglanir ve duz yola DUSMEZ (fallback
+# kodu yoktur) — aksi halde "kabul edildi" sonucu yanlis brokerdan gelebilirdi.
+
+services:
+  mosquitto-mtls:
+    profiles: ["mtls"]
+    # Varsayilan broker ile AYNI imaj ve AYNI digest: olculen davranis ayni ikiliye aittir
+    # (GK10). Digest degisirse kanit dosyasindaki olcum de yeniden alinmalidir.
+    image: eclipse-mosquitto:2.0@sha256:212f89e1eaeb2c322d6441b64396e3346026674db8fa9c27beac293405c32b3c
+    container_name: gridup-mosquitto-mtls
+    restart: unless-stopped
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mosquitto-mtls.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto.acl:/mosquitto/config/mosquitto.acl:ro
+      # DIZIN baglanir, dosya DEGIL: eksik bir DOSYA yolunu Docker dizin olarak yaratir
+      # ve sonra openssl uzerine yazamaz; mTLS kipi elle silinmeden onarilamaz (olculdu).
+      # Bu dizinde yalnizca ca.crt + broker cifti vardir; pano ozel anahtarlari broker'a
+      # HIC verilmez (sizintinin yaricapi).
+      - ./certs/broker:/mosquitto/certs:ro
+    healthcheck:
+      # Anonim baglanti KAPALI oldugu icin varsayilan brokerin mosquitto_sub healthcheck'i
+      # burada calismaz; sertifikasiz bir yoklama her zaman basarisiz olurdu. Dinleyicinin
+      # ayakta oldugunu TLS el sikismasi yapmadan, portu acarak dogruluyoruz.
+      #
+      # `nc -z` KULLANILIYOR, `/dev/tcp` DEGIL: ikincisi bir BASH ozelligidir, bu imajin
+      # kabugu ise busybox'tir. Ilk yazimda /dev/tcp yazilmisti ve konteyner kalici olarak
+      # "unhealthy" gorunuyordu (249 ardisik basarisizlik olculdu) — `docker compose ps`
+      # jurinin gorecegi ilk seydir ve `--wait` kullanan her komut sonsuza kadar beklerdi.
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8883 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

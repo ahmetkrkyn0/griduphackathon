@@ -18,6 +18,10 @@ name: gridup
 include:
   - path: compose.sim.yaml
   - path: compose.frontend.yaml
+  # F-27 mTLS yetki tezgahi. Icindeki tek servis "mtls" profilinde; bayraksiz
+  # `up` onu BASLATMAZ ve bu dosya baska hicbir servise yama yazmaz.
+  #   docker compose -f deploy/compose.yaml --profile mtls up -d mosquitto-mtls
+  - path: compose.mtls.yaml
 
 services:
   mosquitto:
@@ -69,8 +73,17 @@ services:
     container_name: gridup-backend
     restart: unless-stopped
     environment:
-      MQTT_HOST: mosquitto
-      MQTT_PORT: 1883
+      MQTT_HOST: ${MQTT_HOST:-mosquitto}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      # --- MQTT/TLS (F-27). UCU BIRDEN BOSSA TLS KAPALIDIR = varsayilan demo yolu. ---
+      # Ucunden yalnizca biri doluysa backend ACILISTA HATA VERIR (yarim yapilandirma
+      # sessiz kalmaz). Durum GET /health `mqtt_tls` alaninda GORUNUR.
+      # DIKKAT: bu degerleri deploy/.env'e YAZMAYIN — o dosya her `up` komutunda
+      # otomatik yuklenir ve bayraksiz calisan varsayilan yolu sessizce degistirir.
+      # Recete deploy/.env.example'dadir; yollar konteyner icidir (/certs).
+      MQTT_TLS_CA: ${MQTT_TLS_CA:-}
+      MQTT_TLS_CERT: ${MQTT_TLS_CERT:-}
+      MQTT_TLS_KEY: ${MQTT_TLS_KEY:-}
       DB_DSN: postgresql://postgres:${DB_PASSWORD:-gridup}@timescaledb:5432/gridup
       # Sozlesmeler salt okunur baglanir: esik/adres degisince yeniden build GEREKMEZ
       CONTRACTS_DIR: /contracts
@@ -113,6 +126,11 @@ services:
       IEC104_ALLOWED_CLIENTS: ${IEC104_ALLOWED_CLIENTS:-}
     volumes:
       - ../contracts:/contracts:ro
+      # F-27: DIZIN baglanir, dosya DEGIL — eksik bir DOSYA yolunu Docker dizin olarak
+      # yaratir ve sonra openssl uzerine yazamaz (olculdu). Icinde yalnizca ca.crt +
+      # merkezin kendi cifti vardir; pano ozel anahtarlari backend'e HIC verilmez.
+      # Sertifika uretilmemisse burasi BOS bir dizindir ve TLS zaten kapalidir.
+      - ./certs/backend:/certs:ro
     ports:
       - "8000:8000"
       - "${MODBUS_TCP_PORT:-502}:502"

@@ -21,7 +21,7 @@ Bu dosya, "Pano/Hücre İçi Anomali Erken Uyarı Sistemi" için üç aşamalı 
 | Bakım çıktısı | Alarm + öneri metni | durum sınıfı, bir sonraki muayene tarihi, bakım kaydı | Bakım diline çeviren hiçbir çıktı yok |
 | Bildirim | SMS (AT+PDU), sesli arama, WhatsApp, çift yönlü onay, maskeleme | aynı + günlük/aylık özet raporu | Sözleşmede söz verilen P3 günlük özeti kodda yok |
 | Kimlik ve yetki | Yok; onaylayan adı istemciden geliyor (bilinçli, docs/15 §5'te açık) | rol tabanlı erişim, kurumsal SSO | Bilinçli boşluk; ürünleşmenin ön koşulu |
-| Kenar güvenliği | Demo broker 1883 anonim; kenarda güvenli eleman kullanılmıyor | mTLS, cihaz başına topic yetkisi, IDevID/LDevID | Bilinçli boşluk; belgelenmiş |
+| Kenar güvenliği | Varsayılan demo yolu 1883 anonim; **mTLS + cihaz başına topic yetkisi ayrı bir profilde var ve ölçüldü** (18 Eylül, F-27); kenarda güvenli eleman hâlâ kullanılmıyor | Varsayılanın da mTLS olması, IDevID/LDevID, iptal | Boşluk **daraldı, kapanmadı**; `docs/15` §5.1 |
 | Kenar yaşam döngüsü | Firmware host'ta koşuyor, 1e-6 eşitlik doğrulanmış | imzalı OTA, A/B geçiş, kanarya, reset nedeni telemetrisi | MoSCoW Won't; tasarım düzeyinde bile yazılı değil |
 | Maliyet/fayda | Parametrik ROI formülü + varsayımsal örnek tablo (dosya bunu kendisi yazıyor) | mevzuat tazminatı ve termografi turu tasarrufu üzerinden hesap | Teslimin en zayıf parçası; tek varsayımsal dokümanımız |
 | Dürüstlük kaydı | Bilinçli sapmalar 4 ayrı dosyaya dağılmış, hepsi yazılı | "kapsanmayan" bölümü tek sayfa olur | Dağınık olduğu için jüri tek tek bulmak zorunda |
@@ -371,12 +371,66 @@ Filoyu gerçek coğrafi ve kurumsal hiyerarşiye göre böler · **Etki:** orta 
 **Ne üretir:** İl/ilçe bazlı harita, bölge kırılımlı filo göstergeleri, işletme müdürlüğü kıyaslaması.
 **Dikkat:** ADM ve GDZ aynı grubun iki lisans şirketidir ve tek bir kurulumu paylaşır — ihtiyaç "iki müşteriyi yalıtmak" değil, "tek kurulumda kırılım". Kimlik doğrulama olmadan buna "çok kiracılı" denmez; olsa olsa görüntü filtresidir.
 
-### F-27 · mTLS, cihaz başına topic yetkisi ve IEC 62351-3 TLS profili
+### F-27 · mTLS, cihaz başına topic yetkisi ve IEC 62351-3 TLS profili — ✅ tamamlandı (18 Eylül 2026)
 Kenar-merkez arasındaki tüm bağlantıları şifreler ve cihazı kendi topic'ine hapseder · **Etki:** yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** [deploy/mosquitto.conf](deploy/mosquitto.conf) ve yeni ACL dosyası, ayrı bir compose profili, [backend/app/scada/](backend/app/scada/), [backend/app/ingest.py](backend/app/ingest.py), [backend/app/config.py](backend/app/config.py)
 **Sektörel dayanak:** IEC 62351-3 güç sistemi protokolleri için TLS profilini tanımlar; Türkiye'de OSOS haberleşme donanımı asgari özellikleri cihazda kimlik doğrulama, şifreleme ve IP kısıtı şart koşuyor.
 **Bizdeki boşluk:** Demo broker düz ve anonim; merkezin MQTT istemcisinde TLS çağrısı ve ayarlarda sertifika alanı yok. [docs/15-guvenlik-kvkk.md](docs/15-guvenlik-kvkk.md) bunu üç yerde bilinçli üretim farkı olarak yazıyor.
 **Ne üretir:** Ölçülmüş bir kanıt: bir panonun sertifikasıyla başka bir panonun topic'ine yayın denemesinin broker tarafından reddedilmesi.
 **Dikkat:** Varsayılan demo yolu bozulmamalı; ayrı profil, varsayılan kapalı, duman testi iki modda da koşmalı. Tam 62351-3 profili (şifre takımı kısıtları, iptal) uygulanmadan "62351 uyumlu" denmez. Sertifikalar asla commit edilmez.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** Ayrıntı ve ham ölçüm: [`docs/15-guvenlik-kvkk.md`](docs/15-guvenlik-kvkk.md) §5.1.
+>
+> **Kabul ölçütü ölçüldü ve dört sinyalin dördü de aynı şeyi söyledi.** ADM-00001'in sertifikasıyla ADM-00002'nin telemetri
+> topic'ine yapılan yayın: **PUBACK reason code 135 "Not authorized"**, abone mesajı **almadı**, broker logunda `Denied PUBLISH`.
+> Aynı koşuda **pozitif kontrol** (aynı bağlantıdan kendi topic'ine yayın → aboneye ulaştı) ve **kontrol grubu** (aynı topic'e
+> sahibi yayınladı → ulaştı) geçti; "gelmedi" kararı sabit bir `sleep` ile değil `kendi(A) → hedef(X) → kendi(B)` sandviç
+> bariyeriyle verildi. Toplam **7/7 yayın vakası**, **2/2 bağlantı vakası** (sertifikasız ve yabancı CA imzalı `CN=ADM-00001`
+> bağlantıları reddedildi). Ortam: mosquitto 2.0.22 (compose'daki digest), TLS 1.3, paho-mqtt 2.1.0.
+>
+> **Testin kırmızıya dönebildiği gösterildi.** ACL'deki `pattern write gridup/pano/%u/tel` satırı geçici olarak
+> `gridup/pano/+/tel` yapılıp SIGHUP gönderildiğinde **aynı yayın kabul edildi** (PUBACK 0, mesaj ulaştı); dosya geri yüklendi
+> ve özetle doğrulandı. Bu mutasyon koşusu olmadan "negatif test geçti" cümlesi hiçbir şey ifade etmezdi — ACL hiç yüklenmemiş
+> olsaydı da bütün negatifler geçerdi.
+>
+> **Varsayılan demo yolunun davranışı bozulmadı ve bu ölçüldü.** `deploy/mosquitto.conf` yalnızca başlık yorumunda değişti;
+> `sim/`, `contracts/` ve `backend/app/scada/` hiç değişmedi. `backend` servis tanımı değişti (üç boş varsayılanlı TLS
+> değişkeni + `certs/backend` bağlaması + `MQTT_HOST`/`MQTT_PORT` artık varsayılanlı interpolasyon); boş hâlde davranış
+> aynıdır ve ölçüldü. `scripts/duman-testi.sh` **iki modda da** koştu: düz kipte **26 geçti / 0 kaldı / 1 atlandı**, mTLS kipinde
+> **31 geçti / 0 kaldı / 0 atlandı**. Atlanan kontrol sessizce geçmiş sayılmaz — ekrana nedeniyle yazılır ve `geçti` sayacına
+> girmez. `docker compose -f deploy/compose.yaml config -q` bayraksız 0 döner; profilli servis `config --services` çıktısında
+> **görünmez**.
+>
+> **Backlog'un tek cümlesi kopyalanamaz.** Madde başlığındaki "kenar-merkez arasındaki **tüm** bağlantıları şifreler" ifadesi
+> yanlış olurdu: F-27 **yalnızca MQTT taşımasını** kapsar. REST/WS, Modbus TCP (502) ve IEC 60870-5-104 (2404) **her iki kipte
+> de düz metindir**. İkisine TLS eklemek teknik engel değil (~45 satır) ama üç ölçülebilir gerileme getirirdi ve karşısında TLS
+> konuşan bir SCADA ön-ucu yok; gerekçe `docs/15` §5.1'de ölçümle yazılı.
+>
+> **"62351 uyumlu" DENMEDİ ve denemez.** Standardın metnine erişilmedi (GK10): madde/tablo numarası yok, birebir alıntı yok,
+> uygunluk iddiası yok. "Profile yaklaşıldı" gibi bir **mesafe ifadesi de kurulmadı** — okumadığımız bir metne olan mesafemizi
+> ölçemeyiz. Uygulanmayanlar açık: şifre takımı politikası ve sertifika iptali (CRL/OCSP). `crlfile` seçeneği bu
+> teslimde **hiç denenmedi**: iptal listesi üretilmedi, iptal edilmiş bir sertifikanın reddedildiği ölçülmedi. Hem mekanizma
+> hem işletimi F-28'in konusudur.
+>
+> **Sertifikalar commit edilmedi ve bu testle kilitli.** `deploy/certs/.gitignore` (`*` + `!.gitignore`) uzantıdan bağımsız
+> birincil korumadır; kök `.gitignore`'a ikinci savunma hattı eklendi (`/deploy/certs/*`, `*.crt`, `*.csr`, `*.srl`, `*.p12`,
+> `*.pfx`, `*.der`, `.rnd`). `backend/tests/test_sir_sizintisi.py` (12 test) üç şeyi birden iddia eder: üretilen materyalin
+> tamamı git dışında, **izlenen hiçbir dosyanın gövdesinde PEM yok** (bunu `.gitignore` asla yakalayamaz) ve ignore kuralları
+> **fazla yutmuyor**. `scripts/sir_taramasi.py` aynı mantığı CLI olarak taşır ve duman testinde iki kipte de koşar.
+>
+> **Kenar cihazın gelen portu olmadığı bozulmadı:** ACL kenara yalnızca kendi `cmd` topic'ini **okuma** yetkisi verir; kenar
+> komut **yazamaz** (ölçüldü, vaka 4). Yerel CA kullanıldı (GK4): dış bir sertifika otoritesi yok, `scripts/sertifika-uret.sh`
+> her şeyi makinede üretir ve CA atılabilir.
+>
+> **Dokunulan yerler:** `deploy/mosquitto-mtls.conf`, `deploy/mosquitto.acl`, `deploy/compose.mtls.yaml` (yeni),
+> `deploy/compose.yaml` (include + backend'e boş varsayılanlı TLS değişkenleri ve `certs/backend` bağlama),
+> `deploy/mosquitto.conf` (yalnızca başlık yorumu), `deploy/.env.example`, `backend/app/config.py`, `backend/app/ingest.py`,
+> `backend/app/main.py` (`/health` → `mqtt_tls`), `scripts/sertifika-uret.sh`, `scripts/mqtt_acl.py`,
+> `scripts/mtls_yetki_testi.py`, `scripts/sir_taramasi.py`, `scripts/duman-testi.sh`, `.gitignore`.
+> **Sözleşmeye dokunulmadı** (taşıma katmanı). **`sim/` ve `backend/app/scada/` değişmedi.**
+>
+> **Kalan (bilinçli):** varsayılan yol hâlâ düz; `sim/panosim.py` mTLS profilinde koşmaz (tek süreçte N panonun anahtarını
+> tutmak, sahada olmayan bir yalıtımı kanıtlanmış gibi gösterirdi); yük testi hâlâ düz 1883'te koşuyor, **TLS el sıkışma
+> maliyeti ölçülmedi** (`docs/09` §8); anahtarlar dosya sisteminde düz durur — güvenli elemana bağlanması F-28.
 
 ### F-28 · Cihaz kimliği: IDevID/LDevID, sıfır-dokunuş kayıt ve PKI işletimi
 Sertifikayı elle basılan bir dosyadan işletilebilir bir yaşam döngüsüne çevirir · **Etki:** yüksek · **Efor:** 6-10 hafta (donanım revizyonuyla) · **Nerede yaşar:** `firmware/core/` kimlik modülü, yeni `backend/app/pki/`, [deploy/](deploy/) altında yerel sertifika otoritesi, [hardware/pano-beyni/](hardware/pano-beyni/)
@@ -578,7 +632,7 @@ Aşağıdaki fikirler sektör taramasında çıktı, depoya karşı doğrulandı
 | Cihaz künyesi / varlık kütüğü kopyaları (dört adaydan üçü) | Aynı şema göçünü dört kez ödemek; seri no ve abonelik kimlikleri GK3 gereği uydurma olacak | Tek maddede birleşti (F-21) |
 | Yaygınlaştırma önceliklendirme aracı (iki kopya) | Gerçek varlık verisi olmadan çıktı bir bulgu değil yöntem gösterimi; iki kopya çelişen iki sıralama üretir | Tamamen elendi; etki sıralaması F-21'in doğal çıktısı |
 | Kimlik doğrulama / RBAC'ın hackathon içinde uygulanması | 17 Eylül'e 2,5 gün; donmuş sözleşmeyi ve tüm arayüz çağrı yüzeyini kırar; eksiklik zaten bilinçli karar olarak belgelenmiş | Yol haritası F-19 |
-| Hash zinciri, mTLS, SBOM, PSIRT, fuzzing, RPO/RTO tatbikatı, 62443 öz değerlendirme, tehdit modeli, ürün güvenlik beyanı | Değerlendirme kriterlerinin hiçbiri doğrudan güvenlik değil; bunlar satın alma komitesi artefaktı ve ekip kapasitesi K/Y kalemleriyle dolu | Yalnızca imaj digest sabitlemesi A kovasında (F-02); gerisi F-19/F-20/F-27 |
+| SBOM, PSIRT, fuzzing, RPO/RTO tatbikatı, 62443 öz değerlendirme, tehdit modeli, ürün güvenlik beyanı | Değerlendirme kriterlerinin hiçbiri doğrudan güvenlik değil; bunlar satın alma komitesi artefaktı ve ekip kapasitesi K/Y kalemleriyle dolu | İmaj digest sabitlemesi A kovasında (F-02). **Hash zinciri F-20 ile, mTLS + cihaz başına topic yetkisi F-27 ile 18 Eylül'de yapıldı ve ölçüldü**; bu satırda kalanlar aynen elenmiş durumda |
 | İmzalı OTA, device twin, reset nedeni telemetrisi, sıfır-dokunuş kayıt, secure boot | MoSCoW "Won't" ihlali, donmuş telemetri şeması ve GK3; kenarda komut tüketicisi bile yok | Yol haritası F-28/F-29/F-30/F-31 |
 | IEC TR 60890 ile muhafaza ısınma hesabı | İki uydurma girdi üst üste gerekiyor (katsayı tabloları standardın içinde, watt cinsinden kayıp gücü depoda yok) | Tamamen elendi |
 | ttl güven bandı ve ISO 13381-1 aralığı (iki kopya) | Aynı bütçeden prognoz geri testi daha fazla ölçülmüş sayı üretiyor; eğim yüzdeliği gerçek güven aralığı değil; asıl belirsizlik model hatası | Tamamen elendi; F-04 yerine geçiyor |

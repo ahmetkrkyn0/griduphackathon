@@ -45,7 +45,8 @@ docker compose -f deploy/compose.yaml up -d --build
 | Operasyon arayüzü | <http://localhost:3000> | Kontrol odası ekranları |
 | API dokümanı | <http://localhost:8000/docs> | Uç noktalar (sözleşme: `contracts/openapi.yaml`) |
 | Grafana | <http://localhost:3001> | Mühendislik görünümü, ölçek panoları |
-| MQTT broker | `localhost:1883` | Kenar → merkez telemetri |
+| MQTT broker | `localhost:1883` | Kenar → merkez telemetri (anonim; **varsayılan demo yolu**) |
+| MQTT broker — mTLS | `localhost:8883` | Yalnızca `--profile mtls` ile; istemci sertifikası zorunlu, cihaz başına topic ACL (F-27, `docs/15` §5.1) |
 
 Durdurma: `docker compose -f deploy/compose.yaml down` · sıfırlama: `down -v`
 
@@ -92,8 +93,10 @@ arayüzünü açar (üstte "örnek veriyle çalışıyor" şeridiyle açıkça i
 donanım satın alınmadı — ölçüm uçları fizik tabanlı veri üreteciyle simüle edilir, merkez
 yazılımı ise sahadakiyle **aynı koddur**; 9 arayüz ekranının 7'si yapıldı (mobil PWA ve
 devreye alma sihirbazı bilinçli olarak kapsam dışı); KiCad şeması yerine blok diyagram +
-I/O tablosu + BOM üçlüsü seçildi (gerekçe: `hardware/pano-beyni/README.md`); demo yığını
-kimlik doğrulamasızdır ve üretim farkları `docs/15` §5'te listelidir.
+I/O tablosu + BOM üçlüsü seçildi (gerekçe: `hardware/pano-beyni/README.md`); **varsayılan demo
+yolu** büyük ölçüde kimlik doğrulamasızdır — REST yazma uçları operatör belirteci ister (F-19) ve MQTT için
+ayrı bir mTLS profili vardır (F-27, `--profile mtls`, varsayılan kapalı), ama okuma uçları, WebSocket,
+Modbus ve IEC 104 açıktır. Üretim farkları `docs/15` §5'te listelidir.
 Tam liste: `docs/17` §6.
 
 ---

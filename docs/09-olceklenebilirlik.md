@@ -211,6 +211,9 @@ Yüksek erişilebilirlik (ikinci sunucu, çift broker) kapasiteden bağımsız b
 - **İş istasyonu:** tek çekirdek hızı sunucu vCPU'sundan yüksek; kapasite sınırı sunucuda daha erken gelir.
 - **Bağlantı sayısı:** 20–50 MQTT bağlantısı panoları paylaştı. 1.000–10.000 ayrı TLS bağlantısı sınanmadı. Mosquitto'nun bu ölçekte
   bağlantı başına belleği küçüktür (ölçülen toplam ≤ 16 MiB) ama TLS el sıkışma fırtınası (toplu yeniden bağlanma) ayrıca sınanmalıdır.
+  **18 Eylül notu (F-27):** artık çalışan bir mTLS yolu var, ama `loadtest/fleet.py` düz 1883'e bağlanır ve bu ölçümler o yolla
+  alınmıştır; TLS el sıkışma maliyeti **hâlâ ölçülmedi**. Ayrıca cihaz başına sertifika topolojiyi de değiştirir (N pano = N
+  bağlantı), yani aşağıdaki sayılar mTLS kipine **doğrudan taşınamaz**.
 - **Süre:** koşular 2–5 dakika. 24 saatlik etkiler (sıkıştırma işinin kendisi, autovacuum, parça oluşturma) bu ölçümlerin dışında.
 - **Şablon yük:** fiziksel değil; alarm yalnızca 5 panodan. Alarm seli ölçeği (yüzlerce eşzamanlı P1) sınanmadı; bildirim kuyruğu sıralıdır.
 - **Görünme ölçümü** 250 ms tanelidir.
