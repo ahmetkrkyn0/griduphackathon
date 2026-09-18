@@ -17,6 +17,7 @@ import type {
   Elec,
   Env,
   FleetKpi,
+  OutageEvent,
   PanelDetail,
   PanelHealth,
   PanelSummary,
@@ -263,6 +264,32 @@ function assetOf(panoId: string): AssetRegistry | null {
   };
 }
 
+/**
+ * Mock kesinti olayi (F-22). ORNEKTIR: dev:mock modunda haritanin kesinti bolgesi
+ * gorunebilsin diye yazildi, gercek bir kesinti kaydi degildir.
+ *
+ * Kunyesi OLMAYAN bir pano bilerek dahil edildi (GDZ-00410): `abone_toplami` yalnizca
+ * bilinenleri toplar ve `abone_eksik` kacinin sayilamadigini soyler — arayuzun bu iki
+ * alani nasil gosterdigi mock'ta da gorulebilmeli.
+ */
+const MOCK_OUTAGES: OutageEvent[] = [
+  {
+    outage_id: "OUT-F-BORNOVA-02-20260918T0642Z",
+    fider_id: "F-BORNOVA-02",
+    started_at: isoAgo(minutes(38)),
+    detected_at: isoAgo(minutes(33)),
+    ended_at: null,
+    state: "acik",
+    panolar: [
+      { pano_id: PROT_HEALTH.panoId, name: "Bornova DM-3", last_rx: isoAgo(minutes(38)), abone_sayisi: 1240 },
+      { pano_id: "GDZ-00088", name: "Yunusemre TM-21", last_rx: isoAgo(minutes(38)), abone_sayisi: 87 },
+      { pano_id: "GDZ-00410", name: "Karşıyaka TM-9", last_rx: isoAgo(minutes(39)), abone_sayisi: null },
+    ],
+    abone_toplami: 1327,
+    abone_eksik: 1,
+  },
+];
+
 function summary(seed: Seed): PanelSummary {
   const detail = details.get(seed.pano_id);
   const coords = districtCoords(seed.name);
@@ -347,6 +374,13 @@ export const mockApi: Api = {
     const detail = details.get(panoId);
     if (!detail) throw new ApiError(404, `pano bulunamadi: ${panoId}`);
     return { ...structuredClone(detail), asset: assetOf(panoId) };
+  },
+  async outages(state = "acik"): Promise<OutageEvent[]> {
+    await delay(120);
+    // Mock kesinti: F-BORNOVA-02'deki uc pano es zamanli sustu. Ornek veridir — gercek
+    // bir kesinti kaydi degildir (dev:mock modu, docs/16 §5).
+    const acik = MOCK_OUTAGES.filter((o) => o.state === "acik");
+    return structuredClone(state === "acik" ? acik : MOCK_OUTAGES);
   },
   async fleetAssets(): Promise<AssetFleet> {
     await delay(150);

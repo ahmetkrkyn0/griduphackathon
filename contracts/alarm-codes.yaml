@@ -12,7 +12,10 @@
 # v2 (18 Eylul 2026): esigi olmayan uc alarm kodunun esikleri sozlesmeye tasindi ve
 # kalici uyarim kosuluna olcekten bagimsiz ikinci olcut eklendi.
 # Gerekce ve olcumler: contracts/changes/2026-09-14-eksik-esikler.md
-version: 2
+# v3 (18 Eylul 2026): ust sebeke kesintisi baginti esikleri eklendi (F-22). YENI ALARM KODU
+# YOK — kesinti bir alarm degil, alarmlari aciklayan bir olaydir ve kendi tablosunda yasar.
+# Gerekce: contracts/changes/2026-09-18-kesinti-bagintisi.md
+version: 3
 
 priorities:
   P1:
@@ -273,6 +276,20 @@ thresholds:
   node_silent_min: 15
   heartbeat_timeout_min: 5
   door_grace_min: 2
+  # Ust sebeke kesintisi bagintisi (F-22): ayni FIDERDEKI panolarin es zamanli susmasi
+  # N ayri ariza degil TEK bir kesinti olayidir. Baginti panels.fider_id uzerinden kurulur
+  # (F-21 kunyesi); fider bilgisi olmayan pano GRUPLANMAZ — ayni anda sustu diye "ayni
+  # fiderdedir" varsaymak, olcmedigimiz bir topolojiyi uydurmak olurdu.
+  #
+  # IKI SAYI DA TURETILMISTIR, OLCULMEMISTIR (GK10): bu depoda gercek fider topolojisi ve
+  # gercek kesinti kaydi yok (GK3).
+  #   outage_min_panels: iki pano rastlanti olabilir; uc pano ayni fiderde ve ayni pencerede
+  #     susarsa ust sebeke aciklamasi daha olasidir. 3 oldugu icin TEK PANOLU durum hicbir
+  #     zaman kesinti olayi dogurmaz ve eski davranis aynen korunur.
+  #   outage_window_min: fider acilmasi panolari fiilen es zamanli susturur; pencere
+  #     telemetri periyodu (10 s) ve ag gecikmesi icin comert birakildi.
+  outage_min_panels: 3
+  outage_window_min: 2
   # Alarm yonetimi (ISA-18.2 / EEMUA 191)
   hysteresis_clear_min: 5
   group_window_min: 10

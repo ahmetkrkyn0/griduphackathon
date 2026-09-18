@@ -279,12 +279,37 @@ Panonun ne olduğunu ve kimi etkilediğini sisteme getirir · **Etki:** çok yü
 > `GET /fleet/assets` kapsama oranını sayıyla verir. `scripts/ornek-cbs-aktarim.json` biçimi gösterir ve
 > **kendiliğinden yüklenmez**. Ayrıntı: `docs/17` §6 md. 22.
 
-### F-22 · Üst şebeke kesintisi bağıntısı ve OMS'e hazır kesinti olayı
+### F-22 · Üst şebeke kesintisi bağıntısı ve OMS'e hazır kesinti olayı — ✅ tamamlandı (18 Eylül 2026)
 Aynı anda susan N panoyu tek bir kesinti olayına çevirir · **Etki:** çok yüksek · **Efor:** 2-3 hafta (F-21 sonrası) · **Nerede yaşar:** yeni `backend/app/outage.py`, [backend/app/alarm_manager.py](backend/app/alarm_manager.py), [deploy/initdb/](deploy/initdb/), [frontend/src/pages/BolgeHaritasi.tsx](frontend/src/pages/BolgeHaritasi.tsx)
 **Sektörel dayanak:** Enedis'te sayaç ve toplayıcılar AG arızasını çoğu zaman ilk müşteri aramadan önce tespit ediyor, bölge daraltmasıyla müdahale süresi ~%30 azalıyor; kesinti tespiti dağıtım trafosu izleyicilerinin dört ana kullanımından biri.
 **Bizdeki boşluk:** Olay gruplama pano içidir; panolar arası hiçbir bağıntı yok. Bir fider açıldığında konsol yüzlerce ayrı "izleme sistemi arızası" alarmıyla dolar — oysa doğru yorum tersidir.
 **Ne üretir:** Tek kesinti olayı, alt alarmların ona bağlanması, harita üzerinde kesinti bölgesi; OMS'in en değerli girdisi.
 **Dikkat:** Pano→fider eşlemesi F-21'e bağımlı. Eşik ve pencere yapılandırılabilir olmalı; tek panolu durumda eski davranış aynen korunmalı. Hackathon penceresinde yalnızca "eşzamanlı sessiz pano sayısı" paneli ve bir tasarım notu yapılabilir.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** `backend/app/outage.py` (saf bağıntı, veritabanı
+> ve saat bilmez — `journal_chain.py` ile aynı gerekçe), göç `009_kesinti_olayi.sql` (`outages` +
+> `outage_panels`), `GET /outages` + `GET /outages/{id}`, haritada kesinti halkası ve kesinti şeridi.
+> Sözleşme: `alarm-codes` **v3** (iki eşik), `openapi` **v1.4.0** —
+> gerekçe `contracts/changes/2026-09-18-kesinti-bagintisi.md`.
+>
+> **Backlog'un iki eskimiş satırı düzeltildi:** (1) "eşzamanlı sessiz pano sayısı paneli"
+> zaten vardı (`/fleet/kpi` `comms_ok_pct` + Grafana) ve **yeniden yapılmadı**; (2) sel
+> yalnızca SYS değil: `ALM-LASTGASP` sözleşmede **P2** ve `sms: true` — yani her pano
+> **gerçek bir SMS** üretir. Bağıntının azalttığı maliyet budur.
+>
+> **Eşikler `alarm-codes.yaml`'a konuldu, `Settings`'e değil** — mühendislik gerekçesi:
+> `AlarmService` uygulama fabrikasında `Settings` **almıyor** ama `Contracts` alıyor ve
+> `heartbeat_timeout_min`'i zaten oradan okuyor; eşiği sözleşmeye koymak yeni bir yapılandırma
+> yolu açmadan çalışır. **İkisi de türetilmiştir, ölçülmemiştir** ve sözleşmede böyle yazar.
+>
+> **Ölçülen:** backend **751** (735 → +16, `test_outage.py`), frontend **111** (106 → +5),
+> `check_contracts.py` "SOZLESMELER TUTARLI" (13 uç), beş üreteç "guncel". Göç elle uygulandı
+> ve idempotent olduğu doğrulandı.
+>
+> **Bilinçli sınır:** bağıntı **toplayıcıdır, susturucu değil** — hiçbir alarm bastırılmadı,
+> bildirim davranışı değişmedi (bastırma ISA-18.2 kararıdır, F-25'in konusu). Pano→fider
+> eşlemesi F-21 künyesinden gelir; künyesi olmayan pano **gruplanmaz** ve demo filosunun künyesi
+> boş olduğu için bağıntı **demo veritabanında hiç tetiklenmez**. Ayrıntı: `docs/17` §6 md. 23.
 
 ### F-23 · EPDK Madde 8 kesinti kaydı üreteci ve sebep kanıt paketi
 Olayı, mevzuatın saydığı alanlarla doldurulmuş bir kesinti kaydı taslağına çevirir · **Etki:** yüksek · **Efor:** 2 hafta (F-21, F-22 sonrası) · **Nerede yaşar:** yeni `backend/app/api/outage_record.py`, [deploy/initdb/](deploy/initdb/), [frontend/src/pages/OlayAnalizi.tsx](frontend/src/pages/OlayAnalizi.tsx)

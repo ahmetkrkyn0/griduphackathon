@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { PanelSummary, Prio } from "../api/types";
+import { api } from "../api/client";
+import type { OutageEvent, PanelSummary, Prio } from "../api/types";
+import { aboneOzeti, kesintidekiPanolar } from "../lib/kesinti";
 import { PRIO_NAME } from "../lib/labels";
 import { effectivePrio } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
@@ -53,6 +56,7 @@ function projector(points: Geo[]) {
 export function BolgeHaritasi() {
   const { panels } = useFleet();
   const geoPanels = panels.filter(hasCoords);
+  const outages = useOutages();
 
   return (
     <main className="page">
@@ -85,14 +89,65 @@ export function BolgeHaritasi() {
         </span>
       </div>
 
-      {geoPanels.length >= 2 ? <GeoHarita panels={geoPanels} allCount={panels.length} /> : <SirketGruplari panels={panels} />}
+      {outages.map((outage) => (
+        <KesintiSeridi key={outage.outage_id} outage={outage} />
+      ))}
+
+      {geoPanels.length >= 2 ? (
+        <GeoHarita panels={geoPanels} allCount={panels.length} outages={outages} />
+      ) : (
+        <SirketGruplari panels={panels} />
+      )}
     </main>
   );
 }
 
-function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
+/** Acik ust sebeke kesintileri (F-22). Harita disinda da gorunur: konum verisi olmayan
+ *  filoda (SirketGruplari gorunumu) ozellik kaybolmasin. */
+function useOutages(): OutageEvent[] {
+  const [outages, setOutages] = useState<OutageEvent[]>([]);
+  useEffect(() => {
+    const control = new AbortController();
+    const load = () =>
+      api.outages("acik", control.signal).then(setOutages).catch(() => {
+        /* kesinti listesi bir kolayliktir; alinamamasi haritayi bozmamali */
+      });
+    load();
+    const timer = setInterval(load, 30_000);
+    return () => {
+      control.abort();
+      clearInterval(timer);
+    };
+  }, []);
+  return outages;
+}
+
+/**
+ * Kesinti seridi: olayin metin karsiligi.
+ *
+ * ISA-101 geregi ayirt edicilik yalnizca RENGE dayanamaz — haritadaki halka sekil farkidir,
+ * bu serit ise ayni bilgiyi METIN olarak verir. Ayrica konum verisi olmayan filoda harita
+ * hic cizilmez ve ozellik yalnizca bu seritle yasar.
+ */
+function KesintiSeridi({ outage }: { outage: OutageEvent }) {
+  return (
+    <div className="kesinti-serit" role="status">
+      <strong>Üst şebeke kesintisi</strong> — <code>{outage.fider_id}</code> fiderinde{" "}
+      {outage.panolar.length} pano aynı anda sustu.{" "}
+      Etkilenen abone: <strong>{aboneOzeti(outage).metin}</strong>.{" "}
+      <span className="dim">
+        Bu bir gruplamadır: alarmlar bastırılmadı, hepsi konsolda duruyor.
+      </span>
+    </div>
+  );
+}
+
+function GeoHarita({ panels, allCount, outages }: { panels: Geo[]; allCount: number; outages: OutageEvent[] }) {
   const project = projector(panels);
   const missing = allCount - panels.length;
+  // Kesintiye dahil panolar: haritada kesikli bir halka ile isaretlenir (sekil farki,
+  // yalnizca renk degil — ISA-101).
+  const outagePanels = kesintidekiPanolar(outages);
   return (
     <>
       <svg className="geo-map" viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="Panoların yaklaşık coğrafi konumu">
@@ -108,6 +163,11 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           return (
             <g key={p.pano_id}>
               {prio && !["SYS", "INFO"].includes(prio) && <circle className="geo-halo" cx={x} cy={y} r={20} />}
+              {outagePanels.has(p.pano_id) && (
+                <circle className="geo-kesinti" cx={x} cy={y} r={26}>
+                  <title>{`Üst şebeke kesintisi: ${outagePanels.get(p.pano_id)}`}</title>
+                </circle>
+              )}
               <Link to={`/pano/${p.pano_id}`} title={`${p.name} (${p.pano_id}), risk ${p.risk_score}`}>
                 <circle
                   className={prio ? "geo-dot" : "geo-dot normal"}

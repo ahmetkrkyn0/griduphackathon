@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from ..alarm_manager import AlarmNotFound, AlarmNotSuppressible, AlarmStateConflict
 from ..auth import Identity, require
 from ..config import PRIO_ORDER
+from .outages import OutageIndex
 from .views import alarm_view
 
 router = APIRouter(prefix="/api/v1", tags=["alarms"])
@@ -63,7 +64,10 @@ def list_alarms(
     prios = _csv(prio, PRIO_ORDER, "prio") if prio is not None else None
     app_state = request.app.state
     alarms = app_state.alarms.list_alarms(states, prios, pano_id, limit)
-    return [alarm_view(alarm, app_state.contracts) for alarm in alarms]
+    # F-22: alt alarmi ust sebeke kesintisine BAGLAR (bastirmaz). Baglanti saklanmaz,
+    # pano + zaman penceresinden turetilir — bkz. api/outages.py OutageIndex.
+    index = OutageIndex(app_state.store.list_outages(only_open=False))
+    return [alarm_view(alarm, app_state.contracts, outages=index) for alarm in alarms]
 
 
 @router.post("/alarms/{alarm_id}/ack")

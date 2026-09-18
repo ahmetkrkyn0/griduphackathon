@@ -67,6 +67,30 @@ export interface AssetCoverage {
   aboneli?: number;
 }
 
+/**
+ * Ust sebeke kesintisi (F-22): ayni fiderde es zamanli susan N panonun TEK olayi.
+ *
+ * Bu bir ALARM DEGILDIR — alarmlari aciklayan bir olaydir. Alt alarmlar
+ * (ALM-LASTGASP, ALM-COMMS-LOST) uretilmeye devam eder ve BASTIRILMAZ; yalnizca
+ * `Alarm.outage_id` ile buna baglanir.
+ */
+export interface OutageEvent {
+  outage_id: string;
+  fider_id: string;
+  /** Panolarin sustugu an — enerjinin kesildigi anin OLCULEBILEN en iyi yaklasimi. */
+  started_at: string;
+  /** Merkezin bagintiyi kurdugu an. */
+  detected_at: string;
+  /** Haberlesmenin GERI DONDUGU an. Enerjinin geri geldigi an DEGILDIR (histerezisli). */
+  ended_at: string | null;
+  state: "acik" | "kapandi";
+  panolar: { pano_id: string; name?: string; last_rx: string; abone_sayisi: number | null }[];
+  /** EPDK Madde 8/2 "etkilenen kullanici sayisi". null = hicbir panonun kunyesi yok. */
+  abone_toplami?: number | null;
+  /** Kunyesi olmadigi icin toplama giremeyen pano sayisi — gizlenmez. */
+  abone_eksik?: number;
+}
+
 export interface AssetFleet {
   kapsama: AssetCoverage;
   panolar: { pano_id: string; name?: string; asset: AssetRegistry | null }[];
@@ -160,6 +184,8 @@ export interface AlarmReason {
 }
 
 export interface Alarm {
+  /** Alarm bir ust sebeke kesintisine baglandiysa o kesintinin kimligi (F-22). BASTIRMA DEGILDIR. */
+  outage_id?: string | null;
   id: string;
   event_id?: string | null;
   pano_id: string;
@@ -294,6 +320,7 @@ export interface Api {
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
   fleetHealth(signal?: AbortSignal): Promise<PanelHealth[]>;
   fleetAssets(signal?: AbortSignal): Promise<AssetFleet>;
+  outages(state?: "acik" | "hepsi", signal?: AbortSignal): Promise<OutageEvent[]>;
   authStatus(signal?: AbortSignal): Promise<AuthStatus>;
   ack(alarmId: string, body: AckBody): Promise<{ ok?: boolean }>;
   alarms(query?: AlarmQuery, signal?: AbortSignal): Promise<Alarm[]>;

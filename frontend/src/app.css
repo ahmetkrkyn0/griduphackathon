@@ -422,3 +422,8 @@
 /* Bakim vadesi rozeti (F-21). Yalnizca kunyesi ice aktarilmis panoda cizilir. */
 .bakim-rozet { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--muted); }
 .bakim-rozet--gecti { color: var(--p2); font-weight: 600; }
+/* Ust sebeke kesintisi (F-22). Halka SEKIL farkidir; ayni bilgi kesinti seridinde METIN
+   olarak da verilir — ISA-101 geregi ayirt edicilik yalnizca renge dayanamaz. */
+.geo-kesinti { fill: none; stroke: var(--p2); stroke-width: 2; stroke-dasharray: 6 4; opacity: 0.85; }
+.kesinti-serit { margin: 10px 0; padding: 10px 12px; border-left: 4px solid var(--p2);
+                 background: var(--surface-2, rgba(0,0,0,0.04)); border-radius: 4px; font-size: 14px; }

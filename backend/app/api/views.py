@@ -207,8 +207,13 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def alarm_view(alarm: Alarm, contracts: Contracts) -> dict[str, Any]:
-    """contracts/openapi.yaml Alarm semasi. Kimlik metin olarak dondurulur."""
+def alarm_view(alarm: Alarm, contracts: Contracts, outages: Any = None) -> dict[str, Any]:
+    """contracts/openapi.yaml Alarm semasi. Kimlik metin olarak dondurulur.
+
+    `outages` verilirse (api/outages.OutageIndex) alarm bir ust sebeke kesintisine baglanir
+    (F-22). Verilmezse alan HIC YAZILMAZ — "baglanti yok" ile "baginti sorgulanmadi" ayni
+    sey degildir ve sozlesmede alan zaten zorunlu degildir.
+    """
     spec = contracts.alarm(alarm.code) or {}
     view: dict[str, Any] = {
         "id": str(alarm.id),
@@ -230,6 +235,10 @@ def alarm_view(alarm: Alarm, contracts: Contracts) -> dict[str, Any]:
     }
     if alarm.advice is not None:
         view["advice"] = alarm.advice
+    if outages is not None:
+        outage_id = outages.of(alarm.pano_id, alarm.raised_at)
+        if outage_id is not None:
+            view["outage_id"] = outage_id
     return view
 
 

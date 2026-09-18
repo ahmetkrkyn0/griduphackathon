@@ -21,6 +21,7 @@ from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .alarm_manager import Alarm, Change
 from .journal_chain import GENESIS, link_hash
+from .outage import OutageGroup
 from .models import ASSET_FIELDS, EventRecord, JournalEntry, PanelRecord, Rejection, Sample
 
 if TYPE_CHECKING:
@@ -64,6 +65,29 @@ class Store(Protocol):
 
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         """Tek pano, tam son yukle."""
+        ...
+
+    def save_outages(self, groups: Sequence[OutageGroup], *, detected_at: datetime) -> None:
+        """Kesinti olaylarini yazar; ayni olay tekrar gelirse DEGISTIRMEZ (F-22).
+
+        Alarm zamanlayicisi her tik'te (5 s) ayni kesintiyi yeniden tespit eder. `outage_id`
+        fider + baslangic anindan TURETILDIGI icin yazma kendiliginden fikirlidir:
+        `detected_at` ve pano listesi ILK tespitteki degerlerinde kalir.
+        """
+        ...
+
+    def list_outages(self, *, only_open: bool) -> list[dict]:
+        """Kesinti olaylari, en yenisi once; her biri panolariyla birlikte."""
+        ...
+
+    def get_outage(self, outage_id: str) -> dict | None: ...
+
+    def close_outages(self, outage_ids: Sequence[str], *, at: datetime) -> None:
+        """Haberlesmesi geri donen kesintileri kapatir.
+
+        DIKKAT: `ended_at` enerjinin geri geldigi an DEGILDIR — haberlesmenin dondugu andir
+        ve histerezislidir. Restorasyon ani bu depoda olculmuyor (F-23 bunu isaretler).
+        """
         ...
 
     def import_assets(self, rows: Sequence[dict], *, kunye_kaynak: str, at: datetime) -> int:
@@ -206,6 +230,45 @@ SELECT {_PANEL_COLUMNS}, l.payload
 FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 WHERE p.pano_id = %s
 """
+
+
+# ------------------------------------------------------------- kesinti olayi (F-22)
+# `outage_id` fider + baslangictan TURETILMISTIR; zamanlayici her tik'te ayni kesintiyi
+# yeniden tespit ettigi icin yazma DO NOTHING ile kendiliginden fikirlidir. detected_at ve
+# pano listesi ILK tespitteki degerlerinde kalir.
+_INSERT_OUTAGE = """
+INSERT INTO outages (outage_id, fider_id, started_at, detected_at)
+VALUES (%s, %s, %s, %s)
+ON CONFLICT (outage_id) DO NOTHING
+"""
+
+_INSERT_OUTAGE_PANEL = """
+INSERT INTO outage_panels (outage_id, pano_id, last_rx, abone_sayisi)
+VALUES (%s, %s, %s, %s)
+ON CONFLICT (outage_id, pano_id) DO NOTHING
+"""
+
+# Kunye kesinti aninda KOPYALANIR: kunye sonradan degisirse gecmis kesinti kaydi
+# degismemeli (EPDK kaydi o gunun verisiyle duzenlenir). Bu yuzden panels'a JOIN YOK.
+_SELECT_OUTAGES = """
+SELECT o.outage_id, o.fider_id, o.started_at, o.detected_at, o.ended_at,
+       COALESCE(jsonb_agg(
+           jsonb_build_object(
+               'pano_id', op.pano_id,
+               'name',    p.name,
+               'last_rx', op.last_rx,
+               'abone_sayisi', op.abone_sayisi
+           ) ORDER BY op.pano_id
+       ) FILTER (WHERE op.pano_id IS NOT NULL), '[]'::jsonb) AS panolar
+FROM outages o
+LEFT JOIN outage_panels op ON op.outage_id = o.outage_id
+LEFT JOIN panels p         ON p.pano_id    = op.pano_id
+{where}
+GROUP BY o.outage_id
+ORDER BY o.started_at DESC
+"""
+
+_CLOSE_OUTAGES = "UPDATE outages SET ended_at = %s WHERE outage_id = ANY(%s) AND ended_at IS NULL"
 
 
 ALARM_COLUMNS = tuple(f.name for f in fields(Alarm))
@@ -371,6 +434,41 @@ class PgStore:
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
             return cur.execute(_GET_PANEL, (pano_id,)).fetchone()
+
+    # -------------------------------------------------------- kesinti olayi (F-22)
+    def save_outages(self, groups: Sequence[OutageGroup], *, detected_at: datetime) -> None:
+        if not groups:
+            return
+        with self._connection() as conn, conn.cursor() as cur:
+            for group in groups:
+                cur.execute(
+                    _INSERT_OUTAGE,
+                    (group.outage_id, group.fider_id, group.started_at, detected_at),
+                )
+                cur.executemany(
+                    _INSERT_OUTAGE_PANEL,
+                    [
+                        (group.outage_id, panel.pano_id, panel.last_rx, panel.abone_sayisi)
+                        for panel in group.panels
+                    ],
+                )
+
+    def list_outages(self, *, only_open: bool) -> list[dict]:
+        where = "WHERE o.ended_at IS NULL" if only_open else ""
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(_SELECT_OUTAGES.format(where=where)).fetchall()
+
+    def get_outage(self, outage_id: str) -> dict | None:
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(
+                _SELECT_OUTAGES.format(where="WHERE o.outage_id = %s"), (outage_id,)
+            ).fetchone()
+
+    def close_outages(self, outage_ids: Sequence[str], *, at: datetime) -> None:
+        if not outage_ids:
+            return
+        with self._connection() as conn, conn.cursor() as cur:
+            cur.execute(_CLOSE_OUTAGES, (at, list(outage_ids)))
 
     def import_assets(self, rows: Sequence[dict], *, kunye_kaynak: str, at: datetime) -> int:
         updated = 0

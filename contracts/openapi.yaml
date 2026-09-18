@@ -15,7 +15,11 @@ info:
   #   /fleet/assets. Yalnizca EKLEME, geri uyumlu: yeni alanlarin hicbiri required degil ve
   #   kunye ice aktarilmamissa null doner.
   #   Gerekce: contracts/changes/2026-09-18-varlik-kutugu.md
-  version: 1.3.0
+  # v1.4.0 (18 Eylul 2026): ust sebeke kesintisi bagintisi (F-22). OutageEvent semasi,
+  #   GET /outages + GET /outages/{outage_id}, Alarm'a outage_id. Yalnizca EKLEME, geri
+  #   uyumlu: outage_id required degil ve baginti kurulmayan alarmda bulunmaz.
+  #   Gerekce: contracts/changes/2026-09-18-kesinti-bagintisi.md
+  version: 1.4.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -290,6 +294,44 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/outages:
+    get:
+      tags: [events]
+      summary: Ust sebeke kesintileri (es zamanli susan panolar tek olayda)
+      description: >
+        Ayni FIDERDEKI panolarin es zamanli susmasi N ayri ariza degil TEK bir kesinti
+        olayidir (F-22). Baginti `panels.fider_id` uzerinden kurulur (F-21 kunyesi);
+        fider bilgisi olmayan pano GRUPLANMAZ. Esikler alarm-codes.yaml
+        `outage_min_panels` / `outage_window_min`.
+      parameters:
+        - name: state
+          in: query
+          description: "acik = suren kesintiler; hepsi = kapananlar dahil"
+          schema: { type: string, enum: [acik, hepsi], default: acik }
+      responses:
+        "200":
+          description: Kesinti olaylari, en yenisi once
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OutageEvent" }
+
+  /api/v1/outages/{outage_id}:
+    get:
+      tags: [events]
+      summary: Tek kesinti olayi
+      parameters:
+        - { name: outage_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Kesinti olayi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OutageEvent" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   parameters:
     PanoId:
@@ -348,6 +390,56 @@ components:
       required: [detail]
       properties:
         detail: { type: string }
+
+    OutageEvent:
+      type: object
+      description: >
+        Ust sebeke kesintisi (F-22): ayni fiderde es zamanli susan N panonun TEK olayi.
+        Bu bir ALARM DEGILDIR — alarmlari aciklayan bir olaydir; alt alarmlar
+        (ALM-LASTGASP, ALM-COMMS-LOST) uretilmeye devam eder ve BASTIRILMAZ, yalnizca
+        `outage_id` ile buna baglanir.
+      required: [outage_id, fider_id, started_at, detected_at, panolar, state]
+      properties:
+        outage_id: { type: string, description: "or. OUT-F-EFELER-03-20260918T0900" }
+        fider_id: { type: string, description: "kesintinin fideri (F-21 kunyesinden)" }
+        started_at:
+          type: string
+          format: date-time
+          description: >
+            Panolarin sustugu an (kumedeki EN GEC son veri zamani). Bu, enerjinin
+            kesildigi anin OLCULEBILEN en iyi yaklasimidir; kesme aninin kendisi
+            gozlemlenmiyor.
+        detected_at:
+          type: string
+          format: date-time
+          description: "Merkezin bagintiyi kurdugu an (haberlesme zaman asimi kadar sonra)"
+        ended_at:
+          type: [string, "null"]
+          format: date-time
+          description: >
+            Haberlesmenin GERI DONDUGU an. DIKKAT: bu enerjinin geri geldigi an DEGILDIR
+            ve histerezislidir; restorasyon ani bu depoda olculmuyor (F-23).
+        state: { type: string, enum: [acik, kapandi] }
+        panolar:
+          type: array
+          description: "Olaya bagli panolar"
+          items:
+            type: object
+            required: [pano_id, last_rx]
+            properties:
+              pano_id: { type: string }
+              name: { type: string }
+              last_rx: { type: string, format: date-time }
+              abone_sayisi: { type: [integer, "null"], description: "kunyeden; null = bilinmiyor" }
+        abone_toplami:
+          type: [integer, "null"]
+          description: >
+            Etkilenen abone sayisinin TOPLAMI (EPDK Madde 8/2). Yalnizca kunyesi olan
+            panolar toplanir ve `abone_eksik` kac panonun sayilamadigini soyler; hicbir
+            panonun kunyesi yoksa null doner — SIFIR YAZILMAZ.
+        abone_eksik:
+          type: integer
+          description: "abone sayisi bilinmediği icin toplama girmeyen pano sayisi"
 
     AssetRegistry:
       type: object
@@ -618,7 +710,14 @@ components:
       required: [id, pano_id, code, prio, state, raised_at]
       properties:
         id: { type: string }
-        event_id: { type: [string, "null"], description: "ayni kok nedenden gelen alarmlar bu id altinda gruplanir" }
+        event_id: { type: [string, "null"], description: "ayni kok nedenden gelen alarmlar bu id altinda gruplanir (PANO ICI)" }
+        outage_id:
+          type: [string, "null"]
+          description: >
+            Alarm bir ust sebeke kesintisine baglandiysa o kesintinin kimligi (F-22).
+            event_id PANO ICI gruplamadir; bu alan PANOLAR ARASI bagintidir. Baginti
+            alarmi BASTIRMAZ, yalnizca baglar.
+
         pano_id: { type: string }
         code: { type: string }
         text: { type: string, description: "Turkce alarm metni" }

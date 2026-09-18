@@ -66,6 +66,7 @@ class MemoryStore:
         self.events: dict[str, EventRecord] = {}
         self.journal: list[tuple] = []  # (alarm_id, at, action, state, by, note)
         self.chain: list[dict] = []     # F-20 hash zinciri satirlari (PgStore.journal_chain karsiligi)
+        self.outages: dict[str, dict] = {}  # F-22 kesinti olaylari (outage_id -> satir)
         self.fail_alarm_saves = 0  # >0 ise siradaki N alarm yazimi StoreError atar
         self.notifications: list = []  # Delivery kayitlari
         for panel in panels:
@@ -103,6 +104,48 @@ class MemoryStore:
             **dict.fromkeys(ASSET_FIELDS),
             **asset,
         }
+
+    # -------------------------------------------------------- kesinti olayi (F-22)
+    def save_outages(self, groups, *, detected_at: datetime) -> None:
+        """PgStore.save_outages'in ikizi: ayni outage_id tekrar gelirse DEGISTIRMEZ."""
+        self._check()
+        for group in groups:
+            if group.outage_id in self.outages:
+                continue  # ON CONFLICT DO NOTHING karsiligi
+            self.outages[group.outage_id] = {
+                "outage_id": group.outage_id,
+                "fider_id": group.fider_id,
+                "started_at": group.started_at,
+                "detected_at": detected_at,
+                "ended_at": None,
+                # Kunye kesinti aninda KOPYALANIR (PgStore'da da panels'a JOIN yok):
+                # kunye sonradan degisirse gecmis kayit degismemeli.
+                "panolar": [
+                    {
+                        "pano_id": p.pano_id,
+                        "name": self._meta.get(p.pano_id, {}).get("name"),
+                        "last_rx": p.last_rx,
+                        "abone_sayisi": p.abone_sayisi,
+                    }
+                    for p in group.panels
+                ],
+            }
+
+    def list_outages(self, *, only_open: bool) -> list[dict]:
+        self._check()
+        rows = [o for o in self.outages.values() if not only_open or o["ended_at"] is None]
+        return sorted(rows, key=lambda o: o["started_at"], reverse=True)
+
+    def get_outage(self, outage_id: str) -> dict | None:
+        self._check()
+        return self.outages.get(outage_id)
+
+    def close_outages(self, outage_ids, *, at: datetime) -> None:
+        self._check()
+        for outage_id in outage_ids:
+            row = self.outages.get(outage_id)
+            if row is not None and row["ended_at"] is None:
+                row["ended_at"] = at
 
     def import_assets(self, rows, *, kunye_kaynak: str, at: datetime) -> int:
         """PgStore.import_assets'in bellek ici ikizi (F-21).
