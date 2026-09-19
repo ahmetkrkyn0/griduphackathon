@@ -732,3 +732,175 @@ body {
     height: 380px;
   }
 }
+
+/* 3D inspection workspace: controls do not cover equipment. */
+.twin-workbench {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.twin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.twin-toolbar label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--dim);
+  flex: 1 1 180px;
+}
+.twin-toolbar select {
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: white;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.twin-toolbar button {
+  min-height: 36px;
+  font: 500 12px var(--sans);
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 4px;
+  padding: 7px 10px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.twin-toolbar button:hover {
+  background: #fff1e8;
+  border-color: var(--brand);
+}
+.twin-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.app-shell .twin-workbench .i3 {
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+.twin-workbench .i3-stage {
+  position: relative;
+  inset: auto;
+  height: 530px;
+}
+.twin-workbench .i3-stage-heading {
+  position: relative;
+  inset: auto;
+  padding: 12px 14px;
+  background: #f7f9fb;
+  font-size: 10px;
+}
+.twin-workbench .i3-controls {
+  position: relative;
+  inset: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: #f7f9fb;
+}
+.app-shell .twin-workbench .i3-bar {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 6px;
+}
+.app-shell .twin-workbench .i3-bar button {
+  background: white;
+  color: var(--ink);
+  border: 1px solid #d2dce6;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+.app-shell .twin-workbench .i3-bar button[aria-pressed="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+.twin-workbench .i3-thermal-scale {
+  position: static;
+  width: 100%;
+  max-width: 350px;
+  padding: 8px;
+}
+.twin-workbench .i3-thermal-scale p {
+  font-size: 11px;
+  color: var(--dim);
+  margin: 6px 0 0;
+}
+.twin-inspector {
+  padding: 16px;
+  border-top: 1px solid var(--line);
+}
+.twin-inspector-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.twin-inspector-title span {
+  color: var(--dim);
+  font-size: 12px;
+}
+.twin-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+}
+.twin-inspector dt {
+  font-size: 11px;
+  color: var(--dim);
+}
+.twin-inspector dd {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 3px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.twin-inspector p,
+.twin-footnote {
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.6;
+}
+.twin-footnote {
+  padding: 0 16px 14px;
+  margin: 0;
+}
+.twin-workbench:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  padding: 0 4vw;
+  background: #fff;
+}
+.twin-workbench:fullscreen .i3-stage {
+  height: max(400px, calc(100vh - 370px));
+}
+.twin-workbench:fullscreen .i3 {
+  height: auto;
+}
+@media (max-width: 600px) {
+  .twin-workbench .i3-stage {
+    height: 420px;
+  }
+  .twin-inspector dd {
+    font-size: 17px;
+  }
+  .twin-inspector dt {
+    min-height: 32px;
+  }
+}
