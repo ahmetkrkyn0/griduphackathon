@@ -120,6 +120,37 @@ def test_ttl_is_suppressed_when_the_point_quality_is_suspect():
     assert payload["t_conn"][0]["ttl_h"] is None  # q != 0: ASIL IDDIA
 
 
+def test_process_wires_the_suppression_into_the_pipeline(monkeypatch):
+    """Onceki test _suppress_ttl_when_quality_suspect'i DOGRUDAN cagirir; bu test
+    process()'in onu GERCEKTEN cagirdigini kanitlar (edge.py:111). Bu satir
+    silinirse (metodun kendisi degil, cagrisi) yukaridaki test hala gecer ama
+    S8 korumasi devre disi kalir -- bu test o bosluk icin.
+
+    _update_points de sahtelenir: saglikli simulasyonda K/K0 hicbir zaman surekli
+    yukselmez (bkz. detect.py _slope_is_persistent), yani gercek boru hattinda
+    ttl_h zaten hep None olur ve line 111 silinse bile bu test yanlislikla YESIL
+    kalirdi. Burada her noktaya GERCEK (bastirilmasi gereken) bir ttl_h degeri
+    yazdirilir ki test yalnizca bastirmanin CAGRILDIGINI degil, cagrilmadiginda
+    GERCEKTEN kirildigini da kanitlasin."""
+    pipeline, sim = EdgePipeline(), _sim()
+    _run(pipeline, sim, 200)
+
+    def _fake_update_points(self, payload, pano_id, ts, period_s):
+        for point in payload["t_conn"]:
+            point["ttl_h"] = 5.0
+
+    monkeypatch.setattr(EdgePipeline, "_update_points", _fake_update_points)
+    monkeypatch.setattr(
+        EdgePipeline,
+        "_update_quality",
+        lambda self, payload: [p.__setitem__("q", 1) for p in payload["t_conn"]] and None,
+    )
+    payload = _run(pipeline, sim, 1)
+    assert all(p["ttl_h"] is None for p in payload["t_conn"])
+    assert payload["risk"]["ttl_h"] is None
+    assert "ALM-TTL-14D" not in payload["alarms"]
+
+
 def test_alarm_codes_are_all_defined_in_the_contract(alarm_codes):
     known = {a["code"] for a in alarm_codes["alarms"]}
     pipeline = EdgePipeline()
