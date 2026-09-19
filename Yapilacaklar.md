@@ -18,6 +18,9 @@
 | **nginx `resolver` açığı kapatıldı** — backend yeniden başlayınca arayüz artık ≤10 s'de kendini toparlıyor | `frontend/nginx.conf` | ✅ ölçüldü |
 | **Model-uyumsuzluğu senaryosu (madde 1 / §2.1)** — S10–S13, `ModelMismatch`, `docs/12` §1'de eşleşen/uyumsuz blokları | `libs/panoalgo/` · `docs/05` · `docs/12` · `docs/14` · `README.md` | ✅ ölçüldü (19 Eylül, dal `tuna/yapilacaklar-uygulama`) |
 | `docs/05` §10'daki **yanlış iddia düzeltildi** — "209 saatlik öne alma tespit katmanından gelir" YANLIŞTI; sayıyı `ALM-TTL-14D` (prognoz) tetikliyor | `docs/05-anomali-tespiti.md` · `docs/12` §2 | ✅ ölçüldü |
+| **ROI hesaplayıcı + OPEX (madde 2 / §2 K8)** — `--duyarlilik`, üç sütunlu parametre dosyası, pano başına toplam maliyet, OPEX bölümü, başa baş eşiği · **8.4 fiyat yerine eşik: sapma, kayıtlı** | `scripts/tazminat_maruziyeti.py` · `scripts/roi-ornek-parametreler.yaml` · `docs/10` §5.3/§6/§7 · `backend/tests/` | ✅ ölçüldü (19 Eylül, dal `tuna/yapilacaklar-uygulama`) |
+| Eski **~56 / ~37 USD** rakamları beş dosyada daha yaşıyordu (BOM düzeltmesi yalnızca README ve `docs/10`'a uygulanmış) — beşi de düzeltildi ve **testle kilitlendi** | `docs/17` (2 yer) · `docs/18` · `docs/19` · `demo/sunum/sunum-taslagi.md` | ✅ ölçüldü |
+| **Eskimiş olgunluk etiketi:** `hardware/sensor-dugumu/` ve `hardware/pd-karti/` artık boş değil; "kavramsal / dizin boştur" ifadeleri *"belgelendi ama doğrulanmadı"* olarak düzeltildi | `docs/10` · `docs/17` · `docs/19` · `README.md` · `hardware/pano-beyni/README.md` | ✅ ölçüldü |
 
 `nginx.conf` düzeltmesi şöyle doğrulandı: backend konteyneri silinip yeniden yaratıldı ve `172.18.0.5 → 172.18.0.13` IP'sine taşındı; **frontend'e hiç dokunulmadan** 30 saniye boyunca `/api/v1/panels` sürekli `200` döndü. Sorgu dizesi (`?limit=2`) ve WebSocket (`101 Switching Protocols`) de doğrulandı.
 
@@ -28,7 +31,7 @@
 | Sıra | İş | Kriter | Tahmini kazanç | Emek | Neden bu sırada |
 |:--:|---|:--:|:--:|:--:|---|
 | ~~**1**~~ | ~~Model-uyumsuzluğu senaryosu~~ **✅ YAPILDI** | K2 | +1,5 | — | Tamamlandı 19 Eylül. Sonuç tahmin edilenden **farklı ve daha güçlü** çıktı: duyarlılık üç uyumsuzlukta düşmedi (oran yapısı sabit kazancı sadeleştiriyor — bu bir **güç**), ölçüm zinciri doğrusalsızlığında **0,50**'ye indi ve sabit 70 K eşiğinin tamamen körleştiği gösterildi. Ayrıntı §2.1'de. |
-| **2** | ROI hesaplayıcı + OPEX | K8 | +2,0 | 2–3 gün | **En düşük puanlı kriter.** F-36 ölçümü (632 MB/pano/ay) OPEX'i besleyecek gerçek sayıyı zaten üretti — bağlamak kaldı. |
+| ~~**2**~~ | ~~ROI hesaplayıcı + OPEX~~ **✅ YAPILDI (8.4 saptı)** | K8 | +2,0 | — | Tamamlandı 19 Eylül. Sonuç **tahminden üç yerde saptı**: (a) düğüm sayısı N=5 değil, sözleşme **25** tanımlıyor ve aralık **4–25**; pano başına toplam tek sayı değil **103,48–396,43 USD**. (b) Duyarlılık, "hangi varsayım belirliyor" sorusunun **cevabı olmadığını** gösterdi — üç varsayımın kaldıracı **birebir eşit** (1,33×, çarpımsal model); asıl belirleyici bir belirsizlik değil **yapılandırma seçimi** (N: 7,4 → 28,3 ay). (c) Maruziyette tarifenin kaldıracı **üstten 1,00× ile sınırlı**, eşiğe olan mesafeninki **sınırsız** (0,09×–3,57×) — ilk yazdığımız *"sıralama değişmez"* iddiası **bağımsız denetimde yanlışlandı ve düzeltildi**. 8.4'te fiyat **uydurulmadı**, yerine ölçülmüş **başa baş eşiği** (0,37 USD) kondu — bu spec'ten bir **sapmadır** ve öyle yazıldı. Ayrıntı §2 K8'de. |
 | **3** | Bileşen testleri + Playwright spec'i depoya | K7 | +0,5 | 1 gün | Ucuz. Arayüzün **hiç** testi yok; "0 konsol hatası" iddiasının tezgahı depoda değil. |
 | **4** | Çoklu tohumla FPR/precision dağılımı | K2 | +0,5 | 1–2 gün | `validate.py:410` zaten "tek tohum, tek yörünge" diyor. n=10'dan n=500'e çıkmak ucuz. |
 | **5** | Devreye alma prosedürünü gerçekleştir | K3 | +1,0 | 2–3 gün | **Saha jürisinin en çok bakacağı yer.** `docs/08` 3.787 bayt — bir ekibin izleyeceği belge değil. |
@@ -40,7 +43,7 @@
 | **11** | Bileşen düşüşünde arayüz davranışı | K4 | +0,3 | 1 gün | "Bayat veri" göstergesi. |
 | **12** | S3_condense senaryosu | K2 | 0 / −risk | 2 saat | Karar: **bırakılıyor.** Riski aşağıda yazılı. |
 
-**Toplam potansiyel:** eşit ağırlıkta ~7,6 → **~9,0**. **Madde 1 kapandı (19 Eylül);** kalan sıralama 2'den başlar.
+**Toplam potansiyel:** eşit ağırlıkta ~7,6 → **~9,0**. **Madde 1 ve madde 2 kapandı (19 Eylül);** kalan sıralama 3'ten başlar.
 
 ---
 
@@ -168,9 +171,188 @@ Sonuç: "8 senaryoda duyarlılık 1,00" büyük ölçüde *"kestirici kendi iler
 
 ---
 
-### K8 — Maliyet ve sağlanan fayda · şu an **5** (README düzeltmesiyle ~6)
+### K8 — Maliyet ve sağlanan fayda · şu an **5** (README düzeltmesiyle ~6) → **8.1–8.3 kapatıldı, 8.4 gerekçeli olarak saptı**
 
-Bu, **en düşük puanlı ve en hızlı yükselecek** kriter. Üç yanlış sayı temizlendi; şimdi yerlerine gerçek analiz koymak gerekiyor.
+Bu, **en düşük puanlı ve en hızlı yükselecek** kriterdi. Üç yanlış sayı temizlenmişti; yerlerine konan gerçek analiz aşağıdadır.
+
+#### 8.1–8.4 ✅ ROI hesaplayıcısı + OPEX — **8.1, 8.2, 8.3 TAMAMLANDI · 8.4 SAPTI (19 Eylül 2026)**
+
+> **Durum:** dal `tuna/yapilacaklar-uygulama`. Backend testleri geçiyor (taban 853 + **27 yeni**),
+> `libs/panoalgo` **498 test** bozulmadı, `scripts/check_contracts.py` → **SOZLESMELER TUTARLI**.
+> **Erdem korundu:** `tazminat_maruziyeti.py` argümansız koştuğunda hâlâ `veri yok` diyor ve **1 ile
+> çıkıyor** (testle kilitli).
+>
+> **Bu iş bittikten sonra bağımsız bir denetimden geçti ve denetim üç gerçek kusur buldu** — üçü de
+> aşağıda düzeltildi ve ne oldukları yazıldı. Denetimin en değerli bulgusu, aşağıdaki 4. maddede
+> yayımlanan ilk iddianın **yanlış** olmasıydı.
+>
+> **Aşağıdaki analiz, işin gerekçesi olarak olduğu gibi bırakıldı.** Ne çıktığı hemen altındaki
+> "Ölçülen sonuç" bloğundadır — ve **üç yerde tahminden sapmıştır**.
+
+##### Ölçülen sonuç — maddenin kendi sayı tahmini yanlışlandı
+
+**1. Düğüm sayısı N = 5 değil.** Madde 8.3, N'i `docs/10` §2'deki *"S1–S5"* ifadesinden **5** diye
+okumuş ve pano başına ≈ **117,4 USD** öngörmüştü. Ölçüm bunu yanlışladı: *S1–S5* bir düğüm **sayısı**
+değil, raporun **senaryo/sensör türü** etiketidir; sözleşmede 5 noktalı bir yapılandırma **yoktur**.
+Gerçek sınırlar ölçülebilir:
+
+| Kaynak | N | Ne söylüyor |
+|---|:--:|---|
+| `contracts/modbus-map.yaml` `conn_temp.points` | **25** | `GIRIS_L1/L2/L3/N` (4) + 7 DSYA × 3 faz (21). `check_contracts.py` "25 izleme noktası" diye sayıyor |
+| `loadtest/fleet.py:348` varsayılanı | **7** | Ana giriş + ilk fider; `docs/09` ölçümlerinin çoğu bu yapılandırmada |
+| `loadtest/fleet.py:720` izin verilen aralık | **4–25** | altı reddedilir, üstü sözleşmede yok |
+
+**Pano başına toplam (adet 1.000):** 4 düğüm **103,48 USD** · 7 düğüm **145,33 USD** · 25 düğüm
+**396,43 USD** · 25 + PD (OG) **408,22 USD**. Tek sayı yerine **aralık** yayımlandı ve tahmin edilen
+117,4 USD aralığın alt ucuna yakın düşüyor.
+
+**2. Maliyeti kontrolcü değil sensör düğümleri belirliyor.** Toplamın **%67,2'si** (N=7) ve **%88,0'ı**
+(N=25) düğümlerdir. Hackathon boyunca maliyet tartışması kontrolcünün 47,68 USD'si üzerinden yürüdü;
+ölçüm bunun toplamın üçte birinden azı olduğunu gösterdi.
+
+**3. Duyarlılık tablosu "hangi varsayım" sorusuna beklenen cevabı vermedi — daha iyisini verdi.**
+Madde, `--duyarlilik`'in *"hangi varsayım sonucu belirliyor"* sorusunu cevaplamasını bekliyordu. Ölçüm,
+sorunun bu biçimde **cevabı olmadığını** gösterdi:
+
+| Girdi | Kaldıraç | Güven | Ne demek |
+|---|---:|---|---|
+| `ariza_olasiligi_yil` | **1,33×** | varsayım | üçü de **birebir eşit** — geri ödeme `maliyet / (P × L × r)` olduğu için her çarpan aynı aralığı verir |
+| `ariza_basi_maliyet_usd` | **1,33×** | varsayım | |
+| `tespit_orani` | **1,33×** | varsayım | |
+| `dugum_sayisi` | 0,67× | türetildi | maliyet bir **toplamdır** (kontrolcü + N × düğüm), çarpım değil |
+
+Yani *"sonucu şu varsayım belirliyor"* denemez; **üçünün çarpımı** belirler ve biri düzeltilmeden hesap
+düzelmez. Beklenen değer tam olarak **4/3**'tür ve testle kilitlendi
+(`test_carpimsal_girdilerin_kaldiraci_esit_cikar`). Asıl belirleyici ise duyarlılık tablosunda **hiç
+görünmüyor**: sözleşmenin izin verdiği 4 → 25 aralığı geri ödemeyi **7,4 aydan 28,3 aya** taşıyor
+(3,8 kat) — ama N bir belirsizlik değil bir **seçimdir**, o yüzden ayrı bir tabloda *"duyarlılık değil,
+seçim"* başlığıyla basılıyor.
+
+**4. Maruziyet tarafı — önce YANLIŞ yazıldı, denetim yanlışladı, sonra doğrusu ölçüldü.** Bu maddenin
+hikâyesi sonucundan daha öğreticidir ve olduğu gibi bırakılıyor.
+
+*İlk yazılan:* tek bir örnek girdi setiyle koşuldu (`kesinti_sayisi` 2,02× en üstte, `dagitim_bedeli`
+0,19× en altta) ve buradan **"değişmez olan sıralamadır"** diye genel bir sonuç yazıldı; README'ye ve
+`docs/17`'ye de öyle taşındı. *Yanlışlandı:* bağımsız denetim aynı betiği başka bir makul girdi setiyle
+koştu — `kesinti_basi_tazminat` 5 TL alındığında `dagitim_bedeli` **0,71×**'e çıkıp `esik_sayi`'yı
+(0,59×) **geçiyor**. Sıralama bir ölçüm değil, seçilen örneğin artefaktıymış. Üstelik onu "kilitlediği"
+söylenen test, dokümandaki **aynı** girdileri kullandığı için hiçbir şey kanıtlamıyordu.
+
+*Sonra ölçülen (altı parametre setinde):* değişmeyen üç şey var ve üçü de aritmetikten türüyor —
+(a) `abone` **her zaman tam 1,00×** (iki kalemi birden çarpan tek girdi); (b) düz çarpanların
+(`dagitim_bedeli`, `ortalama_talep_kw`, `kesinti_basi_tazminat`) kaldıracı **kendi kaleminin toplamdaki
+payına birebir eşittir**, yani **1,00×'i asla geçemez**; (c) eşik kalemlerinin kaldıracı **sınırsızdır**
+— ölçülen aralık **0,09× – 3,57×**.
+
+**"Tarifeyi bilmiyorsunuz" itirazının savunulabilir cevabı budur:** tarife bu hesabın baskın belirsizliği
+**olamaz**, çünkü kaldıracı üstten 1,00× ile sınırlıdır; eşiğe olan mesafeninki değildir. Testler artık
+örneği değil **özelliği** kilitliyor (`test_maruziyet_kaldiraclarinin_yapisal_sinirlari`), ve ayrıca
+sıralamanın değişken olduğunu da kilitliyor (`test_siralama_ornekten_ornege_DEGISIYOR`) — biri ileride
+yine "sıralama yapısaldır" diye yazarsa test onu yakalar.
+
+**5. Madde 8.4 için fiyat YAZILMADI — yerine ölçülmüş bir eşik kondu.** Madde *"tek bir kamuya açık
+katalog fiyatı bile yeterlidir"* diyordu. Bu oturumda doğrulanabilir bir kataloğa erişilmedi ve
+`docs/19`'un kendi ilkesi (*"bu oturumda hiçbir üretici veri sayfasına erişilmedi"*) gereği fiyat
+uydurulmadı. Yerine **hiçbir dış fiyata ihtiyaç duymayan** bir sayı yayımlandı:
+
+> Kaçınılan **10** kalemin **ortalama birim fiyatı 0,37 USD**'yi (adet 1.000) / **0,49 USD**'yi (adet 1)
+> geçtiği anda mevcut cihazı Modbus'tan okumak kendini öder.
+
+Eşiğin payı ödenen RS485 arayüzünün `bom.csv` fiyatı, paydası sözleşmeden sayılan kalem adedidir —
+**tamamı ölçülü**. Yargıyı jüriye devreder: bu eşiğin altında bir ölçüm sınıfı akım trafosu olmadığını
+söyleyen biz değiliz, okuyucunun kendi piyasa bilgisidir. Fiyat girilirse betik net farkı zaten yazıyor.
+
+**6. OPEX (8.2) — hacim ölçülü, tarife "işletmeci doldurur".** F-36 paraya bağlandı ama **tarife
+uydurulmadı**. En güçlü cümle tarifeden bağımsız çıktı:
+
+| Politika | Hacim (pano/yıl) | §3'ün varsayımsal faydasını sıfırlayan tarife |
+|---|---:|---:|
+| Sabit 10 s | 12,85 GB | **13,07 USD/GB** |
+| Uyarlanabilir %2 | 7,58 GB | **22,15 USD/GB** |
+
+*Uyarlanabilir yayın, projeyi zarara sokan tarife eşiğini **1,70 kat** yukarı taşır* — ve bu oran
+bastırma oranının kendisidir, yani **ölçülmüştür**. Ayrıca `docs/10` §6.3, faturanın bu hacimden
+**yüksek** çıkmasının **altı ölçülmüş/kayıtlı sebebini** sayıyor (110 B/mesaj tahmini, boşluklu JSON'un
+ölçülen 1,139 katı, operatör yuvarlaması, 7 noktalı panoda oranın ölçülmemiş olması, mTLS ek yükü,
+iş istasyonunda ölçülmüş sunucu sayıları). Hacim bir **alt sınır** olarak yayımlandı.
+
+##### Bağımsız denetimin bulduğu ve düzeltilen üç kusur
+
+1. **Yayımlanan bir iddia yanlıştı** — yukarıdaki 4. madde. Sayıyı kurtarmak yerine iddia değiştirildi
+   ve yanlışlanma süreci yayımlandı.
+2. **Betik çöküyordu.** `--tespit-orani 0` verildiğinde brüt fayda sıfır oluyor, `payback_months()`
+   doğru davranıp `None` dönüyor, ama rapor satırı onu `{ay:.1f}` ile biçimlendirmeye çalışıp
+   `TypeError` ile düşüyordu. Artık *"GERI ODEME: HICBIR ZAMAN — brut yillik fayda sifir"* yazıyor;
+   regresyon testi eklendi.
+3. **Duyarlılık tablosu, betiğin kendi reddettiği bir yapılandırmadan sayı türetiyordu.** 7 düğümün
+   −%50'si 3,5'tir; ne 3,5 düğüm vardır ne de betik 4'ün altını kabul eder. Oynatılan değer artık
+   yuvarlanıp sözleşmenin 4–25 sınırlarına **kırpılıyor** ve tabloda hangi değerin kullanıldığı
+   yazılıyor. (Yuvarlama *yarıyı yukarı* alır: `round()` bankacı yuvarlaması yapıp 3,5→4 ama 10,5→10
+   verdiği için aynı satırın iki ucu farklı yöne yuvarlanıyordu.)
+
+Ayrıca denetim **eskimiş bir atıf** yakaladı: betik ve `docs/10` §3, tespit oranının ölçülen değerini
+*"`docs/12` §1'de 1,00"* diye yazıyordu. Bu artık doğru değil — **madde 1** (S10–S13) aynı bölümü iki
+bloklu hâle getirdi ve uyumsuz blokta S13 **0,50** veriyor. Üç yerde de iki blok birden yazıldı.
+
+##### Yol üstünde bulunan ve kapatılan iki çelişki (maddede yazmıyordu)
+
+1. **`README` ile `docs/10` birbirini yalanlıyordu.** README *"geri ödeme süresi bu depoda
+   hesaplanmamıştır"* derken `docs/10` §3 bir geri ödeme süresi yayımlıyordu: *"< 1 yıl"*. Üstelik o
+   sayı **yalnızca kontrolcü maliyetiyle** hesaplanmıştı, yani paydası eksikti. Çözüm sayıyı kurtarmak
+   değil **hesabı yürütülebilir kılmak** oldu.
+2. **Eski `~56 / ~37 USD` rakamları beş yerde yaşamaya devam ediyordu.** §0 tablosu BOM dipnotlarının
+   düzeltildiğini yazıyor (commit `b5e2601`) ama düzeltme yalnızca `README` ve `docs/10`'a uygulanmış;
+   `docs/17` (2 yer), `docs/18`, `docs/19` ve **jüriye sözlü anlatılacak** `demo/sunum/sunum-taslagi.md`
+   hâlâ eski sayıyı taşıyordu. Beşi de düzeltildi ve **ne yazdıkları not düşüldü** (silinmedi).
+   Üç BOM'un dipnotu artık **testle kilitli**
+   (`test_bom_toplami_csv_toplam_satirindaki_metinle_ayni`) — aynı sapma bir daha sessizce oluşamaz.
+
+Ayrıca **eskimiş olgunluk etiketi** düzeltildi (maddenin "dikkat" notu 1): `hardware/sensor-dugumu/`
+artık boş değil ve deponun **kendi** olgunluk ölçütünü karşılıyor (blok diyagramı + I/O tablosu + BOM —
+bu ölçütü `hardware/pano-beyni/README.md` tanımlamıştır; düğüm dizini ayrıca bir enerji/termal hesap
+taşıyor, pano-beyni'nde onun dengi yok). `docs/10`, `docs/17`, `docs/19` (3 yer), `README` ve
+`hardware/pano-beyni/README.md` düzeltildi. **Değişmeyen sınır açıkça korundu:** hiçbir BOM satırı veri
+sayfasına karşı doğrulanmadı, kart üretilmedi, kablosuz menzil metal kabinde ölçülmedi. *"Tasarlanmadı"*
+ile *"doğrulanmadı"* ayrımı her düzeltmede yazıldı.
+
+##### Tahminden sapan üç karar (gerekçeleriyle)
+
+1. **Geri ödeme betiğe eklendi, `docs/10` §3'ün tablosuna değil.** Madde yalnızca `--duyarlilik` istiyordu,
+   ama duyarlılığın oynatacağı bir **metrik** yoktu: betik maruziyeti hesaplıyordu, geri ödemeyi değil.
+   Payı (BOM'dan ölçülen maliyet) ve paydası (varsayılan fayda) ayrı ayrı etiketlenerek eklendi.
+2. **`--dugum-sayisi` için varsayılan konmadı.** Konsaydı betik N'i kendi seçmiş olurdu — tam da
+   korunması istenen erdemin ihlali. Verilmezse toplam `veri yok` döner ve sözleşmenin sınırlarını yazar.
+3. **Parametre dosyası satır içi yorum değil, yapısal üç sütun oldu.** Maddenin örneği `# kaynak: ...`
+   biçimindeydi; yorum **denetlenemez**. Yapısal biçimde `guven: isletmeci-doldurur` etiketli bir girdiye
+   değer yazılırsa dosya **reddediliyor** — yani uydurulmuş bir sayı, kaynağı "işletmeci" gösterilerek
+   tabloya giremiyor. Beş denetimin tamamı testli.
+
+##### Açık kalan
+
+- **Fayda tarafı hâlâ ölçüm değil.** P(arıza), arıza başı maliyet ve tespit oranı varsayımdır ve
+  duyarlılık üçünün de sonucu **eşit** belirlediğini gösterdi. Bunu kapatan şey saha arıza istatistiğidir,
+  daha iyi bir hesap değil.
+- **Hiçbir tarife girilmedi:** hücresel M2M, sunucu/VM, kalibrasyon ve SIM hat bedeli `veri yok`.
+  Kaçınılan dört kalemin birim fiyatı da öyle.
+- **Kurulum işçiliği, montaj malzemesi ve tip test/sertifikasyon hiçbir toplamda yok** — BOM satırları
+  olmadığı için adet olarak bile sayılamıyorlar (`docs/19` §3.1).
+- **`loadtest/results/` depoya girmiyor** (`.gitignore`), yani F-36'nın ham çıktısı bir klonda hazır
+  bulunmaz; `docs/10` §6.3 bunu yazıyor ve yeniden üretme komutunu veriyor.
+- **Başa baş eşiğinin payı belirsiz kaldı ve bilerek karara bağlanmadı.** `bom.csv`'deki 3 adet INA226
+  (2,70 USD) 47,68 USD toplamına giriyor ama §5.2'nin dürüstlük notu onların Temel pakette
+  kullanılmadığını söylüyor. Eşik ya 0,37 ya 0,64 USD'dir; ikisi de `docs/10` §5.3'te yazılı. Bu bir
+  kart yerleşimi sorusudur, burada seçilecek bir sayı değil.
+- **Fayda modelinde müdahale terimi yok:** `tespit_orani` doğrudan önleme oranı gibi kullanılıyor, yani
+  "alarm çıktı" ile "arıza önlendi" ayrılmıyor. Betiğin *çıktısı* GK10'a uyuyor ("önledik" demiyor) ama
+  paydadaki büyüklük fiilen odur. Kapatmak için iki çarpan daha gerekir (müdahale olasılığı × müdahalenin
+  etkisi) ve ikisi de ölçülmedi — bu yüzden eklenmedi, uydurulmadı.
+- **Maddenin "dikkat" notu 2 eskimiş çıktı:** `scripts/gen_modbus_doc.py --check` temiz HEAD'de **"eski"
+  demiyor**, "guncel" diyor ve 0 ile çıkıyor. Altı `--check` üretecinin altısı da temiz.
+
+---
+
+<details>
+<summary>İşin özgün analizi (19 Eylül öncesi) — gerekçe olarak korundu</summary>
 
 #### 8.1 ⭐ Geri ödeme hesaplayıcısı — parametre dosyası + duyarlılık (P0)
 
@@ -215,6 +397,8 @@ Bu sayıyı yayımlayabilmek için `hardware/sensor-dugumu/` "kavramsal" etiketi
 #### 8.4 Kaçınılan kalemleri fiyatlandırın (P1)
 
 `tazminat_maruziyeti.py` **BOM farkı** bölümünde doğru işi yapıyor: mevcut cihazlar sensör olarak okunduğu için 4 akım trafosu, 3 gerilim girişi, 2 ark dedektörü ve 1 ark koruma merkez ünitesi eklenmiyor. Ama hepsi `veri yok` fiyatla. **Bu, projenin en güçlü ticari argümanı ve şu an sayısız.** Üç tedarikçi teklifi yerine tek bir kamuya açık katalog fiyatı bile yeterlidir — kaynağı yazın.
+
+</details>
 
 ---
 
@@ -361,8 +545,8 @@ Değerlendirme sırasında cevabı dokümanda hazır olmayan beş soru çıktı 
 | Soru | Kapatan madde |
 |---|---|
 | Dedektörün varsaymadığı fizik eklenirse duyarlılık ne olur? | ✅ **ölçüldü** — 0,88; kırılan yer ölçüm zinciri doğrusalsızlığı (§2.1) |
-| BOM toplamı ile dipnot neden tutmuyor? | ✅ düzeltildi |
-| "14-22 ay" hangi hesaptan çıkıyor? | **8.1** (ve iddia kaldırıldı) |
+| BOM toplamı ile dipnot neden tutmuyor? | ✅ düzeltildi — **ve artık testle kilitli** (üç BOM, `test_bom_toplami_csv_toplam_satirindaki_metinle_ayni`) |
+| "14-22 ay" hangi hesaptan çıkıyor? | ✅ **ölçüldü** — iddia kaldırılmıştı; yerine yürütülebilir bir hesap ve **aralık** kondu: 7,4–28,3 ay, belirleyeni düğüm sayısı seçimi (§2 K8) |
 | Backend yeniden başlayınca operatör ekranı? | ✅ düzeltildi |
 | S3_condense hiçbir şey enjekte etmiyor, farkında mısınız? | **2.4** (yorum ekleyin — "evet, bilinçli" cevabı hazır olsun) |
 
