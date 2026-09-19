@@ -1,0 +1,12 @@
+# Yerel CA ciktilari (scripts/sertifika-uret.sh). Ozel anahtar ve sertifika ASLA
+# commit edilmez (PLAN.md GK9). Klasor bu dosya sayesinde repoda bulunur ve Docker
+# eksik bir yolu dizin olarak yaratmak zorunda kalmaz.
+#
+# Kok .gitignore'daki uzanti kurallari ikinci savunma hattidir; ASIL koruma burasi:
+# uzantidan bagimsizdir, yarin baska bir bicim uretilse de kapalidir. deploy/runtime/
+# ile ayni desen.
+#
+# UYARI: uretim betigi bu dosyayi SILMEZ. Silinirse `git status` ` D .gitignore`
+# gosterir — korumanin kalktigi aninda gorunur.
+*
+!.gitignore

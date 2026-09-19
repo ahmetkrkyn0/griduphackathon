@@ -9,12 +9,18 @@ import type {
   Alarm,
   AlarmReason,
   Api,
+  AssetFleet,
+  AssetRegistry,
+  AuthStatus,
   Blackbox,
   ConnPoint,
   Elec,
   Env,
+  EpdkKaydi,
   FleetKpi,
+  OutageEvent,
   PanelDetail,
+  PanelHealth,
   PanelSummary,
   Prio,
   SeriesResponse,
@@ -230,13 +236,105 @@ function districtCoords(name: string): [number, number] | null {
   return DISTRICT_COORDS[name.split(" ")[0]] ?? null;
 }
 
+/**
+ * Varlik kutugu (F-21) — mock kunyeler.
+ *
+ * KASITLI OLARAK KISMI: SEEDS'in yalnizca bir kismi burada. Gercek kurulumda da kutuk
+ * hicbir zaman %100 dolu olmaz ve arayuzun IKI dalini birden gostermek gerekir —
+ * kunyesi olan pano (iki eksenli risk matrisi) ve olmayan pano ("CBS'den ice
+ * aktarilmadi"). Hepsini doldurmak, eksik kunyenin nasil gorundugunu saklardi.
+ *
+ * `uretici` ve `seri_no` mock'ta da BOS: uydurulmaz (backlog F-21 "Dikkat" satiri).
+ */
+const MOCK_ASSETS: Record<string, Partial<AssetRegistry>> = {
+  [PROT_HEALTH.panoId]: { cbs_kodu: "TR-GDZ-DP-000311", fider_id: "F-BORNOVA-02", il: "İzmir", ilce: "Bornova", abone_sayisi: 1240, trafo_kva: 1600, kritiklik: "kritik", sonraki_bakim_at: isoAgo(-minutes(60 * 24 * 12)) },
+  "ADM-00014": { cbs_kodu: "TR-ADM-DP-000014", fider_id: "F-EFELER-03", il: "Aydın", ilce: "Efeler", abone_sayisi: 412, trafo_kva: 1600, kritiklik: "yuksek", sonraki_bakim_at: isoAgo(-minutes(60 * 24 * 45)) },
+  "ADM-00102": { cbs_kodu: "TR-ADM-DP-000102", fider_id: "F-MERKEZEFENDI-01", il: "Denizli", ilce: "Merkezefendi", abone_sayisi: 233, trafo_kva: 1000, kritiklik: "orta", sonraki_bakim_at: isoAgo(minutes(60 * 24 * 6)) },
+  "GDZ-00088": { cbs_kodu: "TR-GDZ-DP-000088", fider_id: "F-YUNUSEMRE-04", il: "Manisa", ilce: "Yunusemre", abone_sayisi: 87, trafo_kva: 630, kritiklik: "dusuk", sonraki_bakim_at: isoAgo(-minutes(60 * 24 * 90)) },
+};
+
+const MOCK_KUNYE_KAYNAK = "ADM/GDZ CBS disa aktarim (mock)";
+
+function assetOf(panoId: string): AssetRegistry | null {
+  const partial = MOCK_ASSETS[panoId];
+  if (!partial) return null;   // kunyesi ice aktarilmamis pano: null, bos nesne DEGIL
+  return {
+    cbs_kodu: null, fider_id: null, il: null, ilce: null, abone_sayisi: null, trafo_kva: null,
+    kritiklik: null, uretici: null, seri_no: null, son_bakim_at: null, sonraki_bakim_at: null,
+    ...partial,
+    kunye_kaynak: MOCK_KUNYE_KAYNAK,
+    kunye_at: isoAgo(minutes(60 * 24 * 3)),
+  };
+}
+
+/**
+ * Mock kesinti olayi (F-22). ORNEKTIR: dev:mock modunda haritanin kesinti bolgesi
+ * gorunebilsin diye yazildi, gercek bir kesinti kaydi degildir.
+ *
+ * Kunyesi OLMAYAN bir pano bilerek dahil edildi (GDZ-00410): `abone_toplami` yalnizca
+ * bilinenleri toplar ve `abone_eksik` kacinin sayilamadigini soyler — arayuzun bu iki
+ * alani nasil gosterdigi mock'ta da gorulebilmeli.
+ */
+const MOCK_OUTAGES: OutageEvent[] = [
+  {
+    outage_id: "OUT-F-BORNOVA-02-20260918T0642Z",
+    fider_id: "F-BORNOVA-02",
+    started_at: isoAgo(minutes(38)),
+    detected_at: isoAgo(minutes(33)),
+    ended_at: null,
+    state: "acik",
+    panolar: [
+      { pano_id: PROT_HEALTH.panoId, name: "Bornova DM-3", last_rx: isoAgo(minutes(38)), abone_sayisi: 1240 },
+      { pano_id: "GDZ-00088", name: "Yunusemre TM-21", last_rx: isoAgo(minutes(38)), abone_sayisi: 87 },
+      { pano_id: "GDZ-00410", name: "Karşıyaka TM-9", last_rx: isoAgo(minutes(39)), abone_sayisi: null },
+    ],
+    abone_toplami: 1327,
+    abone_eksik: 1,
+  },
+];
+
+/**
+ * Madde 8/2 taslagi (F-23) — mock. Gercek uc gibi davranir: olcmedigimiz alanlar
+ * `elle_doldurulacak` ve degerleri null; sebep/sinif `oneri`.
+ */
+const MOCK_EPDK: EpdkKaydi = {
+  taslak: true,
+  uyari:
+    "TASLAKTIR — resmi bir kesinti kaydi degildir. 'elle_doldurulacak' isaretli alanlar bu " +
+    "sistemde OLCULMEMEKTEDIR; 'oneri' isaretli alanlar karar degil oneridir.",
+  outage_id: "OUT-F-BORNOVA-02-20260918T0642Z",
+  alanlar: [
+    { ad: "Kesinti numarasi", deger: null, durum: "elle_doldurulacak", aciklama: "Dagitim sirketinin kendi kayit numarasi." },
+    { ad: "Kademe", deger: null, durum: "elle_doldurulacak", aciklama: "Kesinti ust sebekededir; kademesi olculmuyor." },
+    { ad: "Yer (il/ilce ve tekil sebeke unsuru kodu)", deger: "İzmir/Bornova; Manisa/Yunusemre — TR-GDZ-DP-000088, TR-GDZ-DP-000311", durum: "olculen", aciklama: "F-21 varlik kunyesinden (2 pano). 1 panonun kunyesi yok ve listede GORUNMUYOR." },
+    { ad: "Kesinti nedeni", deger: "Pano ici degil, UST SEBEKE kaynakli", durum: "oneri", aciklama: "ONERIDIR, KARAR DEGILDIR." },
+    { ad: "Kesinti sinifi", deger: "Plansiz (ust sebeke)", durum: "oneri", aciklama: "ONERIDIR, KARAR DEGILDIR." },
+    { ad: "Baslama zamani", deger: isoAgo(minutes(38)), durum: "olculen", aciklama: "YAKLASIMDIR: panolarin sustugu andir." },
+    { ad: "Sona erme zamani", deger: null, durum: "elle_doldurulacak", aciklama: "RESTORASYON ANI OLCULMUYOR (haberlesme donusu histerezislidir)." },
+    { ad: "Kesinti suresi", deger: null, durum: "elle_doldurulacak", aciklama: "Sona erme olculmedigi icin sure de uretilemez." },
+    { ad: "Etkilenen kullanici sayisi", deger: 1327, durum: "olculen", aciklama: "DIKKAT: 1 panonun kunyesi olmadigi icin toplam BU KADAR EKSIKTIR." },
+    { ad: "Toplam etkilenme suresi", deger: null, durum: "elle_doldurulacak", aciklama: "Sure olmadigi icin uretilemez." },
+    { ad: "Dagitilmayan enerji", deger: null, durum: "elle_doldurulacak", aciklama: "Sure gerektirir; enerji HESAPLANMAZ." },
+  ],
+  ozet: { toplam: 11, olculen: 3, oneri: 2, elle_doldurulacak: 6 },
+  kanit: [
+    { pano_id: PROT_HEALTH.panoId, name: "Bornova DM-3", event_id: "EVT-51", blackbox: "/api/v1/events/EVT-51/blackbox" },
+    { pano_id: "GDZ-00088", name: "Yunusemre TM-21", event_id: null, blackbox: null },
+    { pano_id: "GDZ-00410", name: "Karşıyaka TM-9", event_id: null, blackbox: null },
+  ],
+};
+
 function summary(seed: Seed): PanelSummary {
   const detail = details.get(seed.pano_id);
   const coords = districtCoords(seed.name);
+  const asset = assetOf(seed.pano_id);
   return {
     pano_id: seed.pano_id, name: seed.name, lat: coords?.[0] ?? null, lon: coords?.[1] ?? null, pano_type: PANO_TYPE,
     risk_score: seed.risk, risk_mode: seed.mode, top_alarm: seed.code, top_prio: seed.prio, ttl_h: seed.ttl_h,
     last_seen: detail?.ts ?? isoAgo(5000), comms_ok: seed.comms_ok, baseline_day: seed.baseline_day,
+    abone_sayisi: asset?.abone_sayisi ?? null,
+    kritiklik: asset?.kritiklik ?? null,
+    sonraki_bakim_at: asset?.sonraki_bakim_at ?? null,
   };
 }
 
@@ -309,7 +407,62 @@ export const mockApi: Api = {
     await delay(120);
     const detail = details.get(panoId);
     if (!detail) throw new ApiError(404, `pano bulunamadi: ${panoId}`);
-    return structuredClone(detail);
+    return { ...structuredClone(detail), asset: assetOf(panoId) };
+  },
+  async outages(state = "acik"): Promise<OutageEvent[]> {
+    await delay(120);
+    // Mock kesinti: F-BORNOVA-02'deki uc pano es zamanli sustu. Ornek veridir — gercek
+    // bir kesinti kaydi degildir (dev:mock modu, docs/16 §5).
+    const acik = MOCK_OUTAGES.filter((o) => o.state === "acik");
+    return structuredClone(state === "acik" ? acik : MOCK_OUTAGES);
+  },
+  async epdkKaydi(outageId: string): Promise<EpdkKaydi> {
+    await delay(140);
+    const outage = MOCK_OUTAGES.find((o) => o.outage_id === outageId);
+    if (!outage) throw new ApiError(404, `kesinti bulunamadi: ${outageId}`);
+    return structuredClone(MOCK_EPDK);
+  },
+  async fleetAssets(): Promise<AssetFleet> {
+    await delay(150);
+    const panolar = SEEDS.map((seed) => ({ pano_id: seed.pano_id, name: seed.name, asset: assetOf(seed.pano_id) }));
+    return {
+      // Kapsama SAYIYLA: mock'ta da eksik kunye gizlenmez.
+      kapsama: {
+        panolar: panolar.length,
+        kunyeli: panolar.filter((p) => p.asset?.cbs_kodu).length,
+        fiderli: panolar.filter((p) => p.asset?.fider_id).length,
+        aboneli: panolar.filter((p) => p.asset?.abone_sayisi != null).length,
+      },
+      panolar,
+    };
+  },
+  async fleetHealth(): Promise<PanelHealth[]> {
+    await delay(150);
+    // Gercek uc gibi davranir: veri gondermemis panoda saglik alanlari null doner,
+    // 0 yazilmaz (0 dBm gecerli bir RSSI'dir).
+    return SEEDS.map((seed) => {
+      const health = details.get(seed.pano_id)?.health;
+      const s = summary(seed);
+      return {
+        pano_id: seed.pano_id,
+        name: seed.name,
+        nodes_ok: health?.nodes_ok ?? null,
+        nodes_total: health?.nodes_total ?? null,
+        rssi_dbm: health?.rssi_dbm ?? null,
+        vbak_pct: health?.vbak_pct ?? null,
+        buffered: health?.buffered ?? null,
+        maint_mode: health?.maint_mode ?? null,
+        fw: health?.fw ?? null,
+        baseline_day: health?.baseline_day ?? seed.baseline_day,
+        last_seen: s.last_seen,
+        comms_ok: seed.comms_ok,
+      };
+    });
+  },
+  async authStatus(): Promise<AuthStatus> {
+    // Ornek veri kipinde dogrulanacak bir sunucu yok; kimlik dogrulama KAPALI gosterilir
+    // ve arayuz calisan bir giris kutusu cizmez (calismayan bir kapi yaniltici olurdu).
+    return { enabled: false, users: [], protects: [] };
   },
   async fleetKpi(): Promise<FleetKpi> {
     const ok = SEEDS.filter((s) => s.comms_ok).length;
@@ -325,12 +478,19 @@ export const mockApi: Api = {
       ingest_msgs_per_s: SEEDS.length / 10,
     };
   },
-  async ack(alarmId, body) {
+  async ack(alarmId) {
     await delay(200);
     const target = findAlarm(alarmId);
     if (!target) throw new ApiError(404, `alarm bulunamadi: ${alarmId}`);
     if (target.state !== "active") throw new ApiError(409, "alarm zaten onayli veya temizlenmis");
-    Object.assign(target, { state: "acked", acked_at: new Date().toISOString(), acked_by: body.by });
+    // F-19: onaylayanin adi govdeden DEGIL kimlikten gelir. Ornek veri kipinde
+    // dogrulanacak bir belirtec yok, o yuzden gercek sunucunun kimlik dogrulama
+    // KAPALIYKEN yazdigi adin aynisi kullanilir (backend/app/auth.py ANONYMOUS).
+    Object.assign(target, {
+      state: "acked",
+      acked_at: new Date().toISOString(),
+      acked_by: "anonim (kimlik dogrulama kapali)",
+    });
     return { ok: true };
   },
   async shelve(alarmId, body: ShelveBody) {
@@ -379,25 +539,6 @@ export const mockApi: Api = {
       event_id: event.event_id, pano_id: event.pano_id, occurred_at: event.occurred_at,
       code: event.code, det_label: event.det_label, window_h: windowH, series, timeline: event.timeline,
     };
-  },
-  async fleetHealth(limit = 2000) {
-    await delay(60);
-    return SEEDS.slice(0, limit).map((s) => {
-      const d = details.get(s.pano_id);
-      return {
-        pano_id: s.pano_id,
-        name: s.name,
-        nodes_ok: d?.health.nodes_ok ?? 25,
-        nodes_total: d?.health.nodes_total ?? 25,
-        rssi_dbm: d?.health.rssi_dbm ?? -70,
-        vbak_pct: d?.health.vbak_pct ?? 100,
-        buffered: d?.health.buffered ?? 0,
-        fw: d?.health.fw ?? "0.3.1",
-        comms_ok: s.comms_ok,
-        last_seen: isoAgo(10_000),
-        baseline_day: s.baseline_day,
-      };
-    });
   },
 };
 

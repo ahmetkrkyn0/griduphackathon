@@ -87,6 +87,49 @@ def last_seen(record: PanelRecord) -> datetime:
     return record.last_rx or record.installed_at
 
 
+def _iso(value: datetime | None) -> str | None:
+    """None KORUNUR: "olcmedik/almadik" ile bir tarih arasindaki fark kaybolmamali."""
+    return value.isoformat() if value is not None else None
+
+
+def asset_view(record: PanelRecord) -> dict[str, Any] | None:
+    """AssetRegistry semasi; kunye ice aktarilmamissa None (F-21).
+
+    Bos kunyeyi "hepsi null olan bir sozluk" olarak dondurmek, ekranda bos hucre uretirdi
+    ve bos hucre "degeri sifir/bilinmiyor" gibi okunurdu. `null` donmek ekrani
+    "CBS'den ice aktarilmadi" yazmaya ZORLAR.
+    """
+    if not record.has_asset:
+        return None
+    return {
+        "cbs_kodu": record.cbs_kodu,
+        "fider_id": record.fider_id,
+        "il": record.il,
+        "ilce": record.ilce,
+        "abone_sayisi": record.abone_sayisi,
+        "trafo_kva": record.trafo_kva,
+        "kritiklik": record.kritiklik,
+        # UYDURULMAZ: aktarim doldurmadiysa null kalir (backlog F-21 "Dikkat" satiri).
+        "uretici": record.uretici,
+        "seri_no": record.seri_no,
+        "son_bakim_at": _iso(record.son_bakim_at),
+        "sonraki_bakim_at": _iso(record.sonraki_bakim_at),
+        "kunye_kaynak": record.kunye_kaynak,
+        "kunye_at": _iso(record.kunye_at),
+    }
+
+
+def asset_coverage(records: Iterable[PanelRecord]) -> dict[str, int]:
+    """Kapsama SAYIYLA verilir ki eksiklik gizlenemesin (GK10)."""
+    records = list(records)
+    return {
+        "panolar": len(records),
+        "kunyeli": sum(1 for r in records if r.has_asset),
+        "fiderli": sum(1 for r in records if r.fider_id is not None),
+        "aboneli": sum(1 for r in records if r.abone_sayisi is not None),
+    }
+
+
 def panel_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
     payload = record.payload or {}
     score, mode, ttl_h = _risk(record.payload)
@@ -106,27 +149,42 @@ def panel_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> d
         "last_seen": last_seen(record).isoformat(),
         "comms_ok": is_comms_ok(record, contracts, now),
         "baseline_day": record.baseline_day if baseline_day is None else baseline_day,
+        # Varlik kutugu (F-21) — ozete YALNIZCA uc alan girer: etki ekseni, onceliklendirme
+        # ve bakim vadesi rozeti. Kunyenin tamami panel_detail'dedir.
+        "abone_sayisi": record.abone_sayisi,
+        "kritiklik": record.kritiklik,
+        "sonraki_bakim_at": _iso(record.sonraki_bakim_at),
     }
 
 
-def panel_health_summary(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
+#: GET /fleet/health satirinin `health` blogundan gelen alanlari — DeviceHealth ile AYNI adlar.
+#: `fw` bu listede YOK: yukun KOK seviyesinde durur (bkz. panel_detail, asagida).
+#: `baseline_day` de yok: panels tablosunda ayri bir karsiligi var ve
+#: panel_summary'deki gibi telemetri degeri onceliklidir.
+HEALTH_FIELDS = ("nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "maint_mode")
+
+
+def panel_health(record: PanelRecord, contracts: Contracts, now: datetime) -> dict[str, Any]:
+    """Cihaz sagligi satiri (TC3). panel_summary ile ayni turetme deseni.
+
+    Telemetri hic gelmemis panoda saglik alanlari None doner — 0 YAZILMAZ:
+    0 dBm gecerli bir RSSI'dir, "bilinmiyor" degildir ve ekran ikisini
+    ayirt edebilmek zorundadir (bkz. CihazSagligi.tsx `isBad`).
+
+    `fw`, panel_detail ile AYNI sekilde yukun kokunden yukseltilir; iki uc
+    ayni alan icin farkli deger dondurmemeli (test_fleet_health_matches_panel_detail).
+    """
     payload = record.payload or {}
     health = payload.get("health") or {}
-    fw = payload.get("fw") or health.get("fw")
+    view: dict[str, Any] = {"pano_id": record.pano_id, "name": record.name}
+    for field in HEALTH_FIELDS:
+        view[field] = health.get(field)
+    view["fw"] = payload.get("fw")
     baseline_day = health.get("baseline_day")
-    return {
-        "pano_id": record.pano_id,
-        "name": record.name,
-        "nodes_ok": health.get("nodes_ok"),
-        "nodes_total": health.get("nodes_total"),
-        "rssi_dbm": health.get("rssi_dbm"),
-        "vbak_pct": health.get("vbak_pct"),
-        "buffered": health.get("buffered"),
-        "fw": fw,
-        "comms_ok": is_comms_ok(record, contracts, now),
-        "last_seen": last_seen(record).isoformat(),
-        "baseline_day": record.baseline_day if baseline_day is None else baseline_day,
-    }
+    view["baseline_day"] = record.baseline_day if baseline_day is None else baseline_day
+    view["last_seen"] = last_seen(record).isoformat()
+    view["comms_ok"] = is_comms_ok(record, contracts, now)
+    return view
 
 
 def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool) -> dict[str, Any]:
@@ -149,8 +207,13 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def alarm_view(alarm: Alarm, contracts: Contracts) -> dict[str, Any]:
-    """contracts/openapi.yaml Alarm semasi. Kimlik metin olarak dondurulur."""
+def alarm_view(alarm: Alarm, contracts: Contracts, outages: Any = None) -> dict[str, Any]:
+    """contracts/openapi.yaml Alarm semasi. Kimlik metin olarak dondurulur.
+
+    `outages` verilirse (api/outages.OutageIndex) alarm bir ust sebeke kesintisine baglanir
+    (F-22). Verilmezse alan HIC YAZILMAZ — "baglanti yok" ile "baginti sorgulanmadi" ayni
+    sey degildir ve sozlesmede alan zaten zorunlu degildir.
+    """
     spec = contracts.alarm(alarm.code) or {}
     view: dict[str, Any] = {
         "id": str(alarm.id),
@@ -172,6 +235,10 @@ def alarm_view(alarm: Alarm, contracts: Contracts) -> dict[str, Any]:
     }
     if alarm.advice is not None:
         view["advice"] = alarm.advice
+    if outages is not None:
+        outage_id = outages.of(alarm.pano_id, alarm.raised_at)
+        if outage_id is not None:
+            view["outage_id"] = outage_id
     return view
 
 
@@ -186,6 +253,7 @@ def panel_detail(
         "risk_score": score,
         "risk_mode": mode,
         "active_alarms": [alarm_view(alarm, contracts) for alarm in active_alarms],
+        "asset": asset_view(record),
     }
     payload = record.payload
     if payload is None:

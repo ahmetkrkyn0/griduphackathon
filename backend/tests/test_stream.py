@@ -14,7 +14,7 @@ from helpers import CONTRACTS_DIR, encode, receive_json, utc
 NOW = utc(2026, 9, 13, 10, 5, 0)
 
 
-def test_stream_sends_hello_then_summaries_of_ingested_panels(api_contract, tel_payload):
+def test_stream_sends_hello_then_summaries_of_ingested_panels(api_contract, tel_payload, contracts):
     store = MemoryStore([{"pano_id": "ADM-00001", "name": "Efeler TM-14"}])
     app = create_app(
         Settings(contracts_dir=CONTRACTS_DIR, ingest_enabled=False), store=store, clock=lambda: NOW
@@ -23,7 +23,9 @@ def test_stream_sends_hello_then_summaries_of_ingested_panels(api_contract, tel_
     with TestClient(app) as client, client.websocket_connect("/api/v1/stream") as ws:
         hello = receive_json(ws)
         assert hello["type"] == "hello"
-        assert hello["payload"]["api_version"] == "1.0.0"
+        # Surum SOZLESMEDEN okunur, teste gomulmez: openapi.yaml'in `info.version`
+        # alani her uc eklendiginde artiyor ve bu test onu takip etmek zorunda degil.
+        assert hello["payload"]["api_version"] == contracts.api_version
         assert datetime.fromisoformat(hello["payload"]["server_time"]) == NOW
 
         app.state.pipeline.handle_message("gridup/pano/ADM-00001/tel", encode(tel_payload))

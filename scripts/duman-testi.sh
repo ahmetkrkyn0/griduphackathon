@@ -8,6 +8,11 @@
 #   docker compose -f deploy/compose.yaml up -d --build
 #   bash scripts/duman-testi.sh
 #
+# mTLS kipi (F-27) — AYRI bir profildir ve duz yigini KAPATMAZ, yanina kosar:
+#   bash scripts/sertifika-uret.sh
+#   docker compose -f deploy/compose.yaml --profile mtls up -d mosquitto-mtls
+#   GRIDUP_MTLS=1 bash scripts/duman-testi.sh
+#
 # Tam temiz makine testi icin once volume'lari da silin:
 #   docker compose -f deploy/compose.yaml down -v
 #
@@ -19,9 +24,20 @@ API="${GRIDUP_API:-http://localhost:8000}"
 FRONTEND="${GRIDUP_FRONTEND:-http://localhost:3000}"
 GRAFANA="${GRIDUP_GRAFANA:-http://localhost:3001}"
 PY="${GRIDUP_PYTHON:-python}"
+# mTLS olcumu backend'in KENDI MqttSubscriber sinifini kullanir (merkezin mTLS kod yolu
+# da canli olcume girsin diye), dolayisiyla backend bagimliliklarina ihtiyaci var.
+# Varsa backend venv'i, yoksa $PY — bu durumda import hatasi ANLASILIR bicimde duser.
+PY_MTLS="$PY"
+for aday in backend/.venv/Scripts/python.exe backend/.venv/bin/python; do
+  [ -x "$aday" ] && { PY_MTLS="$aday"; break; }
+done
+# `set -u` acik: her okuma varsayilanli olmali, yoksa betik daha ILK kontrolden once
+# "unbound variable" ile olur ve demo calisirken duman testi "kaldi" der.
+MTLS="${GRIDUP_MTLS:-0}"
 
 gecti=0
 kaldi=0
+atlandi=0
 kontrol() {
   local ad="$1"; shift
   if "$@" >/dev/null 2>&1; then
@@ -30,6 +46,10 @@ kontrol() {
     printf '  \033[1;31m✗\033[0m %s\n' "$ad"; kaldi=$((kaldi + 1))
   fi
 }
+
+# Atlanan kontrol SESSIZ GECMIS SAYILMAZ: `gecti` sayacina girmez, ekrana neden
+# atlandigiyla birlikte yazilir. Sessizce atlamak "hepsi gecti" gibi okunurdu.
+atla() { printf '  \033[1;33m~\033[0m %s — ATLANDI (%s)\n' "$1" "$2"; atlandi=$((atlandi + 1)); }
 
 baslik() { printf '\n\033[1;34m== %s ==\033[0m\n' "$1"; }
 
@@ -120,5 +140,56 @@ kontrol "merkez dedektor etkin (TB2 Adim 4)" \
 kontrol "TVOC-2 fabrika ID 248 SESSIZ (istisna bile donmez)" modbus_sessiz 5021 248 1300
 kontrol "MPR-53CS CT register'i okunuyor (0x8001)"           modbus_okur 5020 1 32769
 
-printf '\n\033[1m SONUC: %d gecti, %d kaldi\033[0m\n' "$gecti" "$kaldi"
+baslik "Sirlar (GK9)"
+# Iki kipte de kosar: sertifika uretilmis bir makinede ignore'un GERCEKTEN tuttugunu
+# canli dogrular. Duz kipte de anlamlidir (deploy/.env, gecmis taramasi).
+kontrol "sertifika/anahtar materyali git disinda" "$PY" scripts/sir_taramasi.py --sessiz
+
+baslik "Tasima guvenligi (F-27)"
+# Varsayilan demo yolunda TLS YOKTUR ve bu SESSIZ bir varsayilan degildir:
+# /health `mqtt_tls` alani her iki kipte de dogruyu soyler.
+kontrol "backend /health tasimanin sifreli olup olmadigini soyluyor" \
+  bash -c "curl -fsS '$API/health' | grep -q 'mqtt_tls'"
+
+if [ "$MTLS" = "1" ]; then
+  kontrol "mosquitto-mtls calisiyor" \
+    bash -c "docker compose -f '$COMPOSE' ps mosquitto-mtls --format '{{.State}}' | grep -q running"
+  kontrol "8883 dinliyor" port_acik 8883
+  # Duz/anonim baglanti 8883'te KABUL EDILMEMELI. Bu, olcumun yanlis brokera
+  # dusmedigini de dogrular (duz 1883 hala ayakta, profil onu kapatmaz).
+  kontrol "8883'te TLS'siz baglanti reddediliyor" "$PY" - <<'PYEOF'
+import socket, sys
+# MQTT CONNECT paketi TLS bekleyen bir dinleyiciye gonderilir: broker el sikismayi
+# ayristiramaz ve baglantiyi keser. Cevap gelirse listener TLS istemiyor demektir.
+frame = bytes([0x10, 0x0c, 0x00, 0x04]) + b"MQTT" + bytes([0x04, 0x02, 0x00, 0x3c, 0x00, 0x00])
+with socket.create_connection(("localhost", 8883), timeout=5) as s:
+    s.settimeout(5)
+    s.sendall(frame)
+    try:
+        cevap = s.recv(64)
+    except (socket.timeout, ConnectionResetError, OSError):
+        cevap = b""
+sys.exit(0 if not cevap else 1)
+PYEOF
+  # Saglik durumu State'ten AYRIDIR: `ps --format '{{.State}}'` unhealthy bir konteyner
+  # icin de "running" doner ve bozuk bir healthcheck'i gizler (olculdu).
+  kontrol "mosquitto-mtls saglikli (yalnizca 'running' degil)" \
+    bash -c "docker inspect -f '{{.State.Health.Status}}' gridup-mosquitto-mtls | grep -qx healthy"
+  # Bu kontrol ciktiyi YUTMAZ: olcum uc ayri sonuc verir (0 gecti, 1 vaka ayristi,
+  # 2 olcum yapilamadi) ve ucu de `kontrol` icinde ayni kirmizi carpi olarak gorunurdu.
+  # PY_MTLS: olcum backend'in KENDI MqttSubscriber sinifini kullanir, backend
+  # bagimliliklari gerekir. Ilk yazimda burada $PY yaziyordu ve venv arayisi olu koddu.
+  if "$PY_MTLS" scripts/mtls_yetki_testi.py; then
+    printf '  \033[1;32m✓\033[0m %s\n' "cihaz basina topic yetkisi olculdu (4 sinyal + mutasyon)"
+    gecti=$((gecti + 1))
+  else
+    printf '  \033[1;31m✗\033[0m %s (cikis %d — yukaridaki rapora bakin)\n' \
+      "cihaz basina topic yetkisi olculdu" "$?"
+    kaldi=$((kaldi + 1))
+  fi
+else
+  atla "mTLS yetki olcumu" "GRIDUP_MTLS=1 degil; mTLS ayri bir profildir, varsayilan kapali"
+fi
+
+printf '\n\033[1m SONUC: %d gecti, %d kaldi, %d atlandi\033[0m\n' "$gecti" "$kaldi" "$atlandi"
 [ "$kaldi" -eq 0 ] || exit 1

@@ -243,6 +243,7 @@ Değerler Modbus ağ geçidiyle aynı kodlayıcıdan (`encoder.py`) gelir: iki p
 | 2019 | `ALM-DOOR-UNAUTH` | alarm biti 19 | P2 | Planli is emri olmadan kapak acildi |
 | 2020 | `ALM-LASTGASP` | alarm biti 20 | P2 | Besleme kesildi (son nefes mesaji) |
 | 2021 | `ALM-PANEL-TEMP` | alarm biti 21 | P2 | Pano ic ortam sicakligi 45 degC ustu |
+| 2022 | `ALM-DQ-DRIFT` | alarm biti 22 | SYS | Sensor yuk bagimsiz kayma biriktirdi — kalibrasyon supheli |
 | 3000 | `critical_alarm` | coil 0 | - | canli P1 alarm var |
 | 3001 | `warning_active` | coil 1 | - | canli P2 veya P3 alarm var |
 | 3002 | `comms_ok` | coil 2 | - | son veri heartbeat_timeout_min icinde |

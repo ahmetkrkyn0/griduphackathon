@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RiskMatrisi } from "../components/RiskMatrisi";
 import { SureEkseni } from "../components/SureEkseni";
+import { bakimVadesi } from "../lib/etki";
 import { ago, num, ttlText } from "../lib/format";
-import { PRIO_NAME, hypText } from "../lib/labels";
+import { PRIO_NAME, hypText, kritiklikText } from "../lib/labels";
 import { useNow } from "../lib/useNow";
 import type { PanelSummary } from "../api/types";
 import {
@@ -317,6 +318,7 @@ export function FiloListesi() {
             <tbody>
               {visible.map((p) => {
                 const prio = effectivePrio(p);
+                const bakim = bakimVadesi(p.sonraki_bakim_at);
                 return (
                   <tr key={p.pano_id}>
                     <td>
@@ -327,6 +329,21 @@ export function FiloListesi() {
                         <span>
                           <strong>{p.name}</strong>
                           <small>{p.pano_id}</small>
+                          {/* Varlik kunyesi (F-21): yalnizca ICE AKTARILMISSA yazilir.
+                              Kunyesiz panoda hic cizilmez — bos bir alan "abonesi yok"
+                              gibi okunurdu. */}
+                          {(p.abone_sayisi != null || p.kritiklik) && (
+                            <small>
+                              {[
+                                p.abone_sayisi != null
+                                  ? `${p.abone_sayisi} abone`
+                                  : null,
+                                p.kritiklik ? kritiklikText(p.kritiklik) : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </small>
+                          )}
                         </span>
                       </Link>
                     </td>
@@ -350,7 +367,16 @@ export function FiloListesi() {
                         </span>
                       </span>
                     </td>
-                    <td className="diagnosis-cell">{hypText(p.risk_mode)}</td>
+                    <td className="diagnosis-cell">
+                      <div>{hypText(p.risk_mode)}</div>
+                      {bakim && (
+                        <span
+                          className={`bakim-rozet${bakim.gecti ? " bakim-rozet--gecti" : ""}`}
+                        >
+                          {bakim.metin}
+                        </span>
+                      )}
+                    </td>
                     <td className="numeric">{ttlText(p.ttl_h) || "—"}</td>
                     <td>
                       <span
@@ -388,3 +414,4 @@ export function FiloListesi() {
     </main>
   );
 }
+

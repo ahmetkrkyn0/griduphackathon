@@ -1,6 +1,7 @@
 # 09 — Ölçeklenebilirlik, Yük Testi ve Veri Bütçesi
 
-> **Sahip:** Kişi B · **Ölçüm tarihi:** 13 Eylül 2026 · **Araçlar:** `loadtest/fleet.py` (yük), `loadtest/storage.py` (depolama)
+> **Sahip:** Kişi B · **Ölçüm tarihi:** 13 Eylül 2026 (§6.1 veri bütçesi: **18 Eylül 2026**) ·
+> **Araçlar:** `loadtest/fleet.py` (yük), `loadtest/storage.py` (depolama), `loadtest/veri_butcesi.py` (uyarlanabilir raporlama, §6.1)
 > **Ham sonuçlar:** `loadtest/results/*.json` (git dışı; bu dokümandaki her sayı oradan alındı) ·
 > **Grafana:** "Grid Up — Ölçek ve yük testi" (koşu seçilerek) ve "Grid Up — Alarm KPI" · Rapor karşılığı: §6.8
 
@@ -22,8 +23,9 @@
   **501 µs'i şema doğrulaması** (§4.4).
 - **Depolama:** TimescaleDB sıkıştırması **46–48 kat** ölçüldü ve şemaya eklendi (`deploy/initdb/005_compression.sql`).
   100 pano × 7 nokta × 10 s: günde **13,9 GB → 0,29 GB**.
-- **Hücresel veri:** 10 s JSON ile pano başına ayda ~456 MB. Rapordaki "normalde 60 s, olayda anında" raporlama bunu ~76 MB'a,
-  ikili kodlama ~13 MB'a indirir (§6).
+- **Hücresel veri:** 10 s JSON ile pano başına ayda ~456 MB (7 nokta) / ~1.014 MB (25 nokta). **Uyarlanabilir raporlama 18 Eylül'de
+  uygulandı ve ölçüldü** (F-36): 25 noktalı panoda 1.071 MB → **632 MB**, yani **1,70 kat** — rapordaki 6 kat tahmininin oldukça altında.
+  Alarm anı ölçümle **değişmedi**. Ayrıntı ve tahmin/ölçüm karşılaştırması §6.1'de.
 
 ## 2. Test düzeneği
 
@@ -123,11 +125,11 @@ Mesaj başına alım maliyeti (aynı makine, 7 noktalı 1.623 baytlık yük, 2.0
 615 µs, MQTT thread'ini tek başına ~1.600 mesaj/s ile sınırlar. Yazıcı thread'i (COPY satırları) ve alarm servisi aynı Python sürecinde
 GIL'i paylaştığı için doyma daha erken, 1.000 mesaj/s civarında geldi.
 
-**Ölçek kaldıraçları** (ölçümle önceliklendirildi; hackathon kapsamında uygulanmadı, 🧭):
+**Ölçek kaldıraçları** (ölçümle önceliklendirildi; aksi belirtilmedikçe hackathon kapsamında uygulanmadı, 🧭):
 
 | Kaldıraç | Beklenen etki | Not |
 |---|---|---|
-| Raporlama periyodu 60 s, olayda anında (kenar kararı; rapor §6.8) | Mesaj hızı 6 kat düşer: 5.000 panoluk ölçülen bütçe **30.000 panoya** yeter | Kenarda 1 s işleme sürer; alarm gecikmesi değişmez |
+| **Uyarlanabilir raporlama** (ölü bant + azami sessizlik + olayda anında) | **Tahmin 6 kat idi; ölçülen 1,70 kat** (§6.1) | **18 Eylül'de uygulandı ve ölçüldü** (`panoalgo.reporting`, `--adaptive`). Tespit kenarda 10 s'de koşmaya devam eder; alarm anı ölçümle değişmedi |
 | Şema doğrulamasını derlenmiş doğrulayıcıya almak | Alım işinin %81'i | Draft 2020-12 uyumu doğrulanmalı; doğrulama **kaldırılmaz** (karantina ve güvenlik sınırı) |
 | MQTT paylaşımlı abonelik (`$share/ingest/...`) ile birden çok ingest süreci | Doğrusal ölçek (Mosquitto 2 destekler) | Alarm yöneticisi **tek yazıcı** kalır; ingest süreçleri yalnızca telemetriyi yazar |
 | Parti aralığını 0,5 s'den kısaltmak | Görünme tabanı ~400 ms'den aşağı | Commit sayısı artar; DB tarafında pay var |
@@ -166,7 +168,9 @@ aynı sonucu verir (`backend/tests/test_compression.py`, gerçek TimescaleDB).
 - **Önerilen politika** (rapor §6.8, 🧭): ham 10 s veri 90 gün (ilk gün sıkıştırmasız), ardından tüm etiketlerin 1 dk ortalaması 2 yıl. Özet
   terimi üst sınırdır, çünkü tüm etiketlerin özetlendiği varsayıldı.
 - **En büyük kaldıraç raporlama periyodudur:** normalde 60 s, olayda anında raporlamada satır sayısı 6'da birine iner. 100 pano × 7 nokta
-  için sıkıştırılmış yıllık yük ~**17 GB**, 1.000 pano için ~**174 GB** olur. Yavaş değişen alanların (`k`, `tau_s`, `excited`) 10 s yerine
+  için sıkıştırılmış yıllık yük ~**17 GB**, 1.000 pano için ~**174 GB** olur. **18 Eylül notu (F-36):** bu satırdaki 6 kat bir tahmindir ve
+  ölçüm onu doğrulamadı — uyarlanabilir raporlama %2 ölü bantla **1,70 kat** verdi (§6.1), yani karşılığı ~**62 GB** / ~**620 GB**.
+  Yavaş değişen alanların (`k`, `tau_s`, `excited`) 10 s yerine
   60 s'de gönderilmesi 10 s raporlamada da satır sayısını ~%22 azaltır (nokta başına 6 satırın 3'ü; mesaj başına 81 → ~63 satır).
 
 ### 5.3 Rapor §6.8 tablosuyla karşılaştırma
@@ -185,14 +189,69 @@ aynı sonucu verir (`backend/tests/test_compression.py`, gerçek TimescaleDB).
 Ölçülen JSON yükü ve MQTT 3.1.1 QoS 1 PUBLISH başlığı; TCP/IP ve TLS ek yükü mesaj başına ~110 B tahminidir (TCP/IP 40 B, TLS kaydı 29 B,
 ACK ~40 B).
 
-| Yük | JSON | MQTT | Ek yükle | 10 s, aylık | **60 s, aylık** |
+| Yük | JSON | MQTT | Ek yükle | 10 s, aylık | 60 s, aylık *(aritmetik, olaysız)* |
 |---|---|---|---|---|---|
-| 7 nokta | 1.620 B | 1.652 B | ~1.761 B | ~456 MB | **~76 MB** |
-| 25 nokta | 3.772 B | 3.804 B | ~3.913 B | ~1.014 MB | **~169 MB** |
-| İkili özet (rapor tahmini, CBOR/protobuf) | — | 300 B | — | ~78 MB | **~13 MB** |
+| 7 nokta | 1.620 B | 1.652 B | ~1.761 B | ~456 MB | ~76 MB |
+| 25 nokta | 3.772 B | 3.804 B | ~3.913 B | ~1.014 MB | ~169 MB |
+| İkili özet (rapor tahmini, CBOR/protobuf) | — | 300 B | — | ~78 MB | ~13 MB |
 
-**Sonuç:** 10 s JSON, düşük kotalı M2M hattı için pahalıdır. Sahada **60 s özet + olayda anında** raporlama ve **ikili kodlama** (🧭,
-kenar firmware'i, Kişi A) önerilir; merkezde yalnızca ayrıştırıcı değişir. Sözleşme bunu şimdiden söyler: "JSON; üretimde CBOR".
+Son sütun bir **aritmetiktir**: 10 s sayısının 6'ya bölünmesi. Kusursuz 60 s'lik bir ritim ve **sıfır olay yayını** varsayar, yani
+ulaşılabilir alt sınırdır. İkili özet satırı da ~110 B ek yük **içermez**; JSON satırlarıyla aynı tabanda değildir (adil taban ~410 B → ~106 MB).
+Gerçek uyarlanabilir raporlamanın ne verdiği §6.1'de **ölçülmüştür**.
+
+### 6.1 Uyarlanabilir raporlama — ölçüm (F-36, 18 Eylül 2026)
+
+`panoalgo.reporting` nokta başına **ölü bant**, **azami sessizlik** (60 s) ve **olayda anında yayın** uygular. Seyrelen yalnızca **yayındır**:
+tespit kenarda 10 saniyede koşmaya devam eder (ölçüm aracı bunu şart koşar, aksi halde sayı yazmadan durur).
+
+**Düzenek:** `loadtest/veri_butcesi.py`, **gerçek fizik üreteci** (`panoalgo.generator.PanelSimulator`), 5 pano × 25 nokta, tohum 20260918,
+10 s tespit periyodu. 9 simüle günün **ilk 7'si taban öğrenme** (K₀ donuncaya kadar), bütçe **son 48 saat** için ölçüldü: **86.400 örnek**.
+Beş politika **aynı örnek akışını** görür — karşılaştırma iki ayrı deneyden değil tek koşudan gelir.
+
+| Politika | Mesaj | JSON | MQTT | Faturalanan | Pano başına aylık | Bastırılan | Azalma |
+|---|---|---|---|---|---|---|---|
+| Sabit 10 s (bugünkü davranış) | 86.400 | 344,8 MB | 347,6 MB | 357,1 MB | **1.071 MB** | %0,0 | 1,00× |
+| Ölü bant %1 | 81.350 | — | — | 336,2 MB | 1.009 MB | %5,8 | 1,06× |
+| **Ölü bant %2 (teslim edilen varsayılan)** | **50.932** | 203,6 MB | 205,2 MB | 210,8 MB | **632 MB** | **%41,0** | **1,70×** |
+| Ölü bant %5 | 41.843 | — | — | 173,3 MB | 520 MB | %51,6 | 2,06× |
+| Ölü bant %10 | 33.093 | — | — | 137,1 MB | 411 MB | %61,7 | 2,61× |
+
+**Neyin azaldığını tanımlıyoruz (GK10):** üç kalem farklı sayılar verir ve üçü de yukarıda ayrı sütunda. **Mesaj sayısı** ve **JSON/MQTT baytı
+ölçülmüştür**; "faturalanan" ise MQTT baytına mesaj başına ~110 B TCP/IP+TLS+ACK eklenmiş **tahmindir** (§6 girişindeki aynı sayı). Bayt
+muhasebesi **sıkıştırılmış JSON** üzerinedir; `sim/panosim.py` boşluklu `json.dumps` kullanır ve **ölçüldü: 1,139 kat** büyüktür.
+
+**Tahmin ile ölçüm arasındaki fark — maddenin asıl bulgusu:**
+
+| | Rapor/§4.4 tahmini | **Ölçülen (%2)** | Fark nedeni |
+|---|---|---|---|
+| Mesaj hızı azalması | 6 kat | **1,70 kat** | 60 s heartbeat teorik olarak %83 bastırmaya izin verir; ölçülen %41,0. Yayınların **%22,7'si olay** (alarm kümesi, risk kipi, veri kalitesi bitleri), **%70,2'si ölü bant aşımı**, yalnızca **%7,1'i heartbeat**. Gerçek fizikte "hiçbir şey değişmiyor" hâli varsayıldığı kadar sık değil |
+| Pano başına aylık hücresel (25 nokta) | ~169 MB (60 s, aritmetik) | **632 MB** | Aynı oran farkı; aritmetik sütun sıfır olay varsayıyor |
+
+§5.2'deki depolama satırı da aynı orandan etkilenir: 100 pano × 7 nokta için yıllık sıkıştırılmış yük 10 s'de **ölçülen** ~105 GB idi;
+"60 s" varsayımıyla ~17 GB'a iniyordu. Ölçülen 1,70 kat uygulanırsa **~62 GB** olur. Bu sayı **türetilmiştir, ölçülmemiştir**: oran 25
+noktalı panolarda ölçüldü ve 7 noktalı bir panoda ölü bandı aşma şansı daha az olduğu için gerçek tasarruf bundan **iyi** olabilir.
+
+**Alarm gecikmesi değişmedi — ölçüldü, varsayılmadı.** Araç her alarm kodunun **ilk yayınlandığı turu** politikalar arasında karşılaştırır.
+Gevşek bağlantının sürünerek büyüdüğü arıza rejiminde dokuz kodun tamamı beş politikada da **aynı turda** yayınlandı; örneğin
+`ALM-THR-TERM-ALM` beşinde de **15.161. turda** (≈42. saat) çıktı. Sebebi yapısaldır: alarm kümesindeki, risk kipindeki, koruma durumundaki
+ve veri kalitesi bitlerindeki **her değişim anında yayın tetikler**, yani ölü bant yalnızca eşik altındaki sayısal sürünmeyi bastırabilir.
+
+**Veri kaybı sınırlıdır ve ölçülmüştür.** Yayınlanmayan örnekler sıfırıncı derece tutmayla geri kurulduğunda hata hiçbir alanda ölü bandı
+aşmadı: en büyük sapma `elec.i_ph` üzerinde **40,4 A** (bant 41,6 A), `ttl_h` üzerinde 6,0 saat (bant 6,72 saat). Ölü bantların hepsi
+`contracts/alarm-codes.yaml` eşiklerinden **türetilir** (karar aralığının %2'si); sözleşmeye yeni alan eklenmemiştir.
+
+**Sonuç:** 10 s JSON, düşük kotalı M2M hattı için pahalıdır. Uyarlanabilir raporlama kaldıracın **gerçek ama tahmin edilenden küçük**
+olduğunu gösterdi: pano başına ayda 1.071 MB → **632 MB**. Kalan büyük kaldıraç **ikili kodlamadır** (🧭, kenar firmware'i, Kişi A);
+merkezde yalnızca ayrıştırıcı değişir. Sözleşme bunu şimdiden söyler: "JSON; üretimde CBOR".
+
+**Sahada açmadan önce iki önkoşul (ölçülmedi, kayda geçiriliyor):**
+- **Kayıp mesaj toleransı düşer.** `ALM-COMMS-LOST` 300 s sessizlikte tetiklenir; 10 s'de bu 30 ardışık mesaj demekken 60 s'de 5'e iner.
+  `ingest` kuyruğu dolduğunda mesaj sessizce düşer (`backend/app/ingest.py`), yani bu tolerans gerçek bir emniyet payıdır.
+- **F-22 kesinti penceresinin gerekçesi 10 s'e dayanıyor.** `outage_window_min: 2` yorumu sözleşmede birebir "telemetri periyodu (10 s) …
+  için cömert bırakıldı" der. Uyarlanabilir raporlama **varsayılan olarak kapalıdır** (`--adaptive` ile açılır), bu yüzden gerekçe bugün
+  geçerlidir; sahada açılırsa pencere yeniden türetilmelidir.
+- Kenar kendi yayın aralığını merkeze **beyan edemez**: telemetri şeması donmuştur ve `additionalProperties: false` taşır. Merkez bu yüzden
+  sabit 300 s ile karşılaştırır; emniyet payı kodda korunur (azami sessizlik, sözleşmedeki zaman aşımının yarısını aşamaz).
 
 ## 7. Sunucu boyutlandırma — ölçümden
 
@@ -211,6 +270,9 @@ Yüksek erişilebilirlik (ikinci sunucu, çift broker) kapasiteden bağımsız b
 - **İş istasyonu:** tek çekirdek hızı sunucu vCPU'sundan yüksek; kapasite sınırı sunucuda daha erken gelir.
 - **Bağlantı sayısı:** 20–50 MQTT bağlantısı panoları paylaştı. 1.000–10.000 ayrı TLS bağlantısı sınanmadı. Mosquitto'nun bu ölçekte
   bağlantı başına belleği küçüktür (ölçülen toplam ≤ 16 MiB) ama TLS el sıkışma fırtınası (toplu yeniden bağlanma) ayrıca sınanmalıdır.
+  **18 Eylül notu (F-27):** artık çalışan bir mTLS yolu var, ama `loadtest/fleet.py` düz 1883'e bağlanır ve bu ölçümler o yolla
+  alınmıştır; TLS el sıkışma maliyeti **hâlâ ölçülmedi**. Ayrıca cihaz başına sertifika topolojiyi de değiştirir (N pano = N
+  bağlantı), yani aşağıdaki sayılar mTLS kipine **doğrudan taşınamaz**.
 - **Süre:** koşular 2–5 dakika. 24 saatlik etkiler (sıkıştırma işinin kendisi, autovacuum, parça oluşturma) bu ölçümlerin dışında.
 - **Şablon yük:** fiziksel değil; alarm yalnızca 5 panodan. Alarm seli ölçeği (yüzlerce eşzamanlı P1) sınanmadı; bildirim kuyruğu sıralıdır.
 - **Görünme ölçümü** 250 ms tanelidir.
@@ -228,6 +290,13 @@ backend/.venv/Scripts/python loadtest/fleet.py --panels 1000 --duration 300     
 backend/.venv/Scripts/python loadtest/fleet.py --panels 1000 --points 25 --duration 180
 backend/.venv/Scripts/python loadtest/storage.py --panels 5 --points 7              # 1 gunluk depolama deneyi
 backend/.venv/Scripts/python loadtest/fleet.py --cleanup-only                      # yarida kalan kosudan sonra
+
+# Veri butcesi (F-36, §6.1). YIGIN GEREKMEZ: tek surec, deterministik, ~50 dk.
+# fleet.py bu soruyu CEVAPLAYAMAZ: onun fizik ureteci her yayinda 15 SIMULE DAKIKA
+# ilerler (PhysicsPayloadFactory.SIM_STEP_S=900), yani 10 s'lik olu bant rejimini
+# olcemez ve bastirmayi sistematik olarak KUCUK gosterir.
+backend/.venv/Scripts/python loadtest/veri_butcesi.py --panolar 5 --gun 9 --isinma-gun 7
+backend/.venv/Scripts/python loadtest/veri_butcesi.py --hizli                       # duman testi; SAYILARI RAPORLANMAZ
 
 docker compose -f deploy/compose.yaml up -d backend    # demo alicilarini kaldir
 ```

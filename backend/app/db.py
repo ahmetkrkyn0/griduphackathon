@@ -2,7 +2,8 @@
 
 `Store` sozlesmesini hem uretimdeki PgStore hem de testlerdeki bellek ici cift uygular.
 Tablolar: deploy/initdb/001_schema.sql (panels, telemetry, quarantine, events, alarms),
-002_ingest.sql (panel_latest) ve 003_alarms.sql (alarm_journal + durum makinesi zamanlari).
+002_ingest.sql (panel_latest), 003_alarms.sql (alarm_journal + durum makinesi zamanlari)
+ve 007_journal_chain.sql (denetim izi hash zinciri, F-20).
 """
 
 from __future__ import annotations
@@ -19,7 +20,9 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .alarm_manager import Alarm, Change
-from .models import EventRecord, JournalEntry, PanelRecord, Rejection, Sample
+from .journal_chain import GENESIS, link_hash
+from .outage import OutageGroup
+from .models import ASSET_FIELDS, EventRecord, JournalEntry, PanelRecord, Rejection, Sample
 
 if TYPE_CHECKING:
     from .notify.dispatcher import Delivery
@@ -27,6 +30,18 @@ if TYPE_CHECKING:
 
 class StoreError(RuntimeError):
     """Gecici depolama hatasi (baglanti yok, zaman asimi). Tekrar denenebilir; API 503 doner."""
+
+
+class UnknownPanel(LookupError):
+    """Varlik kutugu aktariminda taninmayan pano_id (F-21). API 404 doner.
+
+    Gecici bir hata DEGILDIR, bu yuzden StoreError'dan turemez: aktarim dosyasi yanlis
+    ve tekrar denemek ayni sonucu verir.
+    """
+
+    def __init__(self, pano_id: str) -> None:
+        super().__init__(f"varlik kutugu aktariminda taninmayan pano: {pano_id}")
+        self.pano_id = pano_id
 
 
 class Store(Protocol):
@@ -44,8 +59,78 @@ class Store(Protocol):
         ts, risk, alarms, health.baseline_day."""
         ...
 
+    def list_panel_health(self) -> list[PanelRecord]:
+        """Tum panolar; payload yalnizca `health` blogunu icerir (GET /fleet/health)."""
+        ...
+
+    def list_panel_points(self) -> list[PanelRecord]:
+        """Tum panolar; payload yalnizca `ts` ve `t_conn` dizisini icerir (GET /fleet/peers).
+
+        Filo akran karsilastirmasi (F-32) K0'i nokta basina k / k_ratio ile yeniden
+        turetir; baska hicbir blok gerekmez.
+        """
+        ...
+
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         """Tek pano, tam son yukle."""
+        ...
+
+    def save_outages(self, groups: Sequence[OutageGroup], *, detected_at: datetime) -> None:
+        """Kesinti olaylarini yazar; ayni olay tekrar gelirse DEGISTIRMEZ (F-22).
+
+        Alarm zamanlayicisi her tik'te (5 s) ayni kesintiyi yeniden tespit eder. `outage_id`
+        fider + baslangic anindan TURETILDIGI icin yazma kendiliginden fikirlidir:
+        `detected_at` ve pano listesi ILK tespitteki degerlerinde kalir.
+        """
+        ...
+
+    def list_outages(self, *, only_open: bool) -> list[dict]:
+        """Kesinti olaylari, en yenisi once; her biri panolariyla birlikte."""
+        ...
+
+    def get_outage(self, outage_id: str) -> dict | None: ...
+
+    def close_outages(self, outage_ids: Sequence[str], *, at: datetime) -> None:
+        """Haberlesmesi geri donen kesintileri kapatir.
+
+        DIKKAT: `ended_at` enerjinin geri geldigi an DEGILDIR — haberlesmenin dondugu andir
+        ve histerezislidir. Restorasyon ani bu depoda olculmuyor (F-23 bunu isaretler).
+        """
+        ...
+
+    def import_assets(self, rows: Sequence[dict], *, kunye_kaynak: str, at: datetime) -> int:
+        """CBS aktarimindan varlik kunyesini yazar; yazilan pano sayisini doner (F-21).
+
+        - Tek transaction: bir satir bile reddedilirse HICBIRI yazilmaz. Yarim ice
+          aktarilmis bir kutuk, hic ice aktarilmamis olandan daha kotudur — hangi
+          panonun guncel oldugu bilinemez.
+        - Bilinmeyen pano_id `UnknownPanel` atar: bu uc YENI PANO YARATMAZ. Pano
+          kaydi telemetriyle dogar; kutuk yalnizca var olan panoyu zenginlestirir.
+        - GONDERILMEYEN alan DEGISTIRILMEZ. Bir alani temizlemek icin acikca null
+          gonderilir; boylece kismi bir CBS aktarimi dolu alanlari silmez.
+        """
+        ...
+
+    def list_nodes(self) -> list[dict]:
+        """Dugum kutugu, node_id sirali (F-31). Kutugu olmayan pano listede YOKTUR."""
+        ...
+
+    def node_point_map(self) -> dict[tuple[str, str], str]:
+        """(pano_id, nokta) -> node_id eslemesi (F-31).
+
+        "Hangi fiziksel parca kor" sorusu bundan turetilir; kenar dugum kimligi
+        YAYINLAMAZ (telemetri semasi additionalProperties: false).
+        """
+        ...
+
+    def import_nodes(self, rows: Sequence[dict], *, kutuk_kaynak: str, at: datetime) -> int:
+        """Dugum kutugunu yazar; yazilan dugum sayisini doner (F-31).
+
+        import_assets ile ayni uc kural: tek transaction, bilinmeyen pano_id
+        `UnknownPanel` atar (bu uc yeni pano yaratmaz) ve GONDERILMEYEN alan
+        DEGISTIRILMEZ. `points` verilirse o dugumun nokta eslemesi TAMAMEN degistirilir
+        — kismi bir esleme, eski ve yeni kartin noktalarini karistirirdi.
+        """
         ...
 
     def ping(self) -> bool: ...
@@ -95,6 +180,10 @@ class Store(Protocol):
         """Panonun alarm denetim izi, `at` [start, end] araliginda, zaman sirasiyla (esitlikte kayit sirasi)."""
         ...
 
+    def journal_chain(self) -> list[dict]:
+        """Denetim izinin tamami, id sirasiyla; hash zinciri dogrulamasi icin (F-20)."""
+        ...
+
     def alarm_counts(self, since: datetime) -> dict[str, int]:
         """`since` ve sonrasinda olusan (raised_at, olay zamani) alarmlarin oncelik basina sayisi."""
         ...
@@ -121,7 +210,15 @@ ON CONFLICT (pano_id) DO UPDATE SET
 
 _INSERT_QUARANTINE = "INSERT INTO quarantine (received, topic, reason, raw) VALUES (%s, %s, %s, %s)"
 
-_PANEL_COLUMNS = "p.pano_id, p.name, p.pano_type, p.lat, p.lon, p.installed_at, p.baseline_day, l.last_rx"
+_PANEL_COLUMNS = (
+    "p.pano_id, p.name, p.pano_type, p.lat, p.lon, p.installed_at, p.baseline_day, l.last_rx, "
+    # Varlik kutugu (F-21). Kolon adlari PanelRecord alan adlariyla BIREBIR ayni olmak
+    # zorunda: psycopg `class_row(PanelRecord)` ada gore esler. Hepsi `panels` satirinda
+    # zaten okunan skaler sutunlardir — ek JOIN ya da ek sorgu YOK, bu yuzden 1.000 panoluk
+    # filo listesinin maliyeti degismez (_SUMMARY_PAYLOAD kirpmasinin gerekcesi JSONB yuktu,
+    # skaler sutun degil).
+    + ", ".join(f"p.{name}" for name in ASSET_FIELDS)
+)
 
 # Filo listesi 1.000 pano icin tam yukleri tasimasin: yalnizca ozetin okudugu alanlar.
 _SUMMARY_PAYLOAD = """
@@ -140,11 +237,100 @@ WHERE %(ids)s::text[] IS NULL OR p.pano_id = ANY(%(ids)s::text[])
 ORDER BY p.pano_id
 """
 
+# Cihaz sagligi listesi: _SUMMARY_PAYLOAD saglik blogunu baseline_day'e kirpiyor,
+# bu uc ise tam blogu istiyor. Yine de TAM yuk cekilmez — nokta dizisi, ortam ve
+# elektrik bloklari disarida kalir (1.000 panoda fark buradan gelir).
+# `fw` yukun KOK seviyesindedir, `health` blogunun icinde degil (telemetri semasi);
+# panel_detail onu health'e yukseltiyor ve bu uc da ayni seyi yapmak zorunda.
+_HEALTH_PAYLOAD = """
+CASE WHEN l.pano_id IS NULL THEN NULL ELSE jsonb_build_object(
+    'health', l.payload -> 'health',
+    'fw',     l.payload -> 'fw'
+) END
+"""
+
+_LIST_PANEL_HEALTH = f"""
+SELECT {_PANEL_COLUMNS}, {_HEALTH_PAYLOAD} AS payload
+FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
+ORDER BY p.pano_id
+"""
+
 _GET_PANEL = f"""
 SELECT {_PANEL_COLUMNS}, l.payload
 FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
 WHERE p.pano_id = %s
 """
+
+# Filo akran karsilastirmasi (F-32): yalnizca nokta dizisi cekilir. `/fleet/health` ile
+# ayni gerekce — 1.000 panoda tam yuku cekmek ile blogu cekmek arasindaki fark buradan
+# gelir; ortam, elektrik ve risk bloklari disarida kalir.
+# K0 SEMAYA EKLENMEDI, MERKEZDE YENIDEN TURETILIR: taban k = K0 * k_ratio bagintisindan
+# k / k_ratio ile cikar ve iki alan da donmus semada ZATEN vardir (t_conn[].k, .k_ratio).
+# Ayni kacis F-10'un `_verify` cozumunde kullanildi: sema `additionalProperties: false`
+# oldugu icin kenara alan acmak mesaji reddettirirdi.
+_LIST_PANEL_POINTS = f"""
+SELECT {_PANEL_COLUMNS},
+       CASE WHEN l.pano_id IS NULL THEN NULL
+            ELSE jsonb_build_object('ts', l.payload -> 'ts', 't_conn', l.payload -> 't_conn')
+       END AS payload
+FROM panels p LEFT JOIN panel_latest l ON l.pano_id = p.pano_id
+ORDER BY p.pano_id
+"""
+
+
+# ----------------------------------------------------------- dugum kutugu (F-31)
+NODE_FIELDS = (
+    "uretici", "model", "seri_no", "uretim_partisi", "montaj_at",
+    "son_kalibrasyon_at", "sonraki_kalibrasyon_at",
+)
+
+_LIST_NODES = """
+SELECT node_id, pano_id, uretici, model, seri_no, uretim_partisi, montaj_at,
+       son_kalibrasyon_at, sonraki_kalibrasyon_at, kutuk_kaynak, kutuk_at
+FROM nodes
+ORDER BY node_id
+"""
+
+_LIST_NODE_POINTS = "SELECT pano_id, point, node_id FROM node_points"
+
+
+# ------------------------------------------------------------- kesinti olayi (F-22)
+# `outage_id` fider + baslangictan TURETILMISTIR; zamanlayici her tik'te ayni kesintiyi
+# yeniden tespit ettigi icin yazma DO NOTHING ile kendiliginden fikirlidir. detected_at ve
+# pano listesi ILK tespitteki degerlerinde kalir.
+_INSERT_OUTAGE = """
+INSERT INTO outages (outage_id, fider_id, started_at, detected_at)
+VALUES (%s, %s, %s, %s)
+ON CONFLICT (outage_id) DO NOTHING
+"""
+
+_INSERT_OUTAGE_PANEL = """
+INSERT INTO outage_panels (outage_id, pano_id, last_rx, abone_sayisi)
+VALUES (%s, %s, %s, %s)
+ON CONFLICT (outage_id, pano_id) DO NOTHING
+"""
+
+# Kunye kesinti aninda KOPYALANIR: kunye sonradan degisirse gecmis kesinti kaydi
+# degismemeli (EPDK kaydi o gunun verisiyle duzenlenir). Bu yuzden panels'a JOIN YOK.
+_SELECT_OUTAGES = """
+SELECT o.outage_id, o.fider_id, o.started_at, o.detected_at, o.ended_at,
+       COALESCE(jsonb_agg(
+           jsonb_build_object(
+               'pano_id', op.pano_id,
+               'name',    p.name,
+               'last_rx', op.last_rx,
+               'abone_sayisi', op.abone_sayisi
+           ) ORDER BY op.pano_id
+       ) FILTER (WHERE op.pano_id IS NOT NULL), '[]'::jsonb) AS panolar
+FROM outages o
+LEFT JOIN outage_panels op ON op.outage_id = o.outage_id
+LEFT JOIN panels p         ON p.pano_id    = op.pano_id
+{where}
+GROUP BY o.outage_id
+ORDER BY o.started_at DESC
+"""
+
+_CLOSE_OUTAGES = "UPDATE outages SET ended_at = %s WHERE outage_id = ANY(%s) AND ended_at IS NULL"
 
 
 ALARM_COLUMNS = tuple(f.name for f in fields(Alarm))
@@ -166,7 +352,24 @@ VALUES ({", ".join(f"%({c})s" for c in ALARM_COLUMNS)})
 ON CONFLICT (id) DO UPDATE SET {", ".join(f"{c} = EXCLUDED.{c}" for c in _ALARM_MUTABLE)}
 """
 
-_INSERT_JOURNAL = "INSERT INTO alarm_journal (alarm_id, at, action, state, by_user, note) VALUES (%s, %s, %s, %s, %s, %s)"
+_INSERT_JOURNAL = (
+    "INSERT INTO alarm_journal (alarm_id, at, action, state, by_user, note, prev_hash, hash) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+)
+
+# Zincirin son halkasi (F-20). Goc oncesi satirlarin hash'i NULL oldugu icin filtre sart.
+_LAST_CHAIN_HASH = "SELECT hash FROM alarm_journal WHERE hash IS NOT NULL ORDER BY id DESC LIMIT 1"
+
+# Iki transaction ayni `prev_hash`'i okuyup zinciri CATALLAMASIN. Alarm yoneticisi tek
+# yazicidir (docs/09 aktif-pasif) ama bu, veritabani seviyesinde garanti degildir:
+# SCADA onayi, SMS yaniti ve HTTP ayri thread'lerden gelir.
+_CHAIN_LOCK = "SELECT pg_advisory_xact_lock(%s)"
+_CHAIN_LOCK_KEY = 0x6A726E6C  # "jrnl"
+
+_SELECT_CHAIN = (
+    "SELECT id, alarm_id, at, action, state, by_user, note, prev_hash, hash "
+    "FROM alarm_journal ORDER BY id"
+)
 
 _INSERT_NOTIFICATION = (
     "INSERT INTO notifications (alarm_id, channel, recipient, sent_at, ok, detail) VALUES (%s, %s, %s, %s, %s, %s)"
@@ -286,9 +489,123 @@ class PgStore:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
             return cur.execute(_LIST_PANELS, {"ids": ids}).fetchall()
 
+    def list_panel_health(self) -> list[PanelRecord]:
+        with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
+            return cur.execute(_LIST_PANEL_HEALTH).fetchall()
+
+    def list_panel_points(self) -> list[PanelRecord]:
+        with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
+            return cur.execute(_LIST_PANEL_POINTS).fetchall()
+
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         with self._connection() as conn, conn.cursor(row_factory=class_row(PanelRecord)) as cur:
             return cur.execute(_GET_PANEL, (pano_id,)).fetchone()
+
+    # -------------------------------------------------------- kesinti olayi (F-22)
+    def save_outages(self, groups: Sequence[OutageGroup], *, detected_at: datetime) -> None:
+        if not groups:
+            return
+        with self._connection() as conn, conn.cursor() as cur:
+            for group in groups:
+                cur.execute(
+                    _INSERT_OUTAGE,
+                    (group.outage_id, group.fider_id, group.started_at, detected_at),
+                )
+                cur.executemany(
+                    _INSERT_OUTAGE_PANEL,
+                    [
+                        (group.outage_id, panel.pano_id, panel.last_rx, panel.abone_sayisi)
+                        for panel in group.panels
+                    ],
+                )
+
+    def list_outages(self, *, only_open: bool) -> list[dict]:
+        where = "WHERE o.ended_at IS NULL" if only_open else ""
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(_SELECT_OUTAGES.format(where=where)).fetchall()
+
+    def get_outage(self, outage_id: str) -> dict | None:
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(
+                _SELECT_OUTAGES.format(where="WHERE o.outage_id = %s"), (outage_id,)
+            ).fetchone()
+
+    def close_outages(self, outage_ids: Sequence[str], *, at: datetime) -> None:
+        if not outage_ids:
+            return
+        with self._connection() as conn, conn.cursor() as cur:
+            cur.execute(_CLOSE_OUTAGES, (at, list(outage_ids)))
+
+    def import_assets(self, rows: Sequence[dict], *, kunye_kaynak: str, at: datetime) -> int:
+        updated = 0
+        # Tek `with`: tum satirlar ayni transaction'da. Ortada bir UnknownPanel atilirsa
+        # psycopg transaction'i geri alir ve onceki satirlar da yazilmamis olur.
+        with self._connection() as conn, conn.cursor() as cur:
+            for row in rows:
+                pano_id = row["pano_id"]
+                # Kokeni ISTEMCI YAZMAZ: kunye_kaynak/kunye_at govdedeki satirdan degil
+                # aktarimin kendisinden gelir (F-19'un "kimlik govdeden okunmaz" ilkesinin
+                # ayni uygulamasi).
+                values = {name: row[name] for name in ASSET_FIELDS if name in row}
+                values["kunye_kaynak"] = kunye_kaynak
+                values["kunye_at"] = at
+                assignments = ", ".join(f"{name} = %({name})s" for name in values)
+                cur.execute(
+                    f"UPDATE panels SET {assignments} WHERE pano_id = %(pano_id)s",
+                    {**values, "pano_id": pano_id},
+                )
+                if cur.rowcount == 0:
+                    raise UnknownPanel(pano_id)
+                updated += cur.rowcount
+        return updated
+
+    # ------------------------------------------------------ dugum kutugu (F-31)
+    def list_nodes(self) -> list[dict]:
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(_LIST_NODES).fetchall()
+
+    def node_point_map(self) -> dict[tuple[str, str], str]:
+        with self._connection() as conn, conn.cursor() as cur:
+            rows = cur.execute(_LIST_NODE_POINTS).fetchall()
+        return {(pano_id, point): node_id for pano_id, point, node_id in rows}
+
+    def import_nodes(self, rows: Sequence[dict], *, kutuk_kaynak: str, at: datetime) -> int:
+        updated = 0
+        # Tek `with`: tum satirlar ayni transaction'da (import_assets ile ayni gerekce) —
+        # yarim ice aktarilmis bir kutuk, hic ice aktarilmamis olandan daha kotudur.
+        with self._connection() as conn, conn.cursor() as cur:
+            for row in rows:
+                node_id, pano_id = row["node_id"], row["pano_id"]
+                cur.execute("SELECT 1 FROM panels WHERE pano_id = %s", (pano_id,))
+                if cur.fetchone() is None:
+                    raise UnknownPanel(pano_id)
+
+                # Kokeni ISTEMCI YAZMAZ: kutuk_kaynak/kutuk_at aktarimin kendisinden gelir.
+                values = {name: row[name] for name in NODE_FIELDS if name in row}
+                values.update(node_id=node_id, pano_id=pano_id, kutuk_kaynak=kutuk_kaynak, kutuk_at=at)
+                columns = ", ".join(values)
+                holders = ", ".join(f"%({name})s" for name in values)
+                # node_id disindaki alanlar guncellenir; GONDERILMEYEN alan burada
+                # `values` icinde olmadigi icin DOKUNULMAZ.
+                assignments = ", ".join(f"{name} = EXCLUDED.{name}" for name in values if name != "node_id")
+                cur.execute(
+                    f"INSERT INTO nodes ({columns}) VALUES ({holders}) "
+                    f"ON CONFLICT (node_id) DO UPDATE SET {assignments}",
+                    values,
+                )
+                updated += 1
+
+                if "points" in row:
+                    # Esleme TAMAMEN degistirilir: kismi bir esleme eski ve yeni kartin
+                    # noktalarini karistirirdi.
+                    cur.execute("DELETE FROM node_points WHERE node_id = %s", (node_id,))
+                    for point in row["points"]:
+                        cur.execute(
+                            "INSERT INTO node_points (pano_id, point, node_id) VALUES (%s, %s, %s) "
+                            "ON CONFLICT (pano_id, point) DO UPDATE SET node_id = EXCLUDED.node_id",
+                            (pano_id, point, node_id),
+                        )
+        return updated
 
     def ping(self) -> bool:
         try:
@@ -312,10 +629,27 @@ class PgStore:
             if events:
                 cur.executemany(_INSERT_EVENT, events)
             cur.executemany(_UPSERT_ALARM, [_alarm_params(c.alarm) for c in changes])
-            cur.executemany(
-                _INSERT_JOURNAL,
-                [(c.alarm.id, at, c.kind, c.alarm.state, c.by, c.note) for c in changes],
-            )
+
+            # F-20: denetim izi hash zinciri. executemany KULLANILAMAZ — her satirin
+            # ozeti bir oncekinin ozetine baglidir, yani sirayla hesaplanmak zorunda.
+            cur.execute(_CHAIN_LOCK, (_CHAIN_LOCK_KEY,))
+            row = cur.execute(_LAST_CHAIN_HASH).fetchone()
+            prev = row[0] if row else GENESIS
+            for c in changes:
+                digest = link_hash(
+                    prev, alarm_id=c.alarm.id, at=at, action=c.kind,
+                    state=c.alarm.state, by_user=c.by, note=c.note,
+                )
+                cur.execute(
+                    _INSERT_JOURNAL,
+                    (c.alarm.id, at, c.kind, c.alarm.state, c.by, c.note, prev, digest),
+                )
+                prev = digest
+
+    def journal_chain(self) -> list[dict]:
+        """Denetim izinin tamami, zincir dogrulamasi icin id sirasiyla (F-20)."""
+        with self._connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            return cur.execute(_SELECT_CHAIN).fetchall()
 
     def load_open_alarms(self) -> list[Alarm]:
         return self._select_alarms(f"{_SELECT_ALARMS} WHERE state <> 'cleared' ORDER BY id", ())

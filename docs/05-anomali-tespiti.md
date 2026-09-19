@@ -114,6 +114,22 @@ seçilir, ortalama değil: taban penceresindeki tek bir sıçrama ortalamayı bo
 
 Taban donmadan `k_ratio` 1,0 döner — devreye alma gününde sahte alarm yağmuru olmaz.
 
+**Tabanın kendisi geçerli mi? (F-32)** `k_ratio`'nun tüm anlamı K₀'a bağlıdır, ama K₀ tek bir
+sayıdır ve donduğu anda "bu sayı nasıl oluştu" bilgisi kayboluyordu. Artık donma anında bir
+kanıt kaydı tutuluyor (`detect.py` → `BaselineEvidence`) ve tabana **üç ayrı kanıtla** bakılıyor:
+
+| Kanıt | Ne sorar | Düşükse ne demek |
+|---|---|---|
+| **Uyarım oranı** | Öğrenme penceresinde kaç örnek kalıcı uyarım koşulunu sağladı | RLS güncellenmedi; K₀ fiziksel bağlantıyı değil başlangıç **önselini** kodluyor |
+| **Pencere kararlılığı** | Pencerenin ikinci yarısı birinciden kalıcı olarak sapıyor mu (CUSUM) | Makine kararlı değildi; **bozulma taban öğrenilirken başladı** |
+| **Akran konumu** | K₀ aynı adlı noktanın filo medyanından yukarı aykırı mı | Devreye alma anında **zaten gevşek** bir bağlantının tabanı olabilir |
+
+Üçüncüsü, `k_ratio`'nun tek başına **göremediği** tek durumdur: devreye alma gününde zaten
+bozuk bir bağlantıda K yüksek, K₀ aynı oranda yüksek ve `k_ratio` 1,0 kalır — nokta ömrü
+boyunca sağlıklı görünür. Onu ancak akranları ele verir (`fleet.py`, `GET /fleet/peers`).
+
+Üçünden biri düşükse **yeniden baz alma önerilir**; asla otomatik uygulanmaz (§10, `docs/07b` Y11).
+
 ## 4. L1 — Sınıra kalan süre (ttl)
 
 ```
@@ -186,14 +202,15 @@ L0/L1'e girmeden burada işaretlenir. Öncelik `SYS`: izleme sistemi arızası, 
 |---|---|---|
 | Donmuş değer | `dq_frozen_samples` = 30 örnek | `ALM-DQ-FROZEN` / 14 |
 | Fiziksel olmayan hız | `dq_max_rate_k_per_min` = 10,0 K/dk | `ALM-DQ-JUMP` / 15 |
-| Ortam altı | **ölü bant** (aşağıda) | `ALM-DQ-BELOW-AMBIENT` / 16 |
+| Ortam altı | `dq_below_ambient_deadband_k` = 1,0 K (ölü bant, aşağıda) | `ALM-DQ-BELOW-AMBIENT` / 16 |
 | Düğüm sessiz | `nodes_ok < nodes_total` | `ALM-NODE-LOST` / 17 |
 
-**Ölü bant sözleşmede yok ve gereklidir.** Hafif yüklü noktalar (özellikle `GIRIS_N`)
-fiziksel olarak ortam sıcaklığında oturur; σ ≈ 0,2 K ölçüm gürültüsüyle `dt_c` ara ara
-negatife düşer. Bu gerçek sensör davranışıdır, kırpılmaz. Ölü bant olmadan sağlıklı
-pano sürekli SYS alarmı üretirdi. Türetilmiş varsayılan 1,0 K (3σ üzeri);
-[sözleşmeye eklenmesi önerildi](../contracts/changes/2026-09-14-eksik-esikler.md).
+**Ölü bant neden var.** Hafif yüklü noktalar (özellikle `GIRIS_N`) fiziksel olarak ortam
+sıcaklığında oturur; σ ≈ 0,2 K ölçüm gürültüsüyle `dt_c` ara ara negatife düşer. Bu gerçek
+sensör davranışıdır, kırpılmaz. Ölü bant olmadan sağlıklı pano sürekli SYS alarmı üretirdi.
+Değer 1,0 K'dır (3σ üzeri, yuvarlak) ve **18 Eylül'de sözleşmeye taşındı**
+(`alarm-codes.yaml` v2, [gerekçe](../contracts/changes/2026-09-14-eksik-esikler.md)) —
+ama **türetilmiştir, ölçülmemiştir** ve sözleşmedeki yorumunda böyle yazar.
 
 **Çift alarm tuzağı.** DQ kodları `alarms[]` listesine **yazılmaz**, yalnızca
 `t_conn[].q` bitine yazılır. Merkez `q` bitlerini okuyup alarmı doğru noktaya bağlar
@@ -246,13 +263,40 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
 
 ## 10. Bilinen sınırlar (dürüstlük bölümü)
 
-- **L2 katmanı henüz kod üretmiyor.** Rapor §6.5'te saat-of-hafta robust z, EWMA/CUSUM
-  ve filo karşılaştırması tanımlı; `contracts/alarm-codes.yaml`'da `layer: L2` etiketli
-  **hiçbir alarm kodu yok**. Bu, rapor ile donmuş sözleşme arasındaki bir boşluktur.
-- **Üç kodun eşiği sözleşmede yok** (`ALM-DQ-BELOW-AMBIENT`, `ALM-NEUTRAL-THD`,
-  `ALM-PD-TREND`) ve türetilmiş varsayılanlarla çalışıyor. Öneri dosyası açıldı, üç onay
-  bekliyor. Kabul edilene kadar kenar ile merkezin aynı kuralı farklı sayıyla
-  uygulama riski vardır.
+- **L2 katmanı kısmen kod üretiyor (18 Eylül, F-32).** Rapor §6.5'te saat-of-hafta robust z,
+  EWMA/CUSUM ve filo karşılaştırması tanımlı. Üçünden **ikisi** artık kodda:
+  **filo akran karşılaştırması** (`libs/panoalgo/panoalgo/fleet.py`, MAD tabanlı modifiye z)
+  ve **CUSUM değişim noktası** (`onset.py`, bozulmanın başlangıç anı). **Saat-of-hafta robust z
+  hâlâ yok.** `contracts/alarm-codes.yaml`'da `layer: L2` etiketli **hiçbir alarm kodu yok** ve
+  F-32 bilerek bir tane açmadı: her kodun bir `bit` alanı var, yani yeni kod Modbus bit
+  tahsisini ve beş üretecin çıktısını birden tetikler. L2'nin çıktısı bu yüzden bir **alarm
+  değil öneri**: `GET /api/v1/fleet/peers` tabanı şüpheli noktaları operatör onayına sunar.
+  Gerekçe: `contracts/changes/2026-09-18-l2-filo-akran.md`.
+- **Filo karşılaştırmasının sentetik veride ölçülen sınırı (GK10).** `generator.py:342`
+  sağlıklı K₀'ı **sınırlı düzgün dağılımdan** çekiyor (`K_SPREAD = 0.15`) ve düzgün dağılımın
+  **kuyruğu yoktur**: sağlıklı bir pano yapısal olarak aykırı **çıkamaz**. Ölçüldü (500 pano,
+  seed 20260918): en büyük |z| = **1,534**, aykırılık eşiği **3,5** — sağlıklı pano eşiğin
+  yarısına bile ulaşmıyor. Yani 1,6'nın üstündeki **her** eşik bu veride kusursuz ayrım verir;
+  bu, yöntemin değil **üretecin** özelliğidir. Buradan çıkan hiçbir ayrım oranı saha başarımı
+  olarak sunulamaz. Kilitleyen test:
+  `libs/panoalgo/tests/test_fleet.py::test_sentetik_filoda_saglikli_pano_asla_aykiri_cikamaz`.
+- **Taban geçerliliği artık ölçülüyor, ama yeniden baz alma UYGULANMIYOR.** `freeze_baseline()`
+  donma anında bir kanıt kaydı tutuyor (`BaselineEvidence`: kaç örnek, kaçı uyarılmış, dağılım
+  ne kadar dar) ve öğrenme penceresinin kendi içinde kararlı olup olmadığı CUSUM ile sınanıyor.
+  Üç kanıttan biri düşükse **yeniden baz alma önerilir** — ama **hiçbir zaman otomatik
+  uygulanmaz**: bozulmakta olan bir noktada tabanı güncellemek `k_ratio`'yu 1,0'a geri çeker ve
+  gerçek bozulmayı görünmez kılar. Bu yeni hata türü `docs/07b-fmea-yazilim-sistem.md` **Y11**
+  satırında.
+- **İki kodun eşiği 18 Eylül'de sözleşmeye taşındı** (`alarm-codes.yaml` v2):
+  `ALM-DQ-BELOW-AMBIENT` → `dq_below_ambient_deadband_k`, `ALM-NEUTRAL-THD` →
+  `neutral_current_ratio_warn` **ve** `neutral_thd_warn_pct` (iki koşul birlikte).
+  Kenar ile merkezin aynı kuralı farklı sayıyla uygulama riski böylece kalktı.
+  **Ama bu sayılar hâlâ türetilmiştir, ölçülmemiştir** — sözleşmedeki yorumlarında
+  böyle yazıyor; yalnızca `excitation_min_cv_i2 = 0.02` ölçülmüş bir taramadan gelir.
+  `ALM-PD-TREND` **bilerek eşiksiz bırakıldı**: AG panoda `pd` bloğu şema gereği `null`,
+  yani değerlendirilecek veri yok; eşik yerine `scope:` notu düşüldü. PD donanımı
+  kapsama girerse eşik ayrı bir `contracts/changes/` dosyasıyla tanımlanır.
+  Gerekçe ve ölçümler: `contracts/changes/2026-09-14-eksik-esikler.md`.
 - **Aşırı yükte öne alma yoktur** (ölçülen: 1,2 saat). Beklenen davranış: sebep bozulma
   değil yüktür, fizik katmanının bir üstünlüğü yoktur ve olmamalıdır.
 - **`ttl_h` henüz güvenilir bir kalan ömür kestirimi değildir.** Geri testi yapıldı
@@ -262,14 +306,26 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   **%0**; ortalama göreli doğruluk **−5,12**. Manşetteki 209 saatlik öne alma **tespit**
   katmanından (K/K₀ eşiği) gelir, bu tahminden değil; ikisi karıştırılmamalıdır. Sonuç
   **tek yörüngeden** (n = 1) gelir, güven aralığı yoktur.
-- **Prognoz yanlış-alarmı (S8, sensör arızası).** Sınır hiç aşılmadığı hâlde **99 tahmin**
-  üretiliyor ve bunların **89'u** `ALM-TTL-14D` (P3) alarmına dönüyor. Ölçüldü: 99 tahminin
-  **tamamı** `DSYA4_L3` noktasından, yani S8'in **sürüklenen** (drift) sensöründen geliyor.
-  L-1 veri kalitesi katmanı bu noktayı 672 örneğin **hiçbirinde** işaretlemiyor — yavaş
-  sürüklenme ne donmuş sensör ne de ortam altı kuralına takılıyor — ve `ttl_h` üretimi
-  kalite bitlerinden bağımsız çalışıyor (`edge.py` kestirimi `q` hesabından önce yapar).
-  Bu bir tespit değil **tahmin** yanlış-alarmıdır; docs/12 §3'teki yanlış alarm sayacı
-  onu görmez, çünkü etiket penceresinin içinde çıkar. Saklanmıyor, burada duruyor.
+- **Prognoz yanlış-alarmı (S8, sensör arızası) — 18 Eylül'de kısmen kapandı (F-31).**
+  Sınır hiç aşılmadığı hâlde **183 tahmin** üretiliyor ve bunların **86'sı** `ALM-TTL-14D`
+  (P3) alarmına dönüyor (`docs/12` §4.3). Tahminlerin kaynağı `DSYA4_L3`, yani S8'in
+  **sürüklenen** sensörü.
+  **Önce üretecin kendisi düzeldi.** `set_sensor_fault` aynı arızayı her çağrıda yeniden
+  kuruyor ve yaşını **sıfırlıyordu**; senaryo yürütücüsü enjeksiyonu her adımda çağırdığı
+  için "sürüklenme" 112 saatlik pencere boyunca **0,5 K'da çakılı** kalıyordu. Yani depo
+  "sensör sürüklenmesi üretiyoruz" diyordu ama fiilen **üretmiyordu**. Ayrıca hız 2 K/saat
+  ile fiziksel değildi (112 saatte 224 K); ölçülerek **0,1 K/saat**e indirildi — bu değer
+  termal alarmı tetiklemez, `ALM-K-ALM` tetiklemez, ama K/K₀'ı 1,49'a şişirir.
+  **Sonra sürüklenme tespit edilir oldu.** Yeni `ALM-DQ-DRIFT` (bit 22, `layer: L-1`, SYS)
+  kuralı bu noktayı artık **işaretliyor**: fixture'da 239 örnekte, enjeksiyondan **26,25
+  saat** sonra. Ayraç fiziktir — `dT = a·I² + b`'de gerçek bağlantı bozulması `a`'yı
+  büyütür, sensör kayması yükten bağımsız `b`'yi. Ölçüldü (seed 42, 10 senaryo): gerçek
+  gevşek bağlantı (S1) ve sağlıklı taban (S0) dahil diğer dokuz senaryoda **sıfır** yanlış
+  pozitif. Gerekçe: `contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md`.
+  **Kalan:** `ttl_h` üretimi hâlâ kalite bitlerinden **bağımsız** çalışıyor (`edge.py`
+  kestirimi `q` hesabından önce yapar), yani nokta "kalibrasyon şüpheli" işaretlenmiş olsa
+  bile tahmin üretilmeye devam eder. Bu bir tespit değil **tahmin** yanlış-alarmıdır ve
+  docs/12 §3'teki yanlış alarm sayacı onu görmez. Saklanmıyor, burada duruyor.
 - **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`. Gerekçesi sık
   tekrarlanan "400 V, Paschen minimumunun (~327 V) altındadır" kısayolu **değildir** — o
   kısayol eksiktir: 400 V sistemde faz-faz tepe gerilimi √2 × 400 ≈ 566 V'tur, yani 327 V'un

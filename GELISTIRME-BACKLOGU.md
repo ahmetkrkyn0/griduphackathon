@@ -21,7 +21,7 @@ Bu dosya, "Pano/Hücre İçi Anomali Erken Uyarı Sistemi" için üç aşamalı 
 | Bakım çıktısı | Alarm + öneri metni | durum sınıfı, bir sonraki muayene tarihi, bakım kaydı | Bakım diline çeviren hiçbir çıktı yok |
 | Bildirim | SMS (AT+PDU), sesli arama, WhatsApp, çift yönlü onay, maskeleme | aynı + günlük/aylık özet raporu | Sözleşmede söz verilen P3 günlük özeti kodda yok |
 | Kimlik ve yetki | Yok; onaylayan adı istemciden geliyor (bilinçli, docs/15 §5'te açık) | rol tabanlı erişim, kurumsal SSO | Bilinçli boşluk; ürünleşmenin ön koşulu |
-| Kenar güvenliği | Demo broker 1883 anonim; kenarda güvenli eleman kullanılmıyor | mTLS, cihaz başına topic yetkisi, IDevID/LDevID | Bilinçli boşluk; belgelenmiş |
+| Kenar güvenliği | Varsayılan demo yolu 1883 anonim; **mTLS + cihaz başına topic yetkisi ayrı bir profilde var ve ölçüldü** (18 Eylül, F-27); kenarda güvenli eleman hâlâ kullanılmıyor | Varsayılanın da mTLS olması, IDevID/LDevID, iptal | Boşluk **daraldı, kapanmadı**; `docs/15` §5.1 |
 | Kenar yaşam döngüsü | Firmware host'ta koşuyor, 1e-6 eşitlik doğrulanmış | imzalı OTA, A/B geçiş, kanarya, reset nedeni telemetrisi | MoSCoW Won't; tasarım düzeyinde bile yazılı değil |
 | Maliyet/fayda | Parametrik ROI formülü + varsayımsal örnek tablo (dosya bunu kendisi yazıyor) | mevzuat tazminatı ve termografi turu tasarrufu üzerinden hesap | Teslimin en zayıf parçası; tek varsayımsal dokümanımız |
 | Dürüstlük kaydı | Bilinçli sapmalar 4 ayrı dosyaya dağılmış, hepsi yazılı | "kapsanmayan" bölümü tek sayfa olur | Dağınık olduğu için jüri tek tek bulmak zorunda |
@@ -203,40 +203,152 @@ Cihazın kendi ürün sınıfı standardını ve arayüz dilimizin standardını
 
 Bu kova, jüri teslimi için değil ürünleşme için. Sıra etki sırasıdır; bağımlılıklar her maddede yazılı.
 
-### F-19 · Kimlik doğrulama, rol ve kurumsal SSO (on-prem)
+### F-19 · Kimlik doğrulama, rol ve kurumsal SSO (on-prem) — 🟡 kısmen yapıldı (18 Eylül)
 Onaylayan kimliğini istemciden değil kimlik belirtecinden alır ve uçları role bağlar · **Etki:** çok yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** yeni `backend/app/auth/`, [contracts/openapi.yaml](contracts/openapi.yaml), [deploy/compose.yaml](deploy/compose.yaml), [frontend/src/api/](frontend/src/api/) ve yedi ekran
 **Sektörel dayanak:** IEC 62351-8 güç sistemi yönetimi için rol tabanlı erişimi tanımlar; Siemens SICAM kişiye bağlı hesapları buna göre rollendirir. IEC 62443-3-3 kullanıcı tanımlama, yetkilendirme ve denetlenebilir olayları ayrı sistem gereksinimleri olarak sayar.
 **Bizdeki boşluk:** Hiçbir kimlik doğrulama yok; onay/raf isteğinde kullanıcı adı serbest metin. [docs/15-guvenlik-kvkk.md](docs/15-guvenlik-kvkk.md) bunu üç ayrı yerde bilinçli boşluk olarak belgeliyor.
 **Ne üretir:** Rol bazlı yetki, kimlik belirtecinden gelen denetim izi, ekranlarda role göre gizlenen eylemler.
 **Dikkat:** Bulut kimlik sağlayıcı GK4 gereği kullanılamaz; on-prem çözüm şart. Bu madde F-20 ve F-26'nın ön koşuludur.
 
-### F-20 · Denetim izinde kurcalama kanıtı (hash zinciri)
+> **18 Eylül 2026 — yapılanlar:** onaylayanın kimliği artık **istemciden gelmiyor**. `by` alanı onay/raf gövdelerinden kaldırıldı
+> (`contracts/openapi.yaml` v1.2.0, `securitySchemes.operatorToken`) ve doğrulanmış `Authorization: Bearer` başlığından türüyor
+> (`backend/app/auth.py`, yeni bağımlılık yok, `hmac.compare_digest`). Roller: izleyici < operator < muhendis. Arayüzde üst
+> çubukta operatör girişi var (`frontend/src/components/OperatorGirisi.tsx`) ve 401'de belirteç düşüyor.
+> **Ölçülen:** backend 23 yeni test; kilit `test_body_by_is_ignored_and_journal_gets_the_token_identity` — istemci gövdeye
+> başkasının adını yazar, denetim izine belirtecin sahibi düşer. Frontend 8 yeni test.
+>
+> **Kalan (bu yüzden ✅ değil):** kurumsal SSO/OIDC yok — belirteçler yapılandırmada duran paylaşılan sırlardır, parola/oturum
+> süresi/yenileme/iptal listesi yok; yalnızca **yazma** uçları korunuyor (okuma uçları ve WS akışı açık); **ekranlarda role göre
+> gizleme yapılmadı** (izleyiciye onay düğmesi görünür, basınca 403 alır); TLS yok; Grafana hâlâ anonim izleyici.
+> `GRIDUP_OPERATORS` boşsa kimlik doğrulama tamamen kapalıdır ve bunu `GET /health` `auth.enabled` söyler.
+> Ayrıntı: [contracts/changes/2026-09-18-kimlik-dogrulama.md](contracts/changes/2026-09-18-kimlik-dogrulama.md).
+
+### F-20 · Denetim izinde kurcalama kanıtı (hash zinciri) — ✅ tamamlandı (18 Eylül)
 Alarm ve bildirim denetim izini zincirleyip bağımsız bir doğrulayıcıyla sınanabilir kılar · **Etki:** yüksek · **Efor:** 1-2 hafta (F-19 sonrası) · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [backend/app/db.py](backend/app/db.py), yeni `scripts/verify_journal.py`, [backend/tests/](backend/tests/)
 **Sektörel dayanak:** IEC 62443-3-3 denetim bilgisinin korunmasını ayrı bir gereksinim sayar; Siemens SICAM güvenlik denetim izini kalıcı tutup dışa aktarır.
 **Bizdeki boşluk:** Denetim izi düz bir tablo; yetkili bir veritabanı kullanıcısı bir satırı sessizce silebilir.
 **Ne üretir:** Negatif testle **ölçülmüş** bir iddia: bir satır bozulduğunda doğrulayıcının kaçıncı halkada durduğu.
 **Dikkat:** Kimlik doğrulama olmadan zincir yalnızca "kayıt değişmedi"yi kanıtlar, "kim yaptı"yı değil — bu yüzden F-19'dan sonra gelir. Geriye dönük hash üretilemez; göç zinciri o andan başlatır ve bunu kayda geçirir.
 
-### F-21 · Varlık kütüğü: CBS tekil kodu, künye ve bakım takvimi
+> **18 Eylül 2026 — yapılanlar.** Her `alarm_journal` satırı bir öncekinin özetini içine alarak özetleniyor
+> (`hash = sha256(prev_hash ‖ alarm_id ‖ at ‖ action ‖ state ‖ by_user ‖ note)`). Hesap saf bir modülde
+> (`backend/app/auth.py` gibi bağımsız: `backend/app/journal_chain.py`, veritabanı bilmez) ve **hem PgStore hem
+> bellek içi test deposu aynı fonksiyonu çağırıyor** — iki taraf ayrışırsa testler yakalar. Göç:
+> `deploy/initdb/007_journal_chain.sql` (idempotent) + `journal_chain_start` tablosu zincirin nerede başladığını
+> kayda geçiriyor. Bağımsız doğrulayıcı: `scripts/verify_journal.py` (backend'i çalıştırmaz, yalnızca DB okur).
+>
+> **ÖLÇÜLEN — gerçek TimescaleDB'ye karşı, gerçek alarm servisiyle yazılmış satırlar üzerinde:**
+> bir satırın `by_user` alanı psql ile değiştirildiğinde doğrulayıcı **2. halkada** duruyor ve
+> `"saglam: 1 halka"` diyor; aradan bir satır silindiğinde **silinenin ardındaki** halkada duruyor ve
+> `"SILINMIS"` diyor. Çıkış kodu 1. Toplam 18 birim + 7 uçtan uca test.
+>
+> **Bilinçli sınırlar (koda ve dokümana yazıldı, testle kilitlendi):**
+> (1) **Kuyruk kesme görülemez** — zincirin *son* satırları silinirse kalan zincir kendi içinde tutarlıdır;
+> bunu kapatmak zincir başının dışarıya (WORM depo, zaman damgası otoritesi) yayınlanmasını gerektirir ve
+> **yapılmadı**. Bu sınır `test_tail_truncation_is_NOT_detected` ile açıkça kilitli.
+> (2) **Özet anahtarsızdır** (HMAC değil): veritabanına *yazma* yetkisi olan biri satırı değiştirip zinciri
+> baştan hesaplayabilir. Hedef "sessizce bir satır silen yetkili kullanıcı", "zinciri yeniden kuran saldırgan"
+> değildir. (3) Göç öncesi satırların hash'i **NULL** ve bilerek üretilmedi.
+
+### F-21 · Varlık kütüğü: CBS tekil kodu, künye ve bakım takvimi — ✅ tamamlandı (18 Eylül 2026)
 Panonun ne olduğunu ve kimi etkilediğini sisteme getirir · **Etki:** çok yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** [deploy/initdb/](deploy/initdb/), [backend/app/api/panels.py](backend/app/api/panels.py), [contracts/openapi.yaml](contracts/openapi.yaml), [frontend/src/components/RiskMatrisi.tsx](frontend/src/components/RiskMatrisi.tsx), [frontend/src/pages/FiloListesi.tsx](frontend/src/pages/FiloListesi.tsx)
 **Sektörel dayanak:** EPDK CBS usul ve esasları dağıtım panosunu tekil kodla ve kullanıcı tesisleriyle eşleştirilmiş tutmayı zorunlu kılıyor; EA Technology CBRM/CNAIM sağlık × kritiklik ile riski parasallaştırıyor; ABB Emax 2 koruma birimi bile son bakım tarihinden sonraki bakımı kestiriyor.
 **Bizdeki boşluk:** `panels` tablosunda sekiz alan var, hiçbiri trafo gücü, fider, abone sayısı, kritiklik veya bakım tarihi değil. Risk matrisinin etki ekseni bu yüzden risk skorunun kendisi — kodda dürüstçe itiraf edilmiş.
 **Ne üretir:** Gerçek iki eksenli risk matrisi, kritikliğe göre önceliklendirme, bakım vadesi rozeti, ve tüm mevzuat çıktılarının (F-22, F-23) veri tabanı.
 **Dikkat:** Paralel bir varlık ana kaydı **kurulmamalı** — birincil alan CBS tekil kodu olmalı ve künye "CBS'den içe aktarılır" diye etiketlenmeli. Üretici/seri no uydurulmaz, boş bırakılır.
 
-### F-22 · Üst şebeke kesintisi bağıntısı ve OMS'e hazır kesinti olayı
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** Göç `deploy/initdb/008_varlik_kutugu.sql`:
+> `panels` tablosuna 13 sütun — CBS tekil kodu (UNIQUE ikinci kimlik; **PK `pano_id` olarak kaldı**,
+> değiştirmek dört yabancı anahtarı kırardı), fider, il/ilçe, abone sayısı, trafo gücü, kritiklik,
+> üretici/seri no, son + sonraki bakım, künye kaynağı ve içe aktarım anı. **Paralel varlık ana kaydı
+> kurulmadı** (ayrı tablo yok): backlog §2.5 gereği panonun kimliği CBS'de zaten var, biz kaynak değil
+> tüketiciyiz. Sözleşme `openapi` **v1.3.0** (`AssetRegistry`, `PanelDetail.asset`, `PanelSummary`'ye
+> üç alan, `GET`/`POST /fleet/assets`) — gerekçe `contracts/changes/2026-09-18-varlik-kutugu.md`.
+> Yazma ucu F-19 desenini izler: `Depends(require("muhendis"))`.
+>
+> **Risk matrisinin etki ekseni gerçek oldu:** y artık `abone_sayisi` (EPDK Madde 8/2'nin de istediği
+> sayılabilir büyüklük), eski kVA itirazı aşıldı. **İtiraf silinmedi, daraldı** — matris künye girildiği
+> ölçüde iki boyutludur ve künye yoksa eski davranış aynen korunur (`frontend/src/lib/etki.ts` + testi).
+>
+> **Ölçülen:** backend **735** (721 → +14, `test_asset_registry.py`), frontend **106** (93 → +13),
+> `check_contracts.py` "SOZLESMELER TUTARLI" (11 uç), beş üreteç de "guncel". Göç ayakta olan
+> veritabanına elle uygulandı ve **idempotent** olduğu iki kez koşturularak doğrulandı.
+>
+> **Bilinçli sınır (bu yüzden "kütük dolu" denmiyor):** gerçek bir CBS dışa aktarımına erişim yok (GK3).
+> Demo filosunun künyesi **boştur**, `uretici`/`seri_no` **hiçbir panoda doldurulmadı** ve bu gizlenmiyor —
+> `GET /fleet/assets` kapsama oranını sayıyla verir. `scripts/ornek-cbs-aktarim.json` biçimi gösterir ve
+> **kendiliğinden yüklenmez**. Ayrıntı: `docs/17` §6 md. 22.
+
+### F-22 · Üst şebeke kesintisi bağıntısı ve OMS'e hazır kesinti olayı — ✅ tamamlandı (18 Eylül 2026)
 Aynı anda susan N panoyu tek bir kesinti olayına çevirir · **Etki:** çok yüksek · **Efor:** 2-3 hafta (F-21 sonrası) · **Nerede yaşar:** yeni `backend/app/outage.py`, [backend/app/alarm_manager.py](backend/app/alarm_manager.py), [deploy/initdb/](deploy/initdb/), [frontend/src/pages/BolgeHaritasi.tsx](frontend/src/pages/BolgeHaritasi.tsx)
 **Sektörel dayanak:** Enedis'te sayaç ve toplayıcılar AG arızasını çoğu zaman ilk müşteri aramadan önce tespit ediyor, bölge daraltmasıyla müdahale süresi ~%30 azalıyor; kesinti tespiti dağıtım trafosu izleyicilerinin dört ana kullanımından biri.
 **Bizdeki boşluk:** Olay gruplama pano içidir; panolar arası hiçbir bağıntı yok. Bir fider açıldığında konsol yüzlerce ayrı "izleme sistemi arızası" alarmıyla dolar — oysa doğru yorum tersidir.
 **Ne üretir:** Tek kesinti olayı, alt alarmların ona bağlanması, harita üzerinde kesinti bölgesi; OMS'in en değerli girdisi.
 **Dikkat:** Pano→fider eşlemesi F-21'e bağımlı. Eşik ve pencere yapılandırılabilir olmalı; tek panolu durumda eski davranış aynen korunmalı. Hackathon penceresinde yalnızca "eşzamanlı sessiz pano sayısı" paneli ve bir tasarım notu yapılabilir.
 
-### F-23 · EPDK Madde 8 kesinti kaydı üreteci ve sebep kanıt paketi
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** `backend/app/outage.py` (saf bağıntı, veritabanı
+> ve saat bilmez — `journal_chain.py` ile aynı gerekçe), göç `009_kesinti_olayi.sql` (`outages` +
+> `outage_panels`), `GET /outages` + `GET /outages/{id}`, haritada kesinti halkası ve kesinti şeridi.
+> Sözleşme: `alarm-codes` **v3** (iki eşik), `openapi` **v1.4.0** —
+> gerekçe `contracts/changes/2026-09-18-kesinti-bagintisi.md`.
+>
+> **Backlog'un iki eskimiş satırı düzeltildi:** (1) "eşzamanlı sessiz pano sayısı paneli"
+> zaten vardı (`/fleet/kpi` `comms_ok_pct` + Grafana) ve **yeniden yapılmadı**; (2) sel
+> yalnızca SYS değil: `ALM-LASTGASP` sözleşmede **P2** ve `sms: true` — yani her pano
+> **gerçek bir SMS** üretir. Bağıntının azalttığı maliyet budur.
+>
+> **Eşikler `alarm-codes.yaml`'a konuldu, `Settings`'e değil** — mühendislik gerekçesi:
+> `AlarmService` uygulama fabrikasında `Settings` **almıyor** ama `Contracts` alıyor ve
+> `heartbeat_timeout_min`'i zaten oradan okuyor; eşiği sözleşmeye koymak yeni bir yapılandırma
+> yolu açmadan çalışır. **İkisi de türetilmiştir, ölçülmemiştir** ve sözleşmede böyle yazar.
+>
+> **Ölçülen:** backend **751** (735 → +16, `test_outage.py`), frontend **111** (106 → +5),
+> `check_contracts.py` "SOZLESMELER TUTARLI" (13 uç), beş üreteç "guncel". Göç elle uygulandı
+> ve idempotent olduğu doğrulandı.
+>
+> **Bilinçli sınır:** bağıntı **toplayıcıdır, susturucu değil** — hiçbir alarm bastırılmadı,
+> bildirim davranışı değişmedi (bastırma ISA-18.2 kararıdır, F-25'in konusu). Pano→fider
+> eşlemesi F-21 künyesinden gelir; künyesi olmayan pano **gruplanmaz** ve demo filosunun künyesi
+> boş olduğu için bağıntı **demo veritabanında hiç tetiklenmez**. Ayrıntı: `docs/17` §6 md. 23.
+
+### F-23 · EPDK Madde 8 kesinti kaydı üreteci ve sebep kanıt paketi — ✅ tamamlandı (18 Eylül 2026)
 Olayı, mevzuatın saydığı alanlarla doldurulmuş bir kesinti kaydı taslağına çevirir · **Etki:** yüksek · **Efor:** 2 hafta (F-21, F-22 sonrası) · **Nerede yaşar:** yeni `backend/app/api/outage_record.py`, [deploy/initdb/](deploy/initdb/), [frontend/src/pages/OlayAnalizi.tsx](frontend/src/pages/OlayAnalizi.tsx)
 **Sektörel dayanak:** EPDK Kalite Yönetmeliği Madde 8/2'nin alan listesi (doğrulandı); kesinti sebebinin sınıflandırılması doğrudan tazminat hesabına giriyor.
 **Bizdeki boşluk:** Olay tablosunda sebep, sınıf, etkilenen kullanıcı ve dağıtılmayan enerji alanları yok; daha önemlisi **enerjinin geri geldiği an hiç gözlemlenmiyor**, yani süre ve sona erme bu depodan türetilemez.
 **Ne üretir:** Madde 8 alanlarıyla bir kesinti kaydı taslağı + 72 saatlik kanıt zaman çizelgesi; sebep sınıfı için **öneri**, karar değil.
 **Dikkat:** Çıktı kesinlikle "TASLAK" etiketli olmalı ve ölçmediğimiz alanlar "elle doldurulacak" diye işaretlenmeli. Önce enerji dönüşünün gözlemlenmesi (restorasyon tespiti) gerekir. Hackathon penceresinde yalnızca "hangi alanları ölçmüyoruz" tablosu yazılabilir.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** `backend/app/epdk.py` +
+> `GET /outages/{id}/epdk-kaydi`, sözleşme `openapi` **v1.5.0** —
+> gerekçe `contracts/changes/2026-09-18-epdk-madde8-taslagi.md`. Bölge haritasındaki kesinti
+> şeridinde açılır tablo olarak görünür.
+>
+> **"TASLAK" bir etiket değil, yanıtın YAPISI:** her alan `olculen` / `oneri` /
+> `elle_doldurulacak` durumu taşır ve alan yanıttan **hiçbir zaman düşürülmez** — çıkarmak
+> "bu alanı ölçmüyoruz" bilgisini de kaybettirirdi. **On madde, on bir alan:** mevzuat
+> "başlama/sona erme"yi tek kalem sayar, biz ikiye ayırdık çünkü **başlama ölçülüyor,
+> sona erme ölçülmüyor** — ikisini tek alanda birleştirmek taslağın bütün anlamını silerdi.
+>
+> **Üçü ölçülüyor** (yer → F-21 CBS tekil kodu; etkilenen kullanıcı → F-22; başlama → bir
+> **yaklaşım**), **ikisi öneri** (neden, sınıf), **altısı elle doldurulacak**. Bu oran
+> çıktının `ozet` alanında **sayıyla** görünür.
+>
+> **Backlog'un iki eskimiş satırı düzeltildi:** (1) "enerjinin geri geldiği an **hiç**
+> gözlemlenmiyor" — doğrusu *"restorasyon anı ölçülmüyor; elimizdeki tek şey histerezisli
+> haberleşme dönüşüdür"* ve bu, `sona erme` alanının açıklamasında aynen yazıyor;
+> (2) "72 saatlik kanıt zaman çizelgesi üret" **yeni iş değildi** — `/events/{id}/blackbox`
+> zaten vardı ve F-02 pencereyi **336 saate** çıkarmıştı. Madde *"var olan çizelgeyi Madde 8
+> alanlarına bağla"* olarak uygulandı; çizelge kodu **kopyalanmadı**.
+>
+> **Ölçülen:** backend **765** (751 → +14, `test_epdk_kaydi.py`), frontend **115** (111 → +4),
+> `check_contracts.py` "SOZLESMELER TUTARLI" (14 uç), beş üreteç "guncel".
+>
+> **Bilinçli sınır:** tazminat hesabına **girilmedi** (GK10 — formül parametrelidir, `SBSÜRE`
+> literal bir tutar değildir; `scripts/tazminat_maruziyeti.py` zaten parametresiz çalıştırıldığında
+> hesap yapmaz). Sebep önerisi hava/ağaç/hayvan gibi bir şey **tahmin etmez**; tek söylediği
+> arızanın **pano içi değil üst şebeke** kaynaklı olduğudur. Ekran yeri olarak `OlayAnalizi.tsx`
+> değil **bölge haritası** seçildi: `OlayAnalizi` `event_id` ile çalışır ve olaylar **pano
+> içidir**, kesinti ise **panolar arasıdır**. Ayrıntı: `docs/17` §6 md. 24.
 
 ### F-24 · IEC 61968 (CIM) ADMS/OMS adaptörü
 Alarmı, kesinti olayını ve bakım önerisini dağıtım şirketinin kurumsal diline çevirir · **Etki:** yüksek · **Efor:** 3-4 hafta · **Nerede yaşar:** yeni `backend/app/export/cim.py`, `docs/` altında eşleme tablosu (contracts/ altına değil)
@@ -259,19 +371,99 @@ Filoyu gerçek coğrafi ve kurumsal hiyerarşiye göre böler · **Etki:** orta 
 **Ne üretir:** İl/ilçe bazlı harita, bölge kırılımlı filo göstergeleri, işletme müdürlüğü kıyaslaması.
 **Dikkat:** ADM ve GDZ aynı grubun iki lisans şirketidir ve tek bir kurulumu paylaşır — ihtiyaç "iki müşteriyi yalıtmak" değil, "tek kurulumda kırılım". Kimlik doğrulama olmadan buna "çok kiracılı" denmez; olsa olsa görüntü filtresidir.
 
-### F-27 · mTLS, cihaz başına topic yetkisi ve IEC 62351-3 TLS profili
+### F-27 · mTLS, cihaz başına topic yetkisi ve IEC 62351-3 TLS profili — ✅ tamamlandı (18 Eylül 2026)
 Kenar-merkez arasındaki tüm bağlantıları şifreler ve cihazı kendi topic'ine hapseder · **Etki:** yüksek · **Efor:** 2-3 hafta · **Nerede yaşar:** [deploy/mosquitto.conf](deploy/mosquitto.conf) ve yeni ACL dosyası, ayrı bir compose profili, [backend/app/scada/](backend/app/scada/), [backend/app/ingest.py](backend/app/ingest.py), [backend/app/config.py](backend/app/config.py)
 **Sektörel dayanak:** IEC 62351-3 güç sistemi protokolleri için TLS profilini tanımlar; Türkiye'de OSOS haberleşme donanımı asgari özellikleri cihazda kimlik doğrulama, şifreleme ve IP kısıtı şart koşuyor.
 **Bizdeki boşluk:** Demo broker düz ve anonim; merkezin MQTT istemcisinde TLS çağrısı ve ayarlarda sertifika alanı yok. [docs/15-guvenlik-kvkk.md](docs/15-guvenlik-kvkk.md) bunu üç yerde bilinçli üretim farkı olarak yazıyor.
 **Ne üretir:** Ölçülmüş bir kanıt: bir panonun sertifikasıyla başka bir panonun topic'ine yayın denemesinin broker tarafından reddedilmesi.
 **Dikkat:** Varsayılan demo yolu bozulmamalı; ayrı profil, varsayılan kapalı, duman testi iki modda da koşmalı. Tam 62351-3 profili (şifre takımı kısıtları, iptal) uygulanmadan "62351 uyumlu" denmez. Sertifikalar asla commit edilmez.
 
-### F-28 · Cihaz kimliği: IDevID/LDevID, sıfır-dokunuş kayıt ve PKI işletimi
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** Ayrıntı ve ham ölçüm: [`docs/15-guvenlik-kvkk.md`](docs/15-guvenlik-kvkk.md) §5.1.
+>
+> **Kabul ölçütü ölçüldü ve dört sinyalin dördü de aynı şeyi söyledi.** ADM-00001'in sertifikasıyla ADM-00002'nin telemetri
+> topic'ine yapılan yayın: **PUBACK reason code 135 "Not authorized"**, abone mesajı **almadı**, broker logunda `Denied PUBLISH`.
+> Aynı koşuda **pozitif kontrol** (aynı bağlantıdan kendi topic'ine yayın → aboneye ulaştı) ve **kontrol grubu** (aynı topic'e
+> sahibi yayınladı → ulaştı) geçti; "gelmedi" kararı sabit bir `sleep` ile değil `kendi(A) → hedef(X) → kendi(B)` sandviç
+> bariyeriyle verildi. Toplam **7/7 yayın vakası**, **2/2 bağlantı vakası** (sertifikasız ve yabancı CA imzalı `CN=ADM-00001`
+> bağlantıları reddedildi). Ortam: mosquitto 2.0.22 (compose'daki digest), TLS 1.3, paho-mqtt 2.1.0.
+>
+> **Testin kırmızıya dönebildiği gösterildi.** ACL'deki `pattern write gridup/pano/%u/tel` satırı geçici olarak
+> `gridup/pano/+/tel` yapılıp SIGHUP gönderildiğinde **aynı yayın kabul edildi** (PUBACK 0, mesaj ulaştı); dosya geri yüklendi
+> ve özetle doğrulandı. Bu mutasyon koşusu olmadan "negatif test geçti" cümlesi hiçbir şey ifade etmezdi — ACL hiç yüklenmemiş
+> olsaydı da bütün negatifler geçerdi.
+>
+> **Varsayılan demo yolunun davranışı bozulmadı ve bu ölçüldü.** `deploy/mosquitto.conf` yalnızca başlık yorumunda değişti;
+> `sim/`, `contracts/` ve `backend/app/scada/` hiç değişmedi. `backend` servis tanımı değişti (üç boş varsayılanlı TLS
+> değişkeni + `certs/backend` bağlaması + `MQTT_HOST`/`MQTT_PORT` artık varsayılanlı interpolasyon); boş hâlde davranış
+> aynıdır ve ölçüldü. `scripts/duman-testi.sh` **iki modda da** koştu: düz kipte **26 geçti / 0 kaldı / 1 atlandı**, mTLS kipinde
+> **31 geçti / 0 kaldı / 0 atlandı**. Atlanan kontrol sessizce geçmiş sayılmaz — ekrana nedeniyle yazılır ve `geçti` sayacına
+> girmez. `docker compose -f deploy/compose.yaml config -q` bayraksız 0 döner; profilli servis `config --services` çıktısında
+> **görünmez**.
+>
+> **Backlog'un tek cümlesi kopyalanamaz.** Madde başlığındaki "kenar-merkez arasındaki **tüm** bağlantıları şifreler" ifadesi
+> yanlış olurdu: F-27 **yalnızca MQTT taşımasını** kapsar. REST/WS, Modbus TCP (502) ve IEC 60870-5-104 (2404) **her iki kipte
+> de düz metindir**. İkisine TLS eklemek teknik engel değil (~45 satır) ama üç ölçülebilir gerileme getirirdi ve karşısında TLS
+> konuşan bir SCADA ön-ucu yok; gerekçe `docs/15` §5.1'de ölçümle yazılı.
+>
+> **"62351 uyumlu" DENMEDİ ve denemez.** Standardın metnine erişilmedi (GK10): madde/tablo numarası yok, birebir alıntı yok,
+> uygunluk iddiası yok. "Profile yaklaşıldı" gibi bir **mesafe ifadesi de kurulmadı** — okumadığımız bir metne olan mesafemizi
+> ölçemeyiz. Uygulanmayanlar açık: şifre takımı politikası ve sertifika iptali (CRL/OCSP). `crlfile` seçeneği bu
+> teslimde **hiç denenmedi**: iptal listesi üretilmedi, iptal edilmiş bir sertifikanın reddedildiği ölçülmedi. Hem mekanizma
+> hem işletimi F-28'in konusudur.
+>
+> **Sertifikalar commit edilmedi ve bu testle kilitli.** `deploy/certs/.gitignore` (`*` + `!.gitignore`) uzantıdan bağımsız
+> birincil korumadır; kök `.gitignore`'a ikinci savunma hattı eklendi (`/deploy/certs/*`, `*.crt`, `*.csr`, `*.srl`, `*.p12`,
+> `*.pfx`, `*.der`, `.rnd`). `backend/tests/test_sir_sizintisi.py` (12 test) üç şeyi birden iddia eder: üretilen materyalin
+> tamamı git dışında, **izlenen hiçbir dosyanın gövdesinde PEM yok** (bunu `.gitignore` asla yakalayamaz) ve ignore kuralları
+> **fazla yutmuyor**. `scripts/sir_taramasi.py` aynı mantığı CLI olarak taşır ve duman testinde iki kipte de koşar.
+>
+> **Kenar cihazın gelen portu olmadığı bozulmadı:** ACL kenara yalnızca kendi `cmd` topic'ini **okuma** yetkisi verir; kenar
+> komut **yazamaz** (ölçüldü, vaka 4). Yerel CA kullanıldı (GK4): dış bir sertifika otoritesi yok, `scripts/sertifika-uret.sh`
+> her şeyi makinede üretir ve CA atılabilir.
+>
+> **Dokunulan yerler:** `deploy/mosquitto-mtls.conf`, `deploy/mosquitto.acl`, `deploy/compose.mtls.yaml` (yeni),
+> `deploy/compose.yaml` (include + backend'e boş varsayılanlı TLS değişkenleri ve `certs/backend` bağlama),
+> `deploy/mosquitto.conf` (yalnızca başlık yorumu), `deploy/.env.example`, `backend/app/config.py`, `backend/app/ingest.py`,
+> `backend/app/main.py` (`/health` → `mqtt_tls`), `scripts/sertifika-uret.sh`, `scripts/mqtt_acl.py`,
+> `scripts/mtls_yetki_testi.py`, `scripts/sir_taramasi.py`, `scripts/duman-testi.sh`, `.gitignore`.
+> **Sözleşmeye dokunulmadı** (taşıma katmanı). **`sim/` ve `backend/app/scada/` değişmedi.**
+>
+> **Kalan (bilinçli):** varsayılan yol hâlâ düz; `sim/panosim.py` mTLS profilinde koşmaz (tek süreçte N panonun anahtarını
+> tutmak, sahada olmayan bir yalıtımı kanıtlanmış gibi gösterirdi); yük testi hâlâ düz 1883'te koşuyor, **TLS el sıkışma
+> maliyeti ölçülmedi** (`docs/09` §8); anahtarlar dosya sisteminde düz durur — güvenli elemana bağlanması F-28.
+
+### F-28 · Cihaz kimliği: IDevID/LDevID, sıfır-dokunuş kayıt ve PKI işletimi — 📐 yalnızca yol haritası yazıldı, **kod yok** (18 Eylül 2026)
 Sertifikayı elle basılan bir dosyadan işletilebilir bir yaşam döngüsüne çevirir · **Etki:** yüksek · **Efor:** 6-10 hafta (donanım revizyonuyla) · **Nerede yaşar:** `firmware/core/` kimlik modülü, yeni `backend/app/pki/`, [deploy/](deploy/) altında yerel sertifika otoritesi, [hardware/pano-beyni/](hardware/pano-beyni/)
 **Sektörel dayanak:** IEEE 802.1AR-2018 fabrika (IDevID) ve saha (LDevID) kimliğini tanımlar; IETF RFC 8995 (BRSKI) ve RFC 7030 (EST) sıfır-dokunuş kaydı standartlaştırır; IEC 62351-9 güç sistemi ekipmanı için anahtar yaşam döngüsü ve iptali tanımlar.
 **Bizdeki boşluk:** BOM'da güvenli eleman var ama onu kullanan tek bir akış yok. F-27 sertifikaları elle üretir; bu üç panoda çalışır, 100+ modülde çalışmaz.
 **Ne üretir:** Kayıt ucu, sertifika verme ve yenileme takvimi, iptal listesi ve broker yetkisinin sertifikadan türemesi.
 **Dikkat:** GK3 nedeniyle bu teslimde kod yazılamaz; gerçek güvenli eleman ve bir üretim hattı prosedürü gerektirir. Hackathon payı yalnızca bir yol haritası paragrafıdır.
+
+> **Yalnızca yol haritası yazıldı (18 Eylül 2026, `c-varlik-kutugu`) — KOD YOK, bilerek (GK3).** Maddenin "Ne üretir"
+> kalemlerinin **hiçbiri üretilmedi**: kayıt ucu yok, sertifika verme yok, yenileme takvimi yok, iptal listesi yok, broker
+> yetkisi hâlâ elle üretilmiş bir sertifikadan türüyor. Başlıktaki im bilerek 🟡 değil 📐'dir: 🟡 bu backlog'da kodu olan
+> maddeler için kullanılıyor (ör. F-19, F-31) ve bu maddede kod yok.
+>
+> **Yapılanlar:** [`docs/15-guvenlik-kvkk.md`](docs/15-guvenlik-kvkk.md) §3.5 altına tek sayfalık bir yol haritası yazıldı.
+> Yeni doküman **açılmadı** — çünkü "güvenli eleman BOM'da var, ona hiçbir akış bağlanmamış" paragrafı depoda **zaten iki kez**
+> yazılıydı (`docs/19` satır 91 ve `docs/15` §3.5) ve üçüncü kez yazmak aynı içeriği çoğaltmak olurdu. Eklenen sayfa o ikisinin
+> **ötesine geçen** şeyi somutlaştırıyor: (a) F-27'nin elle ürettiği sertifikaların 100+ modülde neden çalışmayacağı — anahtarın
+> cihaz dışında üretilmesi, kayıt otoritesinin olmaması, devreye almadaki insan eli ve iptal mekanizmasının yokluğu, dördü de
+> §5.1'de ölçülen düzeneğin doğrudan sonucu olarak; (b) kayıt / yenileme / iptal takviminin neye benzeyeceği — fabrika kimliği
+> hiç yenilenmez, saha kimliği kısa ömürlü ve otomatik yenilenir, yenileme penceresi en uzun beklenen kopukluktan **uzun**
+> olmak zorundadır (kenarda 7 günlük halka tampon var) ve doğrulama **saate** bağlıdır ama GK4 yığını NTP'siz çalışır;
+> (c) iptalin işletilebilir olması için gereken üç şey — listenin üretilmesi, dağıtılması ve **tazeliğinin doğrulanması**;
+> (d) F-27'den F-28'e geçişte değişmeyecek olan: ACL kuralı **kalıptır** ve kimliği CN'den alır, dolayısıyla değişecek olan
+> kimliğin **kaynağıdır**, yetkinin kuralı değil.
+>
+> **Kalan:** maddenin kendisi. Kayıt ucu, sertifika verme, yenileme zamanlayıcısı, iptal listesi üretimi/dağıtımı ve güvenli
+> elemana bağlanan firmware kimlik modülü **yazılmadı**. Backlog bunu 6-10 hafta ve **donanım revizyonu** olarak işaretliyor;
+> bu teslimde donanım satın alınmadı, yani madde yalnızca yazılım eforuyla kapanamaz.
+>
+> **GK10 uyarısı:** IEEE 802.1AR, RFC 8995 (BRSKI), RFC 7030 (EST) ve IEC 62351-9 metinlerine erişilmedi. Madde numarası,
+> tablo numarası ve birebir alıntı **yazılmadı**. Ancak bu maddenin **yukarıdaki "Sektörel dayanak" satırı** bu standartların
+> ne tanımladığına dair iddialar içerir (ve bir baskı yılı verir); o iddialar **ikincil kaynaklardan** gelir ve tarafımızdan
+> **doğrulanmadı**. `docs/15` §3.5'teki yol haritası da tek dayanak olarak o satırı gösterir.
 
 ### F-29 · İmzalı OTA: manifest, A/B geçiş, anti-rollback ve kanarya kampanyası
 Sahaya çıkmış 1.000 panonun yazılımını güvenle güncellenebilir kılar · **Etki:** çok yüksek · **Efor:** 4-6 hafta · **Nerede yaşar:** yeni `scripts/fw_manifest.py`, kenar tarafında ilk komut tüketicisi, merkezde kampanya uçları ve tabloları
@@ -287,19 +479,130 @@ Güncelleme yeteneğinin karşı ağırlığını kurar · **Etki:** yüksek · 
 **Ne üretir:** Üretim hattında anahtar yönetimi, tek yönlü sigorta yakma prosedürü, hata ayıklama portunun kapatılması ve kurtarma senaryosu.
 **Dikkat:** GK3 ihlali — gerçek donanım olmadan gösterilemez ve sigorta yakma geri alınamaz. Bu teslimde kod yazılmamalı; uygulaması olmayan bir başlık dosyası bile "var gibi görünme" üretir.
 
-### F-31 · Düğüm kimliği ve sensör sapması tespiti
+### F-31 · Düğüm kimliği ve sensör sapması tespiti — 🟡 kısmen yapıldı (18 Eylül 2026)
 Sistemin düğüm sayısını değil düğümün kendisini tanımasını sağlar · **Etki:** orta · **Efor:** 4-6 hafta · **Nerede yaşar:** [contracts/mqtt-telemetry.schema.json](contracts/mqtt-telemetry.schema.json), [contracts/modbus-map.yaml](contracts/modbus-map.yaml), [contracts/alarm-codes.yaml](contracts/alarm-codes.yaml), [libs/panoalgo/panoalgo/quality.py](libs/panoalgo/panoalgo/quality.py), [deploy/initdb/](deploy/initdb/), [frontend/src/pages/CihazSagligi.tsx](frontend/src/pages/CihazSagligi.tsx)
 **Sektörel dayanak:** Rittal CMC III sensörleri otomatik tanıyıp tek tek izliyor; Schneider CL110 için batarya ve servis ömrü takip edilen bir veri; OMA LwM2M bağlantı sağlığını ayrı bir nesne olarak standartlaştırıyor.
 **Bizdeki boşluk:** Sağlık bloğu yalnızca "kaç düğüm iyi / kaç düğüm var" taşıyor; düğüm kimliği hiçbir yerde yok, yani bir düğüm kaybolduğunda hangi fiziksel parçanın gittiğini söyleyemiyoruz. Dahası sensör sürüklenmesini **üretiyoruz** ama tespit eden hiçbir kural yok — FMEA'daki en yüksek risklerden birinin azaltıcı önlemi kâğıt üstünde.
 **Ne üretir:** Düğüm listesi ve kimliği, sensör kütüğü, ardışık sapma için yeni bir alarm kodu, düğüm bazına inen cihaz sağlığı ekranı.
 **Dikkat:** Tek başına donmuş sözleşmenin üç dosyasına birden dokunuyor ve üç üretilmiş dokümanın yeniden üretimini gerektiriyor — dondurma öncesi kesinlikle başlanmamalı. "İzlenebilir ölçüm" (metrolojik izlenebilirlik) iddiası akredite kalibrasyon olmadan kurulamaz; yalnızca "kütük ve vade takibi" denebilir.
 
-### F-32 · L2 filo akran karşılaştırması ve taban geçerliliği
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).**
+>
+> **Önce ayrım yapıldı — yoksa var olan bir yetenek yeniden inşa edilirdi.** Backlog "düğüm
+> kimliği hiçbir yerde yok" diyor; ölçüldüğünde bu **fazla geniş** çıktı. **Ölçüm noktası**
+> kimliği zaten VARDI (`t_conn[].pt` donmuş şemada sabit regex, `q` kalite bitleri nokta
+> bazında). Eksik olan **fiziksel düğüm** kimliğiydi: `health` yalnızca `nodes_ok` /
+> `nodes_total` **sayılarını** taşıyor. Maddenin gerçek işi *"bir düğüm kaybolduğunda hangi
+> fiziksel parçanın gittiğini söyleyebilmek"*ti. Göç `deploy/initdb/010_dugum_kutugu.sql`
+> (`nodes` + `node_points`), uçlar `GET`/`POST /fleet/nodes` ve `GET /fleet/nodes/blind`.
+>
+> **Donmuş şemanın ÜÇ dosyasından İKİSİNE dokunulmadı.** Backlog üç dosya bekliyordu;
+> `mqtt-telemetry.schema.json` ve `modbus-map.yaml` **değişmedi**. Düğüm kimliği 10 saniyede
+> bir akması gereken bir veri değil, F-21'in künyesiyle aynı cinsten **kütük** verisidir; ve
+> "hangi düğüm kör" sorusu zaten yayınlanan `t_conn[].q` bitlerinden + kütüğün nokta↔düğüm
+> eşlemesinden **merkezde yeniden türetilir** (F-10'un `_verify` kaçışı). Yeni alarm biti 22,
+> Modbus'ın **zaten var olan** 32 bitlik alarm alanına düştüğü için harita da değişmedi.
+>
+> **"İzlenebilir ölçüm" iddiası KURULMADI.** Yapılan yalnızca **kütük ve vade takibidir**;
+> `GET /fleet/nodes` bunu kendi `uyari` alanında söyler ve **sertifika numarası alanı bilerek
+> açılmadı** (dolduracak kaynak yokken alan açmak GK10 ihlali olurdu). Demo filosunun düğüm
+> kütüğü **boştur** ve bu `kapsama` alanında sayıyla görünür (GK3).
+>
+> **Sürüklenme: önce ÜRETECİN KENDİSİ düzeldi.** Backlog "sürüklenmeyi üretiyoruz ama tespit
+> eden kural yok" diyordu; ölçüldüğünde premisin **ilk yarısı da tutmuyordu**.
+> `set_sensor_fault` aynı arızayı her çağrıda yeniden kurup yaşını **sıfırlıyordu** ve senaryo
+> yürütücüsü enjeksiyonu her adımda çağırdığı için kayma 112 saatlik pencere boyunca **0,5
+> K'da çakılı** kalıyordu. Ayrıca hız 2,0 K/saat ile fiziksel değildi (112 saatte 224 K;
+> ölçüldü: `ALM-THR-TERM-ALM` 345 kez çıkıp senaryonun `not_expect` kısıtını ihlal ediyordu).
+> İdempotentlik düzeltildi ve hız **0,1 K/saat**e indirildi.
+>
+> **Sonra kural yazıldı ve ayracı FİZİKTİR.** `dT = a·I² + b`'de gerçek bağlantı bozulması
+> `a`'yı büyütür, sensör kayması yükten bağımsız `b`'yi. `ALM-DQ-DRIFT` (bit 22, `layer: L-1`,
+> SYS) yalnızca `b` büyüyüp `a` büyümediğinde tetiklenir. İlk tasarım "düşük yük tabanı"na
+> bakıyordu ve **gerçek gevşek bağlantıyı** (S1) 96 kez sürüklenme sandı — gerçek bir arızayı
+> "kalibrasyon şüpheli" diye raporlamak en kötü yanlış yöndür. Kesişim ayracı + süreklilik
+> şartı + "daha özgül tanı kazanır" kuralı bunu sıfıra indirdi.
+>
+> **Ölçülen — başarı aynı fixture'da:** `S8_sensor_fault`'ta yalnızca `DSYA4_L3`, **230 kez**
+> (seed 42), enjeksiyondan **26,25 saat** sonra. Diğer **dokuz** senaryoda — gerçek gevşek
+> bağlantı S1 ve sağlıklı taban S0 dahil — **sıfır** yanlış pozitif (`test_drift.py`, 10
+> senaryo parametrik). `docs/12` §4.3 yeniden üretildi: S8'in prognoz yanlış-alarmı **99 →
+> 183** tahmin, **89 → 86** `ALM-TTL-14D`; **yalnızca S8 satırı değişti**, diğer dokuz senaryo
+> bit bit aynı kaldı. Sözleşme: `alarm-codes` **v4**, `openapi` **v1.7.0**, gerekçe
+> `contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md`.
+>
+> **Kalan (bu yüzden ✅ değil):**
+> 1. **Düğüm bazına inen cihaz sağlığı EKRANI yazılmadı.** Backlog `CihazSagligi.tsx`'i
+>    listeliyor; frontend'e yalnızca yeni alarm kodunun Türkçe metni eklendi. Uçlar hazır ve
+>    testli, ekran değil.
+> 2. **`ttl_h` üretimi hâlâ kalite bitlerinden bağımsız.** `edge.py` kestirimi `q`
+>    hesabından önce yapar; bir nokta "kalibrasyon şüpheli" işaretlense bile sahte kalan ömür
+>    tahmini üretilmeye devam eder. Prognoz yanlış-alarmı bu yüzden **kapanmadı, görünür
+>    oldu**.
+> 3. **Gerçek bir sensör envanterine erişim yok (GK3).** Kütük boştur; seri no, parti ve
+>    kalibrasyon vadesi hiçbir düğümde doldurulmadı ve **uydurulmadı**.
+> 4. **Ayrım tek yörüngeden (n = 1) ve sentetik veriden.** Üreteç kaymayı sabit hızla ve tek
+>    noktaya enjekte eder; gerçek bir sensörün kayması düzensiz olabilir. Buradaki "kusursuz
+>    ayrım" saha başarımı **değildir**.
+
+
+### F-32 · L2 filo akran karşılaştırması ve taban geçerliliği — 🟡 kısmen yapıldı (18 Eylül 2026)
 K₀ körlüğünü akran dağılımı ve değişim noktası tespitiyle kapatır · **Etki:** yüksek · **Efor:** 3-4 hafta (gerçek filo verisiyle) · **Nerede yaşar:** yeni `libs/panoalgo/panoalgo/fleet.py` ve `onset.py`, [libs/panoalgo/panoalgo/detect.py](libs/panoalgo/panoalgo/detect.py), [backend/app/api/insights.py](backend/app/api/insights.py)
 **Sektörel dayanak:** GE Vernova SmartSignal beklenen değeri benzerlik tabanlı modelleyip artığı izliyor; ISO 17359 baz çizgisinin yinelemeli optimize edilmesini istiyor; drift ve değişim noktası için olgun, saf Python, tamamen yerel kütüphaneler mevcut.
 **Bizdeki boşluk:** [docs/05-anomali-tespiti.md](docs/05-anomali-tespiti.md) kendi ifadesiyle "L2 katmanı henüz kod üretmiyor" diyor ve sözleşmede L2 etiketli tek bir alarm kodu yok. Devreye alma anında zaten bozuk olan bir bağlantıda K/K₀ hep 1,0 kalır ve o noktayı ancak akranları ele verir. Taban bir kez donuyor ve bakımdan sonra da güncellenmiyor.
 **Ne üretir:** Akran sıralama skoru, bozulmanın başlangıç anı, operatör onayına sunulan yeniden baz alma önerisi.
 **Dikkat:** Sentetik filoda K₀ sınırlı düzgün dağılımdan geldiği için sağlıklı bir pano yapısal olarak aykırı çıkamaz — sentetik veride "mükemmel ayrım" bir üreteç artefaktıdır, yöntem kanıtı değil. Otomatik yeniden baz alma alarmı susturabilir; yalnızca öneri üretmeli ve yazılım FMEA'sına bir satır girmeli.
+
+> **Yapıldı (18 Eylül 2026, `c-varlik-kutugu`).** İki yeni saf-stdlib modül:
+> `libs/panoalgo/panoalgo/fleet.py` (MAD tabanlı modifiye z ile akran karşılaştırması; akran
+> grubu **nokta adıdır** — aynı ad = aynı çıkış boyu = aynı anma akımı, yoksa 2312 A ile 250 A
+> kıyaslanırdı) ve `onset.py` (CUSUM değişim noktası; başlangıç anı = birikimin **son
+> sıfırlandığı** örnek, eşiğin aşıldığı an değil). `detect.py` donma anında **kanıt** tutuyor
+> (`BaselineEvidence`: kaç örnek, kaçı uyarılmış, dağılım ne kadar dar) — K₀ **değeri
+> değişmedi**, yanında gerekçesi duruyor. Uç: `GET /api/v1/fleet/peers`, `openapi` **v1.6.0**,
+> gerekçe `contracts/changes/2026-09-18-l2-filo-akran.md`.
+>
+> **Telemetri şemasına dokunulmadı.** `t_conn[]` `additionalProperties: false` tanımlı; kenara
+> `k0` alanı açmak mesajı reddettirir ve üç dosyalık donmuş zinciri tetiklerdi. Gerek yoktu:
+> `k_ratio = k / K₀` olduğundan **K₀ = k / k_ratio** ve iki alan da şemada zaten var — merkez
+> tabanı okumaz, **yeniden türetir** (F-10'un `_verify` kaçışıyla aynı). **Yeni alarm kodu da
+> açılmadı**: her kodun bir `bit` alanı var, yeni kod Modbus tahsisini ve beş üretecin çıktısını
+> tetiklerdi; L2'nin ilk çıktısı bu yüzden alarm değil **öneri**.
+>
+> **Yeniden baz alma asla otomatik uygulanmıyor.** Bozulmakta olan bir noktada tabanı güncellemek
+> `k_ratio`'yu 1,0'a geri çeker ve gerçek bozulmayı görünmez kılar — alarmı susturan bir
+> "düzeltme". Yeni hata türü `docs/07b` **Y11** (RÖS 288 → 18). Uç K₀'a **dokunmaz**; öneri
+> gerekçesiz olamaz ve yalnızca **yukarı** sapma işaretlenir (akranlarından düşük K₀ iyi bir
+> bağlantıdır).
+>
+> **Ölçülen:** panoalgo **438** (410 → +28: `test_fleet.py`, `test_onset.py`, `test_detect.py`
+> taban kanıtı), backend **772** (765 → +7, `test_api_insights.py`), `check_contracts.py`
+> "SOZLESMELER TUTARLI" (15 uç), beş üreteç de "guncel" (F-32 kod/adres açmadığı için hiçbir
+> çıktı değişmedi).
+>
+> **GK10 — sentetik veride ölçülen sınır, gizlenmedi.** `generator.py:342` sağlıklı K₀'ı
+> **sınırlı düzgün dağılımdan** çekiyor (`K_SPREAD = 0.15`) ve düzgün dağılımın **kuyruğu
+> yoktur**: sağlıklı bir pano yapısal olarak aykırı **çıkamaz**. Analitik tavan 1,349; 500
+> panoda (seed 20260918) **ölçülen en büyük |z| = 1,534**, aykırılık eşiği **3,5** — sağlıklı
+> pano eşiğin yarısına bile ulaşmıyor. Yani 1,6'nın üstündeki **her** eşik bu veride kusursuz
+> ayrım verir; bu yöntemin değil **üretecin** özelliğidir. Kilitleyen test
+> `test_sentetik_filoda_saglikli_pano_asla_aykiri_cikamaz`, ve aynı cümle
+> `GET /fleet/peers` yanıtının `uyari` alanında da **döner** — yalnızca dokümanda kalmıyor.
+>
+> **Kalan (bu yüzden ✅ değil):**
+> 1. **Saat-of-hafta robust z yok.** Rapor §6.5 L2 için üç yöntem sayıyor; ikisi yapıldı (filo
+>    karşılaştırması, CUSUM değişim noktası), saat-of-hafta profil sapması **yapılmadı**.
+> 2. **Taban geçerliliğinin üç kanıtından yalnızca biri uçtan görülüyor.** Uyarım oranı ve
+>    pencere kararlılığı **kenarda** ölçülüyor (`BaselineEvidence`, `baseline_window_is_stable`)
+>    ama K serisi merkeze yayınlanmadığı için `GET /fleet/peers` yalnızca **akran** kanıtını
+>    değerlendirebiliyor. Üçünü birden merkeze taşımak telemetri şemasına dokunmayı gerektirir.
+> 3. **Yeniden baz almayı uygulayan operatör akışı yok.** Öneri üretiliyor, onay/denetim izi
+>    akışı (F-33 kapsamı) yazılmadı; taban **elle bile** güncellenmiyor.
+> 4. **`layer: L2` etiketli alarm kodu hâlâ yok** — bilinçli, ayrı bir `contracts/changes/`
+>    önerisi gerektirir.
+> 5. **Gerçek filo verisi yok (GK3).** Yukarıdaki tüm sayılar sentetik filodan; yöntemin saha
+>    başarımı **ölçülmedi**.
+
 
 ### F-33 · Operatör geri bildirimi, olay kapanış kodu ve isabet ölçümü
 "Bu alarm doğru muydu" sorusunun cevabını sisteme geri yazar · **Etki:** yüksek · **Efor:** 3-4 hafta (F-19, F-25 sonrası) · **Nerede yaşar:** [frontend/src/components/AlarmNedeni.tsx](frontend/src/components/AlarmNedeni.tsx), [backend/app/alarm_service.py](backend/app/alarm_service.py), [deploy/initdb/](deploy/initdb/), [libs/panoalgo/panoalgo/validate.py](libs/panoalgo/panoalgo/validate.py)
@@ -322,12 +625,18 @@ Topladığımız ama kullanmadığımız gerilim tarafını gerçek bir mevzuat 
 **Ne üretir:** 10 dakikalık toplama, haftalık yüzdelik değerlendirmesi, parametre başına uygun/uygun değil kararı.
 **Dikkat:** Mevzuata esas ölçüm belirli bir ölçüm cihazı sınıfı gerektirir ve kullandığımız enerji analizörünün bu sınıfta olduğu **doğrulanmadı** — çıktı "gösterge amaçlı ön tarama" olarak adlandırılmalı, resmî ölçümün yerine geçtiği asla iddia edilmemeli. Üç donmuş sözleşme dosyasına birden dokunur.
 
-### F-36 · Uyarlanabilir raporlama ve hücresel veri bütçesi
+### F-36 · Uyarlanabilir raporlama ve hücresel veri bütçesi — ✅ tamamlandı (18 Eylül 2026)
 Kenarın tespit hızını düşürmeden yayın hacmini azaltır · **Etki:** orta · **Efor:** 2-3 hafta · **Nerede yaşar:** yeni `libs/panoalgo/panoalgo/reporting.py`, [libs/panoalgo/panoalgo/edge.py](libs/panoalgo/panoalgo/edge.py), [sim/panosim.py](sim/panosim.py), [docs/09-olceklenebilirlik.md](docs/09-olceklenebilirlik.md)
 **Sektörel dayanak:** ENWL 1 dakikalık örneklemeyi veri hacmi yüzünden 10 dakikaya düşürdü; ölü bantlı kendiliğinden gönderim IEC 104'te standart pratik (bizde zaten uygulanıyor); Memfault cihaz telemetrisini 9 bayta kadar inen parçalarla taşıyor.
-**Bizdeki boşluk:** Kenar her turda tam yük üretiyor; raporlama kararı katmanı yok. [docs/09-olceklenebilirlik.md](docs/09-olceklenebilirlik.md) periyot ve ölü bandın etkisini dürüstçe "uygulanmadı" olarak işaretliyor ve tahmin ile ölçümü ayrı sütunlarda tutuyor — yani kapatılacak bir yalan değil, tamamlanacak bir kaldıraç var.
+**Bizdeki boşluk (18 Eylül'de düzeltildi):** İlk yazımda "raporlama kararı katmanı yok" deniyordu; **bu yanlıştı**. [sim/panobeyni_sim.py](sim/panobeyni_sim.py) zaten bir katman taşıyordu: 1 s'de bir tarar, her 10 taramada bir yayınlar (`--report-every`), halka tamponu vardır ve rapor penceresi boyunca alarmları mandallar. Doğru ifade: *sabit oranlı seyreltme ve olay mandalı vardı, **uyarlanabilir** (ölü banda ve değişime göre) raporlama yoktu.* F-36'nın işi sıfırdan katman kurmak değil, var olan sabit oranlı katmanı uyarlanabilir hâle getirmekti. [docs/09-olceklenebilirlik.md](docs/09-olceklenebilirlik.md) periyot ve ölü bandın etkisini dürüstçe "uygulanmadı" olarak işaretliyor ve tahmin ile ölçümü ayrı sütunlarda tutuyordu — yani kapatılacak bir yalan değil, tamamlanacak bir kaldıraç vardı.
 **Ne üretir:** Nokta başına ölü bant, azami sessizlik süresi, olayda anında yayın; ölçülmüş veri hacmi azalması ve filo toplamı aylık maliyet kalemi.
 **Dikkat:** Seyrelen yalnızca **yayın** olmalı, tespit kenarda 10 saniyede koşmaya devam etmeli — aksi halde unutma faktörü ve K kestirimi bozulur. Ölçüm, yük testinin kendi şablon üreteciyle değil gerçek fizik üreteciyle yapılmalı; yoksa ölçülen oran gürültünün artefaktı olur.
+
+**Ne yapıldı (18 Eylül 2026):** Yeni `libs/panoalgo/panoalgo/reporting.py` (`ReportPolicy` + `ReportGate`): nokta başına ölü bant, azami sessizlik ve olayda anında yayın. Ölü bantların hepsi `contracts/alarm-codes.yaml` eşiklerinden **türetilir** (karar aralığının %2'si) — sözleşmeye dokunulmadı. Kapı `sim/panosim.py` sürekli kipine ve `sim/panobeyni_sim.py`'ye takıldı, **varsayılan kapalı** (`--adaptive`); senaryo kipi bilinçli olarak dışarıda bırakıldı (orada seyreltme zaten var). Azami sessizlik, merkezin `heartbeat_timeout_min` penceresinin yarısını aşamaz — aksi halde F-22 panoyu kesinti sanardı; kod bunu reddeder.
+
+**Ölçülen (`loadtest/veri_butcesi.py`, gerçek fizik üreteci, 5 pano × 25 nokta, 7 gün taban öğrenme + 48 saat ölçüm = 86.400 örnek):** %2 ölü bantla mesaj sayısı 86.400 → 50.932 (**%41,0 bastırma**), pano başına aylık **1.071 MB → 632 MB**, yani **1,70 kat**. Tahmin 6 kat idi; **fark dokümana yazıldı** (docs/09 §6.1), tahmin sütunu silinmedi. Alarm anı **değişmedi**: arıza rejiminde dokuz kodun tamamı beş politikada da aynı turda yayınlandı (`ALM-THR-TERM-ALM` 15.161. tur). Geri kurma hatası hiçbir alanda ölü bandı aşmadı (en büyük 40,4 A / bant 41,6 A).
+
+**Dürüstlük notu:** `sim/panobeyni_sim.py` 1 s'de bir işleyip periyodunu 10 s beyan ediyor (`--period × --report-every`). Bu sapma F-36'dan **önce** vardı ve madde ona **dokunmadı**: düzeltmek yayınlanan `tau_s`/`ttl_h` değerlerini değiştirir, ayrı bir madde gerektirir. Sapma artık ölçülebilir (`EdgePipeline.period_mismatch`) ve teste kilitli.
 
 ---
 
@@ -355,11 +664,11 @@ Aşağıdaki fikirler sektör taramasında çıktı, depoya karşı doğrulandı
 | Cihaz künyesi / varlık kütüğü kopyaları (dört adaydan üçü) | Aynı şema göçünü dört kez ödemek; seri no ve abonelik kimlikleri GK3 gereği uydurma olacak | Tek maddede birleşti (F-21) |
 | Yaygınlaştırma önceliklendirme aracı (iki kopya) | Gerçek varlık verisi olmadan çıktı bir bulgu değil yöntem gösterimi; iki kopya çelişen iki sıralama üretir | Tamamen elendi; etki sıralaması F-21'in doğal çıktısı |
 | Kimlik doğrulama / RBAC'ın hackathon içinde uygulanması | 17 Eylül'e 2,5 gün; donmuş sözleşmeyi ve tüm arayüz çağrı yüzeyini kırar; eksiklik zaten bilinçli karar olarak belgelenmiş | Yol haritası F-19 |
-| Hash zinciri, mTLS, SBOM, PSIRT, fuzzing, RPO/RTO tatbikatı, 62443 öz değerlendirme, tehdit modeli, ürün güvenlik beyanı | Değerlendirme kriterlerinin hiçbiri doğrudan güvenlik değil; bunlar satın alma komitesi artefaktı ve ekip kapasitesi K/Y kalemleriyle dolu | Yalnızca imaj digest sabitlemesi A kovasında (F-02); gerisi F-19/F-20/F-27 |
+| SBOM, PSIRT, fuzzing, RPO/RTO tatbikatı, 62443 öz değerlendirme, tehdit modeli, ürün güvenlik beyanı | Değerlendirme kriterlerinin hiçbiri doğrudan güvenlik değil; bunlar satın alma komitesi artefaktı ve ekip kapasitesi K/Y kalemleriyle dolu | İmaj digest sabitlemesi A kovasında (F-02). **Hash zinciri F-20 ile, mTLS + cihaz başına topic yetkisi F-27 ile 18 Eylül'de yapıldı ve ölçüldü**; bu satırda kalanlar aynen elenmiş durumda |
 | İmzalı OTA, device twin, reset nedeni telemetrisi, sıfır-dokunuş kayıt, secure boot | MoSCoW "Won't" ihlali, donmuş telemetri şeması ve GK3; kenarda komut tüketicisi bile yok | Yol haritası F-28/F-29/F-30/F-31 |
 | IEC TR 60890 ile muhafaza ısınma hesabı | İki uydurma girdi üst üste gerekiyor (katsayı tabloları standardın içinde, watt cinsinden kayıp gücü depoda yok) | Tamamen elendi |
 | ttl güven bandı ve ISO 13381-1 aralığı (iki kopya) | Aynı bütçeden prognoz geri testi daha fazla ölçülmüş sayı üretiyor; eğim yüzdeliği gerçek güven aralığı değil; asıl belirsizlik model hatası | Tamamen elendi; F-04 yerine geçiyor |
-| seq boşluk muhasebesi, heartbeat topic'inin tüketilmesi, uyarlanabilir raporlamanın ölçümü | Jüri masasında görünmüyor, donmuş şemaya veya bekleyen onaylara bağlı, ya da ölçüm zemini henüz gerçek fizik üretecine bağlanmamış | F-36 ve yol haritası; biri dürüstlük satırı olarak yazılır |
+| seq boşluk muhasebesi, heartbeat topic'inin tüketilmesi, uyarlanabilir raporlamanın ölçümü | Jüri masasında görünmüyor, donmuş şemaya veya bekleyen onaylara bağlı, ya da ölçüm zemini henüz gerçek fizik üretecine bağlanmamış | **18 Eylül güncellemesi:** üçüncüsü (uyarlanabilir raporlamanın ölçümü) **F-36 ile yapıldı ve ölçüldü** — gerekçe eskimişti, `loadtest/fleet.py` 15 Eylül'den beri (`878e1f5`) fizik üretecini varsayılan kullanıyor. İlk ikisi aynen elenmiş durumda: `seq` sürekliliğini merkez denetlemiyor ve telemetri şeması donmuş (`additionalProperties: false`), yani kenar kendi yayın aralığını beyan edemez — bu docs/09 §6'da **dürüstlük satırı** olarak yazıldı |
 
 ---
 

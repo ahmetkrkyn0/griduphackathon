@@ -1,0 +1,43 @@
+# Grid Up — MQTT topic yetkisi (F-27). deploy/mosquitto-mtls.conf `acl_file` ile okur.
+#
+# NE YAPAR: her cihazi KENDI pano kimligine hapseder. Kullanici adi CONNECT paketinden
+# GELMEZ; broker `use_identity_as_username true` ile istemci sertifikasinin CN alanini
+# kullanici adi kabul eder. Bu yuzden kimlik taklit edilemez: CONNECT'te yazilan kullanici
+# adi YOK SAYILIR (olculdu, docs/15 §5.1).
+#
+# MOSQUITTO 2.0.22 SEMANTIGI — hepsi bu depoda konteynerle olculdu, ezber degil:
+#   * `pattern` satirlari TUM kimliklere uygulanir; bir `user` blogu onlari GECERSIZ KILMAZ,
+#     uzerine EKLER.
+#   * Degerlendirme once kullanicinin kendi `user` listesine bakar, sonra `pattern` listesine.
+#     Bir liste ancak KARAR URETIRSE durur: eslesen bir `deny` varsa REDDEDILIR, istenen
+#     erisimi VEREN bir kural varsa IZINLI. Eslesme olup da istenen erisimi vermiyorsa
+#     (or. YAZMA sorulurken `topic read ...`) o liste SESSIZ kalir ve sonrakine gecilir.
+#   * Her listenin ICINDE `deny` dosya sirasindan bagimsiz olarak izni yener.
+#   * Bu yuzden bir kullaniciya ozel istisna ancak O KULLANICININ blogundaki `deny` ile
+#     yazilabilir; `pattern deny` bir `user` iznini iptal etmez.
+#   * `#` ve `+` joker karakterleri `$` ile BASLAYAN bir topic'i eslestirmez ($SYS).
+#   * `acl_file` tanimliysa hicbir kurala uymayan topic VARSAYILAN OLARAK REDDEDILIR.
+#   * Dosya SIGHUP ile canli yeniden okunur (`docker kill -s HUP <konteyner>`).
+#
+# TOPIC'LER SOZLESMEDEN GELIR: contracts/mqtt-telemetry.schema.json `x-topics`
+# (tel / evt / hb = kenar -> merkez, cmd = merkez -> kenar). Sozlesme donmus; bu dosya
+# onu tekrar eder, degistirmez.
+
+# --- Kalip: her pano yalnizca kendi kimligi altina yazar, yalnizca kendi komutunu okur ---
+# %u = sertifikanin CN'i (or. ADM-00001). Kenar cihaz KOMUT YAZAMAZ, yalnizca okur:
+# komut yonu merkezden kenaradir ve bir pano baska bir panoya komut veremez.
+pattern write gridup/pano/%u/tel
+pattern write gridup/pano/%u/evt
+pattern write gridup/pano/%u/hb
+pattern read gridup/pano/%u/cmd
+
+# --- Merkez: butun filoyu okur, yalnizca komut yazar ---
+# Telemetriye YAZAMAZ: merkezin kendi urettigi bir olcumu filoya sokabilmesi, denetim
+# izinin ve karantina kaydinin degerini dusururdu. Ilk iki satir yukaridaki kalibin
+# backend kimligine de uygulanmasini iptal eder (kendi blogundaki `deny` once bakilir).
+user gridup-backend
+topic deny gridup/pano/gridup-backend/#
+topic read gridup/pano/+/tel
+topic read gridup/pano/+/evt
+topic read gridup/pano/+/hb
+topic write gridup/pano/+/cmd

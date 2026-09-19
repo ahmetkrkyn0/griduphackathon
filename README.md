@@ -8,7 +8,7 @@
 [![TimescaleDB](https://img.shields.io/badge/Database-TimescaleDB%20(PostgreSQL%2016)-yellow.svg)](https://timescale.com)
 [![MQTT](https://img.shields.io/badge/Broker-Eclipse%20Mosquitto-red.svg)](https://mosquitto.org)
 [![Telegram Bot](https://img.shields.io/badge/Mobil%20Alarm-Telegram%20Bot%20API-0088cc.svg)](https://t.me/gridupalarmbot)
-[![SCADA](https://img.shields.io/badge/SCADA-Modbus%20TCP%20%7C%20IEC%2060870--5--104-green.svg)](#aynı-değeri-üç-protokolden-kendiniz-okuyun)
+[![SCADA](https://img.shields.io/badge/SCADA-Modbus%20TCP%20%7C%20IEC%2060870--5--104-green.svg)](#-aynı-değeri-üç-farklı-protokolden-doğrulayın)
 
 1600 kVA'lık TEDAŞ tipi AG dağıtım panolarına ve OG hücrelerine kablo kalabalığını artırmadan eklenebilen, mevcut enerji analizörü ve ark korumasını sensör olarak kullanan, **fizik tabanlı öngörücü erken uyarı** üreten, tamamı şirket içinde (on-premise) çalışan endüstriyel izleme platformu.
 
@@ -50,13 +50,16 @@ Yığın ayağa kalktığında servisler şu adreslerde hazırdır:
 | Arayüz / Servis | Yerel Adres | Açıklama |
 |---|---|---|
 | **Operasyon Arayüzü** | <http://localhost:3000> | Kontrol odası, 3D ikiz, alarm konsolu |
-| **Backend REST API** | <http://localhost:8000/docs> | OpenAPI Swagger dokümantasyonu |
+| **Backend REST API** | <http://localhost:8000/docs> | OpenAPI Swagger dokümantasyonu (sözleşme: `contracts/openapi.yaml`) |
 | **Grafana Mühendislik Panosu** | <http://localhost:3001> | Metrikler ve yük analizleri (`admin/gridup`) |
 | **SCADA Modbus TCP** | `localhost:502` | Endüstriyel SCADA ağ geçidi (FC03 holding reg.) |
 | **SCADA IEC 60870-5-104** | `localhost:2404` | RTU kontrollü istasyon bağlantısı |
-| **MQTT Broker (Mosquitto)** | `localhost:1883` | Sensör telemetri ve olay iletim hattı |
+| **MQTT Broker (Mosquitto)** | `localhost:1883` | Sensör telemetri ve olay iletim hattı (anonim; **varsayılan demo yolu**) |
+| **MQTT Broker — mTLS (F-27)** | `localhost:8883` | Yalnızca `--profile mtls` ile açılır; istemci sertifikası zorunlu, **cihaz başına topic ACL** (`docs/15` §5.1) |
 
 Durdurma: `docker compose -f deploy/compose.yaml down` · Sıfırlama: `docker compose -f deploy/compose.yaml down -v`
+
+mTLS profili (isteğe bağlı, **varsayılan kapalı**): `docker compose -f deploy/compose.yaml --profile mtls up -d mosquitto-mtls` — 8883, düz 1883'ün *yerine* değil **yanına** kalkar.
 
 ---
 
@@ -129,6 +132,17 @@ curl -s http://localhost:8000/api/v1/panels/ADM-00001 | python -c "import json, 
 ```
 
 **Sonuç Kanıtı:** Modbus okuması = REST okuması × 10 ($0.1\ ^\circ\text{C}$ tamsayı ölçeği), IEC 104 okuması = REST okuması. **Fark: 0.**
+
+---
+
+## 🧭 Bilinçli Kapsam Sınırları (Dürüstlük Notu)
+
+Sunumda da aynen böyle anlatılır. Sapmaların **tek kaynağı** `docs/17` §6, demo yığını ile üretim arasındaki farklar `docs/15` §5'tedir.
+
+* **Donanım satın alınmadı.** Ölçüm uçları fizik tabanlı veri üreteciyle simüle edilir; merkez yazılımı ise sahadakiyle **aynı koddur**.
+* **KiCad şeması yerine** blok diyagram + I/O tablosu + BOM üçlüsü seçildi (gerekçe: [`hardware/pano-beyni/README.md`](hardware/pano-beyni/README.md)).
+* **Mobil PWA ve devreye alma sihirbazı** bilinçli olarak kapsam dışı bırakıldı (`docs/16` §2).
+* **Varsayılan demo yolu büyük ölçüde kimlik doğrulamasızdır.** 18 Eylül'de iki kez daraltıldı: REST yazma/onay uçları **operatör belirteci** ister (**F-19**) ve MQTT için ayrı bir **mTLS profili** vardır (**F-27**, `--profile mtls`, varsayılan kapalı, cihaz başına topic ACL). **Boşluk daraldı, kapanmadı:** okuma uçları, WebSocket, Modbus TCP (502) ve IEC 104 (2404) düz/açık kalır. Her iki durum da `GET /health` yanıtında görünür (`auth.enabled`, `mqtt_tls`) — gizlenmez.
 
 ---
 

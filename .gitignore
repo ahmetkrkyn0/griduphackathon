@@ -4,6 +4,30 @@ deploy/.env
 *.pem
 *.key
 secrets/
+# NOT: *.key Apple Keynote sunumlarini da yutar; sunumu .pdf/.pptx olarak koyun.
+
+# --- F-27 mTLS: yerel sertifika otoritesi materyali ---
+# BIRINCIL koruma deploy/certs/.gitignore ("*" + "!.gitignore"): uzantidan bagimsizdir
+# ve yarin baska bir bicim uretilse de kapalidir. Asagidakiler IKINCI savunma hattidir,
+# materyal yanlis yere uretilirse (betik baska dizinde kosulursa) devreye girer.
+#
+# Bastaki '/' SART: "deploy/certs/" (yildizsiz) yazilirsa git dizine HIC INMEZ ve
+# icerideki "!.gitignore" negasyonu calismaz — dizinde birakmak istedigimiz dosya da
+# yutulur (olculdu). data/generated/ ile ayni desen.
+/deploy/certs/*
+!/deploy/certs/.gitignore
+*.crt
+*.csr
+*.srl
+*.p12
+*.pfx
+*.der
+.rnd
+# Kasitli olarak EKLENMEYENLER (carpisma riski): ciplak "certs/" her derinlikteki
+# certs dizinini gizler; "serial" ve "index.txt" baska dizinlerdeki ayni adli
+# dosyalari yutar; "*.conf" ise deploy/mosquitto.conf, deploy/mosquitto-mtls.conf ve
+# frontend/nginx.conf'u gizlerdi — mosquitto.acl ve mTLS conf'u COMMIT EDILMELIDIR,
+# ACL kanitin bir parcasidir.
 
 # --- Python ---
 .venv/

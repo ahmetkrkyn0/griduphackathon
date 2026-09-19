@@ -383,6 +383,9 @@
 .riskmx-pt.p-SYS .riskmx-dot { fill: var(--sys); }
 .riskmx-label { font: 500 12px var(--sans); fill: var(--ink); }
 .riskmx-pt:hover .riskmx-label, .riskmx-pt:focus-visible .riskmx-label { font-weight: 700; }
+/* Kunyesi ice aktarilmamis pano (F-21): ici bos halka. ISA-101 geregi ayirt edicilik yalnizca
+   renge dayanamaz — sekil farki tasiyici, metin ise altyazida. */
+.riskmx-pt--kunyesiz .riskmx-dot { fill: none; stroke: var(--dot); stroke-dasharray: 3 2; }
 
 /* ---------- Grafikler (CizgiGrafik, SacilimGrafik) ---------- */
 .chart { position: relative; margin-top: 4px; }
@@ -633,3 +636,32 @@
   .qa section { grid-template-columns: 1fr; gap: 4px; }
   .work { grid-template-columns: 1fr; }
 }
+
+/* F-19 operator girisi: ust cubuktaki dugmeler bag gibi gorunur, ayri bir dugme
+   yiginina donusup gezinmeyi bastirmasin diye. */
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.btn-link:hover { opacity: 0.8; }
+.btn-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* Bakim vadesi rozeti (F-21). Yalnizca kunyesi ice aktarilmis panoda cizilir. */
+.bakim-rozet { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--dim); }
+.bakim-rozet--gecti { color: var(--p2); font-weight: 600; }
+/* Ust sebeke kesintisi (F-22). Halka SEKIL farkidir; ayni bilgi kesinti seridinde METIN
+   olarak da verilir — ISA-101 geregi ayirt edicilik yalnizca renge dayanamaz. */
+.geo-kesinti { fill: none; stroke: var(--p2); stroke-width: 2; stroke-dasharray: 6 4; opacity: 0.85; }
+.kesinti-serit { margin: 10px 0; padding: 10px 12px; border-left: 4px solid var(--p2);
+                 background: var(--surface-2, rgba(0,0,0,0.04)); border-radius: 4px; font-size: 14px; }
+/* EPDK Madde 8 taslagi (F-23). "Elle doldurulacak" bilgisi TABLODA METIN olarak da durur;
+   renk yalnizca destekleyicidir (ISA-101). */
+.epdk-taslak { margin-top: 8px; }
+.epdk-taslak > summary { cursor: pointer; font-size: 13px; }
+.epdk-uyari { margin: 8px 0; padding: 8px 10px; border: 1px dashed var(--p2); border-radius: 4px; font-size: 13px; }
+.epdk-elle_doldurulacak td { opacity: 0.75; }
+.epdk-kanit { margin-left: 6px; }

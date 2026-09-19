@@ -23,7 +23,7 @@ flowchart LR
 
   subgraph MERKEZ["Merkez (on-prem, docker compose)"]
     direction TB
-    MQ["Mosquitto<br/>MQTT 1883"]
+    MQ["Mosquitto<br/>MQTT 1883 (varsayılan)<br/>8883 mTLS (--profile mtls)"]
     BE["backend (FastAPI)<br/>ingest · risk · alarm · bildirim · SCADA"]
     DB[("TimescaleDB<br/>telemetry hypertable")]
     GW["gsm-modem<br/>(sanal / gerçek modem)"]
@@ -36,7 +36,7 @@ flowchart LR
     UI -- "REST + WebSocket 8000" --> BE
   end
 
-  PB -- "MQTT/TLS, özel APN<br/>tel 10 s · evt anında" --> MQ
+  PB -- "MQTT · TLS yalnızca mtls profilinde<br/>özel APN<br/>tel 10 s · evt anında" --> MQ
   BE -- "cmd (bakım, test alarmı)" --> MQ
   GW -- "SMS / arama" --> TEL["Saha ekibi telefonu"]
   BE -. "WhatsApp Cloud API<br/>(tek dışa çıkan kanal, kapatılabilir)" .-> TEL
@@ -170,6 +170,7 @@ Tek komut: `docker compose -f deploy/compose.yaml up -d`. İnternet kablosu çı
 | Servis | İmaj / kaynak | Port (makine) | Sahip | Kalıcı veri |
 |---|---|---|---|---|
 | `mosquitto` | eclipse-mosquitto:2.0 | 1883 | B | `mqttdata` (QoS 1 kuyruğu) |
+| `mosquitto-mtls` | eclipse-mosquitto:2.0 | 8883 | B | — (`persistence false`); **`mtls` profilinde, varsayılan kapalı** (F-27) |
 | `timescaledb` | timescale/timescaledb:latest-pg16 | 5432 | B | `tsdata` |
 | `backend` | `backend/Dockerfile` | 8000 (API/WS), 502 (Modbus TCP), 2404 (IEC 104) | B | — (sözleşmeler salt okunur bağlı) |
 | `gsm-modem` | `scripts/virtual_gsm_modem.py` | 127.0.0.1:7001 (yalnızca gelen SMS enjeksiyonu) | B | `deploy/runtime/sms-log.txt` |
@@ -177,8 +178,9 @@ Tek komut: `docker compose -f deploy/compose.yaml up -d`. İnternet kablosu çı
 | `panosim`, cihaz simülatörleri | `sim/` | — | A | — |
 | `frontend` | `frontend/` | 3000 | C | — |
 
-Compose dosyası üç parçadır (PLAN.md kural 6): `compose.yaml` (B) `compose.sim.yaml` (A) ve `compose.frontend.yaml` (C) dosyalarını
-`include` eder; herkes kendi servisini kendi dosyasında tutar. Sözleşmeler (`contracts/`) backend'e salt okunur bağlanır: bir eşik
+Compose dosyası dört parçadır (PLAN.md kural 6): `compose.yaml` (B) `compose.sim.yaml` (A), `compose.frontend.yaml` (C) ve
+`compose.mtls.yaml` (B, F-27) dosyalarını `include` eder; herkes kendi servisini kendi dosyasında tutar. Sonuncusundaki tek servis
+`mtls` profilindedir: bayraksız `up` onu **başlatmaz** ve o dosya başka hiçbir servise yama yazmaz. Sözleşmeler (`contracts/`) backend'e salt okunur bağlanır: bir eşik
 değişince yeniden derleme gerekmez, yeniden başlatmak yeter. Bozuk sözleşme veya harita servisi **hiç başlatmaz** (yanlış eşikle
 çalışmaktansa gürültülü hata).
 

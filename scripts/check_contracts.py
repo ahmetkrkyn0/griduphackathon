@@ -118,12 +118,16 @@ for item in alarms["alarms"]:
     if item["prio"] not in prios:
         fail(f"{code}: tanimsiz oncelik '{item['prio']}'")
 
-    ref = item.get("threshold")
-    if ref:
-        if not ref.startswith("thresholds."):
-            fail(f"{code}: esik atfi 'thresholds.' ile baslamali, bulunan '{ref}'")
-        elif ref.split(".", 1)[1] not in thresholds:
-            fail(f"{code}: tanimsiz esige atif '{ref}'")
+    # Tek esik bir dize, cok kosullu kural (or. ALM-NEUTRAL-THD: notr orani VE THD)
+    # bir liste yazar. Liste kabul edilir ama HER UYESI ayri ayri denetlenir —
+    # aksi halde ikinci esik sozlesmede gorunur, hicbir yerde dogrulanmazdi.
+    refs = item.get("threshold")
+    if refs:
+        for ref in [refs] if isinstance(refs, str) else refs:
+            if not isinstance(ref, str) or not ref.startswith("thresholds."):
+                fail(f"{code}: esik atfi 'thresholds.' ile baslamali, bulunan '{ref}'")
+            elif ref.split(".", 1)[1] not in thresholds:
+                fail(f"{code}: tanimsiz esige atif '{ref}'")
 
 max_bit = max(bits)
 live_regs = len(alarms["bitmap"]["live_registers"])
@@ -191,6 +195,14 @@ required_paths = [
     "/api/v1/alarms/{alarm_id}/shelve",
     "/api/v1/events/{event_id}/blackbox",
     "/api/v1/fleet/kpi",
+    # v1.1.0'da eklenmis ama BU LISTEYE yazilmasi atlanmisti: sozlesmede vardi, denetleyici
+    # kaybolmasini yakalamazdi. F-21 ile birlikte duzeltildi.
+    "/api/v1/fleet/health",
+    "/api/v1/fleet/assets",
+    "/api/v1/fleet/peers",
+    "/api/v1/fleet/nodes",
+    "/api/v1/fleet/nodes/blind",
+    "/api/v1/outages",
 ]
 for path in required_paths:
     if path not in openapi["paths"]:

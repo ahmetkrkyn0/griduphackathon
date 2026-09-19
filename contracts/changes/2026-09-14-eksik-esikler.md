@@ -2,9 +2,9 @@
 
 - **Tarih:** 14 Eylul 2026
 - **Oneren:** Kisi A (Tuna)
-- **Durum:** ONERI — uc onay bekliyor (PLAN.md Bolum B, kural 3)
+- **Durum:** **KABUL EDILDI ve UYGULANDI — 18 Eylul 2026** (asagida "Karar" bolumu)
 - **Etkilenen dosya:** `contracts/alarm-codes.yaml` (`thresholds` blogu)
-- **Surum etkisi:** `version: 1` -> `version: 2` (kabul edilirse)
+- **Surum etkisi:** `version: 1` -> `version: 2` — **uygulandi**
 
 ## Neden
 
@@ -151,8 +151,58 @@ notu) da yalnizca aciklama ekler. Reddedilirse §"Kabul edilmezse ne olur" gecer
 
 ## Onaylar
 
-Karar toplantisinda isaretlenecek (PLAN.md Bolum B, kural 3 — uc onay sart).
+- [x] Kisi A (Tuna)
+- [x] Kisi B (Ahmet)
+- [x] Kisi C (Berke)
 
-- [ ] Kisi A (Tuna)
-- [ ] Kisi B (Ahmet)
-- [ ] Kisi C (Berke)
+---
+
+## Karar — 18 Eylul 2026: dort maddenin dordu de uygulandi
+
+Ozellik dondurma (GK2) 17 Eylul 23:59'da doldu; sozlesme artik degistirilebilir.
+Oneri `alarm-codes.yaml` **v1 -> v2** ile uygulandi.
+
+### Ne uygulandi
+
+| # | Madde | Sonuc |
+|---|---|---|
+| 1 | `dq_below_ambient_deadband_k: 1.0` | eklendi; `ALM-DQ-BELOW-AMBIENT` artik bu esige atif yapiyor |
+| 2 | `neutral_current_ratio_warn: 0.30` + `neutral_thd_warn_pct: 15.0` | eklendi; `ALM-NEUTRAL-THD` **iki esige birden** atif yapiyor |
+| 3 | `ALM-PD-TREND` kapsam notu | **esik eklenmedi** (onerildigi gibi); yerine `scope:` satiri dusuldu |
+| 4 | `excitation_min_cv_i2: 0.02` | eklendi |
+
+### Kod degisikligi gerekmedi — dogrulandi
+
+Onerinin "kabul edilirse kod degisikligi gerekmez" iddiasi depoya karsi sinandi: dort
+anahtarin dordu de zaten `thresholds.get(ANAHTAR, VARSAYILAN)` ile okunuyordu ve
+sozlesmeye yazilan degerler turetilmis varsayilanlarla **birebir ayni**:
+
+| Anahtar | Kodda | Sozlesmeye yazilan |
+|---|---|---|
+| `dq_below_ambient_deadband_k` | `quality.py` `DEFAULT_BELOW_AMBIENT_DEADBAND_K = 1.0` | 1.0 |
+| `neutral_current_ratio_warn` | `limits.py` `DEFAULT_NEUTRAL_RATIO_WARN = 0.30` | 0.30 |
+| `neutral_thd_warn_pct` | `limits.py` `DEFAULT_NEUTRAL_THD_WARN_PCT = 15.0` | 15.0 |
+| `excitation_min_cv_i2` | `detect.py` `DEFAULT_EXCITATION_MIN_CV = 0.02` | 0.02 |
+
+Yani bu degisiklik **davranisi degistirmez**, sayilarin *nerede yasadigini* degistirir:
+kodun icinden sozlesmeye tasir (PLAN.md kural 10). Varsayilanlar kodda kalmaya devam
+ediyor — sozlesme okunamadigi durumda (or. eski bir sozlesme surumu) hala geri duserler.
+
+### Sozlesme semasinda tek genisletme
+
+`ALM-NEUTRAL-THD` gercekten **iki kosullu** bir kuraldir; tek bir `threshold:` dizesi
+ikisini birden ifade edemiyordu. Bu yuzden alan artik **dize veya liste** kabul ediyor:
+
+- `scripts/check_contracts.py` listenin **her uyesini ayri ayri** denetliyor — aksi
+  halde ikinci esik sozlesmede gorunur, hicbir yerde dogrulanmazdi;
+- `scripts/gen_alarm_doc.py` ikisini de `docs/06` katalogunda gosteriyor.
+
+### Neyin kapandigini ve neyin kapanmadigini
+
+**Kapandi:** `docs/17` §6 madde 14'teki seffaflik riski — juri artik `contracts/`'a bakip
+bu iki kodun esigini bulabiliyor. Kenar ile merkezin ayni kurali farkli sayiyla uygulama
+riski de sozlesme tek kaynak oldugu icin kalmadi.
+
+**Kapanmadi:** bu sayilarin ucu (`1.0`, `0.30`, `15.0`) **turetilmistir, olculmemistir** ve
+sozlesmedeki yorumlarinda boyle yaziyor. Yalnizca `excitation_min_cv_i2 = 0.02` olculmus
+bir taramadan gelir (yukaridaki §4 tablosu). `ALM-PD-TREND` esiksiz kalmaya devam ediyor.

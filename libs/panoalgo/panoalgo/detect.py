@@ -86,6 +86,30 @@ TAU_REPORT_MIN_S = 60.0        # 1 dakika
 TAU_REPORT_MAX_S = 6 * 3600.0  # 6 saat
 
 
+class BaselineEvidence(NamedTuple):
+    """Taban DONDUGU anda K0'in ne kadar guvenilir oldugunu anlatan kanit (F-32).
+
+    K0 tek bir sayidir ve dondugu anda "bu sayi nasil olustu" bilgisi kayboluyordu.
+    Oysa k_ratio'nun anlami tamamen buna baglidir: uyarim gormemis bir pencerede RLS
+    guncellenmez (update() kalici uyarim kosulu), yani K0 fiziksel baglantiyi degil
+    baslangic onselini kodlar; boyle bir tabana bolunen K anlamli bir oran vermez.
+
+    k0            : dondurulan taban (kestirim gecmisinin medyani)
+    n_samples     : tabana katkida bulunan toplam ornek
+    n_excited     : bunlarin kaci kalici uyarim kosulunu sagliyordu
+    excited_ratio : n_excited / n_samples (0 ise taban yalnizca onselden gelir)
+    mad           : kestirim gecmisinin medyan mutlak sapmasi
+    rel_spread    : mad / k0 — tabanin ne kadar dar oldugu (buyukse pencere kararsizdi)
+    """
+
+    k0: float
+    n_samples: int
+    n_excited: int
+    excited_ratio: float
+    mad: float
+    rel_spread: float
+
+
 class KState(NamedTuple):
     """Bir noktanin anlik isil saglik durumu."""
 
@@ -194,6 +218,12 @@ class KIndexEstimator:
         self._k_history: deque[float] = deque(maxlen=BASELINE_WINDOW)
         self._k0: float | None = None
         self._excited = False
+        # Taban gecerliligi kaniti (F-32). Sayaclar tabanin DONDUGU ana kadar birikir:
+        # K0'in guvenilir olup olmadigi ancak "ogrenme sirasinda ne gorduk" sorusuyla
+        # cevaplanir ve o bilgi dondurma aninda kayboluyordu.
+        self._samples_seen = 0
+        self._excited_seen = 0
+        self._baseline: BaselineEvidence | None = None
         self._prev_k: float | None = None
         self._k_slope_per_h = 0.0
         self._slope_signs: deque[int] = deque(maxlen=SLOPE_WINDOW)
@@ -226,10 +256,37 @@ class KIndexEstimator:
 
         Rapor 15.1: "K0 = devreye almadan sonraki 7 gunluk medyan". Medyan secilir
         cunku ortalama, taban ogrenme penceresindeki tek bir sicramadan bozulur.
+
+        Dondurma anindaki KANIT da saklanir (F-32, bkz. BaselineEvidence): tabanin
+        kendisi guvenilir olmayabilir ve bunu sonradan olcmenin baska yolu yoktur.
+        Taban DEGERI degismedi; yalnizca yaninda gerekcesi tutuluyor.
         """
         if not self._k_history:
             raise ValueError("taban dondurulemez: henuz hicbir kestirim yok")
         self._k0 = _median(self._k_history)
+        mad = _median([abs(value - self._k0) for value in self._k_history])
+        self._baseline = BaselineEvidence(
+            k0=self._k0,
+            n_samples=self._samples_seen,
+            n_excited=self._excited_seen,
+            excited_ratio=(self._excited_seen / self._samples_seen) if self._samples_seen else 0.0,
+            mad=mad,
+            rel_spread=(mad / self._k0) if self._k0 > 0.0 else 0.0,
+        )
+
+    @property
+    def baseline_evidence(self) -> BaselineEvidence | None:
+        """Taban dondugu andaki kanit; freeze_baseline() cagrilmadiysa None."""
+        return self._baseline
+
+    @property
+    def k_history(self) -> tuple[float, ...]:
+        """Saklanan K kestirimleri (en fazla BASELINE_WINDOW adet).
+
+        F-32 degisim noktasi analizi bunu okur; deque disariya SIZDIRILMAZ, aksi halde
+        cagiran tabani besleyen gecmisi yerinde degistirebilirdi.
+        """
+        return tuple(self._k_history)
 
     # ------------------------------------------------------------------ adim
 
@@ -243,6 +300,11 @@ class KIndexEstimator:
         i2 = i_a * i_a
         self._i2_window.append(i2)
         self._excited = self._has_excitation()
+        # Taban gecerliligi kaniti (F-32): sayaclar yalnizca taban DONMADAN ONCE
+        # birikir; dondurma sonrasi ornekler tabanin nasil ogrenildigini degistirmez.
+        if self._k0 is None:
+            self._samples_seen += 1
+            self._excited_seen += int(self._excited)
 
         if self._prev is not None and self._excited:
             prev_dt, prev_i2 = self._prev

@@ -1,13 +1,20 @@
 import { ApiError } from "./errors";
 import { mockApi } from "./mock";
-import type { AckBody, Alarm, Api, Blackbox, FleetHealthItem, FleetKpi, PanelDetail, PanelSummary, SeriesResponse, ShelveBody } from "./types";
+import { authHeader, clearToken } from "./session";
+import type { AckBody, Alarm, Api, AssetFleet, AuthStatus, Blackbox, EpdkKaydi, FleetKpi, OutageEvent, PanelDetail, PanelHealth, PanelSummary, SeriesResponse, ShelveBody } from "./types";
 
 export const usingMocks = import.meta.env.VITE_USE_MOCKS === "1";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  // F-19: belirtec varsa HER istege eklenir. Okuma uclari bugun belirtec istemiyor
+  // (bilincli sinir, docs/15 §5) ama ileride isterse tek yer degisir.
+  const headers: Record<string, string> = { Accept: "application/json", ...authHeader() };
   if (init.body) headers["Content-Type"] = "application/json";
   const res = await fetch(path, { ...init, headers });
+  if (res.status === 401) {
+    // Belirtec yok veya gecersiz: sakli olani at ki giris kapisi yeniden cizilsin.
+    clearToken();
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -26,7 +33,18 @@ const httpApi: Api = {
   panels: (signal) => request<PanelSummary[]>("/api/v1/panels?sort=risk&limit=2000", { signal }),
   panel: (panoId, signal) => request<PanelDetail>(`/api/v1/panels/${encodeURIComponent(panoId)}`, { signal }),
   fleetKpi: (signal) => request<FleetKpi>("/api/v1/fleet/kpi", { signal }),
-  fleetHealth: (limit = 2000, signal) => request<FleetHealthItem[]>(`/api/v1/fleet/health?limit=${limit}`, { signal }),
+  // GET /fleet/health bir `limit` parametresi ALMAZ (backend/app/api/views.py); sorguya
+  // eklenseydi sunucu tarafinda sessizce yok sayilir, arayuz de sinirladigini sanirdi.
+  fleetHealth: (signal) => request<PanelHealth[]>("/api/v1/fleet/health", { signal }),
+  fleetAssets: (signal) => request<AssetFleet>("/api/v1/fleet/assets", { signal }),
+  outages: (state = "acik", signal) => request<OutageEvent[]>(`/api/v1/outages?state=${state}`, { signal }),
+  epdkKaydi: (outageId, signal) => request<EpdkKaydi>(`/api/v1/outages/${encodeURIComponent(outageId)}/epdk-kaydi`, { signal }),
+  authStatus: async (signal) => {
+    const body = await request<{ auth?: AuthStatus }>("/health", { signal });
+    // Eski bir backend `auth` blogunu hic gondermeyebilir; o durumda "kapali" varsayilir
+    // ve arayuz kullaniciya giris teklif etmez (yanlis bir kapi cizmektense sessiz kal).
+    return body.auth ?? { enabled: false, users: [], protects: [] };
+  },
   ack: (alarmId, body: AckBody) =>
     request<{ ok?: boolean }>(`/api/v1/alarms/${encodeURIComponent(alarmId)}/ack`, {
       method: "POST",

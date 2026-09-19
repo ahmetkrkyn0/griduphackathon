@@ -158,8 +158,11 @@ kendisinin nadir olması**dır; sensör OG/YG bağlamında doğru araçtır.
 
 Bu karar donmuş sözleşmeye de yansımıştır: `contracts/mqtt-telemetry.schema.json` içinde `pd` bloğu
 "OG eklentisi (HFCT); AG panoda null" olarak tanımlıdır ve `contracts/alarm-codes.yaml`'daki
-`ALM-PD-TREND` (P3) bir OG kodudur — eşiği sözleşmede yoktur
-([05-anomali-tespiti.md](05-anomali-tespiti.md) §10).
+`ALM-PD-TREND` (P3) bir OG kodudur — eşiği sözleşmede **bilerek yoktur**: 18 Eylül'de
+diğer iki kodun eşiği sözleşmeye taşınırken bu koda eşik yerine
+`scope: "OG eklentisi; AG panoda pd: null oldugu icin degerlendirilmez"` notu düşüldü.
+Değerlendirilecek veri gelmediği için eşik uydurmak, olmayan bir yeteneği var gibi
+gösterirdi ([05-anomali-tespiti.md](05-anomali-tespiti.md) §10).
 
 ### 7.2 OG'de ne gerekirdi — ve depoda ne var
 

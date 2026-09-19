@@ -113,7 +113,19 @@ COSPHI_NO_LOAD, COSPHI_SPAN, COSPHI_MAX = 0.93, 0.05, 0.99
 # Rapor 15.2 asiri yuku "gunlerce %110-130 In" diye tanimlar; carpanin bu bolgeye
 # ulasabilmesi icin ust sinir anma akiminin iki katina kadar acik birakildi.
 LOAD_MULTIPLIER_MAX = 2.0
-SENSOR_DRIFT_K_PER_H = 2.0    # suruklenen sensorun saatlik kaymasi (TURETILMIS)
+# Suruklenen sensorun saatlik kaymasi. TURETILMIS ve BILEREK HIZLANDIRILMIS: gercek bir
+# RTD'nin kaymasi yilda birkac K mertebesindedir, 7 gunluk bir senaryoda gorunmez. Deger
+# su dort kosulu birden saglayacak sekilde OLCULEREK secildi (168 saat, seed 42):
+#   - ALM-THR-TERM-ALM/WARN tetiklemez (max dt 27,2 K < 50 K): bozuk sensor pano arizasi
+#     gibi gorunmemeli — S8'in not_expect kisiti budur. 2,0 K/h ile 345 kez TERM-ALM
+#     cikiyordu (max dt 231 K), yani senaryo bir sensor arizasi degil termal ariza olurdu.
+#   - ALM-K-ALM tetiklemez (max K/K0 1,49 < 1,6), ama K'yi SISIRIR.
+#   - Mevcut dort L-1 kuralinin DORDUNDEN DE kacar: adim basina 0,025 K sicrama esiginin
+#     (10 K/dk) cok altinda, deger degistigi icin donmus degil, yukari kaydigi icin
+#     ortam altinda degil, ve dugum susmuyor.
+#   - Dokumante edilmis belirtiyi uretir: sinir HIC asilmadigi halde 280 sahte kalan omur
+#     tahmini ve 155 ALM-TTL-14D (docs/12 §4.3).
+SENSOR_DRIFT_K_PER_H = 0.1
 SENSOR_DROPPED_BELOW_AMBIENT_K = 8.0  # yerinden dusmus sensor ortamin altini olcer
 
 # Kismi desarj (PD) yalnizca OG icin anlamlidir: rapor 3.7'ye gore 400 V AG panoda
@@ -438,7 +450,12 @@ class PanelSimulator:
         if kind is None:
             self._sensor_faults.pop(pt, None)
             self._fault_age_h.pop(pt, None)
-        else:
+        elif self._sensor_faults.get(pt) != kind:
+            # AYNI arizayi yeniden kurmak yasi SIFIRLAMAZ (F-31). Senaryo yurutucusu
+            # _inject()'i HER ADIMDA cagirir; kosulsuz sifirlama yuzunden suruklenme
+            # hicbir zaman birikmiyordu — olculdu: 112 saatlik enjeksiyon penceresinde
+            # kayma 0,5 K'da (tek adimlik) cakili kaliyordu, oysa birikmesi gerekiyordu.
+            # Yani "sensor suruklenmesi uretiyoruz" iddiasi fiilen DOGRU DEGILDI.
             self._sensor_faults[pt] = kind
             self._fault_age_h[pt] = 0.0
 
