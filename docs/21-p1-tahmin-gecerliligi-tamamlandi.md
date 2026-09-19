@@ -47,10 +47,10 @@ ortaya çıktı — `test_detect.py`'de zaten kanıtlı `time_to_limit()` çağr
 deterministik bir teste dönüştürülmesi; bu, S8'in kendisiyle ilgisiz, ayrı bir test-kalitesi
 düzeltmesidir).
 
-*Bilinen kozmetik iz (düzeltilmedi, bu görev kod değiştirmiyor):* `edge.py:223` docstring'inde bir
-yazım hatası ("hiclbir") ve `edge.py:226`'da tek bir Türkçe karakter (`içerir`) kalmış — dosyanın
-geri kalanı ASCII harf-çevirisi kullanıyor (`siniri`, `surunen` gibi). İçerik doğru, yalnızca
-kozmetik; kod değişikliği gerektirdiği için bu dokümantasyon-only görevin kapsamı dışında bırakıldı.
+*Düzeltildi (final whole-branch review sonrası, commit `b80ef2c`):* `edge.py:223`'teki yazım
+hatası ("hiclbir"), `:226`'daki tek Türkçe karakter (`içerir`), `:225`'teki geçersiz kelime
+("kucuklenmez") ve `:227`'deki bozuk parantez ifadesi ("(s/zamaninda implemented degil)")
+temizlendi; dosyanın geri kalanıyla aynı ASCII harf-çevirisine (`siniri`, `surunen` gibi) uyumlu.
 
 ### Task 2 — nokta geçerliliğinin backend'de türetilmesi
 
@@ -269,11 +269,16 @@ cd ../../backend && python -m pytest -q
 cd ../frontend && npx tsc --noEmit && npm run test
 ```
 
-19 Eylül 2026'da bu raporu yazarken alınan sonuç (üçü de PASS):
+19 Eylül 2026'da bu raporu ilk yazarken alınan sonuç: panoalgo 407, backend 661/28 atlanan,
+frontend 107 — üçü de PASS. Final whole-branch review'un düzeltme dalgası (commit `89b55d7`,
+`c860fae`) iki yeni test ekledi; güncel sonuç (üçü de PASS):
 
-- **panoalgo:** `407 passed in 38.95s`
-- **backend:** `661 passed, 28 skipped in 57.16s` (atlananların tamamı `TEST_DB_DSN tanimli degil` —
-  gerçek Postgres gerektiren entegrasyon testleri, CI dışı ortamda beklenen davranış)
+- **panoalgo:** `408 passed` (bkz. §2 Task 1, sürüklenmeyi değil "zaten işaretli nokta" korumasının
+  gerçekten devrede olduğunu kilitleyen yeni test)
+- **backend:** `662 passed, 28 skipped` (atlananların tamamı `TEST_DB_DSN tanimli degil` —
+  gerçek Postgres gerektiren entegrasyon testleri, CI dışı ortamda beklenen davranış; ayrıca
+  `test_stream.py::test_disconnect_racing_with_outer_cancellation_closes_cleanly` bu değişiklerle
+  ilgisiz, önceden var olan olasılıksal (~%10) bir testtir — bazı çalıştırmalarda başarısız olabilir)
 - **frontend:** `tsc --noEmit` sıfır hata; `vitest run` → `9 test dosyası, 107 test`, tamamı PASS
 
 P1'e özgü testleri tek başına koşturmak için:
