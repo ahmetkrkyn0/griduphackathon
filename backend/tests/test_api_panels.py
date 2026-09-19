@@ -87,6 +87,12 @@ def test_summary_is_derived_from_latest_telemetry(client):
         "ttl_h": 150.5,
         "comms_ok": True,
         "baseline_day": 7,
+        # F-21: bu fixture'in kunyesi ICE AKTARILMADI, bu yuzden ucu de None. Tam sozluk
+        # esitligi bilerek korunuyor — ozete sessizce alan eklenmesini bu test yakalar
+        # (sema dogrulamasi yakalayamaz: PanelSummary additionalProperties kisiti tasimaz).
+        "abone_sayisi": None,
+        "kritiklik": None,
+        "sonraki_bakim_at": None,
     }
 
 

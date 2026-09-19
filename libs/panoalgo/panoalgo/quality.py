@@ -34,6 +34,8 @@ from pathlib import Path
 
 import yaml
 
+from . import physics
+
 # Turetilmis varsayilan: sensor gurultusu sigma ~0,2 K (rapor 15.2) -> 3 sigma = 0,6 K,
 # yuvarlak ve guvenli tarafta 1,0 K. Sozlesmeye eklenirse oradaki deger kazanir.
 DEFAULT_BELOW_AMBIENT_DEADBAND_K = 1.0
@@ -41,6 +43,32 @@ BELOW_AMBIENT_THRESHOLD_KEY = "dq_below_ambient_deadband_k"
 
 SECONDS_PER_MINUTE = 60.0
 _DQ_PREFIX = "ALM-DQ-"
+
+# --- Yuk bagimsiz kayma (F-31) ---------------------------------------------
+# Sozlesme anahtarlari; yoksa asagidaki turetilmis varsayilanlar kullanilir.
+DRIFT_WINDOW_KEY = "dq_drift_samples"
+DRIFT_RISE_KEY = "dq_drift_rise_k"
+DRIFT_MAX_SLOPE_GROWTH_KEY = "dq_drift_max_slope_growth"
+DRIFT_PERSIST_KEY = "dq_drift_persist_samples"
+
+# Pencere: kayma SAATLER boyunca birikir, tek ornekte gorunmez. 15 dk disa aktarimda
+# 192 ornek = 48 saat, yani en az iki gece-gunduz cevrimi. Bir cevrimden az pencerede
+# "dusuk yuk tabani" yalnizca gunun saatini olcerdi. TURETILMIS.
+DEFAULT_DRIFT_SAMPLES = 192
+
+# Tabanin pencere basindan sonuna yukselmesi bu degeri asarsa kayma ilan edilir.
+# 2,0 K: olcum gurultusu sigma ~0,2 K (rapor 15.2), yani 10 sigma. TURETILMIS.
+DEFAULT_DRIFT_RISE_K = 2.0
+
+# Yuk katsayisi (a) pencerenin ilk yarisindan ikinci yarisina bu orandan fazla
+# buyuduyse ortada sensor kaymasi degil GERCEK bir baglanti bozulmasi vardir ve
+# kayma ILAN EDILMEZ. 1,10 = %10 buyume payi (gurultu icin). TURETILMIS.
+DEFAULT_DRIFT_MAX_SLOPE_GROWTH = 1.10
+
+# Kosulun ARDISIK olarak saglanmasi gereken ornek sayisi. Gecici bir yuk basamagi
+# uydurmanin iki yarisini kisa sureligine ayirir; kalici bir kayma ayirmayi surdurur.
+# TURETILMIS ve olculmustur (bkz. sozlesmedeki not). 
+DEFAULT_DRIFT_PERSIST = 16
 
 _CACHE: dict[str, dict] = {}
 
@@ -183,10 +211,23 @@ class QualityTracker:
 
     def __init__(self, contracts_dir: Path | None = None) -> None:
         contract = load_contract(contracts_dir)
-        self._window = int(contract["thresholds"]["dq_frozen_samples"])
+        thresholds = contract["thresholds"]
+        self._window = int(thresholds["dq_frozen_samples"])
         self._contracts_dir = contracts_dir
         self._history: dict[tuple[str, str], deque[float]] = {}
         self._last_ts: dict[str, datetime] = {}
+        # Yuk bagimsiz kayma (F-31): nokta basina (I^2, dT) penceresi.
+        self._drift_window = int(thresholds.get(DRIFT_WINDOW_KEY, DEFAULT_DRIFT_SAMPLES))
+        self._drift_rise_k = float(thresholds.get(DRIFT_RISE_KEY, DEFAULT_DRIFT_RISE_K))
+        # Regresyonun kosullanmasi icin gereken I^2 degisimi; detect.py kalici
+        # uyarim kosuluyla ayni olcut ve ayni sozlesme anahtari.
+        self._drift_min_cv = float(thresholds.get("excitation_min_cv_i2", 0.02))
+        self._drift_max_slope_growth = float(
+            thresholds.get(DRIFT_MAX_SLOPE_GROWTH_KEY, DEFAULT_DRIFT_MAX_SLOPE_GROWTH)
+        )
+        self._drift_persist = int(thresholds.get(DRIFT_PERSIST_KEY, DEFAULT_DRIFT_PERSIST))
+        self._drift_streak: dict[tuple[str, str], int] = {}
+        self._load_history: dict[tuple[str, str], deque[tuple[float, float]]] = {}
 
     def check(self, sample: dict) -> dict[str, list[str]]:
         """Nokta basina kodlar; durumsuz kurallar da dahil edilir."""
@@ -203,14 +244,124 @@ class QualityTracker:
                 key = (pano_id, point["pt"])
                 window = self._history.setdefault(key, deque(maxlen=self._window))
                 window.append(point["t_c"])
-                if len(window) == self._window and len(set(window)) == 1:
+                frozen = len(window) == self._window and len(set(window)) == 1
+                if frozen:
                     result.setdefault(point["pt"], []).append("ALM-DQ-FROZEN")
+                # Kayma penceresi HER ZAMAN beslenir (arizali donem bitince gecmis
+                # eksik kalmasin), ama DAHA OZGUL bir tanisi olan nokta icin kayma
+                # ILAN EDILMEZ. Donmus sensorun dT'si ortam degistikce kendiliginden
+                # oynar; yerinden dusmus sensor ortami olcer ve yuke hic tepki
+                # vermez — ikisi de uydurmanin ofset terimini kaydirir. Olculdu
+                # (S8, seed 42): bastirma olmadan donmus DSYA5_L2 97 kez, yerinden
+                # dusmus DSYA6_L1 49 kez sahte ALM-DQ-DRIFT uretiyordu.
+                more_specific = frozen or "ALM-DQ-BELOW-AMBIENT" in result.get(point["pt"], [])
+                streak = self._drift_streak.get(key, 0) + 1 if self._drifting(key, sample, point) else 0
+                self._drift_streak[key] = streak
+                if streak >= self._drift_persist and not more_specific:
+                    result.setdefault(point["pt"], []).append("ALM-DQ-DRIFT")
             return result
         except Exception:  # noqa: BLE001
             return {}
 
 
+    # -------------------------------------------------- yuk bagimsiz kayma (F-31)
+
+    def _drifting(self, key: tuple[str, str], sample: dict, point: dict) -> bool:
+        """Sensorun YUKTEN BAGIMSIZ bir kayma biriktirip biriktirmedigi.
+
+        FIZIK AYRACI — bu kuralin tamami buna dayanir. Isil model:
+
+            dT = a * I^2 + b
+
+        Fizik b = 0 der (yuk yoksa isinma yok). Iki bozulma bu iki katsayiyi AYRI
+        AYRI bozar ve ayirt edici olan budur:
+          - BAGLANTI bozulursa (gevseme, oksitlenme) isil direnc buyur: `a` buyur,
+            `b` sifirda kalir. dT her yukte ORANTILI artar.
+          - SENSOR kayarsa olcume sabit bir ofset eklenir: `b` buyur, `a` degismez.
+            dT yuk sifira gitse bile dusmez.
+
+        Kural penceredeki (I^2, dT) ciftlerine en kucuk kareler uydurur ve YALNIZCA
+        `b`'nin buyumesine bakar. Pencerenin ilk yarisinin b'si ile ikinci yarisinin
+        b'si karsilastirilir; fark esigi asarsa kayma ilan edilir.
+
+        NEDEN TABAN (dusuk yuk dT'si) YETMEZ — olculdu: ilk surum dusuk yuk tabaninin
+        yukselisine bakiyordu ve S1_loose_conn'da (GERCEK gevsek baglanti) 96 kez
+        sahte ALM-DQ-DRIFT uretti. Cunku K uc katina cikinca dusuk yuk tabani da uc
+        katina cikar. Gercek bir arizayi "kalibrasyon supheli" diye raporlamak, en
+        kotu yanlis yondur. Kesisim ayracinda S1 SIFIR kez isaretleniyor.
+
+        UYARIM SARTI: I^2 pencerede yeterince degismezse regresyon kotu kosullanir ve
+        b ile a birbirinden ayrilamaz (detect.py'nin kalici uyarim kosuluyla ayni
+        sebep). Boyle bir pencerede karar VERILMEZ — "kayma yok" denmez, olculmedi.
+
+        NEDEN MEVCUT DORT KURAL BUNU KACIRIYORDU (docs/12 §4.3):
+          - ALM-DQ-JUMP: kayma ornek basina 0,025 K; 10 K/dk esiginin cok altinda.
+          - ALM-DQ-FROZEN: deger her ornekte degisiyor, donmus degil.
+          - ALM-DQ-BELOW-AMBIENT: kayma YUKARI; olcum ortamin altina hic inmiyor.
+          - ALM-NODE-LOST: dugum susmuyor, veri geliyor.
+
+        SYS onceligindedir (L-1): bu bir pano arizasi degil OLCUM arizasidir.
+        """
+        if "dt_c" not in point:
+            return False
+        try:
+            i2 = physics.point_current(sample, point["pt"]) ** 2
+        except (KeyError, IndexError, TypeError, ValueError):
+            return False
+
+        window = self._load_history.setdefault(key, deque(maxlen=self._drift_window))
+        window.append((i2, float(point["dt_c"])))
+        if len(window) < self._drift_window:
+            return False
+
+        pairs = list(window)
+        half = len(pairs) // 2
+        early = _fit(pairs[:half], self._drift_min_cv)
+        late = _fit(pairs[half:], self._drift_min_cv)
+        if early is None or late is None:
+            return False
+
+        slope_early, offset_early = early
+        slope_late, offset_late = late
+        if (offset_late - offset_early) < self._drift_rise_k:
+            return False
+        # EGIM DE BUYUDUYSE bu bir sensor kaymasi DEGILDIR: gercek bir baglanti
+        # bozulmasi isil direnci buyutur ve yuk katsayisi artar. Yalnizca ofsetin
+        # buyudugu durum sensore ozgudur. Olculdu (seed 42, 168 sa): bu kosul olmadan
+        # S1_loose_conn'da (GERCEK gevsek baglanti) 20 kez sahte kayma ilan ediliyordu.
+        if slope_early > 0.0 and (slope_late / slope_early) > self._drift_max_slope_growth:
+            return False
+        return True
+
+
 # ------------------------------------------------------------------- ic
+
+
+def _fit(pairs: list[tuple[float, float]], min_cv: float) -> tuple[float, float] | None:
+    """dT = a * I^2 + b uydurmasi; (a, b) doner. Olculemezse None.
+
+    En kucuk kareler kapali formu:
+        a = cov(I^2, dT) / var(I^2)
+        b = ort(dT) - a * ort(I^2)
+
+    I^2 yeterince degismiyorsa (degisim katsayisi min_cv altinda) var(I^2) sifira
+    yaklasir, a patlar ve b anlamsizlasir. Boyle bir pencerede None doner: kayma
+    YOK demek ile OLCEMEDIK demek ayni sey degildir (GK10).
+    """
+    if len(pairs) < 3:
+        return None
+    i2s = [i2 for i2, _dt in pairs]
+    dts = [dt for _i2, dt in pairs]
+    mean_i2 = sum(i2s) / len(i2s)
+    mean_dt = sum(dts) / len(dts)
+    if mean_i2 <= 0.0:
+        return None
+    var_i2 = sum((value - mean_i2) ** 2 for value in i2s) / len(i2s)
+    if var_i2 <= 0.0 or (var_i2**0.5) / mean_i2 < min_cv:
+        return None
+    cov = sum((i2 - mean_i2) * (dt - mean_dt) for i2, dt in pairs) / len(pairs)
+    slope = cov / var_i2
+    return slope, mean_dt - slope * mean_i2
 
 
 def _by_point(sample: dict) -> dict[str, dict]:

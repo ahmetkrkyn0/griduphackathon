@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import type { PanelSummary, Prio } from "../api/types";
+import { api } from "../api/client";
+import type { EpdkKaydi, OutageEvent, PanelSummary, Prio } from "../api/types";
 import ilceSinirlari from "../data/ilce-sinirlari.json";
+import { EPDK_DURUM_METNI, aboneOzeti, epdkDeger, kesintidekiPanolar } from "../lib/kesinti";
 import {
   insidePolygons,
   prepareLabelCandidates,
@@ -148,6 +150,7 @@ function getPreparedLabels() {
 export function BolgeHaritasi() {
   const { panels } = useFleet();
   const geoPanels = useMemo(() => panels.filter(hasCoords), [panels]);
+  const outages = useOutages();
 
   return (
     <main className="page">
@@ -201,8 +204,16 @@ export function BolgeHaritasi() {
         </span>
       </div>
 
+      {outages.map((outage) => (
+        <KesintiSeridi key={outage.outage_id} outage={outage} />
+      ))}
+
       {geoPanels.length >= 2 ? (
-        <GeoHarita panels={geoPanels} allCount={panels.length} />
+        <GeoHarita
+          panels={geoPanels}
+          allCount={panels.length}
+          outages={outages}
+        />
       ) : (
         <SirketGruplari panels={panels} />
       )}
@@ -210,7 +221,129 @@ export function BolgeHaritasi() {
   );
 }
 
-function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
+/** Acik ust sebeke kesintileri (F-22). Harita disinda da gorunur: konum verisi olmayan
+ *  filoda (SirketGruplari gorunumu) ozellik kaybolmasin. */
+function useOutages(): OutageEvent[] {
+  const [outages, setOutages] = useState<OutageEvent[]>([]);
+  useEffect(() => {
+    const control = new AbortController();
+    const load = () =>
+      api.outages("acik", control.signal).then(setOutages).catch(() => {
+        /* kesinti listesi bir kolayliktir; alinamamasi haritayi bozmamali */
+      });
+    load();
+    const timer = setInterval(load, 30_000);
+    return () => {
+      control.abort();
+      clearInterval(timer);
+    };
+  }, []);
+  return outages;
+}
+
+/**
+ * Kesinti seridi: olayin metin karsiligi.
+ *
+ * ISA-101 geregi ayirt edicilik yalnizca RENGE dayanamaz — haritadaki halka sekil farkidir,
+ * bu serit ise ayni bilgiyi METIN olarak verir. Ayrica konum verisi olmayan filoda harita
+ * hic cizilmez ve ozellik yalnizca bu seritle yasar.
+ */
+function KesintiSeridi({ outage }: { outage: OutageEvent }) {
+  return (
+    <div className="kesinti-serit" role="status">
+      <strong>Üst şebeke kesintisi</strong> — <code>{outage.fider_id}</code> fiderinde{" "}
+      {outage.panolar.length} pano aynı anda sustu.{" "}
+      Etkilenen abone: <strong>{aboneOzeti(outage).metin}</strong>.{" "}
+      <span className="dim">
+        Bu bir gruplamadır: alarmlar bastırılmadı, hepsi konsolda duruyor.
+      </span>
+      <EpdkTaslagi outageId={outage.outage_id} />
+    </div>
+  );
+}
+
+/**
+ * EPDK Madde 8 kesinti kaydı taslağı (F-23).
+ *
+ * Talep üzerine açılır (`<details>`): taslak her kesinti şeridinde otomatik yüklenirse
+ * ekran açılışında gereksiz istek atardı. Tablo, alanın **durumunu** ayrı bir sütunda
+ * gösterir — ISA-101 gereği ayırt edicilik yalnızca renge dayanamaz; "elle doldurulacak"
+ * bilgisi **metin** olarak durur.
+ */
+function EpdkTaslagi({ outageId }: { outageId: string }) {
+  const [kayit, setKayit] = useState<EpdkKaydi | null>(null);
+  const [hata, setHata] = useState(false);
+
+  const yukle = () => {
+    if (kayit || hata) return;
+    api.epdkKaydi(outageId).then(setKayit).catch(() => setHata(true));
+  };
+
+  return (
+    <details className="epdk-taslak" onToggle={yukle}>
+      <summary>EPDK Madde 8 kesinti kaydı taslağı</summary>
+      {hata && <p className="dim small">Taslak alınamadı.</p>}
+      {kayit && (
+        <>
+          <p className="epdk-uyari" role="note">
+            <strong>TASLAK</strong> — {kayit.uyari}
+          </p>
+          <p className="dim small">
+            {kayit.ozet.toplam} alanın {kayit.ozet.olculen} tanesi ölçülüyor,{" "}
+            {kayit.ozet.oneri} tanesi öneri, {kayit.ozet.elle_doldurulacak} tanesi elle doldurulacak.
+          </p>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Alan</th>
+                  <th>Değer</th>
+                  <th>Durum</th>
+                  <th>Açıklama</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kayit.alanlar.map((alan) => (
+                  <tr key={alan.ad} className={`epdk-${alan.durum}`}>
+                    <td>{alan.ad}</td>
+                    {/* Ölçmediğimiz alana SIFIR yazılmaz — kural lib/kesinti.ts'te ve testli. */}
+                    <td className={alan.deger === null ? "dim" : undefined}>{epdkDeger(alan.deger)}</td>
+                    <td>{EPDK_DURUM_METNI[alan.durum]}</td>
+                    <td className="dim small">{alan.aciklama}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {kayit.kanit && kayit.kanit.length > 0 && (
+            <p className="dim small">
+              Kanıt: {kayit.kanit.filter((k) => k.event_id).length} pano için mevcut kara kutu
+              zaman çizelgesi bağlandı{" "}
+              {kayit.kanit
+                .filter((k) => k.event_id)
+                .map((k) => (
+                  <Link key={k.pano_id} to={`/olay/${k.event_id}`} className="epdk-kanit">
+                    {k.name ?? k.pano_id}
+                  </Link>
+                ))}
+              . Yeni bir çizelge üretilmedi.
+            </p>
+          )}
+        </>
+      )}
+    </details>
+  );
+}
+
+function GeoHarita({
+  panels,
+  allCount,
+  outages,
+}: {
+  panels: Geo[];
+  allCount: number;
+  outages: OutageEvent[];
+}) {
   const [view, commitView] = useState({ scale: 1, tx: 0, ty: 0 });
   const pendingView = useRef(view);
   const frame = useRef<number | null>(null);
@@ -237,6 +370,10 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
   const [query, setQuery] = useState("");
   const [hovered, setHovered] = useState<string | null>(null);
   const missing = allCount - panels.length;
+  // Kesintiye dahil panolar (F-22): haritada kesikli bir HALKA ile isaretlenir —
+  // sekil farki, yalnizca renk degil (ISA-101). Ayni bilgi yukaridaki kesinti
+  // seridinde METIN olarak da durur, harita hic cizilmese bile ozellik yasar.
+  const outagePanels = kesintidekiPanolar(outages);
   const provinceNames: Record<string, string> = {
     "09": "Aydın",
     "20": "Denizli",
@@ -597,6 +734,7 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
           <g className="geo-annotations">
             {visiblePoints.map(({ x, y, p, district: location }) => {
               const prio = effectivePrio(p);
+              const fider = outagePanels.get(p.pano_id);
               return (
                 <Link
                   className="geo-marker"
@@ -610,6 +748,11 @@ function GeoHarita({ panels, allCount }: { panels: Geo[]; allCount: number }) {
                 >
                   <title>{`${p.name} (${p.pano_id}) · Konum: ${location ?? "sınır dışında"} · Risk: ${p.risk_score}`}</title>
                   <circle className="geo-hit-area" cx={x} cy={y} r={11} />
+                  {fider ? (
+                    <circle className="geo-kesinti" cx={x} cy={y} r={13}>
+                      <title>{`Üst şebeke kesintisi: ${fider}`}</title>
+                    </circle>
+                  ) : null}
                   <circle
                     className={prio ? "geo-dot" : "geo-dot normal"}
                     style={prio ? { fill: PRIO_COLOR[prio] } : undefined}

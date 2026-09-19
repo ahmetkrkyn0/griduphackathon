@@ -14,6 +14,8 @@ uretildigi icin tek koruma budur (PLAN.md kural: uretilen dokuman elle duzenlenm
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from panoalgo import prognostics as pg
@@ -243,10 +245,46 @@ def measured():
     return {r.scenario_id: r for r in validate_all(REPO_ROOT / "data" / "fixtures")}
 
 
-def test_only_the_loose_connection_trajectory_can_be_backtested(measured):
-    """n = 1 durustluk kaydi: geri testi yapilabilen TEK yorunge var."""
+def test_only_the_loose_connection_family_can_be_backtested(measured):
+    """n = 1 durustluk kaydi: geri testi yapilabilen TEK BOZULMA YORUNGESI var.
+
+    19 Eylul'de dort model-uyumsuzlugu senaryosu eklendi (S10-S13). Dordu de
+    S1_loose_conn'un kontrollu klonudur: AYNI tohum, AYNI nokta, AYNI K buyumesi —
+    yalnizca panonun fizigi farklidir. Yani liste dortten fazla satira ciksa bile
+    ISTATISTIKSEL n HALA 1'DIR; dort olcum bagimsiz tekrar degil, ayni yorungenin
+    dort model dunyasindaki okunusudur. Bagimsiz tekrar coklu tohum ister
+    (Yapilacaklar 2.2) ve bu is onu KAPSAMAZ.
+
+    S13_sensor_nonlin listede YOKTUR ve olmamalidir: olcum zinciri sikismasi 70 K
+    sinirinin asilmasini gizledigi icin `l0_breach_at` null kalir, gercek kalan omur
+    sonsuzdur ve geri test tanimsizdir. Bu bir eksik degil, olcumun kendisidir.
+    """
+    from helpers import REPO_ROOT
+
     scored = [r.scenario_id for r in measured.values() if r.prognosis is not None]
-    assert scored == ["S1_loose_conn"]
+    assert sorted(scored) == [
+        "S10_coupling",
+        "S11_load_tau",
+        "S12_two_pole",
+        "S1_loose_conn",
+    ]
+    seeds = {json.loads((REPO_ROOT / "data" / "fixtures" / f"{sid}.labels.json").read_text(
+        encoding="utf-8"))["seed"] for sid in scored}
+    assert len(seeds) == 1, f"n = 1 iddiasi bozuldu, birden cok tohum: {sorted(seeds)}"
+
+
+def test_the_measurement_chain_scenario_cannot_be_backtested_at_all(measured):
+    """S13: sinir hic asilmiyor, cunku OLCUM sikisiyor — pano ayni derecede sicak.
+
+    Gercek tepe artis eslesen ikizle ayni (79 K mertebesi); olculen 48,5 K. Sabit
+    70 K esigi tamamen korlesiyor, dolayisiyla `l0_breach_at` null ve geri test
+    yapilamiyor. Buna karsilik oran tabanli K tespiti ayakta kaliyor.
+    """
+    result = measured["S13_sensor_nonlin"]
+    assert result.l0_breach_at is None
+    assert result.prognosis is None
+    assert result.false_prognoses > 0
+    assert "ALM-THR-TERM-ALM" in result.missed
 
 
 def test_the_overload_scenario_breaches_the_limit_without_any_prediction(measured):
@@ -257,15 +295,22 @@ def test_the_overload_scenario_breaches_the_limit_without_any_prediction(measure
 
 
 def test_the_sensor_fault_scenario_produces_prognoses_without_any_breach(measured):
-    """PROGNOZ YANLIS-ALARMI: sinir hic asilmadi, 99 tahmin uretildi (docs/05 §10).
+    """PROGNOZ YANLIS-ALARMI: sinir hic asilmadi, 183 tahmin uretildi (docs/12 §4.3).
 
-    Bunlarin 89'u ALM-TTL-14D alarmina donuyor ve etiket penceresinin ICINDE
+    Bunlarin 86'si ALM-TTL-14D alarmina donuyor ve etiket penceresinin ICINDE
     ciktiklari icin docs/12 §3'teki yanlis alarm sayaci onlari gormuyor.
+
+    SAYILAR 18 EYLUL'DE DEGISTI (99/89 -> 183/86), CUNKU URETEC DUZELDI (F-31):
+    `set_sensor_fault` ayni arizayi her cagrida yeniden kuruyor ve yasi SIFIRLIYORDU;
+    senaryo yurutucusu `_inject`'i her adimda cagirdigi icin "suruklenme" 112 saatlik
+    enjeksiyon penceresi boyunca 0,5 K'da (tek adimlik) cakili kaliyordu. Yani depo
+    "sensor suruklenmesi uretiyoruz" diyordu ama fiilen URETMIYORDU. Duzeltme sonrasi
+    kayma gercekten birikiyor ve yanlis-alarm daha buyuk cikiyor.
     """
     result = measured["S8_sensor_fault"]
     assert result.l0_breach_at is None
-    assert result.false_prognoses == 99
-    assert result.false_prognosis_alarms == 89
+    assert result.false_prognoses == 183
+    assert result.false_prognosis_alarms == 86
 
 
 def test_a_healthy_panel_produces_no_prognosis_at_all(measured):
@@ -305,7 +350,7 @@ def test_docs_12_matches_what_the_generator_produces_now(measured):
         return [line for line in text.splitlines() if not line.startswith("Uretim zamani:")]
 
     on_disk = (REPO_ROOT / "docs" / "12-dogrulama-sonuclari.md").read_text(encoding="utf-8")
-    generated = render_markdown(sorted(measured.values(), key=lambda r: r.scenario_id))
+    generated = render_markdown(list(measured.values()))
     assert body(on_disk) == body(generated), (
         "docs/12 guncel degil: python scripts/validate.py --out docs/12-dogrulama-sonuclari.md"
     )
@@ -314,7 +359,7 @@ def test_docs_12_matches_what_the_generator_produces_now(measured):
 def test_the_generated_report_has_the_prognosis_section(measured):
     from panoalgo.validate import render_markdown
 
-    rendered = render_markdown(sorted(measured.values(), key=lambda r: r.scenario_id))
+    rendered = render_markdown(list(measured.values()))
     assert "## 4. Prognoz geri testi" in rendered
     # §1-§3 yerinde kalmali: docs/10 §1'e, juri kartlari §3'e atif veriyor.
     assert "## 3. Yanlis alarm yuku" in rendered

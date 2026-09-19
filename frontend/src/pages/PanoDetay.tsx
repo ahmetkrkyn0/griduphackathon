@@ -34,8 +34,9 @@ import { useNow } from "../lib/useNow";
 import { panelStatement, primaryAlarm } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
 
-// Kimlik dogrulama henuz yok (yol haritasi: LDAP); onay kontrol odasi adina kaydedilir.
-const OPERATOR = "kontrol-odasi";
+// F-19: onaylayanin adi artik ISTEMCIDEN gonderilmiyor. Sunucu onu dogrulanmis
+// Authorization basligindan turetir (openapi v1.2.0); belirtec yoksa 401 doner ve
+// giris kapisi cizilir (components/GirisKapisi.tsx).
 const DETAIL_REFRESH_MS = 30_000;
 
 // three.js yalnizca 3D secilince yuklenir; ilk acilis paketine girmez.
@@ -135,11 +136,7 @@ export function PanoDetay() {
     setAckBusy(true);
     setAlarmMessage(null);
     try {
-      await api.ack(alarm.id, {
-        by: OPERATOR,
-        channel: "ui",
-        note: note || undefined,
-      });
+      await api.ack(alarm.id, { channel: "ui", note: note || undefined });
       setAlarmMessage("Onaylandı.");
       await load();
     } catch (e) {
@@ -157,7 +154,7 @@ export function PanoDetay() {
     setShelveBusy(true);
     setAlarmMessage(null);
     try {
-      await api.shelve(alarm.id, { by: OPERATOR, minutes, reason });
+      await api.shelve(alarm.id, { minutes, reason });
       setAlarmMessage("Rafa alındı.");
       await load();
     } catch (e) {

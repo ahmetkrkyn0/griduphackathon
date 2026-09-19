@@ -211,3 +211,70 @@ def test_phase_compare_survives_zero_current():
     """Gece yuku sifira yaklasirsa I^2'ye bolme patlamamali."""
     points = _points({"GIRIS_L1": 0.0, "GIRIS_L2": 0.0, "GIRIS_L3": 0.0})
     assert phase_compare(points, [0.0, 0.0, 0.0]) == {}
+
+
+# ------------------------------------------------- taban gecerliligi kaniti (F-32)
+
+
+def _drive(estimator: KIndexEstimator, samples: int, i_a, dt_c: float = 10.0) -> None:
+    """Kestirimciyi verilen akim fonksiyonuyla `samples` adim ilerletir."""
+    for step in range(samples):
+        estimator.update(i_a(step), dt_c)
+
+
+def test_taban_donmeden_kanit_yoktur():
+    """freeze_baseline() cagrilmadan BaselineEvidence uretilmez."""
+    estimator = KIndexEstimator(ts=10.0)
+    _drive(estimator, 50, lambda step: 500.0 + 100.0 * (step % 7))
+    assert estimator.baseline_evidence is None
+
+
+def test_uyarimli_ogrenmede_kanit_yuksek_oran_yazar():
+    """Yuk suruyorsa kalici uyarim kosulu saglanir ve RLS gercekten calisir;
+    excited_ratio 1'e yakin olmali. K0 degeri DEGISMEZ, yaninda gerekcesi tutulur.
+    """
+    estimator = KIndexEstimator(ts=10.0)
+    _drive(estimator, 300, lambda step: 500.0 + 200.0 * (step % 11))
+    estimator.freeze_baseline()
+
+    evidence = estimator.baseline_evidence
+    assert evidence is not None
+    assert evidence.k0 == estimator.k0
+    assert evidence.n_samples == 300
+    assert evidence.excited_ratio > 0.9
+    assert evidence.n_excited == pytest.approx(evidence.excited_ratio * evidence.n_samples, abs=1.0)
+
+
+def test_sabit_yukte_taban_uyarim_gormemis_olarak_isaretlenir():
+    """Yuk hic degismezse var(I^2) ve cv sifirdir: RLS GUNCELLENMEZ ve K0 fiziksel
+    baglantiyi degil baslangic onselini kodlar. Kanit bunu gorunur kilar — eskiden
+    K0 tek basina donuyor ve bu bilgi kayboluyordu.
+    """
+    estimator = KIndexEstimator(ts=10.0)
+    _drive(estimator, 300, lambda _step: 500.0)
+    estimator.freeze_baseline()
+
+    evidence = estimator.baseline_evidence
+    assert evidence is not None
+    assert evidence.n_excited == 0
+    assert evidence.excited_ratio == 0.0
+
+
+def test_kanit_sayaclari_taban_dondukten_sonra_artmaz():
+    """Dondurma sonrasi ornekler tabanin NASIL ogrenildigini degistirmez."""
+    estimator = KIndexEstimator(ts=10.0)
+    _drive(estimator, 200, lambda step: 500.0 + 200.0 * (step % 11))
+    estimator.freeze_baseline()
+    before = estimator.baseline_evidence
+
+    _drive(estimator, 200, lambda step: 500.0 + 200.0 * (step % 11))
+    assert estimator.baseline_evidence == before
+
+
+def test_k_history_disariya_kopya_olarak_verilir():
+    """Cagiran tabani besleyen gecmisi yerinde degistirememeli."""
+    estimator = KIndexEstimator(ts=10.0)
+    _drive(estimator, 50, lambda step: 500.0 + 100.0 * (step % 7))
+    history = estimator.k_history
+    assert isinstance(history, tuple)
+    assert len(history) == 50

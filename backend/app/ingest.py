@@ -31,7 +31,7 @@ import paho.mqtt.client as mqtt
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
-from .config import PANO_ID_PLACEHOLDER, Contracts, topic_filter, topic_regex
+from .config import PANO_ID_PLACEHOLDER, Contracts, MqttTls, topic_filter, topic_regex
 from .db import Store, StoreError
 from .models import Rejection, Sample, TelemetryRow
 
@@ -335,6 +335,13 @@ class MqttSubscriber:
     bekletir (mosquitto.conf max_queued_messages), yeniden baslatma veri kaybettirmez.
 
     Ayni baglanti merkez -> kenar komutlarini da yayinlar (x-topics cmd; SCADA ag gecidi kullanir).
+
+    `tls` verilirse (F-27) baglanti mTLS olur: broker'in sertifikasi yerel CA'ya karsi
+    dogrulanir ve merkez kendi istemci sertifikasini sunar. None = duz 1883 (varsayilan
+    demo yolu). Protokol surumu DEGISMEZ (MQTT 3.1.1): v5'e gecmek clean_session ->
+    clean_start + oturum suresi anlamini degistirirdi ve yukaridaki kuyruk davranisini
+    bozardi. Bunun bir bedeli var ve yazili: 3.1.1'de ACL reddi istemciye GORUNMEZ
+    (broker sessizce dusurur), bkz. publish_command.
     """
 
     def __init__(
@@ -346,9 +353,11 @@ class MqttSubscriber:
         *,
         client_id: str = "gridup-backend-ingest",
         client: Any = None,
+        tls: MqttTls | None = None,
     ) -> None:
         self._host = host
         self._port = port
+        self._tls = tls
         self._subscriptions = [(topic_filter(t), qos) for t, qos in contracts.ingest_topics.items()]
         self._command_topic = contracts.command_topic
         self._command_qos = contracts.command_qos
@@ -360,6 +369,17 @@ class MqttSubscriber:
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.on_message = self._on_message
+        if tls is not None:
+            # cert_reqs/tls_version BILEREK verilmiyor: paho'nun varsayilani sunucu
+            # sertifikasini DOGRULAR ve hostname'i denetler (tls_insecure_set(False)).
+            # Acikca CERT_NONE yazmak bu korumayi kapatirdi. Sifre takimi kisiti da
+            # verilmiyor — gerekcesi deploy/mosquitto-mtls.conf basliginda (GK10).
+            self._client.tls_set(ca_certs=tls.ca, certfile=tls.certfile, keyfile=tls.keyfile)
+
+    @property
+    def tls_enabled(self) -> bool:
+        """Baglantinin mTLS oldugu /health'te GORUNUR (F-19'daki auth.enabled emsali)."""
+        return self._tls is not None
 
     def start(self) -> None:
         self._client.reconnect_delay_set(min_delay=1, max_delay=30)
@@ -375,6 +395,15 @@ class MqttSubscriber:
 
         Kopukken KUYRUGA ALINMAZ: saatler sonra teslim edilen eski bir komut (or. bakim modu) sahada
         surpriz yaratir. Cagiran (SCADA ag gecidi) basarisizligi istemciye bildirir, operator tekrar dener.
+
+        DONUS DEGERI TESLIMAT DEGIL, KUYRUGA KOYMA KANITIDIR — ve mTLS acikken bu ayrim
+        onemlidir (F-27): broker bir yayini ACL'e takilip reddederse MQTT 3.1.1'de yine
+        PUBACK doner, `info.rc` SUCCESS kalir ve SCADA operatorune "gonderildi" denir.
+        Merkez kimligi (gridup-backend) deploy/mosquitto.acl'de `gridup/pano/+/cmd`
+        uzerinde yetkilidir, yani dogru yapilandirmada bu durum olusmaz; yanlis
+        yapilandirmada SESSIZ kalir. Reddi gorunur kilmak MQTT 5.0'a gecmeyi gerektirirdi
+        (sinif basligindaki clean_session notu), bu teslimde YAPILMADI ve olculmus hali
+        docs/15 §5.1'de yazili.
         """
         if not self.connected:
             log.warning("MQTT kopuk, kenar komutu gonderilmedi: %s -> %s", cmd, pano_id)

@@ -34,6 +34,26 @@
 | Arayüz gerçek API ile | Playwright: Filo, Pano detay, Alarmlar, Trend, Kara kutu, Cihaz sağlığı, Bölge | 7 ekran, **0 konsol hatası / uyarısı** |
 | Git hijyeni | index'te CRLF, izlenen dosyalarda sır taraması | 0 CRLF; yalnızca testlerdeki sahte `+90555000000x` numaraları |
 
+> **19 Eylül notu — yukarıdaki tablo DEĞİŞTİRİLMEDİ, çünkü o `main` = `5c969d1` anının kaydıdır.**
+> Sayılar bugün geçerli değil; güncel değerler için `README.md` "Testler" bölümü ve
+> `docs/17` §4 tablosu esastır. İki satır özellikle eskidi ve okuyucu yanılmasın diye
+> buraya yazılıyor:
+>
+> - **Frontend "71/71"** → 19 Eylül ölçümü **154/154** (17 dosya, vitest 2.1.9). Aradaki
+>   zincir 71 → 85 → 136 → 154; son artış K7/7.1 bileşen testlerinden geliyor.
+> - **"Arayüz gerçek API ile · 7 ekran, 0 konsol hatası / uyarısı"** → o gün **doğruydu ama
+>   tezgâhı depoda yoktu**, yani bir iddiaydı. 19 Eylül'de tezgâh eklendi
+>   (`frontend/playwright.config.ts` + `frontend/e2e/smoke.spec.ts`) ve **ölçüm bir kusur
+>   buldu**: kara kutu ekranı (`/olay/:id`) React #310 ile tamamen boş çıkıyordu, yani 7
+>   ekranın 6'sı hatasızdı. Kusur düzeltildi, testle kilitlendi, ölçüm yenilendi ve **10
+>   rotada 0 hata / 0 uyarı** çıktı. Aynı koşu ayrıca **canlı kipte 23 kontrast ihlali**
+>   ölçtü — o gün hiç ölçülmemiş bir şeydi.
+>
+> **D5 maddesi (§6) bu işle kısmen kapandı:** `assets/ekran/` görüntülerini artık spec
+> üretiyor. Görüntüler hâlâ **örnek veri kipinde** alınıyor; canlı yığından üretmek için
+> `GRIDUP_E2E_KIP=canli GRIDUP_E2E_EKRAN=1 npx playwright test` yolu açık bırakıldı ama
+> **bu oturumda koşulmadı ve commit edilen görüntüler örnek veri kipindendir.**
+
 **Canlı duman testinin ayrıntısı:**
 - A'nın `panosim`'i → mosquitto → B'nin ingest'i → TimescaleDB:
   - karantina 0;

@@ -52,9 +52,73 @@ def test_catalogue_matches_the_scenario_ids_the_contract_allows():
     assert set(SCENARIOS) == _schema_scenario_ids()
 
 
-def test_catalogue_has_ten_scenarios():
-    """PLAN.md TA2 kabul: --list 10 senaryo listeliyor."""
-    assert len(list_scenarios()) == 10
+def test_catalogue_has_the_ten_base_scenarios_plus_four_mismatch_scenarios():
+    """PLAN.md TA2 kabul: --list 10 senaryo listeliyor (S0-S9).
+
+    19 Eylul'de dort MODEL UYUMSUZLUGU senaryosu eklendi (S10-S13). Bunlar ayri
+    sayilir cunku ayri bir seyi olcerler: S0-S9 tespitin TAVANINI (uretec ile
+    dedektor ayni denklemi cozer), S10-S13 SINIRINI (dedektorun varsaymadigi fizik).
+    Gerekce: contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md
+    """
+    catalogue = list_scenarios()
+    eslesen = [e for e in catalogue if not SCENARIOS[e["scenario_id"]].unmodelled_physics]
+    uyumsuz = [e for e in catalogue if SCENARIOS[e["scenario_id"]].unmodelled_physics]
+    assert len(eslesen) == 10
+    assert len(uyumsuz) == 4
+    assert len(catalogue) == 14
+
+
+def test_every_mismatch_scenario_declares_exactly_one_unmodelled_physics():
+    """Kontrollu deney kurali: her senaryo TEK bir varsayimi bozar.
+
+    Ikisi birden acilsaydi olculen recall/one alma farki hangi varsayima
+    atfedilecegini kaybederdi. Birlesik senaryo BILEREK eklenmedi (docs/05 §10).
+    """
+    for scenario_id, spec in SCENARIOS.items():
+        if spec.unmodelled_physics:
+            assert len(spec.unmodelled_physics) == 1, scenario_id
+
+
+def test_mismatch_scenarios_are_controlled_clones_of_the_loose_connection_scenario():
+    """S10-S13, S1'den YALNIZCA `mismatch` alaninda ayrilmali.
+
+    Sure, mevsim, nokta, siddet, enjeksiyon parametreleri ve `expect`/`not_expect`
+    ayni degilse olculen fark artik fizige degil deney kurulumuna da yazilabilir.
+    `not_expect` tek istisnadir: S1'de ALM-DQ-DRIFT yoktur, uyumsuz senaryolarda
+    sinanir (yavas isil kutup kayma kuralini yaniltabilir mi?).
+    """
+    s1 = SCENARIOS["S1_loose_conn"]
+    for scenario_id, spec in SCENARIOS.items():
+        if not spec.unmodelled_physics:
+            continue
+        assert spec.default_duration_h == s1.default_duration_h, scenario_id
+        assert spec.season == s1.season, scenario_id
+        assert spec.profile == s1.profile, scenario_id
+        assert spec.point == s1.point, scenario_id
+        assert spec.severity == s1.severity, scenario_id
+        assert spec.label_type == s1.label_type, scenario_id
+        assert spec.params == s1.params, scenario_id
+        assert spec.expect == s1.expect, scenario_id
+        assert set(s1.not_expect) <= set(spec.not_expect), scenario_id
+
+
+def test_matched_scenarios_do_not_write_the_unmodelled_physics_key():
+    """Eslesen senaryolarda anahtar HIC olusmamali (contracts/changes §2).
+
+    Bos liste yazilsaydi S0-S9'un on etiket dosyasi degisir ve "mevcut fixture'lar
+    bayt bayt korunuyor" iddiasi sessizce yanlis olurdu.
+    """
+    _, labels = build("S2_overload", seed=7, duration_h=SHORT_H)
+    assert "unmodelled_physics" not in labels
+
+
+def test_mismatch_scenarios_write_the_physics_they_actually_enabled():
+    """Etiket, uretecteki BAYRAKTAN turetilmeli — elle yazilan bir liste olmamali."""
+    for scenario_id, spec in SCENARIOS.items():
+        if not spec.unmodelled_physics:
+            continue
+        _, labels = build(scenario_id, seed=7, duration_h=SHORT_H)
+        assert labels["unmodelled_physics"] == list(spec.mismatch.names())
 
 
 def test_every_catalogue_entry_has_a_human_readable_description():

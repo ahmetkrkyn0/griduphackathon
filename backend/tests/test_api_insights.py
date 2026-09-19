@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.auth import ANONYMOUS
 from app.notify.dispatcher import Delivery
 from fakes import MemoryStore
 from helpers import CONTRACTS_DIR, Clock, encode, utc
@@ -176,7 +177,10 @@ def test_blackbox_of_arc_trip(rig, incident, api_contract):
     kinds = [(entry["kind"], entry["text"]) for entry in body["timeline"]]
     assert [kind for kind, _ in kinds] == ["alarm", "alarm", "trip", "ack"]
     assert "ALM-K-WARN" in " ".join(text for _, text in kinds[:2])
-    assert "vardiya-amiri" in kinds[3][1] and "ekip yolda" in kinds[3][1]
+    # Onaylayanin adi F-19'dan beri GOVDEDEN degil kimlikten gelir; bu kurulumda
+    # kimlik dogrulama kapali oldugu icin "anonim" yazar. Kara kutunun olctugu sey
+    # zaman cizelgesinin onay satirini TASIYIP tasimadigidir, adin kendisi degil.
+    assert ANONYMOUS.user in kinds[3][1] and "ekip yolda" in kinds[3][1]
 
     trips = [value for _, value in body["series"]["tvoc.trips"] if value is not None]
     assert trips == [0.0, 1.0]  # 09:00 orneginde 0, 09:50 orneginde 1
@@ -275,3 +279,242 @@ def test_fleet_kpi_active_count_excludes_shelved(rig, tel_payload):
     shelve = {"by": "operator", "minutes": 30, "reason": "planli bakim bekleniyor"}
     assert rig.http.post(f"/api/v1/alarms/{k_warn['id']}/shelve", json=shelve).status_code == 200
     assert rig.http.get("/api/v1/fleet/kpi").json()["active_by_prio"]["P3"] == 1
+
+
+# ----------------------------------------------------------------- GET /fleet/health
+# Bu uc, Cihaz Sagligi ekraninin pano-basina GET /panels/{id} dongusunun yerine gecer
+# (contracts/changes/2026-09-14-fleet-health-bulk.md). Asagidaki testlerin en onemlisi
+# test_fleet_health_matches_panel_detail: yerine gecmenin SADIK oldugunu kilitler.
+
+
+def test_fleet_health_returns_one_row_per_panel_and_matches_contract(rig, tel_payload, api_contract):
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+
+    body = rig.http.get("/api/v1/fleet/health").json()
+
+    api_contract(body, "PanelHealth", many=True)
+    assert [row["pano_id"] for row in body] == ["ADM-00001", "ADM-00002", "GDZ-00001"]  # pano_id sirasi
+    adm1 = next(row for row in body if row["pano_id"] == "ADM-00001")
+    assert adm1["name"] == "Efeler TM-14"
+    assert (adm1["nodes_ok"], adm1["nodes_total"]) == (5, 5)
+    assert (adm1["rssi_dbm"], adm1["vbak_pct"], adm1["buffered"]) == (-71.0, 100.0, 0)
+    assert adm1["maint_mode"] is False
+    assert adm1["baseline_day"] == 7
+    assert adm1["comms_ok"] is True
+
+
+def test_fleet_health_reports_unknown_as_null_not_zero(rig, tel_payload, api_contract):
+    """Veri gondermemis pano icin saglik alanlari null olmali.
+
+    0 YAZILAMAZ: 0 dBm gecerli bir RSSI, 0 tamponlanmis mesaj ise SAGLIKLI bir degerdir.
+    Ekranin `isBad` kurali (CihazSagligi.tsx) ikisini ayirt edebilmek zorunda.
+    """
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+
+    body = rig.http.get("/api/v1/fleet/health").json()
+    api_contract(body, "PanelHealth", many=True)
+
+    sessiz = next(row for row in body if row["pano_id"] == "ADM-00002")
+    for field in ("nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "maint_mode", "fw"):
+        assert sessiz[field] is None, field
+    assert sessiz["comms_ok"] is False
+    # baseline_day panels tablosundan gelir; telemetri yoksa bile bir degeri vardir.
+    assert isinstance(sessiz["baseline_day"], int)
+
+
+def test_fleet_health_reports_missing_field_as_null(rig, tel_payload, api_contract):
+    """Yukta olmayan alan null GELMELI, satirdan dusmemeli.
+
+    Ekran alani okurken `?? null` yapiyor; alanin hic gelmemesi ile null gelmesi
+    orada ayni sonucu verir, ama sozlesme alani tanimli tuttugu icin uc de
+    tutarli olmali — yoksa istemci "alan yok" ile "deger bilinmiyor"u ayirmak
+    zorunda kalir.
+    """
+    payload = sample(tel_payload, T0, 1)
+    del payload["fw"]              # eski firmware surumu bildirmiyor
+    del payload["health"]["rssi_dbm"]  # kablolu baglanti: RSSI diye bir sey yok
+    rig.ingest(payload, received_at=T0 + timedelta(seconds=2))
+
+    body = rig.http.get("/api/v1/fleet/health").json()
+    api_contract(body, "PanelHealth", many=True)
+    adm1 = next(row for row in body if row["pano_id"] == "ADM-00001")
+
+    assert "fw" in adm1 and adm1["fw"] is None
+    assert "rssi_dbm" in adm1 and adm1["rssi_dbm"] is None
+    assert adm1["nodes_ok"] == 5  # komsu alanlar etkilenmedi
+
+
+def test_fleet_health_matches_panel_detail(rig, tel_payload):
+    """ASIL KILIT: toplu uc, yerini aldigi pano-basina uctan FARKLI bir sey soylememeli.
+
+    Ekran onceki surumde bu alanlari GET /panels/{id} -> health'ten okuyordu. Iki yol
+    ayrisirsa ekran sessizce baska bir gercek gosterir; bu test onu yakalar.
+    """
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+
+    toplu = {row["pano_id"]: row for row in rig.http.get("/api/v1/fleet/health").json()}
+    ozet = {row["pano_id"]: row for row in rig.http.get("/api/v1/panels").json()}
+
+    for pano_id, row in toplu.items():
+        detay = rig.http.get(f"/api/v1/panels/{pano_id}").json()
+        health = detay["health"]
+        for field in ("nodes_ok", "nodes_total", "rssi_dbm", "vbak_pct", "buffered", "maint_mode", "fw"):
+            assert row[field] == health.get(field), f"{pano_id}.{field}"
+        # last_seen ve comms_ok ekranda PanelSummary'den geliyordu; onlarla da ayni olmali.
+        assert (row["last_seen"], row["comms_ok"]) == (ozet[pano_id]["last_seen"], ozet[pano_id]["comms_ok"])
+        assert row["baseline_day"] == ozet[pano_id]["baseline_day"]
+
+
+def test_fleet_health_comms_ok_expires_with_heartbeat_timeout(rig, tel_payload, contracts):
+    """comms_ok, filo listesiyle AYNI esikten (heartbeat_timeout_min) turemeli."""
+    rig.ingest(sample(tel_payload, T0, 1), received_at=T0 + timedelta(seconds=2))
+    timeout_min = contracts.thresholds["heartbeat_timeout_min"]
+
+    rig.clock.now = T0 + timedelta(seconds=2) + timedelta(minutes=timeout_min, seconds=1)
+    adm1 = next(row for row in rig.http.get("/api/v1/fleet/health").json() if row["pano_id"] == "ADM-00001")
+
+    assert adm1["comms_ok"] is False
+    # Saglik degerleri kaybolmaz: "haberlesme koptu" ile "veri yok" ayri seylerdir.
+    assert adm1["rssi_dbm"] == -71.0
+
+
+def test_fleet_health_empty_fleet():
+    rig = Rig(MemoryStore(), Clock(T0))
+    with rig.http:
+        assert rig.http.get("/api/v1/fleet/health").json() == []
+
+
+# ================================================================== /fleet/peers (F-32)
+# K0 semada YOKTUR ve olmayacaktir: t_conn[] `additionalProperties: false` tanimli,
+# kenara alan acmak mesaji reddettirirdi. Merkez tabani k / k_ratio ile YENIDEN
+# TURETIR (F-10 `_verify` ile ayni kacis).
+
+PEER_FLEET = [{"pano_id": f"ADM-1{index:04d}", "name": f"Akran {index}"} for index in range(12)]
+
+
+def _peer_rig() -> Rig:
+    return Rig(MemoryStore(PEER_FLEET), Clock(T0 + timedelta(seconds=2)))
+
+
+def _feed(rig: Rig, tel_payload: dict, k_ratios: list[float], point: str = "GIRIS_L2") -> None:
+    """Her panoya ayni `k` ama farkli `k_ratio` yazar -> K0 = k / k_ratio ayrisir.
+
+    `k` sabit tutulur ki testin olctugu tek sey TURETME ve AKRAN karsilastirmasi olsun.
+    Diger noktalarin k_ratio'su 1,0 birakilir: tabani DONMAMIS sayilirlar ve
+    karsilastirmaya girmezler.
+    """
+    for index, k_ratio in enumerate(k_ratios):
+        payload = copy.deepcopy(tel_payload)
+        payload["pano_id"] = PEER_FLEET[index]["pano_id"]
+        payload["ts"] = T0.isoformat()
+        payload["seq"] = 1
+        payload["alarms"] = []
+        for entry in payload["t_conn"]:
+            if entry["pt"] == point:
+                entry["k"] = 0.000100
+                entry["k_ratio"] = k_ratio
+            elif "k" in entry:
+                entry["k_ratio"] = 1.0
+        rig.ingest(payload, received_at=T0 + timedelta(seconds=2))
+
+
+def _healthy_ratios(count: int = 11) -> list[float]:
+    """K0 = 1e-4 / k_ratio; birbirine yakin tabanlar icin k_ratio da birbirine yakin.
+
+    Hicbiri TAM 1,0 degildir: 1,0 "taban donmadi" isaretidir (edge.py) ve o noktalar
+    karsilastirmaya girmez — bkz. test_fleet_peers_skips_points_whose_baseline_is_not_frozen.
+    """
+    return [1.02 + 0.01 * (index % 5) for index in range(count)]
+
+
+def test_fleet_peers_derives_k0_from_frozen_schema_fields(tel_payload, api_contract):
+    """K0 yayinlanmaz, k / k_ratio ile turetilir; 12 pano da olculur."""
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, _healthy_ratios(12))
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    api_contract(body, "FleetPeers")
+    assert body["panels_compared"] == 12
+    assert body["points_scored"] == 12
+    assert body["rebaseline_suggestions"] == []
+
+
+def test_fleet_peers_flags_a_commissioning_time_bad_baseline(tel_payload, api_contract):
+    """K/K0'in TEK basina goremedigi durum: devreye almada zaten gevsek baglanti.
+    K0 akranlarinin ~3 kati (k_ratio 1/3'u) ama k_ratio 1,0'a yakin — yani L1 esigi
+    hicbir zaman tetiklenmez. Akran karsilastirmasi bunu gorur ve ONERI uretir.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [*_healthy_ratios(11), 0.34])
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    api_contract(body, "FleetPeers")
+
+    assert len(body["rebaseline_suggestions"]) == 1
+    suggestion = body["rebaseline_suggestions"][0]
+    assert suggestion["pano_id"] == "ADM-10011"
+    assert suggestion["point"] == "GIRIS_L2"
+    assert suggestion["robust_z"] > body["outlier_z"]
+    assert suggestion["k0"] > suggestion["peer_median"]
+    assert suggestion["reasons"], "gerekcesiz oneri uretilmemeli"
+    assert any("aykiri" in reason for reason in suggestion["reasons"])
+
+
+def test_fleet_peers_suggestion_does_not_change_anything(tel_payload):
+    """Otomatik yeniden baz alma gercek bozulmayi susturur (docs/07b Y11).
+    Uc yalnizca ONERI uretir: ayni istek iki kez atilinca sonuc AYNI kalir ve
+    hicbir alarm dogmaz.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [*_healthy_ratios(11), 0.34])
+        first = rig.http.get("/api/v1/fleet/peers").json()
+        second = rig.http.get("/api/v1/fleet/peers").json()
+        alarms = rig.http.get("/api/v1/alarms").json()
+    assert first == second
+    assert alarms == []
+
+
+def test_fleet_peers_does_not_claim_anything_with_too_few_peers(tel_payload, api_contract):
+    """"Olcemedik" ile "aykiri degil" ayni sey degildir (GK10): akran sayisi
+    yetersizse skor uretilmez ve bu sayiyla raporlanir.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [*_healthy_ratios(11), 0.34])
+        body = rig.http.get("/api/v1/fleet/peers", params={"min_peers": 50}).json()
+    api_contract(body, "FleetPeers")
+    assert body["points_scored"] == 0
+    assert body["points_unmeasurable"] == 12
+    assert body["rebaseline_suggestions"] == []
+
+
+def test_fleet_peers_skips_points_whose_baseline_is_not_frozen(tel_payload):
+    """Taban donmadan edge.py k_ratio'yu SABIT 1,0 dondurur; oradan cikan sayi bir
+    taban DEGILDIR. Boyle noktalar karsilastirmaya girmemeli.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, [1.0] * 12)
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    assert body["panels_compared"] == 0
+    assert body["points_scored"] == 0
+    assert body["rebaseline_suggestions"] == []
+
+
+def test_fleet_peers_reports_the_generator_artifact_warning(tel_payload):
+    """GK10 — sentetik filoda "mukemmel ayrim" uretec artefaktidir. Uyari yanitin
+    icinde DONER, yalnizca dokumanda kalmaz.
+    """
+    rig = _peer_rig()
+    with rig.http:
+        _feed(rig, tel_payload, _healthy_ratios(12))
+        body = rig.http.get("/api/v1/fleet/peers").json()
+    assert "1,534" in body["uyari"]
+    assert "artefakt" in body["uyari"]
+
+
+def test_fleet_peers_on_empty_fleet_measures_nothing(rig):
+    body = rig.http.get("/api/v1/fleet/peers").json()
+    assert body["panels_compared"] == 0
+    assert body["rebaseline_suggestions"] == []

@@ -29,7 +29,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from ..config import PRIO_ORDER, Contracts
 from ..db import SERIES_ORIGIN
 from ..models import JournalEntry
-from .views import is_comms_ok, point_label
+from .views import is_comms_ok, panel_health, point_label
 
 router = APIRouter(prefix="/api/v1")
 
@@ -198,6 +198,114 @@ def timeline_entry(entry: JournalEntry, contracts: Contracts) -> dict[str, str]:
 
 
 # ================================================================== /fleet/kpi
+@router.get("/fleet/health", tags=["system"])
+def fleet_health(request: Request) -> list[dict[str, Any]]:
+    """Tum filonun cihaz sagligi, tek istekte (TC3 Cihaz Sagligi ekrani).
+
+    Bu uctan once ekran gorunen her pano icin ayri GET /panels/{id} cagiriyordu;
+    20 panoda gorunmez, 100+ panoda (GK7) yavasliyordu. Sorgu tam yuku degil
+    yalnizca `health` blogunu cekiyor (db.py `_HEALTH_PAYLOAD`).
+    """
+    state = request.app.state
+    now = state.clock()
+    return [panel_health(record, state.contracts, now) for record in state.store.list_panel_health()]
+
+
+@router.get("/fleet/peers", tags=["system"])
+def fleet_peers(request: Request, min_peers: int = Query(8, ge=2, le=100)) -> dict[str, Any]:
+    """L2 filo akran karsilastirmasi ve taban gecerliligi (F-32).
+
+    NE SORUYU CEVAPLIYOR: K/K0 bir noktayi yalnizca KENDI gecmisiyle olcer. Devreye
+    alma gununde zaten gevsek olan bir baglantida taban BOZUK degeri dondurur — K
+    yuksek, K0 ayni oranda yuksek, k_ratio 1,0 — ve o nokta omru boyunca saglikli
+    gorunur. Bu uc noktayi AKRANLARIYLA olcer: ayni ada sahip nokta baska panolarda
+    hangi K0'lari veriyor?
+
+    K0 SEMADAN OKUNMAZ, MERKEZDE YENIDEN TURETILIR: k_ratio = k / K0 oldugu icin
+    K0 = k / k_ratio. Iki alan da donmus telemetri semasinda ZATEN vardir; sema
+    `additionalProperties: false` oldugu icin kenara yeni alan acmak mesaji
+    reddettirirdi (F-10 `_verify` ile ayni kacis).
+
+    ALARM URETMEZ. Sozlesmede `layer: L2` etiketli alarm kodu yoktur ve bu uc bir
+    tane ACMAZ; ciktisi operator onayina sunulan bir ONERIDIR. Otomatik yeniden baz
+    alma gercek bozulmayi susturur (docs/07b Y11).
+    """
+    # panoalgo backend imajina AYRICA kurulur (backend/Dockerfile) ve gelistirme
+    # venv'inde bulunmayabilir. main.py merkez dedektoru icin ayni korumayi koyuyor:
+    # eksik kutuphane backend'i BASLATMAMAZLIK etmemeli, yalnizca bu uc kapanmali.
+    try:
+        from panoalgo.fleet import DEFAULT_OUTLIER_Z, baseline_verdict, peer_scores
+    except ImportError as exc:  # pragma: no cover - imajda kurulu
+        raise HTTPException(status_code=503, detail=f"panoalgo yuklu degil: {exc}") from exc
+
+    k0_by_panel: dict[str, dict[str, float]] = {}
+    for record in request.app.state.store.list_panel_points():
+        derived = derive_k0(record.payload)
+        if derived:
+            k0_by_panel[record.pano_id] = derived
+
+    scores = peer_scores(k0_by_panel, min_peers=min_peers)
+    suggestions = []
+    for score in scores:
+        if not score.outlier:
+            continue
+        # Taban GECMISI merkezde yoktur: K serisi kenarda yasar ve yayinlanmaz. Bu uc
+        # yalnizca AKRAN kanitini degerlendirir; uyarim orani ve ogrenme penceresinin
+        # kararliligi kenarda olculur (panoalgo.detect.BaselineEvidence).
+        verdict = baseline_verdict(
+            pano_id=score.pano_id, point=score.point,
+            k_history=(), reference_n=0, excited_ratio=1.0, peer=score,
+        )
+        suggestions.append({
+            "pano_id": score.pano_id,
+            "point": score.point,
+            "det_label": point_label(score.point),
+            "k0": score.k0,
+            "peer_median": score.peer_median,
+            "robust_z": score.robust_z,
+            "n_peers": score.n_peers,
+            "reasons": verdict.reasons,
+        })
+
+    measured = [score for score in scores if score.robust_z is not None]
+    return {
+        "panels_compared": len(k0_by_panel),
+        "points_scored": len(measured),
+        "points_unmeasurable": len(scores) - len(measured),
+        "min_peers": min_peers,
+        "outlier_z": DEFAULT_OUTLIER_Z,
+        "rebaseline_suggestions": suggestions,
+        # GK10: sentetik filoda K0 sinirli duzgun dagilimdan gelir (generator.py
+        # K_SPREAD = 0.15) ve saglikli bir pano YAPISAL OLARAK aykiri cikamaz.
+        "uyari": (
+            "Sentetik filoda saglikli K0 sinirli duzgun dagilimdan gelir; olculen en buyuk "
+            "|z| = 1,534, esik 3,5. Bu veride 'kusursuz ayrim' bir uretec artefaktidir, "
+            "yontem kaniti degildir."
+        ),
+    }
+
+
+def derive_k0(payload: dict[str, Any] | None) -> dict[str, float]:
+    """Son yuktan nokta basina K0 = k / k_ratio (F-32).
+
+    Atlanan noktalar: taban donmamis (edge.py taban yokken k_ratio'yu SABIT 1,0
+    dondurur; oradan cikan sayi bir taban degil anlik kestirimdir), kestirim hic
+    yayinlanmamis (edge.py o alanlari yukten siler) veya deger sifir/negatif.
+    Atlanan nokta "K0 yok" demektir, "saglikli" demek DEGILDIR.
+    """
+    if not payload:
+        return {}
+    derived: dict[str, float] = {}
+    for point in payload.get("t_conn") or []:
+        name, k, k_ratio = point.get("pt"), point.get("k"), point.get("k_ratio")
+        if not name or k is None or not k_ratio or k_ratio <= 0.0 or k <= 0.0:
+            continue
+        if k_ratio == 1.0:
+            continue
+        derived[name] = k / k_ratio
+    return derived
+
+
 @router.get("/fleet/kpi", tags=["system"])
 def fleet_kpi(request: Request) -> dict[str, Any]:
     state = request.app.state

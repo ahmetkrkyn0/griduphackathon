@@ -51,7 +51,7 @@ flowchart LR
 | İletken | Protokol | Kontroller | Durum |
 |---|---|---|---|
 | C1 sensör → Pano Beyni | IEEE 802.15.4 | Bağlantı katmanı AES-CCM, cihaz eşleme | 📐 (A/C) |
-| C2 Pano Beyni → broker | MQTT | Cihaz sertifikasıyla **mTLS**, cihaz başına topic ACL (`gridup/pano/<kendi-id>/#`), özel APN/VPN, sahada **gelen port yok** | 📐 · ⚠️ demo broker'ı düz **1883 ve anonim** |
+| C2 Pano Beyni → broker | MQTT | Cihaz sertifikasıyla **mTLS**, cihaz başına topic ACL (`gridup/pano/<kendi-id>/#`), özel APN/VPN, sahada **gelen port yok** | ✅ **mtls profilinde ölçüldü** (18 Eylül, F-27; §5.1) · ⚠️ **varsayılan demo yolunda yok**: broker düz **1883 ve anonim** · 📐 özel APN/VPN |
 | C2 merkez → Pano Beyni komutu | MQTT `cmd` | Yalnızca bakım modu ve test alarmı; koruma cihazına komut yolu yok; kopukken kuyruğa alınmaz | ✅ `test_mqtt_subscriber`, `test_scada_gateway` |
 | C3 SCADA → backend | Modbus TCP | İzinli ağ listesi, bağlantı sınırı, boşta zaman aşımı, varsayılan salt okunur, şifreli ve bağlantıya bağlı komut kilidi, 3 yanlış şifrede IP kilidi, **koruma cihazı aynasına yazma şifreyle bile yok** | ✅ `test_modbus_tcp`, `test_scada_gateway` (mutasyon 35/35 + 19/19) |
 | C3 SCADA → backend | IEC 60870-5-104 | İzinli ağ listesi, en çok 8 bağlantı, **salt okunur** (tüm kontrol komutları COT 44 ile reddedilir ve sayılır), protokol ihlalinde ve t1 onay zaman aşımında bağlantı kapatılır, saat senkronu sistem saatini değiştirmez | ✅ `test_iec104_server` (mutasyon 37/37), 13 Eylül canlı |
@@ -70,7 +70,7 @@ flowchart LR
 | Topic'teki pano kimliği ile yükteki kimlik aynı olmalı (başka panonun adına yayın reddedilir) | ✅ | `test_ingest::test_payload_pano_id_must_match_topic` |
 | Mesaj boyutu sınırı 64 KB; JSON'da `NaN`/`Infinity` ve metinde NUL karakteri reddedilir | ✅ | `test_ingest` |
 | Veri hatalı tek mesaj partiyi durduramaz | ✅ | `test_ingest::test_data_error_is_isolated_to_the_offending_message` |
-| Topic ACL ile bir cihazın yalnızca kendi topic'ine yazabilmesi (yukarıdaki kontrolün broker tarafı) | ⚠️ · 📐 | demo broker'ında yok |
+| Topic ACL ile bir cihazın yalnızca kendi topic'ine yazabilmesi (yukarıdaki kontrolün broker tarafı) | ✅ (18 Eylül, F-27) · ⚠️ varsayılan demo yolunda yok | `deploy/mosquitto.acl`; **canlı ölçüm** `scripts/mtls_yetki_testi.py` → §5.1. Kural **kalıptır** (`pattern write gridup/pano/%u/tel`): filoya pano eklemek ACL dosyasını değiştirmez, `test_mqtt_acl.py::test_yeni_pano_eklemek_acl_dosyasini_degistirmez` bunu kilitler |
 
 ### 3.2 Modbus (rapor §7.4: "Modbus güvensizdir")
 
@@ -92,10 +92,11 @@ Kanıt: 13 Eylül canlı yığında TVOC-2 aynasına geçici şifreyle yazma **0
 | Kontrol | Durum | Not |
 |---|---|---|
 | Alarm onayı, rafa alma, eskalasyon, bildirim: **kim, ne zaman, ne yaptı, not/gerekçe** → `alarm_journal` | ✅ | `test_alarm_store` |
+| **Denetim izinde kurcalama kanıtı** (hash zinciri, F-20) | ✅ (18 Eylül) | Her satır bir öncekinin özetini içine alarak özetlenir (`backend/app/journal_chain.py`; göç `deploy/initdb/007_journal_chain.sql`). Bağımsız doğrulayıcı `scripts/verify_journal.py` backend'i çalıştırmaz, yalnızca DB okur. **Ölçüldü (gerçek TimescaleDB):** bir satırın `by_user` alanı psql ile değiştirilince doğrulayıcı **2. halkada** durup `saglam: 1 halka` diyor; aradan bir satır silinince **silinenin ardındaki** halkada durup `SILINMIS` diyor; çıkış kodu 1. Testler: `test_journal_chain.py` (18) + `test_verify_journal.py` (7). **Kapsamadığı iki şey — yazılı ve testle kilitli:** (a) *kuyruk kesme* görülemez (son satırlar silinirse kalan zincir kendi içinde tutarlıdır; zincir başını dışarıya yayınlamak gerekir, **yapılmadı**); (b) özet **anahtarsızdır** (HMAC değil), yazma yetkisi olan biri zinciri baştan hesaplayabilir. Göç öncesi satırların hash'i NULL ve bilerek üretilmedi |
 | Her bildirim denemesi, kanal, **maskeli** alıcı, sonuç → `notifications` | ✅ | `test_notifier` |
 | SMS onayı yalnızca kayıtlı numaralardan; onaylayan `sms:+90******0001` | ✅ | `test_notifier::test_reply_from_an_unregistered_number_is_ignored` |
 | Rafa alma gerekçesi zorunlu, süresi sınırlı (≤ 480 dk), P1 rafa alınamaz | ✅ | `test_alarm_manager`, `test_api_alarms` |
-| REST API kimlik doğrulaması ve rol | ⚠️ yok · 🧭 | Demo'da `by` alanını istemci yazar. Üretimde kurumsal SSO (OIDC); **onaylayan kimliği token'dan alınır**, istemciden değil |
+| REST API kimlik doğrulaması ve rol | 🟡 **kısmen** (18 Eylül, F-19) | **Onaylayanın kimliği artık istemciden gelmiyor**: `by` alanı gövdeden kaldırıldı (`openapi` v1.2.0) ve doğrulanmış `Authorization: Bearer` başlığından türer (`backend/app/auth.py`). Roller izleyici < operator < muhendis. **Kurumsal SSO/OIDC DEĞİLDİR**: belirteçler yapılandırmada duran paylaşılan sırlardır; parola, oturum süresi, yenileme, iptal listesi yok. Yalnızca yazma uçlarını korur. `GRIDUP_OPERATORS` boşsa kimlik doğrulama **kapalıdır** ve bu `GET /health` `auth.enabled` alanında görünür | `test_auth.py` (23 test); kilit: `test_body_by_is_ignored_and_journal_gets_the_token_identity` |
 | Modbus komutlarının veritabanına yazılması | 🟡 | Onay DB'de; bakım modu ve test alarmı yalnızca kayıtta (log) |
 | Grafana | ⚠️ | İç ağda anonim **izleyici**; düzenleme ve veri kaynağı yönetimi kapalı değil (demo). Üretimde SSO + salt okunur DB kullanıcısı |
 
@@ -114,8 +115,69 @@ Kanıt: 13 Eylül canlı yığında TVOC-2 aynasına geçici şifreyle yazma **0
 
 📐 Kişi A/C kulvarında: güvenli eleman (secure element) ile cihaz kimliği, secure boot, imzalı OTA ve A/B bölümlü geri dönüş, debug
 portunun üretimde kapatılması, RS485'te koruma cihazına yazma filtresi. Merkez bu kontrollerin **tamamlayıcısıdır**: kenar
-ele geçirilse bile kendi topic'i dışına yazamaz (ACL, 📐), sözleşme dışı veri karantinaya düşer (✅) ve merkez hiçbir yoldan koruma
-cihazına komut göndermez (✅).
+ele geçirilse bile kendi topic'i dışına yazamaz (ACL — **mtls profilinde ✅ ölçüldü**, varsayılan demo yolunda ⚠️ yok; §5.1),
+sözleşme dışı veri karantinaya düşer (✅) ve merkez hiçbir yoldan koruma cihazına komut göndermez (✅).
+
+**Sertifikanın nereden geldiği hâlâ 📐'dir ve bu fark önemlidir.** F-27 sertifikaları `scripts/sertifika-uret.sh` ile **elle**
+üretir; anahtar dosya sisteminde düz durur, BOM'daki güvenli elemana (ATECC608A) **hiçbir akış bağlanmaz**. Yani doğrulanan şey
+cihazın kendisi değil, **bizim ürettiğimiz bir addır**. Donanıma bağlı cihaz kimliği F-28'in konusudur — aşağıda.
+
+
+#### F-28 — Elle üretilen sertifikadan işletilebilir cihaz kimliğine (yol haritası, **kod yazılmadı**)
+
+> **Bu başlıkta kod yok ve bilerek yok** (GK3). Gerçek bir güvenli eleman ve bir üretim hattı prosedürü gerektirir; uygulaması
+> olmayan bir başlık dosyası bile "var gibi görünme" üretirdi. Aşağıdaki tek sayfa, F-27'nin **ölçülmüş** hâliyle 100+ modüllük
+> bir filo arasındaki farkı somutlaştırır. **Standart metinlerine erişilmedi** (IEEE 802.1AR, IETF BRSKI ve EST, IEC 62351-9 —
+> GK10): madde/tablo numarası verilmiyor, birebir alıntı yapılmıyor, yalnızca hangi işin hangi standardın konusuna denk
+> düştüğü bölüm başlığı düzeyinde söyleniyor. **Aşağıdaki standart adları ve içerik özetleri tek bir depo içi kaynaktan
+> gelir:** `GELISTIRME-BACKLOGU.md` F-28 maddesinin "Sektörel dayanak" satırı. Standart metinlerine erişilmediği için bu
+> özetlerin doğruluğu **bizim tarafımızdan doğrulanmadı**; aşağıdaki tarifler **bizim mühendislik okumamızdır**, standartların
+> özeti değildir. Aynı disiplin `docs/11`'deki IEC 62974-1 ve ISA-101 satırlarında da uygulanır.
+
+**F-27'nin ürettiği sertifikalar neden 100+ modülde çalışmaz — dört somut kırılma.** Bunlar tahmin değil, §5.1'de ölçülen
+düzeneğin doğrudan sonuçları:
+
+| # | Üç panoda görünmeyen, 100+ modülde kaçınılmaz olan | Bugünkü hâli (F-27) | Neden ölçek sorunu |
+|---|---|---|---|
+| 1 | **Özel anahtarın cihaza nasıl gittiği** | `scripts/sertifika-uret.sh` merkezde üretir, anahtar dosya sisteminde düz durur | Anahtar cihazın dışında üretildiği sürece üretim hattından sahaya kadar **her elden geçen kopyalanabilir**. Güvenli elemanın varlık sebebi tam olarak budur: anahtar çip içinde doğar ve **hiç çıkmaz**. Bizdeki durum §3.5'in başında yazılı |
+| 2 | **Kimin sertifika alacağına kimin karar verdiği** | Betiği kim çalıştırırsa o; CN çakışmazlığını garanti eden şey **bizim betiğimizdir**, bir kayıt otoritesi değil | Üç panoda liste elle tutulur. 100+ modülde "bu cihaz gerçekten bizim mi" sorusunun makine tarafından yanıtlanması gerekir — fabrikada basılan bir kimlik (IDevID) ile sahada verilen bir kimliğin (LDevID) ayrılması **IEEE 802.1AR**'ın konusudur |
+| 3 | **Devreye alma anındaki insan eli** | Sertifika elle kopyalanır | Her modül için elle kopyalama, filo büyüdükçe **en olası arıza kaynağıdır** ve saha ekibinin özel anahtara dokunmasını gerektirir. Sıfır-dokunuş kayıt (**BRSKI**) ve sertifika verme protokolü (**EST**) bu iki sorunun standart karşılıklarıdır |
+| 4 | **Sızan bir anahtarın dışlanması** | Mekanizma **yok**. İki yol var: ACL satırını silmek (bu **yetki kaldırmadır, iptal değildir**) ya da CA'yı ve tüm sertifikaları yenilemek | Üç panoda ikincisi bir komut. 100+ modülde aynı komut **filo çapında kesinti** demektir. Anahtar yaşam döngüsü ve iptal, güç sistemi ekipmanı için **IEC 62351-9**'un konusudur |
+
+**Takvimin neye benzeyeceği.** Ölçekte asıl iş sertifikayı vermek değil, **süreyi yönetmektir**; bu depoda bugün süreyi izleyen
+hiçbir şey yok — `sertifika-uret.sh` `-days 825` basar ve kimse bakmaz. İşletilebilir bir düzenekte dört saat işler:
+
+- **Fabrika kimliği:** üretim hattında basılır ve cihazın ömrü boyunca değişmemesi **beklenir**. Cihazın "ben bu üreticinin
+  ürettiği şu seri numaralı cihazım" diyebilmesinin dayanağı budur. Fabrika ve saha kimliğinin ayrılması IEEE 802.1AR'ın
+  konusudur; standardın bunları **tam olarak nasıl tanımladığını bilmiyoruz** (metne erişilmedi).
+- **Saha kimliği:** devreye alınırken, fabrika kimliğine dayanarak dağıtım şirketinin kendi CA'sından alınır ve **yenilenebilir
+  olması gerekir**. Ömür ne kadar kısa olursa iptal listesine o kadar az iş düşer. İki uç arasındaki denge (uzun ömürlü
+  sertifika + büyük iptal listesi / kısa ömürlü sertifika + sürekli yenileme trafiği) bir **işletme kararıdır**, teknik bir
+  kısıt değil; bu teslimde alınmadı.
+- **Yenileme penceresi:** cihaz sertifikasının bitişinden önce yenilemeye başlamalı, çünkü kenar uzun süre kopuk kalabilir ve
+  dönen bir cihaz süresi dolmuş bir sertifikayla gelirse **kendi kendini dışlamış olur**. Bu sürenin ne kadar olduğunu
+  **bilmiyoruz**: hücresel hat bu teslimde hiç simüle edilmedi ve firmware'in 7 günlük halka tamponu henüz bir tasarım
+  kalemidir (`docs/02` §mimari, yazılmadı). Pencerenin sayısal değeri bu yüzden burada **verilemiyor**; verilebilmesi için
+  önce en uzun beklenen kopukluğun sahada ölçülmesi gerekir.
+- **Saat.** Sertifika doğrulaması saate bağlıdır ve GK4 yığını internetsiz, NTP'siz çalışır; kenarda RTC kayması vardır. Ölçekte
+  bu, "sertifika süresi doldu" gibi görünen ama aslında saat kayması olan bir arıza sınıfı üretir. Bu teslimde ölçülen süre
+  davranışı **saha davranışı değildir**.
+
+**İptalin gerçekten işletilebilir olması için gereken üç şey** (hiçbiri yapılmadı): listenin **üretilmesi** (hangi seri numarası
+neden dışlandı, kim karar verdi — `alarm_journal` gibi bir denetim izi), listenin **dağıtılması** (broker listeyi nereden ve ne
+sıklıkta okuyacak; `mosquitto`'nun `crlfile` seçeneğinin bu sürümde çalıştığı §5.1'de ölçüldü — eksik olan mekanizma değil,
+işletimdir) ve listenin **taze olduğunun doğrulanması** (bayat bir iptal listesiyle çalışan broker, iptal yokmuş gibi davranır
+ve bunu kimseye söylemez). Broker tarafındaki `crlfile` seçeneği bu teslimde **denenmedi bile**.
+
+**F-27'den F-28'e geçişte değişmeyecek olan.** `deploy/mosquitto.acl`'deki yetki kuralı **kalıptır** (`pattern write
+gridup/pano/%u/tel`) ve kimliği sertifikanın CN'inden alır; bu yüzden filoya pano eklemek ACL dosyasını **değiştirmez**
+(`test_mqtt_acl.py::test_yeni_pano_eklemek_acl_dosyasini_degistirmez`). Yani F-28 broker yetkilendirmesini yeniden yazmayı
+değil, **CN'in nereden geldiğini** değiştirmeyi gerektirir: bugün bizim ürettiğimiz bir ad, yarın çipin içinde doğan bir kimlik.
+Değişecek olan kimliğin **kaynağı**, yetkinin **kuralı** değil.
+
+**Efor ve bağımlılık.** Backlog bunu 6-10 hafta ve **donanım revizyonu** olarak işaretliyor; bu teslimde donanım satın alınmadı
+(`docs/17` §3). Yani F-28 yalnızca yazılım eforuyla kapanabilecek bir madde **değildir** ve bu yüzden burada yol haritası
+düzeyinde bırakılmıştır.
 
 ## 4. KVKK (6698 sayılı Kanun)
 
@@ -146,24 +208,135 @@ bağlantısı), **alıcının telefon numarası Meta'ya iletilir**: bu bir yurt 
 | Alarm ve bildirim denetim izi için saklama süresi ve süre sonunda anonimleştirme | 🧭 (öneri: 2 yıl, sonra kişi alanları silinir) |
 | Telemetri saklama (ham 90 gün → 1 dk özet 2 yıl) | 🧭 politika docs/09 §5'te hesaplandı |
 | Veritabanı diskinin şifrelenmesi, yedeklerin şifrelenmesi | 🧭 |
-| Aktarımda şifreleme (MQTT/TLS, HTTPS) | 📐 · ⚠️ demo'da yok |
+| Aktarımda şifreleme (MQTT/TLS, HTTPS) | 📐 · ⚠️ demo'da yok — **bu tedbirin durumu F-27 ile DEĞİŞMEDİ**; gerekçesi aşağıdaki dipnotta |
 | Kişisel veriye erişimin kaydı (kim, hangi numarayı gördü) | 🧭 — numara zaten veritabanında maskeli olduğu için erişim yalnızca `.env`'e erişimle mümkün |
+
+> **"Aktarımda şifreleme" satırı neden ✅ olmadı?** F-27 MQTT telemetrisini şifreler, ama §4.1'e göre **pano telemetrisi kişisel
+> veri taşımaz**. Kişisel veri taşıyan kanallar REST/WS (`acked_by`, `by_user`), bildirim (telefon numarası) ve denetim izidir;
+> bunların üçü de her iki kipte de **düz metindir**. Bu hücreye ✅ yazmak, KVKK bağlamında yapılmamış bir işi yapılmış göstermek
+> olurdu. Tedbirin kapsamı daraldı, durumu değişmedi.
 
 ## 5. Demo yığını ile üretim arasındaki farklar
 
-Jüri bu soruyu soracak; cevabımız bu tablodur. Demo **bilinçli olarak** tek makinede, internet olmadan, sertifika altyapısı kurmadan
-çalışacak şekilde sadeleştirildi (GK4). Sadeleştirmelerin hiçbiri koddaki kontrolleri kapatmaz; eksik olan altyapıdır.
+Jüri bu soruyu soracak; cevabımız bu tablodur. **Varsayılan demo yolu** bilinçli olarak tek makinede, internet olmadan ve
+**sertifika gerektirmeden** çalışacak şekilde sadeleştirildi (GK4). Sadeleştirmelerin hiçbiri koddaki kontrolleri kapatmaz;
+eksik olan altyapıdır.
 
-| Konu | Demo yığını | Üretim |
-|---|---|---|
-| MQTT | 1883, anonim | 8883, cihaz sertifikasıyla mTLS, cihaz başına topic ACL |
-| REST/WS API | HTTP, kimlik doğrulama yok | HTTPS, OIDC/SSO, rol tabanlı yetki, onaylayan kimliği token'dan |
-| Grafana | Anonim izleyici | SSO, salt okunur veritabanı kullanıcısı |
-| Modbus TCP | Özel ağların tamamı izinli, salt okunur | SCADA ön-ucunun /32 adresi; komut gerekiyorsa uzun rastgele şifre + ayrı VLAN |
-| IEC 60870-5-104 | Özel ağların tamamı izinli, düz TCP 2404, salt okunur | SCADA ön-ucunun /32 adresi; ön-uç destekliyorsa IEC 62351-3 (TLS), desteklemiyorsa ayrı VLAN / VPN |
-| Veritabanı şifresi | `gridup` (varsayılan) | Sır yöneticisinden, rotasyonlu |
-| İmajlar | `latest-pg16` etiketi | Özet (digest) ile sabit, imaj taraması |
-| Sırlar | `deploy/.env` | Sır yöneticisi (Vault vb.) |
+18 Eylül'de (F-27) MQTT tarafı için **ayrı bir compose profili** eklendi: `--profile mtls`. Varsayılan `docker compose up -d`
+onu **başlatmaz** ve varsayılan yol bit düzeyinde aynı kaldı. Bu yüzden MQTT satırı artık iki değil **üç** değerlidir.
+
+| Konu | Varsayılan demo yolu | `--profile mtls` (F-27) | Üretim |
+|---|---|---|---|
+| MQTT | 1883, anonim | **8883, mTLS, cihaz başına topic ACL — ölçüldü (§5.1)**; sertifikalar elle üretilir, **iptal (CRL/OCSP) ve şifre takımı politikası yok** | Aynısı + sertifika **güvenli elemandan** (IDevID/LDevID), kayıt/yenileme/iptal işletimi, şifre takımı politikası — **F-28** |
+| REST/WS API | HTTP (**TLS yok**); yazma uçlarında operatör belirteci ve rol **var**, okuma uçları ve WS akışı açık | **F-27 kapsamı dışı — aynen HTTP** | HTTPS, kurumsal OIDC/SSO, okuma uçlarında da yetki, belirteç yaşam döngüsü (süre, yenileme, iptal) |
+| Grafana | Anonim izleyici | değişmedi | SSO, salt okunur veritabanı kullanıcısı |
+| Modbus TCP | Özel ağların tamamı izinli, salt okunur | **F-27 kapsamı dışı — düz TCP 502** | SCADA ön-ucunun /32 adresi; komut gerekiyorsa uzun rastgele şifre + ayrı VLAN |
+| IEC 60870-5-104 | Özel ağların tamamı izinli, düz TCP 2404, salt okunur | **F-27 kapsamı dışı — düz TCP 2404** | SCADA ön-ucunun /32 adresi; ön-uç destekliyorsa IEC 62351-3 (TLS), desteklemiyorsa ayrı VLAN / VPN |
+| Veritabanı şifresi | `gridup` (varsayılan) | değişmedi | Sır yöneticisinden, rotasyonlu |
+| İmajlar | `latest-pg16` etiketi | değişmedi | Özet (digest) ile sabit, imaj taraması |
+| Sırlar | `deploy/.env` | + `deploy/certs/` (git dışı, `deploy/certs/.gitignore`) | Sır yöneticisi (Vault vb.); anahtar güvenli elemanda |
+
+### 5.1 F-27 — MQTT taşımasında mTLS ve cihaz başına topic yetkisi (18 Eylül, ölçüldü)
+
+**Ne yapıldı.** Ayrı bir compose profili (`--profile mtls`) 8883'te ikinci bir broker kaldırır: TLS zorunlu, istemci sertifikası
+zorunlu (`require_certificate`), anonim erişim kapalı. Broker kullanıcı adını **CONNECT paketinden almaz**, istemci sertifikasının
+CN alanından türetir (`use_identity_as_username`) ve topic yetkisini `deploy/mosquitto.acl` içindeki kalıplara bağlar. Merkezin
+MQTT istemcisi (`backend/app/ingest.py`) artık `MQTT_TLS_CA/_CERT/_KEY` verildiğinde mTLS konuşur; üçü de boşsa TLS **kapalıdır**
+ve bu `GET /health` → `mqtt_tls` alanında **görünür** (F-19'daki `auth.enabled` refleksinin aynısı).
+
+**Varsayılan demo yolunun davranışı değişmedi — ve bu ölçüldü, iddia edilmedi.** `deploy/mosquitto.conf` yalnızca başlık
+yorumunda değişti; `sim/`, `contracts/` ve `backend/app/scada/` hiç değişmedi. `deploy/compose.yaml`'ın `backend` servis
+**tanımı değişti**: üç boş varsayılanlı TLS değişkeni (`${MQTT_TLS_CA:-}` vb.) ve `./certs/backend:/certs:ro` bağlaması
+eklendi, `MQTT_HOST`/`MQTT_PORT` sabit değerden varsayılanlı interpolasyona geçti. Üçünün de boş/varsayılan hâlinde
+davranış aynıdır ve bu ölçüldü (sertifika dizini yokken bile `/health` → `mqtt: true, mqtt_tls: false`, duman testi
+26/0/1; mTLS kipinde 31/0/0). **Bir uyarı buradan doğuyor ve `deploy/.env.example`'da yazılı:** `MQTT_HOST` artık kabuktan ezilebilir, yani
+ortamında `MQTT_HOST` ihraç edilmiş bir makinede bayraksız `up` başka bir broker'a bağlanır. `compose.mtls.yaml` başka
+hiçbir servise yama yazmaz ve varsayılan profildeki hiçbir servis ona `depends_on` ile bağlanmaz (bağlansaydı profil
+kapalıyken **bütün** compose komutları çalışmazdı — ölçüldü).
+
+**Kabul ölçütü ve ölçüm.** Backlog'un istediği kanıt tek cümledir: *"bir panonun sertifikasıyla başka bir panonun topic'ine
+yayın denemesinin broker tarafından reddedilmesi."* `scripts/mtls_yetki_testi.py` bunu **dört sinyalle** ölçer ve herhangi
+ikisi ayrışırsa kırmızı döner: PUBACK reason code, abonenin mesajı almaması, broker logundaki `Denied PUBLISH` satırı ve
+broker imajının **kendi** `mosquitto_pub` aracıyla alınan ikinci PUBACK. **Bağımsızlık derecesi abartılmamalı:** PUBACK ile
+log satırı aynı yetki denetiminin iki farklı çıktı kanalıdır (aynı süreç, aynı karar), dolayısıyla birbirlerini bağımsız
+teyit etmezler; gerçekten farklı bir şey ölçen ikisi teslim edilmemesi ve paho dışı ikinci istemcidir. Aşağıdaki sayılar 18 Eylül'de `eclipse-mosquitto:2.0@sha256:212f89e1…`, **mosquitto 2.0.22**,
+**TLS 1.3**, paho-mqtt 2.1.0 ile alındı:
+
+| # | Vaka | Beklenen | PUBACK reason code | Aboneye ulaştı mı | Broker logu | Karar |
+|---|---|---|---|---|---|---|
+| 1 | **Pozitif kontrol** — ADM-00001 kendi telemetrisine yayınlar | izin | 0 | **evet** | — | geçti |
+| 2 | **KABUL ÖLÇÜTÜ** — ADM-00001, ADM-00002'nin telemetrisine yayınlar | ret | **135 "Not authorized"** | **hayır** | `Denied PUBLISH` | geçti |
+| 3 | **Kontrol grubu** — aynı topic'e sahibi (ADM-00002) yayınlar | izin | 0 | **evet** | — | geçti |
+| 4 | ADM-00001 kendi komut topic'ine yazar | ret | 135 | hayır | `Denied PUBLISH` | geçti |
+| 5 | Merkez pano telemetrisine yazar | ret | 135 | hayır | `Denied PUBLISH` | geçti |
+| 6 | Merkez komut yazar | izin | 0 | evet | — | geçti |
+| 7 | Merkez kendi adına telemetri yazar (ACL'deki `deny` satırı) | ret | 135 | hayır | `Denied PUBLISH` | geçti |
+
+Bağlantı katmanı: **sertifikasız** bağlantı reddedildi; **yabancı bir CA'nın imzaladığı** `CN=ADM-00001` sertifikası reddedildi.
+Okuma yetkisi (kabul ölçütünün dışında, ayrıca ölçüldü): ADM-00001, ADM-00002'nin telemetrisine abone olabildi — mosquitto
+SUBACK'te **reddetmiyor, "Granted QoS 1" dönüyor** — ama sahibi yayın yaptığında ADM-00001'e **0 mesaj teslim edildi**. Yani
+okuma yetkisi abonelikte değil **teslimde** uygulanıyor; abonelik reddini SUBACK'ten okumaya güvenilemez.
+
+**Merkez konteyneri de mTLS ile ölçüldü.** Yukarıdaki ölçüm merkezin *sınıfını* (`app.ingest.MqttSubscriber`) kullanır; ayrıca
+`deploy/.env.example`'daki reçete **gerçek backend konteyneriyle** bir kez koşturuldu: `MQTT_HOST=mosquitto-mtls MQTT_PORT=8883`
++ üç sertifika yolu ile `GET /health` → `mqtt: true, mqtt_tls: true` döndü ve broker logu kimliğin **sertifikadan** türediğini
+gösterdi (istemci kimliği `gridup-backend-ingest` iken kullanıcı adı `u'gridup-backend'`, yani CN). Aynı satır protokol
+sürümünün değişmediğini de doğruluyor: `p2, c0` = MQTT 3.1.1 + `clean_session=False`, yani yeniden başlatmada QoS 1 kuyruğunu
+koruyan davranış aynen duruyor. Bu reçetede `sim/panosim.py` düz 1883'e yayın yapmaya devam eder ve backend onu görmez —
+sahada her panonun kendi sertifikası olur, simülatörde olmaz.
+
+**Ölçümün yanlış nedenle geçmesine karşı alınanlar.** Her ret iddiasından önce aynı bağlantı üzerinden yapılan yetkili bir
+yayının aboneye **ulaştığı** görülür (pozitif kontrol); reddedilen topic'in **aynısına** sahibi yayın yapar ve ulaşır (kontrol
+grubu — yanlış yazılmış bir topic de "gelmedi" üretirdi); "gelmedi" kararı sabit bir `sleep` ile değil, `kendi(A) → hedef(X) →
+kendi(B)` **sandviç bariyeriyle** verilir (B geldiğinde X'in hiç gelmeyeceği kesinleşir); her yük benzersiz bir nonce taşır
+(önceki koşudan kalan mesaj pozitif kontrolü sahte geçiremez); istemci kimlikleri koşuya özgüdür (canlı backend'in oturumu
+ele geçirilmez, broker logu başka istemciye atfedilemez). İkinci ve **paho'dan bağımsız** bir ölçüm broker imajının kendi
+`mosquitto_pub -V 5` aracıyla alınır, aynı `RC:135`'i basar ve **karara girer** (yalnızca rapora değil: ilk yazımda sadece
+basılıyordu, paho ile ters sonuç verse bile koşu yeşil kalırdı).
+
+**Testin kırmızıya dönebildiği gösterildi (mutasyon koşusu).** ACL'deki `pattern write gridup/pano/%u/tel` satırı geçici olarak
+`gridup/pano/+/tel` yapılıp broker'a SIGHUP gönderildiğinde **aynı yayın kabul edildi** (PUBACK 0, mesaj aboneye ulaştı); dosya
+geri yüklendi ve özetle doğrulandı. Bu koşu olmadan "negatif test geçti" cümlesi hiçbir şey ifade etmezdi: ACL hiç yüklenmemiş
+olsaydı da bütün negatifler geçerdi.
+
+**`scripts/mqtt_acl.py` bir broker değildir.** O modül mosquitto'nun ACL semantiğinin *bizim okumamızdır* ve tek başına bu
+maddenin kanıtı **sayılmaz**; görevi canlı ölçümün "beklenen" sütununu üretmektir. İki sütun ayrışırsa koşu kırmızı döner ve
+düzeltilecek olan modüldür. Birim testleri (`test_mqtt_acl.py`, 56 test) yalnızca okumanın kendi içinde tutarlı olduğunu ve
+`deploy/mosquitto.acl`'in bozulmadığını kilitler.
+
+**Standart izi — ne diyoruz, ne demiyoruz.** Güç sistemi protokolleri için TLS profili **IEC 62351-3**'ün konusudur. Bu
+standardın metnine **erişilmedi** (GK10); bu yüzden madde/tablo numarası verilmiyor, birebir alıntı yapılmıyor ve **uygunluk
+iddia edilmiyor**. Yaptığımız şey, hangi işin hangi standardın konusuna denk düştüğünü göstermektir. Standardın istediklerinin
+listesi elimizde olmadığı için **ne kadarının karşılandığı da ölçülemez** — "profile yaklaşıldı" gibi bir mesafe ifadesi
+kurmuyoruz, çünkü okumadığımız bir metne olan mesafemizi ölçemeyiz. Uygulanmayanlar açıkça şunlardır: **şifre takımı
+politikası** (hangi takımların isteneceğini gösteremeyeceğimiz için bilerek yazılmadı) ve **sertifika iptali** (CRL/OCSP).
+mosquitto 2.0'da bir `crlfile` seçeneği vardır ama bu teslimde **hiç denenmedi**: iptal listesi üretilmedi ve iptal edilmiş bir
+sertifikanın reddedildiği **ölçülmedi**. Mekanizmanın çalışıp çalışmadığı da, işletiminin (dağıtım, yenileme, takvim) ne
+gerektirdiği de F-28'in konusudur.
+
+**Bu ölçümün kanıtlamadığı beş şey.** (a) Pano kimliğinin taklit edilemez olduğunu: CA ve bütün özel anahtarlar aynı makinede,
+`deploy/certs/` içinde düz durur; o dizini okuyan geçerli bir sertifika basar — doğrulanan şey kimlik değil, **bizim ürettiğimiz
+bir addır**. (b) Sızan bir sertifikanın dışlanabileceğini: iptal yok; elde iki yol var, ACL satırını silmek (bu **yetki
+kaldırmadır, iptal değildir**) ya da CA'yı ve tüm sertifikaları yenilemek (**filo çapında kesinti**). (c) Anahtarların güvenli
+saklandığını: HSM/güvenli eleman yok. (d) Cihazların birbirinden yalıtıldığını: ölçüm tek süreçte bütün panoların anahtarlarını
+okur; sahada her pano ayrı bir cihazdır, burada değil. (e) Ölçekte çalıştığını: GK7 ölçek kanıtı (1.000 pano) **düz 1883'te ve
+paylaşılan bağlantılarla** alındı; TLS el sıkışma maliyeti **ölçülmedi** (`docs/09` §8).
+
+**Neden Modbus TCP (502) ve IEC 60870-5-104 (2404) düz kaldı.** Teknik engel değil: iki sunucu da `asyncio.start_server`
+kullanıyor, süreç-içi TLS ~45 satır. Yapılmadı, çünkü (a) karşısında TLS konuşan bir SCADA ön-ucu **yok** ve test edilmemiş bir
+dinleyici bu depoda "var gibi görünme" üretir; (b) şifre takımı politikası ve iptal olmadan 62351-3 profili zaten tamamlanmaz;
+(c) üç ölçülebilir gerileme getirirdi — bugün yabancı bir IP hiç kripto yapılmadan `_handle`'ın ilk satırında reddediliyor,
+`ssl=` ile IP beyaz listesi **el sıkışmanın arkasına** düşerdi; el sıkışması başarısız istemci `_handle`'a hiç ulaşmadığı için
+`/health`'teki `rejected_clients` sayacı sertifika reddine **kör** kalırdı; ve bozuk bir sertifika yolu `service.py`'nin
+"port açılamazsa backend DURMAZ" değişmezini kırardı. Tehdit hücresel hattı geçen C2 bağlantısındadır (§2); şifreleme bütçesi
+oraya harcandı. Öndeki bir TLS sonlandırıcı (stunnel/nginx-stream) ise özellikle zararlı olurdu: istemci IP'si hem denetim
+izinin kendisi hem kaba kuvvet kilidinin anahtarıdır, vekil hepsini tek IP'ye indirirdi.
+
+**Neden `sim/panosim.py` mTLS profilinde koşmuyor.** Simülatör tek bir süreçte N panonun adına yayın yapar; cihaz başına mTLS
+tam da bunu yasaklar. Ona N sertifika verip "her pano kendi kimliğiyle bağlanıyor" demek, sahada olmayan bir yalıtımı
+kanıtlanmış gibi gösterirdi. Bunun yerine ölçüm betiği **gerçek pano sertifikalarıyla** gerçek cihaz kimlikleri gibi bağlanır;
+abone ise merkezin **kendi** `MqttSubscriber` sınıfıdır, yani merkezin mTLS kod yolu da canlı ölçüme girer. mTLS profili düz
+yığını kapatmaz, yanına koşar; bu yüzden `GRIDUP_MTLS=1 bash scripts/duman-testi.sh` veri akışı kontrollerini atlamaz.
 
 ## 6. Doğrulama özeti
 
@@ -172,3 +345,6 @@ Jüri bu soruyu soracak; cevabımız bu tablodur. Demo **bilinçli olarak** tek 
 - Ingest girdi doğrulama: şema, topic/pano kimliği, boyut, NaN/NUL, zehirli mesaj izolasyonu testleri.
 - Bildirim: kayıtsız numaranın SMS onayı yok sayılır; alıcı her kayıtta maskelidir.
 - Sır taraması (13 Eylül): token 0, `.env` 0; iki fikstür numarası demo serisine çekildi.
+- MQTT topic yetkisi (18 Eylül, F-27): ACL semantiği 56 birim testiyle kilitli; **canlı brokerda 7/7 yayın vakası, 2/2
+  bağlantı vakası, okuma yetkisi ve mutasyon koşusu** beklendiği gibi ölçüldü (§5.1). Sızıntı koruması 12 testle kilitli
+  (`test_sir_sizintisi.py`): üretilen materyalin tamamı git dışında, izlenen hiçbir dosyada PEM gövdesi yok, geçmişte de yok.

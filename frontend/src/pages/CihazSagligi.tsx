@@ -5,8 +5,17 @@ import { ago, num } from "../lib/format";
 import { useFleet } from "../state/fleet";
 import { Icon } from "../components/Icon";
 
-// Toplu "cihaz sagligi" ucu (contracts/changes/2026-09-14-fleet-health-bulk.md)
-// eklendi. Geriye donuk uyum icin api.fleetHealth yoksa tek tek (concurrency 6) cekilir.
+// Toplu "cihaz sagligi" ucu (contracts/changes/2026-09-14-fleet-health-bulk.md,
+// openapi v1.1.0). 18 Eylul 2026 oncesinde bu ekran gorunen her pano icin AYRI
+// GET /panels/{id} cagiriyordu; artik tek istek yetiyor: GET /api/v1/fleet/health.
+// Ucun pano-basina uctan farkli bir sey sormadigi backend'de kilitli:
+// test_fleet_health_matches_panel_detail.
+//
+// Uc LIMIT PARAMETRESI ALMIYOR (backend/app/api/views.py -> panel_health): cagriya
+// ?limit= eklenmez, filo tek seferde doner.
+//
+// Geriye donuk uyum: toplu uc yoksa ya da hata dondururse tek tek (eszamanlilik 6)
+// cekilir; eski bir backend'e bakan arayuz de bos kalmaz.
 const CONCURRENCY = 6;
 
 interface Row {
@@ -17,6 +26,8 @@ interface Row {
   rssi: number | null;
   vbak: number | null;
   buffered: number | null;
+  /** Bakim kipi: true ise saha ekibi panoda calisiyor olabilir. null = bilinmiyor. */
+  maintMode: boolean | null;
   fw: string | null;
   lastSeen: string;
   commsOk: boolean;
@@ -61,35 +72,37 @@ export function CihazSagligi() {
     setLoading(true);
     setLoadedCount(0);
 
-    // 1. Oncelikle yuksek verimli toplu filo ucunu dene
-    if (api.fleetHealth) {
-      try {
-        const bulk = await api.fleetHealth();
-        if (!cancelled.current) {
-          const bulkRows: Row[] = bulk.map((item) => ({
-            pano_id: item.pano_id,
-            name: item.name ?? item.pano_id,
-            commsOk: item.comms_ok,
-            lastSeen: item.last_seen,
-            nodesOk: item.nodes_ok,
-            nodesTotal: item.nodes_total,
-            rssi: item.rssi_dbm,
-            vbak: item.vbak_pct,
-            buffered: item.buffered,
-            fw: item.fw,
-            baselineDay: item.baseline_day ?? null,
-          }));
-          setRows(bulkRows);
-          setLoadedCount(bulkRows.length);
-          setUsedBulk(true);
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Toplu uc yoksa veya hata aldiysa tek tek cekim dongusune dus
+    // 1. Oncelikle yuksek verimli toplu filo ucunu dene. Cagri PARAMETRESIZ:
+    //    backend ?limit= kabul etmiyor, tum filo tek istekte doner.
+    //    `?.()` ucu tanimlamayan bir `api` nesnesinde sessizce undefined dondurur
+    //    (Api.fleetHealth opsiyonel), `catch` ise hata dondurenlerde ayni sonucu verir;
+    //    iki durumda da asagidaki pano-basina geri-uyum yoluna dusulur.
+    const bulk = await api.fleetHealth?.().catch(() => undefined);
+    if (bulk) {
+      if (!cancelled.current) {
+        const bulkRows: Row[] = bulk.map((item) => ({
+          pano_id: item.pano_id,
+          name: item.name ?? item.pano_id,
+          commsOk: item.comms_ok,
+          lastSeen: item.last_seen,
+          nodesOk: item.nodes_ok,
+          nodesTotal: item.nodes_total,
+          rssi: item.rssi_dbm,
+          vbak: item.vbak_pct,
+          buffered: item.buffered,
+          maintMode: item.maint_mode ?? null,
+          fw: item.fw,
+          baselineDay: item.baseline_day ?? null,
+        }));
+        setRows(bulkRows);
+        setLoadedCount(bulkRows.length);
+        setUsedBulk(true);
+        setLoading(false);
       }
+      return;
     }
 
+    // 2. Toplu uc yoksa ya da hata dondurduyse tek tek cekim dongusune dus.
     setUsedBulk(false);
     const results = await withConcurrency(panels, CONCURRENCY, async (p) => {
       try {
@@ -105,6 +118,7 @@ export function CihazSagligi() {
           rssi: d.health.rssi_dbm ?? null,
           vbak: d.health.vbak_pct ?? null,
           buffered: d.health.buffered ?? null,
+          maintMode: d.health.maint_mode ?? null,
           fw: d.health.fw ?? null,
           baselineDay: d.health.baseline_day ?? null,
         } satisfies Row;
@@ -119,6 +133,7 @@ export function CihazSagligi() {
           rssi: null,
           vbak: null,
           buffered: null,
+          maintMode: null,
           fw: null,
           baselineDay: null,
           error: "alınamadı",
@@ -139,6 +154,10 @@ export function CihazSagligi() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panels.length]);
 
+  // Esikler YALNIZCA deger geldiyse uygulanir. `null` "bilinmiyor" demektir ve 0 ile
+  // ayni sey DEGILDIR: 0 dBm gecerli bir RSSI, %0 yedek guc gercek bir arizadir.
+  // Eksik alani 0 sayan bir kisayol, veri gondermemis her panoyu kirmiziya boyar
+  // (backend de ayni sozu tutuyor: views.py panel_health).
   const isBad = (r: Row) =>
     !r.commsOk ||
     !!r.error ||
@@ -229,7 +248,9 @@ export function CihazSagligi() {
       </div>
       {loading && (
         <p className="dim small">
-          Yükleniyor… ({loadedCount} / {panels.length})
+          {loadedCount > 0
+            ? `Yükleniyor… ${loadedCount} / ${panels.length} pano`
+            : "Yükleniyor…"}
         </p>
       )}
 
@@ -253,6 +274,20 @@ export function CihazSagligi() {
                 <td>
                   <Link to={`/pano/${r.pano_id}`}>{r.name}</Link>{" "}
                   <span className="dim small">{r.pano_id}</span>
+                  {/* Bakim kipi (F-21): sahadaki ekip panoyu acmis olabilir, bozulma
+                      gibi gorunen degerlerin sebebi planli calisma olabilir. Yalnizca
+                      uc bunu ACIKCA true dondurunce cizilir; null'da rozet yok. */}
+                  {r.maintMode === true && (
+                    <>
+                      {" "}
+                      <span
+                        className="badge-shelved"
+                        title="Pano bakım kipinde — değerler planlı çalışmadan kaynaklanıyor olabilir"
+                      >
+                        bakımda
+                      </span>
+                    </>
+                  )}
                 </td>
                 <td className="r">
                   {r.error
@@ -299,7 +334,10 @@ export function CihazSagligi() {
       )}
       <p className="dim small" style={{ marginTop: 12 }}>
         Düğüm ve iletişim değerleri son sorgulama anını gösterir. Güncel durumu
-        almak için verileri yenileyin.
+        almak için verileri yenileyin. Tablo tüm filoyu <strong>tek istekte</strong>{" "}
+        çeker (<code>GET /api/v1/fleet/health</code>); toplu uç yanıt vermezse pano
+        pano geri düşülür. “–” işareti <em>veri gelmedi</em> demektir, sıfır demek
+        değildir.
       </p>
     </main>
   );

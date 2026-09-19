@@ -8,6 +8,7 @@ import { effectivePrio } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
 import { isAlarmAudioMuted, setAlarmAudioMuted } from "../lib/audio";
 import { Icon, type IconName } from "./Icon";
+import { OperatorGirisi } from "./OperatorGirisi";
 import "../brandRefinement.css";
 
 function AudioMuteButton() {
@@ -187,6 +188,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 timeZone: "Europe/Istanbul",
               })}
             </time>
+            {/* F-19: setToken()'i cagiran tek arayuz. Dusurulurse belirtec hic
+                kurulmaz ve kimlik dogrulama sessizce devre disi kalir. */}
+            <OperatorGirisi />
           </div>
         </header>
         {usingMocks ? (

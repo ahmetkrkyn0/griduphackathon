@@ -72,6 +72,7 @@ from panoalgo.devices import (
     TVOC2_SYSTEM_STATE_REG,
     TVOC2_TRIP_COUNT_REG,
 )
+from panoalgo import reporting
 from panoalgo.edge import EdgePipeline
 from panoalgo.generator import PanelSimulator, default_contracts_dir
 
@@ -248,9 +249,39 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--period", type=float, default=POLL_PERIOD_S, help="Modbus tarama periyodu (s)")
     parser.add_argument("--report-every", type=int, default=REPORT_EVERY, help="kac taramada bir MQTT ozeti")
     parser.add_argument("--ring", type=int, default=RING_CAPACITY, help="halka tampon kapasitesi")
+    parser.add_argument("--adaptive", action="store_true",
+                        help="uyarlanabilir raporlama (F-36): --report-every EN SIK yayin olur, "
+                             "olu bant icinde kalan raporlar atlanir (varsayilan KAPALI)")
+    parser.add_argument("--deadband-fraction", type=float, default=reporting.DEADBAND_FRACTION,
+                        help="olu bant, karar araliginin bu kesri (varsayilan %(default)s)")
+    parser.add_argument("--max-silence", type=float, default=reporting.DEFAULT_MAX_SILENCE_S,
+                        help="azami sessizlik (s); sozlesmedeki heartbeat_timeout_min'in yarisini asamaz")
     parser.add_argument("--max-messages", type=int, default=0, help="0 = sinirsiz (test icin)")
     parser.add_argument("--dry-run", action="store_true", help="broker'a baglanma, ekrana yaz")
     return parser.parse_args(argv)
+
+
+def _build_gate(args: argparse.Namespace, contracts_dir: Path) -> reporting.ReportGate:
+    """Yayin kapisi. Bayrak verilmediyse HICBIR SEYI bastirmaz (bugunku davranis).
+
+    Uyarlanabilir kipte `--report-every` anlamini korur ama artik EN SIK yayin
+    araligidir: rapor yuvasi geldiginde kapi "degisen bir sey var mi" diye sorar.
+    Tarama (tespit) periyoduna dokunulmaz.
+    """
+    if not args.adaptive:
+        return reporting.ReportGate(reporting.ReportPolicy.passthrough())
+    try:
+        policy = reporting.ReportPolicy.from_contracts(
+            contracts_dir, max_silence_s=args.max_silence, fraction=args.deadband_fraction
+        )
+    except reporting.PolicyError as exc:
+        raise SystemExit(f"uyarlanabilir raporlama kurulamadi: {exc}") from exc
+    print(
+        f"[panobeyni] uyarlanabilir raporlama: olu bant %{args.deadband_fraction * 100:g}, "
+        f"azami sessizlik {policy.max_silence_s:.0f} s (tarama periyodu DEGISMEDI)",
+        flush=True,
+    )
+    return reporting.ReportGate(policy)
 
 
 def _target(value: str) -> tuple[str, int] | None:
@@ -276,7 +307,12 @@ def main(argv: list[str] | None = None) -> int:
     reader.connect()
 
     sim = PanelSimulator(pano_id=args.pano, seed=args.seed, contracts_dir=contracts_dir)
+    # period_s'e F-36 DOKUNMAZ. Bu ifadenin kendisi (tarama x rapor sikligi) kenarin
+    # gercek isleme araligiyla uyusmuyor ve yayinlanan tau_s/ttl_h'yi etkiliyor; ama
+    # duzeltmek K/K0-tau ciktisini degistirir, yani ayri bir maddedir. Uyarlanabilir
+    # raporlama bu satiri OLDUGU GIBI birakir ki olcum yalnizca YAYIN farkini gostersin.
     pipeline = EdgePipeline(profile="karma", contracts_dir=contracts_dir, period_s=args.period * args.report_every)
+    gate = _build_gate(args, contracts_dir)
     ring = RingBuffer(args.ring)
 
     client = None
@@ -299,6 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     # kaybolurdu. Rapor penceresi icinde gorulen kodlar mandallanir ve ozetle gonderilir.
     # Olculdu: mandal olmadan --trip-after ile uretilen gercek trip MQTT'ye hic ulasmiyordu.
     pending: set[str] = set()
+    started = time.monotonic()
     try:
         while not _stop:
             scans += 1
@@ -312,6 +349,16 @@ def main(argv: list[str] | None = None) -> int:
             pending.update(payload["alarms"])
             if scans % args.report_every == 0:
                 payload["alarms"] = sorted(pending)
+                # KAPI BURADA, ring.add'den ONCE. Tampondaki mesajlar zaten
+                # "yayinlanmaya karar verilmis" mesajlardir; drain yolunda ikinci
+                # kez sorgulanirlarsa ilk bastirma tamponu kilitler ve halka
+                # sahte bir kesinti bildirir (health.buffered yalan soyler).
+                # GERCEK saat: merkezin sessizlik penceresi de gercek zamanlidir
+                # (bkz. panosim._run_stream'deki ayni notu).
+                if not gate.decide(payload, time.monotonic() - started).publish:
+                    pending.clear()
+                    time.sleep(args.period)
+                    continue
                 pending.clear()
                 payload["health"]["buffered"] = len(ring)
                 ring.add(payload)

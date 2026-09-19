@@ -27,6 +27,9 @@ DEFAULT_MODBUS_ALLOWED_CLIENTS = ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", 
 
 PANO_ID_PLACEHOLDER = "{pano_id}"
 
+#: MQTT/TLS ortam degiskenleri (F-27). UCU BIRDEN dolu degilse TLS KAPALIDIR.
+MQTT_TLS_ENV = ("MQTT_TLS_CA", "MQTT_TLS_CERT", "MQTT_TLS_KEY")
+
 # Yuksekten dusuge. SYS (izleme sistemi) is emri acar, INFO yalnizca ekrana duser.
 PRIO_ORDER = ("P1", "P2", "P3", "SYS", "INFO")
 
@@ -36,10 +39,29 @@ DEFAULT_DIGEST_AT = time(8, 0)
 
 
 @dataclass(frozen=True)
+class MqttTls:
+    """Broker'a mTLS ile baglanmak icin gereken uc yol (F-27).
+
+    YALNIZCA YOL TASIR, PEM GOVDESI TASIMAZ. Anahtarin kendisi ortam degiskenine
+    konsaydi `docker compose config`, `docker inspect` ve /proc ciktilarinda
+    gorunurdu; yol gorunse zarari yoktur.
+
+    Nesnenin VAR OLMASI TLS'in acik oldugu anlamina gelir: yarim yapilandirma
+    (uc degiskenden biri bos) bu nesneyi uretmez, ACILISTA HATA verir.
+    """
+
+    ca: str
+    certfile: str
+    keyfile: str
+
+
+@dataclass(frozen=True)
 class Settings:
     contracts_dir: Path
     mqtt_host: str = "mosquitto"
     mqtt_port: int = 1883
+    #: None = TLS kapali (varsayilan demo yolu, 1883 anonim).
+    mqtt_tls: MqttTls | None = None
     db_dsn: str = ""
     ingest_enabled: bool = True  # False: MQTT abonesi ve arka plan isleri (yazici, alarm zamanlayicisi) calismaz
     alarm_tick_s: float = 5.0  # raf suresi + haberlesme denetimi araligi
@@ -69,6 +91,7 @@ class Settings:
             contracts_dir=Path(os.getenv("CONTRACTS_DIR", "/contracts")),
             mqtt_host=os.getenv("MQTT_HOST", "mosquitto"),
             mqtt_port=int(os.getenv("MQTT_PORT", "1883")),
+            mqtt_tls=mqtt_tls_from_env(),
             db_dsn=os.getenv("DB_DSN", ""),
             ingest_enabled=os.getenv("INGEST_ENABLED", "1").lower() not in ("0", "false", "no"),
             alarm_tick_s=float(os.getenv("ALARM_TICK_S", "5")),
@@ -86,6 +109,40 @@ class Settings:
             iec104_allowed_clients=_csv(os.getenv("IEC104_ALLOWED_CLIENTS", "")) or DEFAULT_MODBUS_ALLOWED_CLIENTS,
             digest_at=digest_at_from_env(),
         )
+
+
+def mqtt_tls_from_env() -> MqttTls | None:
+    """MQTT_TLS_CA / _CERT / _KEY -> MqttTls; ucu de bos ise None (TLS KAPALI).
+
+    UC AYRI TUZAK VAR, ucu de burada kapatiliyor (hepsi olculdu):
+
+    1. `${MQTT_TLS_CA:-}` her zaman TANIMLI ve BOS bir dize uretir, `None` degil.
+       Bu yuzden kapi `is not None` degil `bool(deger)` ile kurulur.
+    2. `tls_set(ca_certs="")` paho'da `OSError: [Errno 22]` atar. Bos dize TLS'i
+       acmaya calisirsa backend acilista coker, `unless-stopped` onu sonsuz yeniden
+       baslatir ve arizanin sebebi gorunmez.
+    3. `tls_set(None, None, None)` HIC ISTISNA ATMAZ ve TLS'i sistem guven deposuyla
+       ACAR. Yani "uc degisken de bos ama yine de tls_set cagrildi" durumu sessizce
+       1883'e TLS el sikismasi denemesine donusur; hata AG THREAD'INDE kalir,
+       /health `ok: true` demeye devam eder ve yalnizca `ingest.written` sifir kalir.
+
+    YARIM YAPILANDIRMA SESSIZ KALMAZ: ucunden biri dolu digeri bossa ValueError ile
+    acilista YUKSEK SESLE olunur. Bir operatorun TLS actigini sanip duz gonderdigini
+    haftalar sonra fark etmesi, servisin hic acilmamasindan daha kotudur (bozuk
+    sozlesme servisi baslatmaz kuralinin ayni mantigi).
+    """
+    degerler = [os.getenv(ad, "").strip() for ad in MQTT_TLS_ENV]
+    if not any(degerler):
+        return None
+    eksik = [ad for ad, deger in zip(MQTT_TLS_ENV, degerler) if not deger]
+    if eksik:
+        raise ValueError(
+            f"MQTT/TLS yarim yapilandirilmis: {', '.join(eksik)} bos. "
+            f"Ucu birden dolu olmali ({', '.join(MQTT_TLS_ENV)}) ya da ucu birden bos "
+            "birakilmali (TLS kapali, varsayilan demo yolu)."
+        )
+    ca, certfile, keyfile = degerler
+    return MqttTls(ca=ca, certfile=certfile, keyfile=keyfile)
 
 
 def digest_at_from_env() -> time | None:

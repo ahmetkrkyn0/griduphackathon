@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.auth import ANONYMOUS
 from app.notify.dispatcher import Delivery
 from fakes import MemoryStore
 from helpers import CONTRACTS_DIR, Clock, encode, receive_json, utc
@@ -193,15 +194,23 @@ def test_alarm_changes_are_streamed_to_websocket_clients(client, app, api_contra
 
 # ------------------------------------------------------------------- onay
 def test_ack_records_the_operator(client, app, clock, tel_payload):
+    """Kimlik dogrulama KAPALIYKEN onaylayan 'anonim' olarak kaydedilir.
+
+    F-19 oncesi burada govdedeki `by` degeri yaziliyordu. Artik yazilmiyor: govde
+    dogrulanmamis bir metindir ve denetim izine dogrulanmamis bir ad yazmak,
+    dogrulanmadigini SOYLEYEN bir ad yazmaktan daha kotudur. Acikken ne olacagi
+    test_ack_records_the_authenticated_identity'de.
+    """
     send(app, tel_payload)
     k_warn = by_code(list_alarms(client))["ALM-K-WARN"]
     clock.advance(2)
 
-    response = client.post(f"/api/v1/alarms/{k_warn['id']}/ack", json={"by": "vardiya.amiri", "note": "ekip yolda"})
+    response = client.post(f"/api/v1/alarms/{k_warn['id']}/ack", json={"note": "ekip yolda"})
 
     assert (response.status_code, response.json()) == (200, {"ok": True})
     [acked] = list_alarms(client, state="acked")
-    assert (acked["id"], acked["acked_by"]) == (k_warn["id"], "vardiya.amiri")
+    assert acked["id"] == k_warn["id"]
+    assert acked["acked_by"] == ANONYMOUS.user
     assert datetime.fromisoformat(acked["acked_at"]) == NOW + timedelta(minutes=2)
     assert [a["code"] for a in list_alarms(client, state="active")] == ["ALM-THR-TERM-WARN"]
 
@@ -214,7 +223,9 @@ def test_ack_error_statuses(client, app, tel_payload):
     assert client.post(f"/api/v1/alarms/{alarm_id}/ack", json={"by": "op"}).status_code == 409
     assert client.post("/api/v1/alarms/999999/ack", json={"by": "op"}).status_code == 404
     assert client.post("/api/v1/alarms/abc/ack", json={"by": "op"}).status_code == 404
-    assert client.post(f"/api/v1/alarms/{alarm_id}/ack", json={}).status_code == 422
+    # Bos govde artik GECERLIDIR: `by` alani F-19 ile kaldirildi, `note` zaten istege bagli.
+    # Gecersiz olan hala 422 doner:
+    assert client.post(f"/api/v1/alarms/{alarm_id}/ack", json={"channel": "telepati"}).status_code == 422
 
 
 def test_ack_of_an_already_cleared_alarm_is_a_conflict(client, app, contracts, tel_payload):

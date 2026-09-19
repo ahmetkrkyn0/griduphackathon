@@ -1,0 +1,44 @@
+{
+  "_uyari": "ORNEKTIR — GERCEK CBS VERISI DEGILDIR. Bu dosya POST /api/v1/fleet/assets ucunun BICIMINI gosterir; icindeki abone sayilari, fider adlari ve CBS kodlari sahadan alinmadi, elle yazildi (GK3: gercek bir CBS disa aktarimina erisim yok). Demo veritabanina KENDILIGINDEN YUKLENMEZ; yalnizca elle calistirilir. Gercek aktarimda bu dosyanin yerini dagitim sirketinin CBS disa aktarimi alir.",
+  "_kullanim": "curl -X POST http://localhost:8000/api/v1/fleet/assets -H 'Content-Type: application/json' -H 'Authorization: Bearer <muhendis-belirteci>' -d @scripts/ornek-cbs-aktarim.json",
+  "_not_uretici_seri_no": "Bu ornekte de BOS birakildi. Uretici ve seri no uydurulmaz (backlog F-21 'Dikkat' satiri); gercek aktarimda CBS ne veriyorsa o yazilir.",
+  "kunye_kaynak": "ORNEK aktarim dosyasi (scripts/ornek-cbs-aktarim.json) — gercek CBS disa aktarimi degildir",
+  "panolar": [
+    {
+      "pano_id": "ADM-00001",
+      "cbs_kodu": "TR-ADM-DP-000001",
+      "fider_id": "F-EFELER-03",
+      "il": "Aydın",
+      "ilce": "Efeler",
+      "abone_sayisi": 412,
+      "trafo_kva": 1600,
+      "kritiklik": "yuksek",
+      "son_bakim_at": "2026-03-14T08:00:00+03:00",
+      "sonraki_bakim_at": "2026-09-30T08:00:00+03:00"
+    },
+    {
+      "pano_id": "ADM-00002",
+      "cbs_kodu": "TR-ADM-DP-000002",
+      "fider_id": "F-EFELER-03",
+      "il": "Aydın",
+      "ilce": "Nazilli",
+      "abone_sayisi": 96,
+      "trafo_kva": 1000,
+      "kritiklik": "orta",
+      "son_bakim_at": "2026-05-02T08:00:00+03:00",
+      "sonraki_bakim_at": "2026-11-02T08:00:00+03:00"
+    },
+    {
+      "pano_id": "GDZ-00001",
+      "cbs_kodu": "TR-GDZ-DP-000001",
+      "fider_id": "F-BORNOVA-01",
+      "il": "İzmir",
+      "ilce": "Bornova",
+      "abone_sayisi": 1240,
+      "trafo_kva": 1600,
+      "kritiklik": "kritik",
+      "son_bakim_at": "2026-01-20T08:00:00+03:00",
+      "sonraki_bakim_at": "2026-09-20T08:00:00+03:00"
+    }
+  ]
+}

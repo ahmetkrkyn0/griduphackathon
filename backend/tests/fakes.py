@@ -15,8 +15,9 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 
-from app.db import PHONE_CHANNELS, SERIES_ORIGIN, StoreError
-from app.models import EventRecord, JournalEntry, PanelRecord
+from app.db import PHONE_CHANNELS, SERIES_ORIGIN, StoreError, UnknownPanel
+from app.journal_chain import GENESIS, link_hash
+from app.models import ASSET_FIELDS, EventRecord, JournalEntry, PanelRecord
 
 DEFAULT_INSTALLED_AT = datetime(2026, 9, 1, tzinfo=timezone.utc)
 
@@ -32,6 +33,27 @@ def _summary_projection(payload: dict) -> dict:
     return _strip_nulls(projected)
 
 
+def _health_projection(payload: dict) -> dict:
+    """PgStore.list_panel_health'in SQL projeksiyonunun aynisi.
+
+    _summary_projection'dan iki farki var ve ikisi de kasitli: saglik blogu
+    KIRPILMAZ (tam gelir) ve jsonb_strip_nulls UYGULANMAZ — SQL tarafinda da
+    uygulanmiyor, cunku eksik bir saglik alani None olarak gorunmek zorunda.
+
+    `fw` yukun KOK seviyesinden gelir, health'in icinden degil.
+    """
+    return {"health": payload.get("health"), "fw": payload.get("fw")}
+
+
+def _points_projection(payload: dict) -> dict:
+    """PgStore.list_panel_points'in SQL projeksiyonunun aynisi (F-32).
+
+    Yalnizca nokta dizisi ve zaman damgasi; ortam, elektrik ve risk bloklari
+    disarida kalir. strip_nulls UYGULANMAZ — SQL tarafinda da uygulanmiyor.
+    """
+    return {"ts": payload.get("ts"), "t_conn": payload.get("t_conn")}
+
+
 def _strip_nulls(value):
     if isinstance(value, dict):
         return {k: _strip_nulls(v) for k, v in value.items() if v is not None}
@@ -45,6 +67,8 @@ class MemoryStore:
         self.telemetry: list[tuple] = []  # (ts, pano_id, tag, value, q)
         self.quarantined: list[tuple] = []  # (received, topic, reason, raw)
         self.batches: list[tuple[list, list]] = []
+        self._nodes: dict[str, dict] = {}
+        self._node_points: dict[tuple[str, str], str] = {}
         self.fail_writes = 0  # >0 ise siradaki N yazma `fail_exc` atar
         self.fail_exc: Exception = StoreError("yapay yazma hatasi")
         self.poison_pano: str | None = None  # bu panonun mesajini iceren her yazma veri hatasi verir
@@ -52,6 +76,8 @@ class MemoryStore:
         self.alarms: dict[int, object] = {}  # id -> Alarm
         self.events: dict[str, EventRecord] = {}
         self.journal: list[tuple] = []  # (alarm_id, at, action, state, by, note)
+        self.chain: list[dict] = []     # F-20 hash zinciri satirlari (PgStore.journal_chain karsiligi)
+        self.outages: dict[str, dict] = {}  # F-22 kesinti olaylari (outage_id -> satir)
         self.fail_alarm_saves = 0  # >0 ise siradaki N alarm yazimi StoreError atar
         self.notifications: list = []  # Delivery kayitlari
         for panel in panels:
@@ -66,7 +92,18 @@ class MemoryStore:
         pano_type: str = "1600kVA-dahili",
         installed_at: datetime = DEFAULT_INSTALLED_AT,
         baseline_day: int = 0,
+        **asset,
     ) -> None:
+        """Varlik kutugu alanlari (F-21) `**asset` ile verilir ve VARSAYILAN None'dir.
+
+        Goc 008 her sutunu NULL kabul ettigi icin (bilinmeyen pano ilk telemetri mesajinda
+        yalnizca pano_id + name ile kaydolur) testlerin de kunyesiz pano kurabilmesi sart.
+        Bilinmeyen anahtar SESSIZCE YUTULMAZ: yazim hatasi yuzunden bir alanin hic
+        yazilmamasi, testin yanlis seyi dogrulamasina yol acardi.
+        """
+        unknown = sorted(set(asset) - set(ASSET_FIELDS))
+        if unknown:
+            raise TypeError(f"add_panel: bilinmeyen varlik kutugu alani: {', '.join(unknown)}")
         self._meta[pano_id] = {
             "pano_id": pano_id,
             "name": name,
@@ -75,7 +112,71 @@ class MemoryStore:
             "pano_type": pano_type,
             "installed_at": installed_at,
             "baseline_day": baseline_day,
+            **dict.fromkeys(ASSET_FIELDS),
+            **asset,
         }
+
+    # -------------------------------------------------------- kesinti olayi (F-22)
+    def save_outages(self, groups, *, detected_at: datetime) -> None:
+        """PgStore.save_outages'in ikizi: ayni outage_id tekrar gelirse DEGISTIRMEZ."""
+        self._check()
+        for group in groups:
+            if group.outage_id in self.outages:
+                continue  # ON CONFLICT DO NOTHING karsiligi
+            self.outages[group.outage_id] = {
+                "outage_id": group.outage_id,
+                "fider_id": group.fider_id,
+                "started_at": group.started_at,
+                "detected_at": detected_at,
+                "ended_at": None,
+                # Kunye kesinti aninda KOPYALANIR (PgStore'da da panels'a JOIN yok):
+                # kunye sonradan degisirse gecmis kayit degismemeli.
+                "panolar": [
+                    {
+                        "pano_id": p.pano_id,
+                        "name": self._meta.get(p.pano_id, {}).get("name"),
+                        "last_rx": p.last_rx,
+                        "abone_sayisi": p.abone_sayisi,
+                    }
+                    for p in group.panels
+                ],
+            }
+
+    def list_outages(self, *, only_open: bool) -> list[dict]:
+        self._check()
+        rows = [o for o in self.outages.values() if not only_open or o["ended_at"] is None]
+        return sorted(rows, key=lambda o: o["started_at"], reverse=True)
+
+    def get_outage(self, outage_id: str) -> dict | None:
+        self._check()
+        return self.outages.get(outage_id)
+
+    def close_outages(self, outage_ids, *, at: datetime) -> None:
+        self._check()
+        for outage_id in outage_ids:
+            row = self.outages.get(outage_id)
+            if row is not None and row["ended_at"] is None:
+                row["ended_at"] = at
+
+    def import_assets(self, rows, *, kunye_kaynak: str, at: datetime) -> int:
+        """PgStore.import_assets'in bellek ici ikizi (F-21).
+
+        PgStore tek transaction'da calisir ve ortada bir UnknownPanel atarsa ONCEKI
+        satirlar da geri alinir. Burada ayni GOZLENEBILIR sonucu vermek icin once TUM
+        satirlar dogrulanir, sonra yazilir — yoksa taklit, gercegin yapmadigi bir kismi
+        yazmayi yapar ve testler yanlis seyi dogrular.
+        """
+        self._check()
+        for row in rows:
+            if row["pano_id"] not in self._meta:
+                raise UnknownPanel(row["pano_id"])
+        for row in rows:
+            meta = self._meta[row["pano_id"]]
+            # GONDERILMEYEN alan DEGISTIRILMEZ; acikca null gonderilen alan temizlenir.
+            meta.update({name: row[name] for name in ASSET_FIELDS if name in row})
+            meta["kunye_kaynak"] = kunye_kaynak
+            meta["kunye_at"] = at
+        return len(rows)
 
     # ----------------------------------------------------------- Store sozlesmesi
     def write_batch(self, samples, rejections) -> None:
@@ -103,6 +204,44 @@ class MemoryStore:
         ids = self._meta.keys() if pano_ids is None else [i for i in pano_ids if i in self._meta]
         return [self._record(i, summary=True) for i in ids]
 
+    def list_panel_health(self) -> list[PanelRecord]:
+        self._check()
+        return [self._record(i, summary=False, health=True) for i in self._meta]
+
+    def list_panel_points(self) -> list[PanelRecord]:
+        self._check()
+        return [self._record(i, summary=False, points=True) for i in self._meta]
+
+    # ------------------------------------------------------ dugum kutugu (F-31)
+    def list_nodes(self) -> list[dict]:
+        self._check()
+        return [dict(self._nodes[node_id]) for node_id in sorted(self._nodes)]
+
+    def node_point_map(self) -> dict[tuple[str, str], str]:
+        self._check()
+        return dict(self._node_points)
+
+    def import_nodes(self, rows, *, kutuk_kaynak: str, at) -> int:
+        self._check()
+        # PgStore ile ayni kural: bir satir bile reddedilirse HICBIRI yazilmaz.
+        # Bellek ici cift bunu once dogrulayarak taklit eder.
+        for row in rows:
+            if row["pano_id"] not in self._meta:
+                raise UnknownPanel(row["pano_id"])
+        for row in rows:
+            node_id = row["node_id"]
+            record = self._nodes.setdefault(node_id, {"node_id": node_id})
+            # GONDERILMEYEN alan DEGISTIRILMEZ.
+            record.update({k: v for k, v in row.items() if k != "points"})
+            record.update(kutuk_kaynak=kutuk_kaynak, kutuk_at=at)
+            if "points" in row:
+                # Esleme TAMAMEN degistirilir (PgStore ile ayni).
+                for key in [k for k, v in self._node_points.items() if v == node_id]:
+                    del self._node_points[key]
+                for point in row["points"]:
+                    self._node_points[(row["pano_id"], point)] = node_id
+        return len(rows)
+
     def get_panel(self, pano_id: str) -> PanelRecord | None:
         self._check()
         return self._record(pano_id, summary=False) if pano_id in self._meta else None
@@ -126,7 +265,23 @@ class MemoryStore:
             if stored is not None:  # PgStore gibi: aciklama olustugu anin kanitidir
                 alarm = replace(alarm, reason=stored.reason, advice=stored.advice, ttl_h=stored.ttl_h)
             self.alarms[alarm.id] = replace(alarm)
+            # F-20: PgStore ile AYNI hesap. Iki taraf ayrisirsa testler yesil kalir ama
+            # uretimde dogrulayici zinciri kopuk gorur — o yuzden ayni fonksiyon cagriliyor.
+            prev = self.chain[-1]["hash"] if self.chain else GENESIS
+            digest = link_hash(
+                prev, alarm_id=alarm.id, at=at, action=change.kind,
+                state=alarm.state, by_user=change.by, note=change.note,
+            )
+            self.chain.append({
+                "id": len(self.chain) + 1, "alarm_id": alarm.id, "at": at,
+                "action": change.kind, "state": alarm.state, "by_user": change.by,
+                "note": change.note, "prev_hash": prev, "hash": digest,
+            })
             self.journal.append((alarm.id, at, change.kind, alarm.state, change.by, change.note))
+
+    def journal_chain(self) -> list[dict]:
+        self._check()
+        return [dict(row) for row in self.chain]
 
     def load_open_alarms(self):
         self._check()
@@ -207,12 +362,17 @@ class MemoryStore:
         if self.unavailable:
             raise StoreError("yapay baglanti hatasi")
 
-    def _record(self, pano_id: str, summary: bool) -> PanelRecord:
+    def _record(self, pano_id: str, summary: bool, health: bool = False, points: bool = False) -> PanelRecord:
         meta = self._meta[pano_id]
         latest = self._latest.get(pano_id)
         payload = None
         if latest is not None:
-            payload = _summary_projection(latest["payload"]) if summary else latest["payload"]
+            if health:
+                payload = _health_projection(latest["payload"])
+            elif points:
+                payload = _points_projection(latest["payload"])
+            else:
+                payload = _summary_projection(latest["payload"]) if summary else latest["payload"]
         return PanelRecord(
             **meta,
             last_rx=latest["last_rx"] if latest else None,

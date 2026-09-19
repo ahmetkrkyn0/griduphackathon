@@ -198,6 +198,22 @@ function KaraKutu({ eventId }: { eventId: string }) {
     return () => window.removeEventListener("beforeprint", stampNow);
   }, []);
 
+  // HOOK SIRASI KOSULA BAGLI OLAMAZ (React Rules of Hooks). Asagidaki useMemo eskiden
+  // `if (error)` / `if (!data)` erken donuslerinin ALTINDAYDI: ilk cizimde `data` null
+  // oldugu icin hic cagrilmiyor, veri gelince cagriliyordu — yani hook sayisi 9'dan
+  // 10'a cikiyordu. Sonuc React #310 ("Rendered more hooks than during the previous
+  // render") ve kara kutu ekraninin TAMAMEN BOS kalmasiydi.
+  // OLCULDU (19 Eylul, e2e/smoke.spec.ts bu hatayi ilk kosusunda buldu):
+  //   `npm run dev:mock` /olay/EVT-42 -> 3 pageerror + hook sirasi uyarisi, h1 sayisi 0
+  //   uretim derlemesi :3000 /olay/EVT-1 -> 2 konsol hatasi (React #310), h1 sayisi 0
+  // `panels`/`data` null iken de guvenli olsun diye govde null kontrolu yapiyor.
+  const summary = panels.find((p) => p.pano_id === data?.pano_id);
+  const panoName = summary?.name ?? data?.pano_id ?? "";
+  const narrative = useMemo(
+    () => (data ? generateIncidentNarrative(data, panoName) : ""),
+    [data, panoName],
+  );
+
   if (error) {
     return (
       <main className="page">
@@ -224,11 +240,8 @@ function KaraKutu({ eventId }: { eventId: string }) {
 
   const occurredMs = Date.parse(data.occurred_at);
   const markers: ChartMarker[] = [{ tMs: occurredMs, label: "Olay" }];
-  const summary = panels.find((p) => p.pano_id === data.pano_id);
-  const panoName = summary?.name ?? data.pano_id;
   const panoType = panoTypeText(summary?.pano_type);
   const pointTags = Object.keys(data.series).filter((t) => t.startsWith("t_conn."));
-  const narrative = generateIncidentNarrative(data, panoName);
 
   // beforeprint'i desteklemeyen tarayicida da damga taze olsun diye dugme de tazeler.
   const yazdir = () => {

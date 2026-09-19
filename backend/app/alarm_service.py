@@ -35,6 +35,7 @@ from .api.views import alarm_view
 from .config import PRIO_ORDER, Contracts, digest_at_from_env
 from .db import Store, StoreError
 from .models import Sample
+from .outage import SilentPanel, correlate
 from .risk import CentralDetector, RiskEngine, signal
 
 if TYPE_CHECKING:
@@ -94,6 +95,14 @@ class AlarmService:
         self._clock = clock
         self._risk = RiskEngine(contracts, detector)
         self._comms_timeout = timedelta(minutes=contracts.thresholds["heartbeat_timeout_min"])
+        # F-22 ust sebeke kesintisi bagintisi. Esikler contracts/alarm-codes.yaml'dan gelir
+        # (PLAN.md kural 10); AlarmService Settings ALMIYOR ama Contracts aliyor, bu yuzden
+        # esigi sozlesmeye koymak yeni bir yapilandirma yolu acmadan calisir.
+        self._outage_min_panels = int(contracts.thresholds["outage_min_panels"])
+        self._outage_window = timedelta(minutes=contracts.thresholds["outage_window_min"])
+        # pano_id -> (fider_id, ad, abone sayisi). F-21 kunyesinden, acilista bir kez okunur.
+        self._asset: dict[str, tuple[str | None, str | None, int | None]] = {}
+        self._open_outages: dict[str, set[str]] = {}  # outage_id -> panolari
         # Ozet saati: uygulama fabrikasi alarm servisini Settings olmadan kurar, bu yuzden
         # verilmediyse ayni yardimciyla ortamdan okunur (DIGEST_AT).
         self._digest_at = digest_at or digest_at_from_env()
@@ -116,10 +125,14 @@ class AlarmService:
             if self._manager is None:
                 manager = AlarmManager(self._contracts, first_id=self._store.next_alarm_id())
                 manager.restore(self._store.load_open_alarms())
-                seen = {r.pano_id: r.last_rx for r in self._store.list_panels() if r.last_rx is not None}
+                records = self._store.list_panels()
+                seen = {r.pano_id: r.last_rx for r in records if r.last_rx is not None}
+                # F-22: pano -> fider eslemesi ayni okumadan gelir; ayri sorgu acilmaz.
+                asset = {r.pano_id: (r.fider_id, r.name, r.abone_sayisi) for r in records}
                 with self._lock:
                     for pano_id, last_rx in seen.items():
                         self._last_rx.setdefault(pano_id, last_rx)
+                    self._asset = asset
                 self._manager = manager
                 log.info("alarm durumu yuklendi: %d acik alarm", len(manager.open_alarms()))
             return self._manager
@@ -174,6 +187,10 @@ class AlarmService:
             changes = manager.tick(now)
             with self._lock:
                 silent = [(p, now - rx) for p, rx in self._last_rx.items() if now - rx > self._comms_timeout]
+            # F-22: es zamanli susan panolari TEK kesinti olayina topla. Bu adim ALARM
+            # URETMEZ ve HICBIR ALARMI BASTIRMAZ — asagidaki dongu aynen calisir. Tek
+            # panolu durumda (esik 3) hicbir grup olusmaz ve eski davranis birebir korunur.
+            self._correlate_outages(silent, now)
             timeout_min = self._comms_timeout.total_seconds() / 60.0
             for pano_id, duration in silent:
                 minutes = round(duration.total_seconds() / 60.0, 1)
@@ -183,6 +200,52 @@ class AlarmService:
                 changes += manager.assert_condition(pano_id, condition, ts=now, now=now)
             self._apply(changes, now)
         self._maybe_digest(now)
+
+    def _correlate_outages(self, silent: list[tuple[str, timedelta]], now: datetime) -> None:
+        """Es zamanli susan panolari kesinti olaylarina toplar (F-22).
+
+        BU METOT ALARM URETMEZ VE BASTIRMAZ. Alt alarmlar cagiran dongude aynen uretilir;
+        baginti yalnizca "bunlar tek bir ust sebeke olayidir" bilgisini ekler.
+
+        Depo hatasi bagintiyi dusurur ama ALARM URETIMINI DURDURMAZ: kesinti gruplamasi bir
+        kolayliktir, haberlesme kaybi alarmi ise emniyet islevidir ve ikincisi birincisine
+        bagimli olmamali.
+        """
+        with self._lock:
+            groups = correlate(
+                [
+                    SilentPanel(
+                        pano_id=pano_id,
+                        last_rx=self._last_rx[pano_id],
+                        fider_id=asset[0],
+                        name=asset[1],
+                        abone_sayisi=asset[2],
+                    )
+                    for pano_id, _ in silent
+                    if (asset := self._asset.get(pano_id, (None, None, None)))[0] is not None
+                ],
+                min_panels=self._outage_min_panels,
+                window=self._outage_window,
+            )
+        still_silent = {pano_id for pano_id, _ in silent}
+        try:
+            if groups:
+                self._store.save_outages(groups, detected_at=now)
+                for group in groups:
+                    self._open_outages[group.outage_id] = {p.pano_id for p in group.panels}
+            # Panolarinin HEPSI konustuysa kesinti kapanir. DIKKAT: `ended_at` enerjinin geri
+            # geldigi an DEGILDIR, haberlesmenin dondugu andir ve histerezislidir (F-23).
+            closed = [
+                outage_id
+                for outage_id, panels in self._open_outages.items()
+                if not (panels & still_silent)
+            ]
+            if closed:
+                self._store.close_outages(closed, at=now)
+                for outage_id in closed:
+                    self._open_outages.pop(outage_id, None)
+        except StoreError as exc:
+            log.warning("kesinti bagintisi yazilamadi (alarm uretimi etkilenmedi): %s", exc)
 
     def ack(self, alarm_id: int, *, by: str, note: str | None = None) -> Alarm:
         manager = self.load()

@@ -4,7 +4,34 @@
 openapi: 3.1.0
 info:
   title: Grid Up — Pano Beyni Merkez API
-  version: 1.0.0
+  # v1.1.0 (18 Eylul 2026): GET /fleet/health eklendi. Yalnizca EKLEME, geri uyumlu.
+  #   Gerekce: contracts/changes/2026-09-14-fleet-health-bulk.md
+  # v1.2.0 (18 Eylul 2026): onay/raf govdesinden `by` KALKTI, securitySchemes eklendi (F-19).
+  #   GERI UYUMLU DEGIL: onaylayanin adi artik govdeden degil Authorization basligindan
+  #   turer. Eski istemcinin govdeye yazdigi `by` sessizce YOK SAYILIR (reddedilmez).
+  #   Gerekce: contracts/changes/2026-09-18-kimlik-dogrulama.md
+  # v1.3.0 (18 Eylul 2026): varlik kutugu (F-21). AssetRegistry semasi, PanelDetail.asset,
+  #   PanelSummary'ye uc alan (abone_sayisi, kritiklik, sonraki_bakim_at) ve GET/POST
+  #   /fleet/assets. Yalnizca EKLEME, geri uyumlu: yeni alanlarin hicbiri required degil ve
+  #   kunye ice aktarilmamissa null doner.
+  #   Gerekce: contracts/changes/2026-09-18-varlik-kutugu.md
+  # v1.4.0 (18 Eylul 2026): ust sebeke kesintisi bagintisi (F-22). OutageEvent semasi,
+  #   GET /outages + GET /outages/{outage_id}, Alarm'a outage_id. Yalnizca EKLEME, geri
+  #   uyumlu: outage_id required degil ve baginti kurulmayan alarmda bulunmaz.
+  #   Gerekce: contracts/changes/2026-09-18-kesinti-bagintisi.md
+  # v1.5.0 (18 Eylul 2026): EPDK Madde 8 kesinti kaydi TASLAGI (F-23). EpdkKaydi semasi ve
+  #   GET /outages/{outage_id}/epdk-kaydi. Yalnizca EKLEME, geri uyumlu.
+  #   Gerekce: contracts/changes/2026-09-18-epdk-madde8-taslagi.md
+  # v1.6.0 (18 Eylul 2026): L2 filo akran karsilastirmasi (F-32). GET /fleet/peers.
+  #   Yalnizca EKLEME, geri uyumlu. YENI ALARM KODU YOK ve telemetri semasi DEGISMEDI:
+  #   K0 kenardan yayinlanmaz, merkezde k / k_ratio ile YENIDEN TURETILIR.
+  #   Gerekce: contracts/changes/2026-09-18-l2-filo-akran.md
+  # v1.7.0 (18 Eylul 2026): dugum ve sensor kutugu (F-31). NodeRegistry semasi,
+  #   GET/POST /fleet/nodes ve GET /fleet/nodes/blind. Yalnizca EKLEME, geri uyumlu.
+  #   TELEMETRI SEMASI DEGISMEDI: dugum kimligi kenardan yayinlanmaz, "hangi parca kor"
+  #   sorusu merkezde nokta kalite bitlerinden yeniden turetilir.
+  #   Gerekce: contracts/changes/2026-09-18-dugum-kutugu-ve-sapma.md
+  version: 1.7.0
   description: |
     On-prem izleme platformunun HTTP arayuzu. Tamami sirket ici aginda calisir,
     public cloud bagimliligi yoktur (PLAN.md GK4).
@@ -21,6 +48,8 @@ tags:
     description: ISA-18.2 alarm yasam dongusu
   - name: events
     description: Olay ve kara kutu
+  - name: assets
+    description: Varlik kutugu (CBS'den ice aktarilan kunye)
   - name: system
 
 paths:
@@ -41,6 +70,19 @@ paths:
                   version: { type: string }
                   mqtt: { type: boolean }
                   db: { type: boolean }
+                  auth:
+                    type: object
+                    description: >
+                      Kimlik dogrulamanin ACIK olup olmadigi. Kapali olmak SESSIZ bir
+                      varsayilan olmamali: arayuz ve isletmeci durumu tek istekte
+                      gorebilmeli (F-19).
+                    properties:
+                      enabled: { type: boolean }
+                      users: { type: array, items: { type: string } }
+                      protects:
+                        type: array
+                        items: { type: string }
+                        description: "Belirtec isteyen uclarin listesi"
 
   /api/v1/panels:
     get:
@@ -133,13 +175,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [by]
               properties:
-                by: { type: string, description: "kullanici adi" }
                 note: { type: string }
                 channel: { type: string, enum: [ui, sms, scada], default: ui }
+      security:
+        - operatorToken: []
       responses:
         "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: "Zaten onaylanmis veya temizlenmis"
@@ -156,15 +200,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [by, minutes, reason]
+              required: [minutes, reason]
               properties:
-                by: { type: string }
                 minutes: { type: integer, minimum: 1, maximum: 480 }
                 reason: { type: string, minLength: 3 }
+      security:
+        - operatorToken: []
       responses:
         "200": { $ref: "#/components/responses/Ok" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: "P1 alarm rafa alinamaz (alarm-codes.yaml suppressible=false)"
+          description: >
+            P1 alarm rafa alinamaz (alarm-codes.yaml suppressible=false),
+            VEYA belirtecin rolu yetmiyor ('operator' gerekir).
 
   /api/v1/events/{event_id}/blackbox:
     get:
@@ -190,6 +238,242 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FleetKpi" }
+
+  /api/v1/fleet/health:
+    get:
+      tags: [system]
+      summary: Tum filonun cihaz sagligi — tek istekte
+      description: >
+        Cihaz Sagligi ekrani icin. Bu uctan ONCE ekran gorunen her pano icin ayri ayri
+        GET /panels/{id} cagiriyordu (sinirli eszamanlilikla); 20 panoda sorun degil,
+        100+ panoda (GK7 hedefi) yavasliyordu. PanelSummary gibi HAFIF bir listedir:
+        PanelDetail'in nokta dizisini, ortam ve elektrik bloklarini tasimaz.
+      responses:
+        "200":
+          description: Filo genelinde cihaz sagligi listesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PanelHealth" }
+
+  /api/v1/fleet/nodes:
+    get:
+      tags: [nodes]
+      summary: Dugum ve sensor kutugu — kunye, kapsama ve kalibrasyon vadesi
+      description: >
+        `health` blogu yalnizca nodes_ok / nodes_total SAYILARINI tasir: "kac dugum gitti"
+        bilinir, "HANGI FIZIKSEL PARCA gitti" bilinmez. Bu kutuk onu kapatir — seri no,
+        uretim partisi, montaj ve kalibrasyon vadesi.
+        DIKKAT: bu bir KUTUK VE VADE TAKIBIDIR. "Izlenebilir olcum" (metrolojik
+        izlenebilirlik) iddiasi akredite bir kalibrasyon zinciri olmadan kurulamaz ve
+        KURULMUYOR; yanit bunu `uyari` alaninda acikca soyler. Sertifika numarasi alani
+        bilerek ACILMADI: dolduracak gercek bir kaynak olmadan alan acmak GK10 ihlalidir.
+        `kapsama` kac panonun kutugu oldugunu, kac dugumde seri no ve kalibrasyon vadesi
+        BOS kaldigini sayiyla verir — eksiklik gizlenemez.
+      parameters:
+        - name: due_days
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 3650, default: 30 }
+          description: Kalibrasyon vadesine bu kadar gun kala "yaklasiyor" sayilir (TURETILMIS).
+      responses:
+        "200":
+          description: Dugum kutugu, kapsama ozeti ve kalibrasyon vadesi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NodeFleet" }
+    post:
+      tags: [nodes]
+      summary: Dugum kutugunu ice aktar
+      description: >
+        Kutugu toplu yazar. `kutuk_kaynak` ZORUNLUDUR — kaynagi yazilmayan kutuk kabul
+        edilmez. Bilinmeyen pano_id REDDEDILIR (yeni pano yaratmaz). Gonderilmeyen alan
+        DEGISTIRILMEZ; `points` verilirse o dugumun nokta eslemesi TAMAMEN degistirilir.
+        Seri no ve uretim partisi gonderilmezse bos kalir; UYDURULMAZ.
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NodeImport" }
+      responses:
+        "200":
+          description: Ice aktarim ozeti
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guncellenen]
+                properties:
+                  guncellenen: { type: integer }
+        "403":
+          description: Yetersiz rol (muhendis gerekir)
+        "404":
+          description: Taninmayan pano_id; aktarimin TAMAMI geri alindi
+
+  /api/v1/fleet/nodes/blind:
+    get:
+      tags: [nodes]
+      summary: Hangi fiziksel parca kor — bozuk noktalardan dugume
+      description: >
+        F-31'in asil sorusu. Kenar zaten nokta basina kalite bitlerini (`t_conn[].q`)
+        yayinliyor; kutuk nokta -> dugum eslemesini tuttugu icin "su noktalar bozuk"
+        bilgisi burada "su fiziksel parca degismeli"ye cevrilir. Dugum kimligi TELEMETRIDE
+        TASINMAZ (sema additionalProperties: false); merkezde YENIDEN TURETILIR — F-10'un
+        `_verify` cozumuyle ayni kacis.
+        Eslemesi OLMAYAN bozuk nokta gizlenmez: `kutuksuz_noktalar` listesinde doner.
+        "Esleme yok" ile "sorun yok" ayni sey degildir.
+      responses:
+        "200":
+          description: Kor dugumler ve kutuksuz kalan bozuk noktalar
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlindNodes" }
+
+  /api/v1/fleet/peers:
+    get:
+      tags: [system]
+      summary: L2 filo akran karsilastirmasi ve yeniden baz alma onerisi
+      description: >
+        K/K0 bir noktayi yalnizca KENDI gecmisiyle olcer. Devreye alma gununde zaten
+        gevsek olan bir baglantida taban BOZUK degeri dondurur (K yuksek, K0 ayni oranda
+        yuksek, k_ratio 1,0) ve o nokta omru boyunca saglikli gorunur. Bu uc noktayi
+        AKRANLARIYLA olcer: ayni ada sahip nokta baska panolarda hangi K0'lari veriyor?
+        Akran grubu NOKTA ADIDIR (ayni ad = ayni cikis boyu = ayni anma akimi); skor
+        MAD tabanli modifiye z'dir (ortalama/standart sapma kullanilsa bozuk panonun
+        kendisi olcuye girer ve aradigimiz seyi saklardi).
+        ALARM URETMEZ: sozlesmede `layer: L2` etiketli alarm kodu yoktur ve bu uc bir
+        tane ACMAZ. Ciktisi operator onayina sunulan bir ONERIDIR; otomatik yeniden baz
+        alma gercek bozulmayi susturur (docs/07b Y11).
+        `points_unmeasurable` akran sayisi yetersiz oldugu icin SKORLANAMAYAN noktalari
+        sayar: "olcemedik" ile "aykiri degil" ayni sey degildir.
+      parameters:
+        - name: min_peers
+          in: query
+          required: false
+          schema: { type: integer, minimum: 2, maximum: 100, default: 8 }
+          description: >
+            Altinda karsilastirma yapilmayan akran sayisi. MAD ucuncu bir degerle
+            tamamen degisir; varsayilan 8 medyanin her iki yaninda en az dorder deger
+            birakir. Sozlesmede L2 esigi olmadigi icin TURETILMISTIR.
+      responses:
+        "200":
+          description: Akran karsilastirmasi ozeti ve yeniden baz alma onerileri
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FleetPeers" }
+        "503":
+          description: panoalgo kutuphanesi yuklu degil (bu uc kapali, backend calisir)
+
+  /api/v1/fleet/assets:
+    get:
+      tags: [assets]
+      summary: Varlik kutugu — filonun kunyesi ve kapsama orani
+      description: >
+        Panolarin CBS'den ice aktarilan kunyesi (F-21). `kapsama` alani kac panonun
+        kunyesi oldugunu SAYIYLA soyler: eksiklik gizlenemez. Kunyesi olmayan pano
+        listede yine gorunur ve alanlari null doner — bos hucre "veri yok" demektir,
+        sifir demek DEGILDIR.
+      responses:
+        "200":
+          description: Kunye listesi + kapsama ozeti
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetFleet" }
+    post:
+      tags: [assets]
+      summary: CBS aktarimindan varlik kunyesi ice aktar
+      description: >
+        Kunyeyi CBS disa aktarimindan toplu olarak yazar (F-21). Biz KAYNAK DEGIL
+        TUKETICIYIZ: bu uc bir varlik ana kaydi olusturmaz, CBS'deki kaydi buraya
+        kopyalar. `kunye_kaynak` ZORUNLUDUR — kaynagi yazilmayan kunye kabul edilmez.
+        Bilinmeyen pano_id REDDEDILIR (yeni pano yaratmaz).
+        `uretici` ve `seri_no` gonderilmezse bos kalir; UYDURULMAZ.
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssetImport" }
+      responses:
+        "200":
+          description: Ice aktarim ozeti
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guncellenen, kapsama]
+                properties:
+                  guncellenen: { type: integer, description: "kunyesi yazilan pano sayisi" }
+                  kapsama: { $ref: "#/components/schemas/AssetCoverage" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/outages:
+    get:
+      tags: [events]
+      summary: Ust sebeke kesintileri (es zamanli susan panolar tek olayda)
+      description: >
+        Ayni FIDERDEKI panolarin es zamanli susmasi N ayri ariza degil TEK bir kesinti
+        olayidir (F-22). Baginti `panels.fider_id` uzerinden kurulur (F-21 kunyesi);
+        fider bilgisi olmayan pano GRUPLANMAZ. Esikler alarm-codes.yaml
+        `outage_min_panels` / `outage_window_min`.
+      parameters:
+        - name: state
+          in: query
+          description: "acik = suren kesintiler; hepsi = kapananlar dahil"
+          schema: { type: string, enum: [acik, hepsi], default: acik }
+      responses:
+        "200":
+          description: Kesinti olaylari, en yenisi once
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OutageEvent" }
+
+  /api/v1/outages/{outage_id}:
+    get:
+      tags: [events]
+      summary: Tek kesinti olayi
+      parameters:
+        - { name: outage_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Kesinti olayi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OutageEvent" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/outages/{outage_id}/epdk-kaydi:
+    get:
+      tags: [events]
+      summary: EPDK Kalite Yonetmeligi Madde 8 kesinti kaydi TASLAGI
+      description: >
+        Kesinti olayini, mevzuatin saydigi alanlarla doldurulmus bir TASLAGA cevirir (F-23).
+        CIKTI TASLAKTIR ve bu, semanin tasiyici yapisidir: her alan bir DURUM tasir —
+        `olculen` / `oneri` / `elle_doldurulacak`. Olcmedigimiz alan yanittan DUSURULMEZ,
+        bos gelir ve neden olcemedigimiz alanin icinde yazar. Sebep ve sinif ONERIDIR,
+        karar degildir. Tazminat hesabi YOKTUR (GK10).
+      parameters:
+        - { name: outage_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Madde 8 kesinti kaydi taslagi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EpdkKaydi" }
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
   parameters:
@@ -218,6 +502,30 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: >
+        Belirtec yok, bicimi desteklenmiyor veya gecersiz. `WWW-Authenticate: Bearer`
+        basligi doner. NOT: operator tablosu bos birakilirsa kimlik dogrulama KAPALIDIR
+        ve bu yanit hic uretilmez; durum GET /health `auth.enabled` alanindan okunur.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: "Kimlik dogru ama rol yetmiyor (izleyici < operator < muhendis)"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  securitySchemes:
+    operatorToken:
+      type: http
+      scheme: bearer
+      description: >
+        On-prem operator belirteci (F-19). Kurumsal SSO/OIDC DEGILDIR: belirtecler
+        yapilandirmada duran paylasilan sirlardir; parola, oturum suresi, yenileme ve
+        iptal listesi yoktur. GK4 public cloud kimlik saglayicisini yasakladigi icin
+        bulut IdP kullanilamaz. Yalnizca YAZMA uclarini (onay/raf) korur; okuma uclari
+        ve WebSocket akisi belirtec istemez. Ayrinti: docs/15-guvenlik-kvkk.md §5.
 
   schemas:
     Error:
@@ -225,6 +533,382 @@ components:
       required: [detail]
       properties:
         detail: { type: string }
+
+    EpdkAlan:
+      type: object
+      description: >
+        Madde 8/2'nin TEK bir alani. `durum` alanin ne oldugunu soyler ve alan yanittan
+        HICBIR ZAMAN dusurulmez: olcmedigimiz alani cikarmak, "bu alani olcmuyoruz"
+        bilgisini de kaybettirirdi.
+      required: [ad, durum]
+      properties:
+        ad: { type: string, description: "mevzuattaki alan adi, or. 'Etkilenen kullanici sayisi'" }
+        deger:
+          description: "Olculen ya da onerilen deger; elle doldurulacaksa null"
+          type: [string, number, "null"]
+        durum:
+          type: string
+          enum: [olculen, oneri, elle_doldurulacak]
+          description: >
+            olculen = bu depodan turetildi · oneri = sistem bir oneri uretti, KARAR DEGIL ·
+            elle_doldurulacak = bu alani OLCMUYORUZ
+        aciklama:
+          type: string
+          description: >
+            Degerin NEREDEN geldigi ya da neden olcemedigimiz. Bos birakilmaz: durumu
+            'elle_doldurulacak' olan alan, sebebini yazmak zorundadir.
+
+    EpdkKaydi:
+      type: object
+      description: >
+        EPDK Kalite Yonetmeligi (RG 29/12/2020, 31349 muk.) Madde 8/2 kesinti kaydi TASLAGI.
+        Alan listesi backlog §2.1'de birebir dogrulandi.
+      required: [taslak, uyari, outage_id, alanlar, ozet]
+      properties:
+        taslak:
+          type: boolean
+          description: "HER ZAMAN true. Bu cikti resmi bir kayit DEGILDIR."
+        uyari: { type: string, description: "Ekranda ve ciktida gorunen TASLAK uyarisi" }
+        outage_id: { type: string }
+        alanlar:
+          type: array
+          description: "Madde 8/2'nin on alani, mevzuattaki sirayla"
+          items: { $ref: "#/components/schemas/EpdkAlan" }
+        ozet:
+          type: object
+          description: "Kac alanin olculdugu SAYIYLA verilir; eksiklik gizlenemez (GK10)."
+          required: [toplam, olculen, oneri, elle_doldurulacak]
+          properties:
+            toplam:             { type: integer }
+            olculen:            { type: integer }
+            oneri:              { type: integer }
+            elle_doldurulacak:  { type: integer }
+        kanit:
+          type: array
+          description: >
+            Kanit paketi: kesintiye dahil her pano icin MEVCUT kara kutu olayina baglanti.
+            Yeni bir zaman cizelgesi URETILMEZ — GET /events/{event_id}/blackbox zaten var
+            ve F-02 penceresini 336 saate cikardi.
+          items:
+            type: object
+            required: [pano_id]
+            properties:
+              pano_id:  { type: string }
+              name:     { type: string }
+              event_id: { type: [string, "null"], description: "null = bu pano icin olay kaydi yok" }
+              blackbox: { type: [string, "null"], description: "var olan kara kutu ucunun yolu" }
+
+    OutageEvent:
+      type: object
+      description: >
+        Ust sebeke kesintisi (F-22): ayni fiderde es zamanli susan N panonun TEK olayi.
+        Bu bir ALARM DEGILDIR — alarmlari aciklayan bir olaydir; alt alarmlar
+        (ALM-LASTGASP, ALM-COMMS-LOST) uretilmeye devam eder ve BASTIRILMAZ, yalnizca
+        `outage_id` ile buna baglanir.
+      required: [outage_id, fider_id, started_at, detected_at, panolar, state]
+      properties:
+        outage_id: { type: string, description: "or. OUT-F-EFELER-03-20260918T0900" }
+        fider_id: { type: string, description: "kesintinin fideri (F-21 kunyesinden)" }
+        started_at:
+          type: string
+          format: date-time
+          description: >
+            Panolarin sustugu an (kumedeki EN GEC son veri zamani). Bu, enerjinin
+            kesildigi anin OLCULEBILEN en iyi yaklasimidir; kesme aninin kendisi
+            gozlemlenmiyor.
+        detected_at:
+          type: string
+          format: date-time
+          description: "Merkezin bagintiyi kurdugu an (haberlesme zaman asimi kadar sonra)"
+        ended_at:
+          type: [string, "null"]
+          format: date-time
+          description: >
+            Haberlesmenin GERI DONDUGU an. DIKKAT: bu enerjinin geri geldigi an DEGILDIR
+            ve histerezislidir; restorasyon ani bu depoda olculmuyor (F-23).
+        state: { type: string, enum: [acik, kapandi] }
+        panolar:
+          type: array
+          description: "Olaya bagli panolar"
+          items:
+            type: object
+            required: [pano_id, last_rx]
+            properties:
+              pano_id: { type: string }
+              name: { type: string }
+              last_rx: { type: string, format: date-time }
+              abone_sayisi: { type: [integer, "null"], description: "kunyeden; null = bilinmiyor" }
+        abone_toplami:
+          type: [integer, "null"]
+          description: >
+            Etkilenen abone sayisinin TOPLAMI (EPDK Madde 8/2). Yalnizca kunyesi olan
+            panolar toplanir ve `abone_eksik` kac panonun sayilamadigini soyler; hicbir
+            panonun kunyesi yoksa null doner — SIFIR YAZILMAZ.
+        abone_eksik:
+          type: integer
+          description: "abone sayisi bilinmediği icin toplama girmeyen pano sayisi"
+
+    AssetRegistry:
+      type: object
+      description: >
+        Panonun CBS'den ice aktarilan kunyesi (F-21). Bu bir VARLIK ANA KAYDI DEGILDIR:
+        EPDK CBS usul ve esaslari panoyu zaten tekil kodla tutmayi zorunlu kiliyor, yani
+        kimlik musteride var ve biz tuketiciyiz. Ice aktarilmamis her alan null'dur;
+        null "olcmedik/almadik" demektir, sifir demek degildir.
+      properties:
+        cbs_kodu:
+          type: [string, "null"]
+          description: >
+            EPDK CBS tekil sebeke unsuru kodu. Urun seviyesinde BIRINCIL kimliktir;
+            veritabani birincil anahtari pano_id olarak KALIR (yabanci anahtarlar ona bagli).
+            EPDK Kalite Yonetmeligi Madde 8/2'nin "yer" alanindaki tekil kodu besler.
+        fider_id:
+          type: [string, "null"]
+          description: "Panonun beslendigi fider. F-22 es zamanli susmayi bu alana gore gruplar."
+        il:    { type: [string, "null"], description: "Madde 8/2 'yer'; pano_id onekinden TURETILMEZ" }
+        ilce:  { type: [string, "null"] }
+        abone_sayisi:
+          type: [integer, "null"]
+          description: >
+            Madde 8/2 "etkilenen kullanici sayisi". Risk matrisinin ETKI eksenidir:
+            sayilabilir bir buyukluktur ve bir taksonomi icat etmeyi gerektirmez.
+        trafo_kva:
+          type: [integer, "null"]
+          description: >
+            Pano BASINA trafo gucu. pano_type ('1600kVA-dahili') kVA'yi tasir ama filodaki
+            her panoda AYNIDIR; sabit bir alani etki gibi gostermek yaniltici olurdu.
+        kritiklik:
+          type: [string, "null"]
+          enum: [kritik, yuksek, orta, dusuk, null]
+          description: >
+            CBS/varlik yonetiminden ICE AKTARILAN etiket; bizim tanimladigimiz bir sozluk
+            DEGILDIR. Erisilebilir bir standart siniflandirma bulunamadi ve GK10 geregi
+            erisemedigimiz bir metnin madde numarasi yazilmaz. Sinirli sozluk, uydurma veri
+            uretmek icin degil AKTARIMI DOGRULAMAK icindir.
+        uretici:
+          type: [string, "null"]
+          description: >
+            UYDURULMAZ, bos birakilir. Bu teslimde hicbir panoda doldurulmadi ve demo tohumu
+            da doldurmaz (GK3: gercek bir CBS aktarimina erisim yok).
+        seri_no:
+          type: [string, "null"]
+          description: "UYDURULMAZ, bos birakilir (bkz. uretici)."
+        son_bakim_at:     { type: [string, "null"], format: date-time }
+        sonraki_bakim_at: { type: [string, "null"], format: date-time, description: "bakim vadesi rozetini besler" }
+        kunye_kaynak:
+          type: [string, "null"]
+          description: >
+            Kunyenin NEREDEN geldigi (hangi CBS aktarimi). Kaynagi yazilmayan kunye kabul
+            edilmez: "alan acip bos birakmak" ile "tanimli kaynagi olan alan" farki budur.
+        kunye_at: { type: [string, "null"], format: date-time, description: "ice aktarim ani" }
+
+    AssetCoverage:
+      type: object
+      description: "Kapsama SAYIYLA verilir ki eksiklik gizlenemesin (GK10)."
+      required: [panolar, kunyeli]
+      properties:
+        panolar:  { type: integer, description: "filodaki toplam pano" }
+        kunyeli:  { type: integer, description: "cbs_kodu girilmis pano" }
+        fiderli:  { type: integer, description: "fider_id girilmis pano (F-22 bunu kullanir)" }
+        aboneli:  { type: integer, description: "abone_sayisi girilmis pano (etki ekseni)" }
+
+    NodeRegistry:
+      type: object
+      required: [node_id, pano_id]
+      description: >
+        Tek bir fiziksel dugum/sensor. Ice aktarilmayan alan null doner — bos hucre
+        "veri yok" demektir, sifir DEGIL. `seri_no` ve `uretim_partisi` uydurulmaz.
+      properties:
+        node_id:        { type: string }
+        pano_id:        { type: string }
+        uretici:        { type: [string, "null"] }
+        model:          { type: [string, "null"] }
+        seri_no:        { type: [string, "null"] }
+        uretim_partisi: { type: [string, "null"] }
+        montaj_at:      { type: [string, "null"], format: date-time }
+        son_kalibrasyon_at:     { type: [string, "null"], format: date-time }
+        sonraki_kalibrasyon_at: { type: [string, "null"], format: date-time }
+        kutuk_kaynak:   { type: [string, "null"] }
+        kutuk_at:       { type: [string, "null"], format: date-time }
+
+    NodeFleet:
+      type: object
+      required: [kapsama, kalibrasyon, dugumler, uyari]
+      properties:
+        kapsama:
+          type: object
+          required: [pano_toplam, kutugu_olan_pano, dugum_toplam, seri_no_bos, kalibrasyon_vadesi_bos]
+          description: Eksiklik SAYIYLA gorunur; kutugu olmayan pano gizlenmez.
+          properties:
+            pano_toplam:      { type: integer }
+            kutugu_olan_pano: { type: integer }
+            dugum_toplam:     { type: integer }
+            seri_no_bos:      { type: integer }
+            kalibrasyon_vadesi_bos: { type: integer }
+        kalibrasyon:
+          type: object
+          required: [pencere_gun, vadesi_gecen, vadesi_yaklasan]
+          properties:
+            pencere_gun:     { type: integer }
+            vadesi_gecen:    { type: array, items: { type: string } }
+            vadesi_yaklasan: { type: array, items: { type: string } }
+        dugumler:
+          type: array
+          items: { $ref: "#/components/schemas/NodeRegistry" }
+        uyari:
+          type: string
+          description: >
+            GK10/GK3 notu: bu kutuk kalibrasyon VADE TAKIBIDIR; akredite kalibrasyon
+            olmadan "izlenebilir olcum" iddiasi kurulamaz.
+
+    NodeImport:
+      type: object
+      required: [kutuk_kaynak, dugumler]
+      properties:
+        kutuk_kaynak:
+          type: string
+          minLength: 1
+          description: Kaynagi yazilmayan kutuk kabul edilmez; satir basina YAZILAMAZ.
+        dugumler:
+          type: array
+          minItems: 1
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NodeRegistry"
+              - type: object
+                properties:
+                  points:
+                    type: array
+                    items: { type: string }
+                    description: >
+                      Dugumun tasidigi olcum noktalari. Verilirse esleme TAMAMEN
+                      degistirilir; kismi esleme eski ve yeni kartin noktalarini karistirirdi.
+
+    BlindNodes:
+      type: object
+      required: [kor_dugumler, kutuksuz_noktalar]
+      properties:
+        kor_dugumler:
+          type: array
+          description: Kalite bayragi tasiyan noktalari olan dugumler, kutuk kunyesiyle.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NodeRegistry"
+              - type: object
+                required: [points]
+                properties:
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      required: [point, q]
+                      properties:
+                        point:     { type: string }
+                        det_label: { type: [string, "null"] }
+                        q:         { type: integer, description: "t_conn[].q bit alani" }
+        kutuksuz_noktalar:
+          type: array
+          description: >
+            Bozuk ama kutuge eslenmemis noktalar. "Esleme yok" ile "sorun yok" ayni sey
+            degildir; bu liste eksikligi gorunur kilar (GK10).
+          items:
+            type: object
+            required: [pano_id, point]
+            properties:
+              pano_id: { type: string }
+              point:   { type: string }
+
+    FleetPeers:
+      type: object
+      required: [panels_compared, points_scored, points_unmeasurable, min_peers, outlier_z, rebaseline_suggestions, uyari]
+      properties:
+        panels_compared:
+          type: integer
+          description: K0'i TURETILEBILEN pano sayisi (tabani donmamis pano sayilmaz).
+        points_scored:
+          type: integer
+          description: Akran sayisi yeterli oldugu icin robust z hesaplanan nokta sayisi.
+        points_unmeasurable:
+          type: integer
+          description: >
+            Akran sayisi yetersiz oldugu icin SKORLANAMAYAN nokta sayisi. Bu noktalar
+            "aykiri degil" DEGIL, "olculemedi" demektir (GK10).
+        min_peers: { type: integer }
+        outlier_z:
+          type: number
+          description: Aykiri sayilma esigi (modifiye z). Sozlesmede L2 esigi yoktur; TURETILMIS.
+        rebaseline_suggestions:
+          type: array
+          description: >
+            Tabani supheli bulunan noktalar. ONERIDIR, uygulanmis bir islem DEGILDIR —
+            yeniden baz alma kararini operator verir.
+          items:
+            type: object
+            required: [pano_id, point, k0, peer_median, n_peers, reasons]
+            properties:
+              pano_id:     { type: string }
+              point:       { type: string, description: "t_conn[].pt nokta adi" }
+              det_label:   { type: string, description: "Insan okur etiket" }
+              k0:          { type: number, description: "Merkezde k / k_ratio ile turetilen taban" }
+              peer_median: { type: number }
+              robust_z:    { oneOf: [{ type: number }, { type: "null" }] }
+              n_peers:     { type: integer }
+              reasons:
+                type: array
+                items: { type: string }
+                description: Onerinin gerekcesi; gerekcesiz oneri uretilmez.
+        uyari:
+          type: string
+          description: >
+            GK10 notu. Sentetik filoda saglikli K0 sinirli duzgun dagilimdan gelir ve
+            saglikli bir pano YAPISAL OLARAK aykiri cikamaz; bu veriden cikan ayrim
+            orani saha basarimi olarak sunulamaz.
+
+    AssetFleet:
+      type: object
+      required: [kapsama, panolar]
+      properties:
+        kapsama: { $ref: "#/components/schemas/AssetCoverage" }
+        panolar:
+          type: array
+          items:
+            type: object
+            required: [pano_id]
+            properties:
+              pano_id: { type: string }
+              name:    { type: string }
+              asset:   { oneOf: [{ $ref: "#/components/schemas/AssetRegistry" }, { type: "null" }] }
+
+    AssetImport:
+      type: object
+      required: [kunye_kaynak, panolar]
+      properties:
+        kunye_kaynak:
+          type: string
+          minLength: 1
+          description: "ZORUNLU. Aktarimin kimligi, or. 'ADM CBS disa aktarim 2026-09-18'."
+        panolar:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [pano_id]
+            description: >
+              pano_id disindaki her alan istege baglidir; GONDERILMEYEN alan DEGISTIRILMEZ
+              (mevcut deger korunur). Bir alani temizlemek icin acikca null gonderilir.
+            properties:
+              pano_id:      { type: string }
+              cbs_kodu:     { type: [string, "null"] }
+              fider_id:     { type: [string, "null"] }
+              il:           { type: [string, "null"] }
+              ilce:         { type: [string, "null"] }
+              abone_sayisi: { type: [integer, "null"], minimum: 0 }
+              trafo_kva:    { type: [integer, "null"], minimum: 0 }
+              kritiklik:    { type: [string, "null"], enum: [kritik, yuksek, orta, dusuk, null] }
+              uretici:      { type: [string, "null"] }
+              seri_no:      { type: [string, "null"] }
+              son_bakim_at:     { type: [string, "null"], format: date-time }
+              sonraki_bakim_at: { type: [string, "null"], format: date-time }
 
     PanelSummary:
       type: object
@@ -244,6 +928,13 @@ components:
         last_seen: { type: string, format: date-time }
         comms_ok: { type: boolean }
         baseline_day: { type: integer }
+        # --- varlik kutugu (F-21). Kunye ice aktarilmamissa UCU DE null doner.
+        # Ozete yalnizca bu uc alan girdi: risk matrisinin etki ekseni (abone_sayisi),
+        # onceliklendirme (kritiklik) ve bakim vadesi rozeti (sonraki_bakim_at). Kunyenin
+        # tamami PanelDetail.asset'tedir — filo listesi 1.000 pano tasiyabilmeli.
+        abone_sayisi: { type: [integer, "null"], description: "etki ekseni; null = kunye yok" }
+        kritiklik: { type: [string, "null"], enum: [kritik, yuksek, orta, dusuk, null] }
+        sonraki_bakim_at: { type: [string, "null"], format: date-time }
 
     ConnPoint:
       type: object
@@ -307,6 +998,28 @@ components:
         maint_mode: { type: boolean }
         fw: { type: string }
 
+    PanelHealth:
+      type: object
+      description: >
+        GET /fleet/health satiri. Alanlar DeviceHealth ile ayni adlari tasir; pano_id,
+        name, last_seen ve comms_ok PanelSummary ile ayni anlamdadir. Telemetri hic
+        gelmemis bir pano icin saglik alanlari null doner — olmayan veri 0 gibi
+        gosterilmez (0 dBm gecerli bir RSSI'dir, "bilinmiyor" degildir).
+      required: [pano_id, name, last_seen, comms_ok]
+      properties:
+        pano_id: { type: string }
+        name: { type: string }
+        nodes_ok: { type: [integer, "null"] }
+        nodes_total: { type: [integer, "null"] }
+        rssi_dbm: { type: [number, "null"] }
+        vbak_pct: { type: [number, "null"] }
+        buffered: { type: [integer, "null"] }
+        maint_mode: { type: [boolean, "null"] }
+        fw: { type: [string, "null"] }
+        baseline_day: { type: integer }
+        last_seen: { type: string, format: date-time }
+        comms_ok: { type: boolean }
+
     PanelDetail:
       type: object
       required: [pano_id, ts, points, env, elec, health]
@@ -328,6 +1041,11 @@ components:
         pd: { type: [object, "null"] }
         health: { $ref: "#/components/schemas/DeviceHealth" }
         active_alarms: { type: array, items: { $ref: "#/components/schemas/Alarm" } }
+        asset:
+          description: "Varlik kunyesi (F-21). CBS aktarimi yapilmamissa null."
+          oneOf:
+            - { $ref: "#/components/schemas/AssetRegistry" }
+            - { type: "null" }
 
     AlarmReason:
       type: object
@@ -351,7 +1069,14 @@ components:
       required: [id, pano_id, code, prio, state, raised_at]
       properties:
         id: { type: string }
-        event_id: { type: [string, "null"], description: "ayni kok nedenden gelen alarmlar bu id altinda gruplanir" }
+        event_id: { type: [string, "null"], description: "ayni kok nedenden gelen alarmlar bu id altinda gruplanir (PANO ICI)" }
+        outage_id:
+          type: [string, "null"]
+          description: >
+            Alarm bir ust sebeke kesintisine baglandiysa o kesintinin kimligi (F-22).
+            event_id PANO ICI gruplamadir; bu alan PANOLAR ARASI bagintidir. Baginti
+            alarmi BASTIRMAZ, yalnizca baglar.
+
         pano_id: { type: string }
         code: { type: string }
         text: { type: string, description: "Turkce alarm metni" }

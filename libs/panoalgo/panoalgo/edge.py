@@ -35,8 +35,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from . import fusion, limits, quality
-from .detect import KIndexEstimator, lambda_for_period, load_thresholds
+from . import fusion, limits, physics, quality
+from .detect import BaselineEvidence, KIndexEstimator, lambda_for_period, load_thresholds
 from .profiles import ProfileKind, load_profile
 
 # Beklenen yuk profili icin gecmis I^2 ortalamasinin penceresi (ornek sayisi).
@@ -45,6 +45,11 @@ I2_MEAN_WINDOW = 720
 # Kestirime AIT alanlar. Kestirim yoksa bunlar yukten silinir; uretecin kendi
 # gercek degerleri orada kalirsa kenar, olcemeyecegi bir dogruyu yayinlamis olur.
 ESTIMATED_FIELDS = ("k", "k_ratio", "tau_s", "ttl_h")
+
+# BEYAN EDILEN periyot ile GOZLENEN aralik bu kesirden fazla ayrisirsa sayilir.
+# Titremeye (network jitter, planlayici kaymasi) genis pay birakir; amaci tek bir
+# ornegi yakalamak degil, YAPISAL bir kaymayi gorunur kilmaktir.
+PERIOD_TOLERANCE = 0.25
 
 
 def _forget_estimates(point: dict) -> None:
@@ -81,6 +86,7 @@ class EdgePipeline:
         self._i2_mean: dict[tuple[str, str], list[float]] = {}
         self._previous: dict[str, dict] = {}
         self._last_ts: dict[str, datetime] = {}
+        self._period_mismatch: dict[str, int] = {}
         self._frozen = False
 
     # ------------------------------------------------------------------ taban
@@ -97,6 +103,42 @@ class EdgePipeline:
     @property
     def baseline_frozen(self) -> bool:
         return self._frozen
+
+    @property
+    def period_mismatch(self) -> dict[str, int]:
+        """{pano_id: beyan edilen periyoda uymayan ornek sayisi} (bkz. _note_mismatch).
+
+        Bos sozluk = islemenin ritmi beyan edildigi gibi. Sabit periyot
+        verilmemisse (periyot damgalardan turetiliyorsa) her zaman bostur.
+        """
+        return dict(self._period_mismatch)
+
+    def baseline_report(self) -> dict[str, dict[str, BaselineEvidence]]:
+        """Donmus tabanlarin kaniti: {pano_id: {nokta: BaselineEvidence}} (F-32).
+
+        Filo akran karsilastirmasi (fleet.peer_scores) ve taban gecerliligi karari
+        (fleet.baseline_verdict) bunu okur. Tabani DONMAMIS nokta listede YER ALMAZ:
+        K0'i olmayan bir nokta akranlariyla kiyaslanamaz ve "aykiri degil" demek
+        olcmedigimiz bir seyi iddia etmek olurdu (GK10).
+        """
+        report: dict[str, dict[str, BaselineEvidence]] = {}
+        for (pano_id, point), estimator in self._estimators.items():
+            evidence = estimator.baseline_evidence
+            if evidence is not None:
+                report.setdefault(pano_id, {})[point] = evidence
+        return report
+
+    def k_histories(self) -> dict[str, dict[str, tuple[float, ...]]]:
+        """Nokta basina saklanan K kestirimleri: {pano_id: {nokta: (K, ...)}} (F-32).
+
+        Taban ogrenme penceresinin KENDI ICINDE kararli olup olmadigi
+        (onset.baseline_window_is_stable) ve bozulmanin baslangic ani
+        (onset.detect_onset) bu seriden hesaplanir.
+        """
+        histories: dict[str, dict[str, tuple[float, ...]]] = {}
+        for (pano_id, point), estimator in self._estimators.items():
+            histories.setdefault(pano_id, {})[point] = estimator.k_history
+        return histories
 
     # ------------------------------------------------------------------ adim
 
@@ -129,16 +171,46 @@ class EdgePipeline:
         last = self._last_ts.get(pano_id)
         self._last_ts[pano_id] = ts
         if self._fixed_period_s is not None:
+            if last is not None:
+                self._note_mismatch(pano_id, (ts - last).total_seconds())
             return self._fixed_period_s
         if last is None:
             return 0.0
         seconds = (ts - last).total_seconds()
         return seconds if seconds > 0.0 else 0.0
 
+    def _note_mismatch(self, pano_id: str, observed_s: float) -> None:
+        """Beyan edilen periyot ile gercek aralik ayrisirsa sayar (F-36 emniyeti).
+
+        Sabit periyot bir BEYANDIR ve yuk oyle islenir; beyan yanlissa hicbir
+        istisna cikmaz, yalnizca tau, k_slope ve unutma faktorunun etkin hafizasi
+        sessizce kayar. Uyarlanabilir raporlamanin sessizce yanlis yapilabilecegi
+        tek yer burasi oldugu icin sayac ekli: "yayinlamiyorsak islemeye de gerek
+        yok" diye process() cagrisi seyreltilirse sayac artar.
+
+        NEREDE SILAHLI, NEREDE DEGIL (durustluk notu):
+          * loadtest/veri_butcesi.py sifir olmasini SART kosar ve aksi halde
+            sayi yazmadan patlar. F-36'nin olculen iddiasi oradan cikar.
+          * sim/panosim.py sabit periyot VERMEZ (damgalardan turetir), bu yuzden
+            sayac orada her zaman bostur - yanlis alarm da uretmez.
+          * sim/panobeyni_sim.py'de sayac SATURE OLUR ve bu BEKLENEN bir
+            sonuctur: o kabuk 1 s'de bir isler ama periyodu 10 s beyan eder
+            (period x report_every). Bu tutarsizlik F-36'DAN ONCE de vardi;
+            madde bilincli olarak DOKUNMADI, cunku duzeltmek yayinlanan
+            tau_s/ttl_h degerlerini degistirir ve ayri bir madde gerektirir.
+            Sayac burada bir REGRESYON sinyali degil, var olan bir sapmanin
+            olculebilir hale gelmesidir.
+        """
+        declared = self._fixed_period_s
+        if not declared or observed_s <= 0.0:
+            return
+        if abs(observed_s - declared) / declared > PERIOD_TOLERANCE:
+            self._period_mismatch[pano_id] = self._period_mismatch.get(pano_id, 0) + 1
+
     def _update_points(self, payload: dict, pano_id: str, ts: datetime, period_s: float) -> None:
         for point in payload["t_conn"]:
             key = (pano_id, point["pt"])
-            current = self._point_current(payload, point)
+            current = physics.point_current(payload, point["pt"])
             self._remember_i2(key, current * current)
 
             estimator = self._estimators.get(key)
@@ -172,20 +244,6 @@ class EdgePipeline:
             point["tau_s"] = round(state.tau_s, 1)
             point["ttl_h"] = None if state.ttl_h is None else round(state.ttl_h, 1)
             point["excited"] = state.excited
-
-    def _point_current(self, payload: dict, point: dict) -> float:
-        """Noktadan gecen akim; dT = K*I^2 iliskisinden K geri cozulur.
-
-        Fider noktalarinda ana giris akiminin sabit bir kesri gecer; kesir bilinmedigi
-        icin ana faz akimi kullanilir ve K kestirimi o kesri kendi icine emer. K/K0
-        ORANI bundan etkilenmez — taban da ayni kesirle ogrenilir.
-        """
-        elec = payload["elec"]
-        pt = point["pt"]
-        if pt.endswith("_N"):
-            return float(elec["i_n"])
-        phase = int(pt[-1]) - 1
-        return float(elec["i_ph"][phase])
 
     def _remember_i2(self, key: tuple[str, str], i2: float) -> None:
         window = self._i2_mean.setdefault(key, [])

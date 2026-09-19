@@ -19,11 +19,16 @@ alan, ISA-101 tarzı bir kontrol odası ekranı; B) mühendislik çizim kâğıd
 Filo ekranının açılış öğesi olarak entegre edildi (aşağıda §2.1).
 
 **Güncelleme notu (14 Eylül revizyonu):** Yön adı "RAL 7035" olarak kaldı, ama zemin artık RAL 7035
-grisi değil: `--bg` kullanıcı geri bildirimi üzerine tam beyaza (`#ffffff`) çekildi
+grisi değil: `--bg` kullanıcı geri bildirimi üzerine 14 Eylül'de tam beyaza (`#ffffff`) çekildi
 (`frontend/src/theme.css` — "grimsi RAL7035 tonu tamamen kaldirildi"; gerekçe
 [`frontend/TASARIM-REVIZYONU.md`](../frontend/TASARIM-REVIZYONU.md) §11 ve §12). Yönün asıl aldığımız
 kuralı — **renk yalnızca anormal durumda** — değişmedi; marka turuncusu yalnızca marka katmanında,
 veri alanının dışında kalıyor (`theme.css` `--brand` yorumu).
+
+> **Düzeltme (19 Eylül):** Yukarıdaki `#ffffff` **bugün artık doğru değil** ve bu satır bir tarih
+> kaydı olarak bırakıldı. `theme.css:3` şu an `--bg: #f5f6f8` (hafif gri-mavi); tam beyaz
+> yalnızca `--surface` için geçerli. Değer `frontend/src/theme.test.ts` ile kilitlendi, yani
+> bir daha sessizce eskiyemez.
 
 **Gerekçe:**
 - Jüride ADM/GDZ'nin saha ve SCADA ekiplerinden kişiler olması muhtemel (rapor §9). Bu kitle her
@@ -99,19 +104,35 @@ boş bir başlık gösterilmez.
 
 ## 3. Bilinçli kapsam sınırları (dürüstlük kuralı, Bölüm C)
 
-Bir ekran, sözleşmede eksik bir uç yüzünden tam istenen granülerlikte değil. Bu,
-`contracts/changes/2026-09-14-fleet-health-bulk.md` önerisiyle çözülebilir:
+1. **Cihaz sağlığı** — *18 Eylül 2026'da kapandı.* Bu ekran, toplu bir "filo sağlığı" ucu
+   olmadığı için görünen panoları tek tek (sınırlı eşzamanlılıkla, 6) çekiyordu. Öneri
+   (`contracts/changes/2026-09-14-fleet-health-bulk.md`) üç onayı aldı ve uygulandı:
+   `GET /api/v1/fleet/health` (`openapi.yaml` v1.1.0, yalnızca ekleme) ile ekran artık
+   **tek istek** atıyor (`pages/CihazSagligi.tsx`). Uçun, yerini aldığı pano-başına
+   çağrıdan farklı bir değer döndürmediği backend'de testle kilitli
+   (`test_fleet_health_matches_panel_detail`).
+   **Kalan dürüstlük sınırı:** 100+ panoda beklenen kazanç **ölçülmedi** — demo filosu
+   3–20 pano ve bu ölçekte fark zaten görünmüyordu. Değişen şey **istek sayısıdır**
+   (N → 1); bu bir kod özelliğidir, ölçülmüş bir gecikme iyileştirmesi değildir.
+   Depodaki 1.000 pano ölçümleri backend alım/görünme p95'ine aittir, bu ekranın istek
+   davranışına değil.
 
-1. **Cihaz sağlığı**, toplu bir "filo sağlığı" ucu olmadığı için görünen panoları tek tek
-   (sınırlı eşzamanlılıkla, 6) çeker (`CONCURRENCY = 6`, `pages/CihazSagligi.tsx`). Ekran başına
-   istek sayısı pano sayısıyla doğrusal artar; 20 panoda görünmez, 1.000 panoda yavaşlar
-   (**tahmin — ölçülmedi**: depodaki 1.000 pano ölçümleri backend alım/görünme p95'ine ait, bu
-   ekranın istek davranışına değil). Ekranın altında bu sınır kullanıcıya açıkça yazılır — orada
-   sayı verilmez, "büyük filoda bu ekran yavaş" denir.
+**Bölge haritası** (15 Eylül güncellemesi, **18 Eylül'de F-21 ile revize edildi**):
+sözleşmede `lat`/`lon` zaten onaylı bir alan. Yukarıdaki önerinin il/ilçe kısmı 15 Eylül'de
+**uygulanmamıştı** ve gerekçesi şuydu: `panels` tablosunda il/ilçe kolonu yok ve bu depoda
+dolduracak gerçek bir kaynak da yok (GK3 — CBS içe aktarımı yapılmadı); alan açıp boş
+bırakmak ya da `pano_id` önekinden il uydurmak GK10 ihlali olurdu; o iş varlık künyesi
+maddesine aittir (`GELISTIRME-BACKLOGU.md` F-21).
 
-**Bölge haritası** (15 Eylül güncellemesi): sözleşmede `lat`/`lon` zaten onaylı bir alan (bu,
-yukarıdaki bekleyen öneriden farklı — o öneri bunun yerine/ek olarak il/ilçe eklemeyi öneriyor,
-ama lat/lon'u kullanmak için o onaya gerek yok). Mock veride (`api/mock.ts`) her panonun adı
+**F-21 o işi yaptı ve itiraz üç koşulla birden karşılandı** (`contracts/changes/2026-09-18-varlik-kutugu.md`):
+`il` ve `ilce` kolonları **açıldı** (göç `deploy/initdb/008_varlik_kutugu.sql`), ama (1) alan
+tek başına açılmadı — doldurma yolu da açıldı: `POST /fleet/assets` doğrulanmış, `muhendis`
+rolüyle korumalı ve testli bir CBS içe aktarım ucudur; (2) **uydurma yok** — `pano_id`
+önekinden il/ilçe türetilmedi, `uretici` ve `seri_no` hiçbir panoda doldurulmadı; (3) boş
+künye **"veri yok" diye görünür** — künyesi olmayan pano `asset: null` döner ve
+`GET /fleet/assets` kapsama oranını **sayıyla** verir. **Bu teslimde demo filosunun künyesi
+boştur**: uç ve şema çalışır, içe aktarılmış gerçek veri yoktur ve bu gizlenmez. Harita hâlâ
+`lat`/`lon` ile çizer; il/ilçe kırılımlı harita ayrı bir maddedir (F-26). Mock veride (`api/mock.ts`) her panonun adı
 zaten gerçek bir ilçe/semt (Efeler, Bornova, Söke...) olduğundan, bu ilçelerin gerçek merkez
 koordinatları dolduruldu ve panolar artık gerçek enlem/boylamına göre yerel ölçekli bir konum
 grafiğine yerleştiriliyor (`pages/BolgeHaritasi.tsx`). Konum, ilçe merkezi hassasiyetindedir
@@ -129,19 +150,56 @@ Gerçek harita karosu hiçbir ekranda kullanılmaz (GK4: yığın internetten ba
 - Grafikler (`CizgiGrafik`, `SacilimGrafik`) `role="img"` + açıklayıcı `aria-label` taşır.
 - Hareket: `prefers-reduced-motion: reduce` durumunda nokta halka animasyonu (`og-halo`, `chart`
   öğeleri) durur (`theme.css`).
-- Kontrast: gövde metni `--ink` (#1f2224) / zemin `--bg` (#ffffff) **~16:1**; ikincil metin
-  `--dim` (#5f666b) aynı zeminde **~5,8:1**. İkisi de WCAG AA gövde metni eşiğinin (4,5:1)
-  üstünde. Renk kodları `frontend/src/theme.css`'ten okundu, oranlar WCAG 2.1 bağıl parlaklık
-  formülüyle hesaplandı. (Önceki RAL 7035 dönemi token'ları — #212629 / #E2E4DF, ~11,9:1 —
-  14 Eylül revizyonunda değişti; bkz. `frontend/TASARIM-REVIZYONU.md` §11–§12.)
+- **Kontrast — 19 Eylül'de yeniden ölçüldü ve bu bölüm testle değiştirildi.** Sayılar artık
+  bu dosyada değil, `frontend/src/theme.test.ts` (token matematiği) ve
+  `frontend/e2e/smoke.spec.ts` (gerçekten çizilen renkler, `@axe-core/playwright`) içinde
+  yaşıyor. Aşağıdaki tablo o testlerin çıktısıdır, elle hesap değildir:
+
+  | Çift | Ölçülen | WCAG AA gövde eşiği (4,5:1) |
+  |---|---:|---|
+  | `--ink` #202b34 / `--bg` #f5f6f8 | **13,33:1** | geçiyor, geniş marjla |
+  | `--dim` #65717d / `--bg` #f5f6f8 | **4,61:1** | geçiyor, **yalnızca 0,11 ile** |
+  | `--ink` / `--p3` #a37a12 (P3 rozeti) | **3,67:1** | **geçmiyor** |
+
+  **Bu bölümün önceki hâli yanlıştı ve nasıl yanlış olduğu öğreticidir.** "Gövde ~16:1,
+  ikincil ~5,8:1" yazıyordu; o iki oran `--ink` #1f2224 / `--bg` #ffffff / `--dim` #5f666b
+  üçlüsüne aitti ve **bu üç değerin hiçbiri bugün `theme.css`'te yok**. Yani sayı yanlış
+  hesaplanmamıştı, **eskimişti** — ve metne yazıldığı için sessizce eskidi. İkincil metnin
+  AA marjı 1,30× iken **1,02×'e** indi; `--dim` bir tık daha açılırsa eşiğin altına düşer.
+
+  **Elle hesabın göremediği şey (ölçüldü):** elle yapılan hesap zeminin her zaman `--bg`
+  olduğunu varsayar. axe gerçekten çizilen rengi okur ve bu varsayımın yanlış olduğu yerde
+  patladı — `/bölge` ekranındaki `.kesinti-serit` zemini `--bg` değil `#ebecee`'dir ve aynı
+  `--dim` token'ı orada 4,61:1 değil **4,21:1** verir, yani **AA'nın altına düşer**.
+
+  **Ölçülen erişilebilirlik ihlalleri — gizlenmiyor.** `@axe-core/playwright` ile WCAG 2.1 A +
+  AA taraması: mock kipinde **5 düğüm**, canlı kipte **23 düğüm**; hepsi `color-contrast`,
+  başka hiçbir axe kuralı ihlal edilmiyor. Ayrıntı ve düğüm listesi
+  `frontend/e2e/smoke.spec.ts` başındaki blokta. Kip farkının tamamı `AppShell`'deki iki
+  öğeden gelir (`.connection-pill` 4,26:1 ve `.btn-link` 2,91:1); ikisi de örnek veri
+  kipinde çizilmez. Renkler bu oturumda **değiştirilmedi** — palet kararı test işi değildir —
+  ama sayı artık testte kilitli, düzeltilirse test düşer ve bu tablo da güncellenmek zorunda kalır.
 - Dar ekranda yatay taşmaya karşı tüm tablo/eksen içerikleri kendi `overflow-x: auto`
   kapsayıcısında (`.tbl-wrap`, `frontend/src/app.css`). **Doğrulama biçimi:** 390 px ve 1440 px
-  genişlikte elle görsel kontrolden geçti (`frontend/TASARIM-REVIZYONU.md` §11); otomatik viewport
-  testi **yok** (frontend testleri `environment: "node"` ile koşar, DOM/viewport testi içermez).
+  genişlikte elle görsel kontrolden geçti (`frontend/TASARIM-REVIZYONU.md` §11). **19 Eylül
+  düzeltmesi:** bu maddenin "otomatik viewport testi yok, frontend testleri `environment: node`
+  ile koşar" gerekçesi artık geçersiz — `.tsx` bileşen testleri jsdom'da koşuyor ve Playwright
+  depoda. Sonuç yine de **kısmen doğru**, o yüzden dar yazılıyor: e2e tezgâhı **tek bir
+  genişlikte (1425 px)** koşar, çünkü o genişlik `assets/ekran/` görüntülerinin ölçüsüdür.
+  **390 px doğrulaması hâlâ elle yapılıyor ve bu bir ölçüm boşluğudur.**
 
 ## 5. Ekran görüntüleri
 
-`assets/ekran/` altında, örnek veri modunda (`npm run dev:mock`) alınmış ekran görüntüleri:
+`assets/ekran/` altında, örnek veri modunda (`npm run dev:mock`) alınmış ekran görüntüleri.
+
+> **19 Eylül:** Bu sekiz görüntü artık elle alınmıyor — `frontend/e2e/smoke.spec.ts` üretiyor.
+> Yeniden üretmek için: `cd frontend && npm run e2e`. Dosya adları ve **1425 px** genişlik
+> spec'te sabittir; aşağıdaki yedi bağlantı bu yüzden kırılmaz.
+>
+> **Görsel regresyon karşılaştırması bilinçli olarak YOK ve bu ölçüldü:** ekran canlı saat
+> (`AppShell.tsx:185-191`), göreli zaman (`format.ts:33-40`) ve `Math.random()` ile 3 sn'de bir
+> oynayan örnek veri (`mock.ts:550-556`) içerir; `toHaveScreenshot()` bu depoda kararsız olurdu.
+> Spec görüntüyü **üretir, karşılaştırmaz** — görüntüler kanıt değil belgeleme malzemesidir.
 
 | Ekran | Normal | Alarm / dolu |
 |---|---|---|

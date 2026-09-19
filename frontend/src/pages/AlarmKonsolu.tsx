@@ -9,8 +9,9 @@ import { PRIO_NAME, alarmText } from "../lib/labels";
 import { prioRank } from "../lib/worklist";
 import { useFleet } from "../state/fleet";
 
-// Kimlik dogrulama henuz yok (yol haritasi: LDAP); onay/raf kontrol odasi adina kaydedilir.
-const OPERATOR = "kontrol-odasi";
+// F-19: onaylayanin adi artik ISTEMCIDEN gonderilmiyor. Sunucu onu dogrulanmis
+// Authorization basligindan turetir (openapi v1.2.0); belirtec yoksa 401 doner ve
+// giris kapisi cizilir (components/GirisKapisi.tsx).
 const REFRESH_MS = 15_000;
 
 type ViewFilter = "acik" | "rafta" | "hepsi";
@@ -112,11 +113,7 @@ export function AlarmKonsolu() {
   const onAck = async (alarm: Alarm, note: string) => {
     setBusyId(alarm.id);
     try {
-      await api.ack(alarm.id, {
-        by: OPERATOR,
-        channel: "ui",
-        note: note || undefined,
-      });
+      await api.ack(alarm.id, { channel: "ui", note: note || undefined });
       setMessages((m) => ({ ...m, [alarm.id]: "Onaylandı." }));
       load();
     } catch (e) {
@@ -132,7 +129,7 @@ export function AlarmKonsolu() {
   const onShelve = async (alarm: Alarm, minutes: number, reason: string) => {
     setBusyId(alarm.id);
     try {
-      await api.shelve(alarm.id, { by: OPERATOR, minutes, reason });
+      await api.shelve(alarm.id, { minutes, reason });
       setMessages((m) => ({ ...m, [alarm.id]: "Rafa alındı." }));
       load();
     } catch (e) {

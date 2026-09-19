@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 
 from ..alarm_manager import AlarmNotFound, AlarmNotSuppressible, AlarmStateConflict
+from ..auth import Identity, require
 from ..config import PRIO_ORDER
+from .outages import OutageIndex
 from .views import alarm_view
 
 router = APIRouter(prefix="/api/v1", tags=["alarms"])
@@ -21,14 +23,17 @@ router = APIRouter(prefix="/api/v1", tags=["alarms"])
 ALARM_STATES = ("active", "acked", "shelved", "cleared")
 
 
+# F-19: `by` alani govdeden KALDIRILDI. Onaylayanin kimligi artik dogrulanmis
+# Authorization basligindan gelir (app/auth.py). Govdede kalsaydi istemci denetim
+# izine istedigi adi yazabilirdi. Govdeye elle `by` eklemek sessizce yok sayilir —
+# Pydantic varsayilani fazladan alani gormezden gelir ve bu davranis testle kilitli
+# (test_api_alarms: govdedeki by YOK SAYILIR).
 class AckRequest(BaseModel):
-    by: str = Field(min_length=1)
     note: str | None = None
     channel: Literal["ui", "sms", "scada"] = "ui"
 
 
 class ShelveRequest(BaseModel):
-    by: str = Field(min_length=1)
     minutes: int
     reason: str
 
@@ -59,13 +64,21 @@ def list_alarms(
     prios = _csv(prio, PRIO_ORDER, "prio") if prio is not None else None
     app_state = request.app.state
     alarms = app_state.alarms.list_alarms(states, prios, pano_id, limit)
-    return [alarm_view(alarm, app_state.contracts) for alarm in alarms]
+    # F-22: alt alarmi ust sebeke kesintisine BAGLAR (bastirmaz). Baglanti saklanmaz,
+    # pano + zaman penceresinden turetilir — bkz. api/outages.py OutageIndex.
+    index = OutageIndex(app_state.store.list_outages(only_open=False))
+    return [alarm_view(alarm, app_state.contracts, outages=index) for alarm in alarms]
 
 
 @router.post("/alarms/{alarm_id}/ack")
-def ack_alarm(request: Request, alarm_id: str, body: AckRequest) -> dict[str, bool]:
+def ack_alarm(
+    request: Request,
+    alarm_id: str,
+    body: AckRequest,
+    identity: Identity = Depends(require("operator")),
+) -> dict[str, bool]:
     try:
-        request.app.state.alarms.ack(_alarm_id(alarm_id), by=body.by, note=body.note)
+        request.app.state.alarms.ack(_alarm_id(alarm_id), by=identity.user, note=body.note)
     except AlarmNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except AlarmStateConflict as exc:
@@ -74,9 +87,16 @@ def ack_alarm(request: Request, alarm_id: str, body: AckRequest) -> dict[str, bo
 
 
 @router.post("/alarms/{alarm_id}/shelve")
-def shelve_alarm(request: Request, alarm_id: str, body: ShelveRequest) -> dict[str, bool]:
+def shelve_alarm(
+    request: Request,
+    alarm_id: str,
+    body: ShelveRequest,
+    identity: Identity = Depends(require("operator")),
+) -> dict[str, bool]:
     try:
-        request.app.state.alarms.shelve(_alarm_id(alarm_id), by=body.by, minutes=body.minutes, reason=body.reason)
+        request.app.state.alarms.shelve(
+            _alarm_id(alarm_id), by=identity.user, minutes=body.minutes, reason=body.reason
+        )
     except AlarmNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except AlarmNotSuppressible as exc:

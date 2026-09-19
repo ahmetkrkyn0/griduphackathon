@@ -29,7 +29,7 @@ bilemeyeceği tek şey üretilir: **haberleşme kopukluğu** (`ALM-COMMS-LOST`, 
 | **P1** | Kritik | 3 | audible | evet | evet | evet | 5 | 15 | evet | siren | **hayir** |
 | **P2** | Alarm | 8 | evet | evet | evet | evet | - | 30 | evet | heater_fan | evet |
 | **P3** | Uyari | 6 | evet | planned | - | - | - | - | optional | - | evet |
-| **SYS** | Sistem | 5 | evet | evet | digest_only | - | - | - | - | - | evet |
+| **SYS** | Sistem | 6 | evet | evet | digest_only | - | - | - | - | - | evet |
 | **INFO** | Bilgi | 0 | evet | - | - | - | - | - | - | - | evet |
 <!-- /URETILMIS:oncelik-matrisi -->
 
@@ -192,18 +192,20 @@ Denetim izi: `alarm_journal` (kim, ne zaman, ne yaptı; onay notu, raf gerekçes
 | 7 | `ALM-DEW-WARN` | P3 | L1 | Ciy noktasi marji 3 K altinda | `dew_margin_warn_k` = 3.0 | HYP-CONDENSE | Magnus formulu; rapor 15.1 |
 | 8 | `ALM-DEW-ALM` | P2 | L1 | Ciy noktasi marji 1 K altinda — yogusma riski | `dew_margin_alarm_k` = 1.0 | HYP-CONDENSE | Magnus formulu |
 | 9 | `ALM-I-OVER` | P2 | L0 | Faz akimi anma degerinin ustunde | `current_alarm_ratio` = 1.0 | HYP-OVERLOAD | EK-I/8 Tablo 8 (DSYA 250/400 A, giris 2312 A) |
-| 10 | `ALM-NEUTRAL-THD` | P3 | L1 | Notr akimi ve akim THD birlikte artti — harmonik kaynakli notr isinmasi |  | HYP-HARMONIC | Rapor 6.5 L1-7 |
+| 10 | `ALM-NEUTRAL-THD` | P3 | L1 | Notr akimi ve akim THD birlikte artti — harmonik kaynakli notr isinmasi | `neutral_current_ratio_warn` = 0.3 ve `neutral_thd_warn_pct` = 15.0 | HYP-HARMONIC | Rapor 6.5 L1-7; iki kosul BIRLIKTE saglanmali (VE) |
 | 11 | `ALM-ARC-TRIP` | P1 | L0 | TVOC-2 ark tripi |  | HYP-ARC | TVOC-2 PDU 149 trip sayaci degisimi |
 | 12 | `ALM-PROT-HEALTH` | P1 | L0 | Ark korumasi dedektor arizasi — pano sessizce korumasiz |  | HYP-PROT-LOSS | TVOC-2 PDU 222/223 sensor status, PDU 1300 hata biti |
 | 13 | `ALM-PD-TREND` | P3 | L1 | PD darbe sayisi/genligi trendi artiyor (OG) |  | HYP-CONDENSE, HYP-PD | EA Technology kalici HFCT trend yaklasimi |
 | 14 | `ALM-DQ-FROZEN` | SYS | L-1 | Sensor degeri donmus (N ornek ayni) | `dq_frozen_samples` = 30 | HYP-SELF-FAULT | - |
 | 15 | `ALM-DQ-JUMP` | SYS | L-1 | Fiziksel olmayan degisim hizi | `dq_max_rate_k_per_min` = 10.0 | HYP-SELF-FAULT | Verilen Excel'deki 15 dk'da 438 A siciramalari bu katmanda isaretlenir |
-| 16 | `ALM-DQ-BELOW-AMBIENT` | SYS | L-1 | Baglanti sicakligi ortamin altinda — sensor yerinden dusmus olabilir |  | HYP-SELF-FAULT | - |
+| 16 | `ALM-DQ-BELOW-AMBIENT` | SYS | L-1 | Baglanti sicakligi ortamin altinda — sensor yerinden dusmus olabilir | `dq_below_ambient_deadband_k` = 1.0 | HYP-SELF-FAULT | Kural: t_c < T_ortam - dq_below_ambient_deadband_k (olu bant) |
 | 17 | `ALM-NODE-LOST` | SYS | L-1 | Dugum sessiz | `node_silent_min` = 15 | HYP-SELF-FAULT | - |
 | 18 | `ALM-COMMS-LOST` | SYS | L-1 | Merkez baglantisi koptu (heartbeat yok) | `heartbeat_timeout_min` = 5 | HYP-SELF-FAULT | - |
 | 19 | `ALM-DOOR-UNAUTH` | P2 | L0 | Planli is emri olmadan kapak acildi | `door_grace_min` = 2 | - | - |
 | 20 | `ALM-LASTGASP` | P2 | L0 | Besleme kesildi (son nefes mesaji) |  | - | - |
 | 21 | `ALM-PANEL-TEMP` | P2 | L0 | Pano ic ortam sicakligi 45 degC ustu | `panel_temp_alarm_c` = 45 | - | TEDAS sartname Tablo 1 (maks. 40 degC) |
+| 22 | `ALM-DQ-DRIFT` | SYS | L-1 | Sensor yuk bagimsiz kayma biriktirdi — kalibrasyon supheli | `dq_drift_rise_k` = 2.0 | - | dT = K * I^2 oldugu icin yuk dustukce dT de dusmelidir. Bozulan BAGLANTI dT'yi her yukte ORANTILI buyutur; kayan SENSOR ise yukten bagimsiz bir terim ekler ve dusuk yuk TABANINI yukseltir. Kural bu tabanin pencere icindeki yukselisini olcer. Mevcut dort L-1 kurali bunu kaciriyordu (docs/12 §4.3).
+ |
 <!-- /URETILMIS:alarm-katalogu -->
 
 ## 10. Doğrulama (ölçülmüş, 13 Eylül 2026)

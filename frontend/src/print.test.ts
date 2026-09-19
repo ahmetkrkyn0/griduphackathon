@@ -1,12 +1,20 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// SINIR: yazdirma ciktisinin kendisi burada dogrulanamaz — vitest "node" ortaminda kosar
-// (vite.config.ts), DOM yok, sayfa duzeni yok ve depoda yazdirmayi surucek bir tarayici
-// araci yok (yeni npm bagimliligi yasak). Bu test yalnizca sozlesmeyi korur: yazdirma
-// kurallari tek dosyada durur, Kara kutu ekrani onu yukler ve raporun gerektirdigi
-// bloklar (imza, ibare, iki zaman damgasi, 2B on gorunus) ekrandan silinmez.
-// Kagit ciktisinin gorsel dogrulamasi elle yapilir.
+// SINIR: yazdirma ciktisinin KENDISI burada dogrulanamaz. Bu dosya "node" ortaminda
+// kosar (vite.config.ts) ve kaynak dosyalarin METNINI okur; sayfa duzeni uretmez.
+//
+// 19 Eylul duzeltmesi: bu yorum eskiden "DOM yok" ve "yeni npm bagimliligi yasak"
+// diyordu. K7/7.1-7.2 ile IKISI DE ARTIK YANLIS — depoda jsdom, @testing-library/react
+// ve Playwright var; `.tsx` bilesen testleri jsdom'da kosuyor.
+// Gercek sinir bundan DAR ve degismedi: jsdom sayfa duzeni hesaplamaz ve `@page` /
+// `@media print` kurallarini UYGULAMAZ, yani kagit ciktisi jsdom'da da olculemez.
+// Playwright ile olculebilirdi (`page.pdf()` yalnizca Chromium'da calisir); bu bilincli
+// olarak YAPILMADI ve K7'de bir OLCUM BOSLUGU olarak kayitlidir.
+//
+// Bu test yalnizca sozlesmeyi korur: yazdirma kurallari tek dosyada durur, Kara kutu
+// ekrani onu yukler ve raporun gerektirdigi bloklar (imza, ibare, iki zaman damgasi,
+// 2B on gorunus) ekrandan silinmez. Kagit ciktisinin gorsel dogrulamasi elle yapilir.
 const printCss = readFileSync(new URL("./print.css", import.meta.url), "utf8");
 const appCss = readFileSync(new URL("./app.css", import.meta.url), "utf8");
 const themeCss = readFileSync(new URL("./theme.css", import.meta.url), "utf8");

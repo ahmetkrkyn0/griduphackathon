@@ -56,10 +56,50 @@ işidir. Üç onay dondurmadan önce gelirse ve K1–K5 kapanmışsa bu teslimde
 
 ## Onaylar (karar toplantısında)
 
-- [ ] A — bu sürümde uygula
-- [ ] B — bu sürümde uygula
-- [ ] C — bu sürümde uygula
+- [x] A — uygula
+- [x] B — uygula
+- [x] C — uygula
 
-veya
+---
 
-- [ ] Üçü birden: **sonraki sürüme ertele** (önerilen)
+## Karar — 18 Eylül 2026: **kabul edildi ve uygulandı**
+
+15 Eylül'deki "sonraki sürüme ertele" önerisinin tek gerekçesi **zamanlamaydı** (özellik
+dondurma 17 Eylül 23:59, GK2). O tarih geçti; gerekçe düştü, öneri aynen uygulandı.
+
+### Ne yapıldı
+
+| Katman | Değişiklik |
+|---|---|
+| Sözleşme | `contracts/openapi.yaml` **1.0.0 → 1.1.0**: `GET /api/v1/fleet/health` + `PanelHealth` şeması. **Yalnızca ekleme** — mevcut hiçbir uç/alan değişmedi |
+| Backend | `db.py` `_HEALTH_PAYLOAD` + `list_panel_health()`; `api/views.py` `panel_health()`; `api/insights.py` `GET /fleet/health` |
+| Frontend | `api/types.ts` `PanelHealth`, `api/client.ts` + `api/mock.ts` `fleetHealth()`; `pages/CihazSagligi.tsx` artık **tek istek** atıyor |
+
+### Taslak şemadan iki sapma — ikisi de uygulama sırasında ölçülerek bulundu
+
+**1. `fw` yükün kökünde, `health` bloğunun içinde değil.** İlk SQL projeksiyonu yalnızca
+`l.payload -> 'health'` çekiyordu ve `fw` null geliyordu. `GET /panels/{id}` bunu zaten
+kökten yükseltiyordu (`api/views.py`); toplu uç de aynısını yapmak zorunda. Bunu **test
+yakaladı**, gözden geçirme değil: `test_fleet_health_matches_panel_detail` iki ucun aynı
+alan için aynı değeri döndürmesini kilitliyor.
+
+**2. `maint_mode` ve `baseline_day` taslakta yoktu, eklendi.** Ekran ikisini de gösteriyor
+(`baseline_day` "Taban öğrenme" sütunu); onlarsız uç, yerini aldığı çağrıyı tam
+karşılamazdı ve ekran yine pano-başına isteğe muhtaç kalırdı.
+
+### `lat`/`lon` teklifi: **uygulanmadı**
+
+Öneri "aynı PR'da `lat`/`lon` yerine gerçek `il`/`ilçe` alanları da eklenebilir" diyordu.
+Eklenmedi, çünkü **veri yok**: `panels` tablosunda il/ilçe kolonu yoktur ve bu depoda
+doldurulacak gerçek bir kaynak da yoktur (GK3 — CBS içe aktarımı yapılmadı). Alan açıp boş
+bırakmak ya da pano_id önekinden il uydurmak GK10 ihlali olurdu. Bu iş varlık künyesi
+maddesine (`GELISTIRME-BACKLOGU.md` F-21) aittir ve orada kalıyor. `lat`/`lon` 15 Eylül'den
+beri sözleşmede zaten var ve Bölge Haritası onu kullanıyor.
+
+### Ölçülen
+
+- `scripts/check_contracts.py`: **9 uç → 10 uç**, "SOZLESMELER TUTARLI".
+- Yeni testler: backend'de 6 uç testi + 2 gerçek TimescaleDB projeksiyon testi.
+- İstek sayısı: ekran başına **N istek → 1 istek** (N = görünen pano sayısı). Bu bir kod
+  özelliğidir, ölçülmüş bir gecikme iyileştirmesi **değildir**: demo filosu 3–20 pano ve
+  bu ölçekte fark zaten görünmüyordu. 100+ panoda beklenen kazanç **ölçülmedi**.

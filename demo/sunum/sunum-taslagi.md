@@ -69,7 +69,8 @@ aynı), sonra **S7 (ölçek)** ve **S8 (entegrasyon)**'dan kısa kesitler.
 - **Ölçek:** `docs/09-olceklenebilirlik.md`'den ölçülmüş sayılar (1.000 panoda p95 gecikme, DB
   sıkıştırma oranı).
 - **Maliyet:** `docs/10-bom-maliyet-roi.md`'den SKU tablosu + adet 1/1.000 birim maliyet
-  (~56 → ~37 USD/kontrolcü) + parametrik ROI formülü.
+  (70,73 → 47,68 USD/kontrolcü; pano başına **toplam** 103–396 USD, düğüm sayısına göre — `docs/10` §7)
+  + parametrik ROI ve geri ödeme hesaplayıcısı (`scripts/tazminat_maruziyeti.py --duyarlilik`).
 - **Kurulum:** `docs/08-kurulum-proseduru.md`'den tek planlı kesinti penceresi, ≤45 dk, 2 kişi.
 
 ## Slayt 7 — PoC teklifi (30 sn)

@@ -59,7 +59,7 @@ import paho.mqtt.client as mqtt
 import yaml
 from jsonschema import Draft202012Validator
 
-from panoalgo import scenarios
+from panoalgo import reporting, scenarios
 from panoalgo.edge import EdgePipeline
 from panoalgo.generator import PanelSimulator, default_contracts_dir, format_pano_id
 
@@ -153,6 +153,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--profile", default=os.getenv("SIM_PROFILE", "karma"),
                         help="ttl tahmininde kullanilan yuk profili")
     parser.add_argument("--dry-run", action="store_true", help="broker'a baglanma, ekrana yaz")
+
+    adaptive = parser.add_argument_group(
+        "uyarlanabilir raporlama (F-36)",
+        "Yalnizca SUREKLI kipte gecerlidir. Seyrelen YAYINDIR: tespit (EdgePipeline) her "
+        "turda aynen kosar. Senaryo kipi bu kapiyi HIC gormez, cunku orada seyreltme zaten "
+        "vardir (bkz. _run_scenario 'her N. ornek').",
+    )
+    adaptive.add_argument("--adaptive", action="store_true",
+                          help="olu bant + azami sessizlik + olayda aninda yayin (varsayilan KAPALI)")
+    adaptive.add_argument("--deadband-fraction", type=float, default=reporting.DEADBAND_FRACTION,
+                          help="olu bant, karar araliginin bu kesri (varsayilan %(default)s)")
+    adaptive.add_argument("--max-silence", type=float, default=reporting.DEFAULT_MAX_SILENCE_S,
+                          help="azami sessizlik (s); sozlesmedeki heartbeat_timeout_min'in "
+                               "yarisini asamaz (varsayilan %(default)s)")
 
     clock = parser.add_mutually_exclusive_group()
     clock.add_argument("--wall-clock", dest="wall_clock", action="store_true", default=None,
@@ -259,6 +273,11 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("--period pozitif olmali")
     if args.speed <= 0:
         raise SystemExit("--speed pozitif olmali")
+    if args.adaptive and args.scenario:
+        # Senaryo kipinde seyreltme ZATEN var ("her N. ornek", asagida) ve betik
+        # kac mesaj yayinlayacagini basarken soz veriyor. Ikinci bir kapi o sozu
+        # yalan yapar ve S0/S1 demolarinin trend grafigini bosaltir.
+        raise SystemExit("--adaptive yalnizca surekli kipte gecerlidir (--scenario ile kullanilamaz)")
 
     signal.signal(signal.SIGINT, _request_stop)
     signal.signal(signal.SIGTERM, _request_stop)
@@ -295,6 +314,41 @@ def _wants_wall_clock(args: argparse.Namespace) -> bool:
 # ------------------------------------------------------------------ surekli kip
 
 
+def _build_gate(args: argparse.Namespace, contracts_dir: Path) -> reporting.ReportGate:
+    """Yayin kapisi. Bayrak verilmediyse HICBIR SEYI bastirmaz (bugunku davranis).
+
+    Varsayilanin saydam olmasi bilincli: teslim oncesi yayin davranisini sessizce
+    degistirmek yerine uyarlanabilir kip acikca secilir. Olcum de ancak iki kip
+    yan yana kosabildiginde durust olur (loadtest/veri_butcesi.py).
+    """
+    if not getattr(args, "adaptive", False):
+        return reporting.ReportGate(reporting.ReportPolicy.passthrough())
+    try:
+        policy = reporting.ReportPolicy.from_contracts(
+            contracts_dir, max_silence_s=args.max_silence, fraction=args.deadband_fraction
+        )
+    except reporting.PolicyError as exc:
+        raise SystemExit(f"uyarlanabilir raporlama kurulamadi: {exc}") from exc
+    print(
+        f"[panosim] uyarlanabilir raporlama: olu bant %{args.deadband_fraction * 100:g}, "
+        f"azami sessizlik {policy.max_silence_s:.0f} GERCEK s (tespit periyodu DEGISMEDI)",
+        flush=True,
+    )
+    if abs(args.speed - 1.0) > 1e-9:
+        # Hizlandirilmis simulasyonda fizik gercek saniye basina --speed kat hizli
+        # degisir; olu bantlar hemen asilir ve seyrelme gorunmez olur. Bu bir hata
+        # DEGIL, olcegin kendisidir: banner'in seyrelme vaat edip etmedigi
+        # karistirilmasin diye acikca soylenir. Olculen oran docs/09'dadir ve
+        # loadtest/veri_butcesi.py ile x1 hizda alinmistir.
+        print(
+            f"[panosim] UYARI: --speed x{args.speed:g} ile fizik gercek zamandan hizli akar; "
+            "uyarlanabilir raporlama bu kipte az seyreltir. Olculen oran icin "
+            "loadtest/veri_butcesi.py kullanin.",
+            flush=True,
+        )
+    return reporting.ReportGate(policy)
+
+
 def _run_stream(args: argparse.Namespace, publisher: Publisher, contracts_dir: Path) -> int:
     period = args.period if args.period is not None else float(os.getenv("SIM_PERIOD_S", "10"))
     if period <= 0:
@@ -302,6 +356,7 @@ def _run_stream(args: argparse.Namespace, publisher: Publisher, contracts_dir: P
     args.period = period
     sims = build_simulators(args, contracts_dir)
     pipeline = EdgePipeline(profile=args.profile, contracts_dir=contracts_dir)
+    gate = _build_gate(args, contracts_dir)
     baseline_h = args.baseline_hours if args.baseline_hours is not None else _baseline_hours(contracts_dir)
     print(
         f"[panosim] {len(sims)} pano | periyot {args.period} s | hiz x{args.speed} | seed {args.seed}",
@@ -312,6 +367,7 @@ def _run_stream(args: argparse.Namespace, publisher: Publisher, contracts_dir: P
     sim_step_s = args.period * args.speed
     rounds = 0
     sim_hours = 0.0
+    started = time.monotonic()
 
     while not _stop:
         rounds += 1
@@ -321,7 +377,25 @@ def _run_stream(args: argparse.Namespace, publisher: Publisher, contracts_dir: P
             print(f"[panosim] taban ogrenme tamamlandi ({sim_hours:.0f} simule saat)", flush=True)
 
         for sim in sims:
-            if not publisher.send(pipeline.process(sim.step(sim_step_s))):
+            # TESPIT HER TURDA KOSAR. Kapi yalnizca YAYINI eler ve process()
+            # cagrisini kosullu hale GETIRMEZ; getirseydi RLS'in ornekleme
+            # periyodu sessizce degisir ve K kestirimi bozulurdu (F-36).
+            payload = pipeline.process(sim.step(sim_step_s))
+
+            # Kapi GERCEK saate bakar, simule saate DEGIL. Sebep sozlesmededir:
+            # azami sessizlik, merkezin heartbeat_timeout_min penceresine karsi
+            # guvenli olsun diye secilir ve merkez GERCEK zamanla olcer
+            # (backend/app/alarm_service.py). Simule saniye kullanilsaydi --speed
+            # carpani emniyet payini tek basina belirlerdi: x60'ta 60 s'lik azami
+            # sessizlik 1 gercek saniye olur (hicbir sey seyrelmez), x0,1'de ise
+            # 150 s'lik ust sinir 1500 gercek saniyeye cikip merkezin 300 s'lik
+            # esigini asar ve pano KESINTI sanilirdi.
+            if not gate.decide(payload, time.monotonic() - started).publish:
+                continue
+
+            # send()'in False'u "SEMA IHLALI"dir ve olumculdur; "yayinlamadim"
+            # ile ayni kanaldan tasinmaz (bu yuzden kapi send'in DISINDA durur).
+            if not publisher.send(payload):
                 return 1
             if args.max_messages and publisher.published >= args.max_messages:
                 _report(sims, publisher.published)

@@ -113,7 +113,19 @@ COSPHI_NO_LOAD, COSPHI_SPAN, COSPHI_MAX = 0.93, 0.05, 0.99
 # Rapor 15.2 asiri yuku "gunlerce %110-130 In" diye tanimlar; carpanin bu bolgeye
 # ulasabilmesi icin ust sinir anma akiminin iki katina kadar acik birakildi.
 LOAD_MULTIPLIER_MAX = 2.0
-SENSOR_DRIFT_K_PER_H = 2.0    # suruklenen sensorun saatlik kaymasi (TURETILMIS)
+# Suruklenen sensorun saatlik kaymasi. TURETILMIS ve BILEREK HIZLANDIRILMIS: gercek bir
+# RTD'nin kaymasi yilda birkac K mertebesindedir, 7 gunluk bir senaryoda gorunmez. Deger
+# su dort kosulu birden saglayacak sekilde OLCULEREK secildi (168 saat, seed 42):
+#   - ALM-THR-TERM-ALM/WARN tetiklemez (max dt 27,2 K < 50 K): bozuk sensor pano arizasi
+#     gibi gorunmemeli — S8'in not_expect kisiti budur. 2,0 K/h ile 345 kez TERM-ALM
+#     cikiyordu (max dt 231 K), yani senaryo bir sensor arizasi degil termal ariza olurdu.
+#   - ALM-K-ALM tetiklemez (max K/K0 1,49 < 1,6), ama K'yi SISIRIR.
+#   - Mevcut dort L-1 kuralinin DORDUNDEN DE kacar: adim basina 0,025 K sicrama esiginin
+#     (10 K/dk) cok altinda, deger degistigi icin donmus degil, yukari kaydigi icin
+#     ortam altinda degil, ve dugum susmuyor.
+#   - Dokumante edilmis belirtiyi uretir: sinir HIC asilmadigi halde 280 sahte kalan omur
+#     tahmini ve 155 ALM-TTL-14D (docs/12 §4.3).
+SENSOR_DRIFT_K_PER_H = 0.1
 SENSOR_DROPPED_BELOW_AMBIENT_K = 8.0  # yerinden dusmus sensor ortamin altini olcer
 
 # Kismi desarj (PD) yalnizca OG icin anlamlidir: rapor 3.7'ye gore 400 V AG panoda
@@ -123,6 +135,128 @@ PD_BASE_PPS = 2.0
 PD_BASE_AMP_DBMV = 3.0
 PD_NOISE_PHASE_CLUSTER = 0.15   # gurultude faz DUZGUN dagilir -> kumelenme dusuk
 PD_FAULT_PHASE_CLUSTER = 0.85   # gercek PD'de faz kumelenir (PRPD imzasi)
+
+# --- Model uyumsuzlugu (Yapilacaklar 2.1) ---------------------------------------
+# Buradaki fizikler DEDEKTORUN (detect.py) VARSAYMADIGI seylerdir ve HEPSI VARSAYILAN
+# OLARAK KAPALIDIR. Amaclari tespiti guclendirmek degil, SINIRINI OLCMEKTIR: dedektor
+# ureteci ile AYNI ayrik denklemi cozdugu surece "duyarlilik 1,00" buyuk olcude
+# "kestirici kendi ileri modelini ters cevirebiliyor" demektir. S10-S13 senaryolari
+# bu bayraklari acar ve ayni tespit boru hattini uyumsuz fizikle yeniden olcer.
+#
+# OLCULMUS UYARI — NEDEN "SADECE BIR TERIM EKLEMEK" YETMEZ. Bu bayraklarin ilk
+# taslagi carpimsaldi (kuplaj, yuke bagli tau ve ikinci kutup ariza carpanini da
+# olcekliyordu) ve HICBIRI tespiti bozmadi: tepe k_ratio eslesen modelde 2,95,
+# uyumsuz modelde 2,89-2,97 cikti. Sebep yapisal — alarm K'yi degil K/K0 ORANINI
+# okur; uyumsuzluk sabit bir g kazanci gibi davraniyorsa
+#     k_ratio = (g*K) / (g*K0) = K / K0
+# olur ve kazanc BIREBIR SADELESIR. Bu, yontemin bir GUCUDUR ve docs/05'te oyle
+# yazilidir. Uyumsuzlugun tespiti bozabilmesi icin g'nin ariza ile BIRLIKTE
+# degismesi gerekir; asagidaki uc terim de tam olarak bu yuzden boyle kurulmustur
+# (fizikleri de zaten boyle calisir):
+#   - kuplaj  : komsunun isisi bizim akimimizla orantili degildir,
+#   - yavas kutup : ariza KONTAGI bozar, kutu ici havayi degil,
+#   - sensor  : sikisma taban ogrenilirken degil, artis buyudugunde devreye girer.
+
+# Ikinci (yavas) isil kutbun zaman sabiti: kutu ici hava kutlesi. Nokta basina isil
+# zaman sabiti 10-30 dk iken (TAU_MIN_S/TAU_MAX_S, rapor 15.2) bir pano kabininin
+# havasi saatler mertebesinde isinir. 5 saat TURETILMIStir; olculdu (30 gun, 15 dk
+# ornekleme, seed 1304/42/7): yavas pay 0,55 iken tek kutuplu kestirim tau'yu
+# 20 dk yerine 107 dk gosteriyor, yani model uyumsuzlugu tau kestiriminde acikca
+# gorunuyor.
+SLOW_TAU_S = 5 * 3600.0
+
+
+@dataclass(frozen=True)
+class ModelMismatch:
+    """Dedektorun varsaymadigi fizikler. Varsayilan: HICBIRI acik degil.
+
+    Bu nesne bir ARIZA ENJEKSIYONU DEGILDIR: panonun ve olcum zincirinin kendi
+    ozellikleridir, bu yuzden kurulum aninda verilir ve t=0'dan itibaren etkilidir
+    (taban ogrenme penceresi de ayni uyumsuz fizikle ogrenilir — sahada da oyledir).
+    clear_injections() bunlari TEMIZLEMEZ.
+
+    coupling_k        DIFUZIF isil kuplaj: komsu noktalarla FARK uzerinden isi
+                      alisverisi, `c*(ort(dT_komsu) - dT_kendi)`. "Komsu" = ayni
+                      terminal grubundaki diger noktalar (GIRIS_L1/L2/L3/N kendi
+                      arasinda, DSYA3_L1/L2/L3 kendi arasinda). Grup tekduze
+                      isindiginda terim SIFIRDIR, yani panonun ortalama sicakligi
+                      degismez; degisen sey grup ICINDEKI YAPIDIR. Dedektor TEK
+                      NOKTALI model kullanir (regresor [dT, I^2]) ve komsu
+                      sicakligini temsil edecek bir serbestlik derecesi YOKTUR.
+    tau_load_coeff    tau = tau0 * exp(c * I/In). Yapilacaklar 2.1 dogrusal
+                      `tau0*(1 + c*I/In)` yazar; ustel bicim onun birinci mertebe
+                      esidir ve LOAD_MULTIPLIER_MAX = 2.0 asiri yukunde de tau'yu
+                      pozitif tutar (dogrusal bicim c <= -0,5 icin sifira duser ve
+                      exp(-dt/tau) patlar). Dedektor a = exp(-Ts/tau)'yu SABIT bir
+                      parametre olarak kestirir.
+    slow_share        Kararli hal artisinin bu kesri YAVAS kutupta uretilir (kabin
+                      ici hava kutlesi), kalani hizli kutupta (bara/kontak). Ariza
+                      carpani IKISINE DE girer, yani KARARLI HAL TOPLAMI VE DC
+                      KAZANCI DEGISMEZ; uyumsuzluk tamamen DINAMIKTEDIR. Dedektor
+                      birinci mertebe bir sistem varsayar.
+    slow_tau_s        Yavas kutbun zaman sabiti (bkz. SLOW_TAU_S).
+    sensor_gain_per_k Olcum zinciri dogrusalsizligi: t_c = T_ortam + dT/(1 + g*dT).
+                      Fiziksel gerekce: sensorun bara ile arasindaki isil temas
+                      direnci ve RTD'nin kendi isinmasi, artis buyudukce olcumu
+                      SIKISTIRIR. Dedektor olcumu dogrusal varsayar; dahasi sabit
+                      70 K esigi de dogrudan bu sikismis sayiyi okur.
+    """
+
+    coupling_k: float = 0.0
+    tau_load_coeff: float = 0.0
+    slow_share: float = 0.0
+    slow_tau_s: float = SLOW_TAU_S
+    sensor_gain_per_k: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.coupling_k <= 1.0:
+            raise ValueError(f"coupling_k [0,1] araliginda olmali: {self.coupling_k}")
+        # Isaret SERBESTTIR ve bu bilinclidir; iki gercek mekanizma ters yonludur:
+        #   negatif -> dogal tasinim katsayisi h, dT ile buyur; tau = C/(h*A) KUCULUR,
+        #   pozitif -> yuk buyudukce isi baraya ve kabin havasina daha derin islenir,
+        #              katilan isil kutle C buyur ve tau BUYUR.
+        # Hangisinin bastin geldigi geometriye baglidir ve bu depoda OLCULMEMISTIR.
+        # Olculen sey sudur: k_ratio her iki isarette de DEGISMIYOR (3,00 -> 3,00/3,01),
+        # yani senaryonun sonucu isaretten BAGIMSIZDIR — bu yuzden isaret bir kanit
+        # sorunu degil, yalnizca bir tanim sorunudur ve senaryo bunu acikca yazar.
+        if not 0.0 <= self.slow_share < 1.0:
+            raise ValueError(f"slow_share [0,1) araliginda olmali: {self.slow_share}")
+        if self.slow_tau_s <= 0.0:
+            raise ValueError(f"slow_tau_s pozitif olmali: {self.slow_tau_s}")
+        if self.sensor_gain_per_k < 0.0:
+            raise ValueError(f"sensor_gain_per_k negatif olamaz: {self.sensor_gain_per_k}")
+
+    def names(self) -> tuple[str, ...]:
+        """Acik uyumsuzluklarin SOZLESME adlari; kapaliysa bos demet.
+
+        Etiket dosyasindaki `unmodelled_physics` alani BURADAN uretilir, elle
+        yazilmaz. Boylece "bayrak acik ama etikette yazmiyor" durumu yapisal olarak
+        imkansizdir — dogrulama betigi etikete bakarak "eslesen mi uyumsuz mu"
+        diyecegi icin bu tek kaynak kurali olcumun gecerliligini tasir.
+        """
+        return tuple(
+            name
+            for field, name in (
+                ("coupling_k", "thermal_coupling"),
+                ("tau_load_coeff", "load_dependent_tau"),
+                ("slow_share", "second_time_constant"),
+                ("sensor_gain_per_k", "sensor_nonlinearity"),
+            )
+            if getattr(self, field)
+        )
+
+    @property
+    def active(self) -> bool:
+        """Herhangi bir uyumsuzluk acik mi? False ise uretec TA1 davranisindadir."""
+        return bool(self.names())
+
+
+# Tek ornek: "uyumsuzluk yok". Varsayilan yol bu nesneyi kullanir ve asagidaki her
+# `if` kisa devre yapar, yani KAPALI bayrak hicbir ek islem ve hicbir ek RNG cagrisi
+# uretmez. data/fixtures/ altindaki S0-S9 ciktisi bit bit korunur (test_generator.py
+# bunu ayrica kilitler).
+NO_MISMATCH = ModelMismatch()
+
 
 # DSYA cikislarinin boy dagilimi (EK-I/8'de 7 cikis var; boy dagilimi TURETILMIS).
 _TWO_BOY_FEEDERS = (1, 2, 3)
@@ -226,6 +360,28 @@ def default_contracts_dir() -> Path:
     return Path(env) if env else _repo_contracts_dir()
 
 
+def _neighbour_map(names: tuple[str, ...]) -> dict[str, tuple[str, ...]]:
+    """Nokta -> ayni terminal grubundaki DIGER noktalar (isil kuplaj komsulari).
+
+    Grup, nokta adinin alt cizgiden onceki parcasidir: GIRIS_L1/L2/L3/N tek grup,
+    DSYA3_L1/L2/L3 baska bir grup. Fiziksel karsiligi bir klemens/bara blogudur:
+    ayni blogun uclari birkac santimetre arayla ve ayni metal uzerinde oturur, farkli
+    cikislarin uclari oturmaz. Bu yuzden kuplaj grup ICINDE tanimlidir.
+
+    GIRIS grubunun NOTRU ozellikle onemlidir: notr akimi faz akimiyla orantili
+    DEGILDIR (dengesizlik fazor toplami + triplen harmonikler), yani notr uzerinden
+    gelen isi faz noktasinin kendi I^2'siyle aciklanamaz. Dedektorun regresoru
+    [dT, I^2] oldugu icin bu terimi temsil edecek bir serbestlik derecesi YOKTUR.
+    """
+    groups: dict[str, list[str]] = {}
+    for name in names:
+        groups.setdefault(name.split("_", 1)[0], []).append(name)
+    return {
+        name: tuple(other for other in groups[name.split("_", 1)[0]] if other != name)
+        for name in names
+    }
+
+
 @dataclass(frozen=True)
 class PointSpec:
     """Bir olcum noktasinin degismez fiziksel kimligi."""
@@ -252,6 +408,7 @@ class PanelSimulator:
         start: datetime | None = None,
         contracts_dir: Path | None = None,
         medium_voltage: bool = False,
+        mismatch: ModelMismatch | None = None,
     ) -> None:
         self._contracts_dir = contracts_dir or default_contracts_dir()
         self._thresholds = self._load_thresholds()
@@ -263,6 +420,9 @@ class PanelSimulator:
         self.profile: ProfileKind = profile
         self.seed = seed
         self.medium_voltage = medium_voltage
+        # Model uyumsuzlugu bir ENJEKSIYON degil, panonun ozelligidir: t=0'dan
+        # itibaren etkilidir, taban ogrenme penceresi de bununla ogrenir.
+        self.mismatch = mismatch or NO_MISMATCH
 
         start_ts = start or datetime.now(timezone.utc)
         if start_ts.tzinfo is None:
@@ -275,6 +435,12 @@ class PanelSimulator:
         rng = random.Random(seed)
         self._points = self._build_points(rng)
         self._dt_c: dict[str, float] = {spec.name: 0.0 for spec in self._points}
+        # Ikinci (yavas) isil kutbun durumu. slow_share = 0 iken 0.0'da KALIR ve
+        # toplama x + 0.0 == x oldugu icin ciktiyi bit duzeyinde degistirmez.
+        self._dt_slow: dict[str, float] = {spec.name: 0.0 for spec in self._points}
+        self._neighbours: dict[str, tuple[str, ...]] = _neighbour_map(
+            tuple(spec.name for spec in self._points)
+        )
         self._current_a: dict[str, float] = {spec.name: 0.0 for spec in self._points}
         self._held_current_a: dict[str, float] = {}
         self._i2_window: deque[float] = deque(maxlen=EXCITATION_WINDOW)
@@ -438,7 +604,12 @@ class PanelSimulator:
         if kind is None:
             self._sensor_faults.pop(pt, None)
             self._fault_age_h.pop(pt, None)
-        else:
+        elif self._sensor_faults.get(pt) != kind:
+            # AYNI arizayi yeniden kurmak yasi SIFIRLAMAZ (F-31). Senaryo yurutucusu
+            # _inject()'i HER ADIMDA cagirir; kosulsuz sifirlama yuzunden suruklenme
+            # hicbir zaman birikmiyordu — olculdu: 112 saatlik enjeksiyon penceresinde
+            # kayma 0,5 K'da (tek adimlik) cakili kaliyordu, oysa birikmesi gerekiyordu.
+            # Yani "sensor suruklenmesi uretiyoruz" iddiasi fiilen DOGRU DEGILDI.
             self._sensor_faults[pt] = kind
             self._fault_age_h[pt] = 0.0
 
@@ -550,6 +721,13 @@ class PanelSimulator:
         aktarimda yuk ornekler arasinda cok degistigi icin K kestirimi belirgin
         sapar — olculdu: S1 senaryosunda K/K0 buyumesi gerekirken 0,47'ye dustu.
         """
+        mismatch = self.mismatch
+        # Kuplaj BIR ONCEKI adimin sicakliklarini okur. Iki sebep: (a) sonuc nokta
+        # isleme SIRASINDAN bagimsiz olur, (b) isi akisi zaten gecikmelidir. Anlik
+        # degerlerle hesaplansaydi listedeki ilk nokta komsularini eski, sonuncusu
+        # yeni haliyle gorurdu ve fizik nokta adlarinin siralamasina baglanirdi.
+        previous = self._total_rise() if mismatch.coupling_k else None
+
         for spec in self._points:
             source = i_n if spec.phase is None else i_ph[spec.phase]
             current = source * spec.share
@@ -557,14 +735,66 @@ class PanelSimulator:
             self._current_a[spec.name] = current
             self._held_current_a[spec.name] = current
 
-            a = math.exp(-dt_s / spec.tau_s)
+            tau_s = spec.tau_s
+            if mismatch.tau_load_coeff:
+                tau_s *= math.exp(mismatch.tau_load_coeff * held / spec.rated_a)
             steady = spec.k0 * self._k_multiplier.get(spec.name, 1.0) * held**2
+
+            if mismatch.slow_share:
+                # Kararli hal TOPLAMI degismez: pay (1-w) hizli kutupta, w yavas
+                # kutupta uretilir ve ARIZA CARPANI IKISINE DE girer. Bu bilincli:
+                # gevsek baglantinin urettigi I^2*R isisinin TAMAMI sonunda terminali
+                # isitir; yalnizca hizli kutbu buyutmek toplam isiyi dusururdu ve o
+                # zaman olculen sey "model yanlis" degil "pano daha soguk" olurdu
+                # (olculdu: ariza yalnizca hizli kutuptayken tepe artis 79,0 K -> 64,8 K
+                # ve 70 K sinirina hic ulasilmiyordu; yani duyarlilik dususu uyumsuzluga
+                # DEGIL calisma noktasi kaymasina yazilirdi). Uyumsuzluk tamamen
+                # DINAMIKTEDIR: dedektor tek kutupludur, gercek sistem iki kutupludur.
+                a_slow = math.exp(-dt_s / mismatch.slow_tau_s)
+                self._dt_slow[spec.name] = (
+                    a_slow * self._dt_slow[spec.name]
+                    + (1.0 - a_slow) * mismatch.slow_share * steady
+                )
+                steady *= 1.0 - mismatch.slow_share
+
+            if previous is None:
+                a = math.exp(-dt_s / tau_s)
+            else:
+                # DIFUZIF KUPLAJ (Fourier): akis sicaklik FARKIYLA orantilidir.
+                #     tau*d(dT_i)/dt = -(1+c)*dT_i + K_i*I_i^2 + c*m_i
+                # Sifirinci derece tutucuyla TAM cozumu asagidaki iki satirdir; kararli
+                # hal (K*I^2 + c*m)/(1+c) olur, yani grup tekduze isindiginda terim
+                # SIFIRDIR ve DC kazanci degismez.
+                #
+                # NEDEN TOPLAMALI DEGIL: ilk taslak `steady += c*m` idi. Kararli hali
+                # K*I^2/(1-c) yapiyor, yani panoyu ISITIYOR — olculdu, tepe artis
+                # 79,0 K -> 90,6 K (c=0,25). O zaman uyumsuzlugun etkisi ile "pano
+                # daha sicak" etkisi ayrilamaz. Difuzif bicimde tepe artis korunur ve
+                # geriye YALNIZCA dedektorun goremedigi sey kalir: grup ici YAPI.
+                #
+                # a'nin (0,1) araliginda kalmasi her dt_s ve her c icin garantilidir
+                # (ustel form), bu yuzden adim suresine bagli bir kararlilik korumasi
+                # GEREKMEZ — sim/panosim.py --speed ile hizlandirilmis oynatma da guvenli.
+                neighbours = self._neighbours[spec.name]
+                if neighbours:
+                    c = mismatch.coupling_k
+                    mean_rise = sum(previous[name] for name in neighbours) / len(neighbours)
+                    a = math.exp(-(1.0 + c) * dt_s / tau_s)
+                    steady = (steady + c * mean_rise) / (1.0 + c)
+                else:  # pragma: no cover - sozlesmede her grupta en az 3 nokta var
+                    a = math.exp(-dt_s / tau_s)
+
             self._dt_c[spec.name] = a * self._dt_c[spec.name] + (1.0 - a) * steady
 
         self._i2_window.append(sum(i**2 for i in i_ph) / 3.0)
         for pt in self._fault_age_h:
             self._fault_age_h[pt] += dt_s / 3600.0
-        return dict(self._dt_c)
+        return self._total_rise()
+
+    def _total_rise(self) -> dict[str, float]:
+        """Hizli + yavas kutbun toplami. Yavas kutup kapaliyken degerler AYNIDIR."""
+        slow = self._dt_slow
+        return {name: value + slow[name] for name, value in self._dt_c.items()}
 
     def _excited(self) -> bool:
         """Kalici uyarim kosulu: var(I^2) esigin altindaysa RLS guncellenmez."""
@@ -593,8 +823,15 @@ class PanelSimulator:
     def _point_block(self, rises: dict[str, float], t_low_c: float) -> list[dict]:
         excited = self._excited()
         block = []
+        gain = self.mismatch.sensor_gain_per_k
         for spec in self._points:
-            measured_rise = rises[spec.name] + self._sensor_rng.gauss(0.0, TEMP_SENSOR_SIGMA_K)
+            rise = rises[spec.name]
+            if gain:
+                # Olcum zinciri dogrusalsizligi: artis buyudukce olcum SIKISIR.
+                # Gurultu bundan SONRA binir (sensor once sikistirir, sonra olcer)
+                # ve _sensor_rng cagri sirasi degismez — kapali bayrakta akis aynidir.
+                rise = rise / (1.0 + gain * rise)
+            measured_rise = rise + self._sensor_rng.gauss(0.0, TEMP_SENSOR_SIGMA_K)
             t_c = self._apply_sensor_fault(spec.name, t_low_c + measured_rise, t_low_c)
             self._last_reported_t_c[spec.name] = t_c
             block.append(

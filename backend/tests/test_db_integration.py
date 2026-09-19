@@ -137,6 +137,39 @@ def test_list_panels_projects_only_summary_fields(contracts, store, tel_payload,
 
 
 @needs_db
+def test_list_panel_health_projects_health_block_and_root_fw(contracts, store, tel_payload, pano_id):
+    """GET /fleet/health'in SQL projeksiyonu: saglik blogu TAM, `fw` kokten yukseltilmis.
+
+    MemoryStore bunu taklit ediyor (fakes._health_projection); burada gercek
+    TimescaleDB'ye karsi sinanir — iki taraf ayrisirsa testler yesil kalir ama
+    uretimde ekran bos alan gosterir.
+    """
+    ingest(contracts, store, make_payload(tel_payload, pano_id))
+
+    [record] = [r for r in store.list_panel_health() if r.pano_id == pano_id]
+
+    assert record.payload == {
+        "health": {
+            "uptime_s": 86400, "nodes_ok": 5, "nodes_total": 5, "rssi_dbm": -71.0,
+            "vbak_pct": 100.0, "buffered": 0, "maint_mode": False, "baseline_day": 7,
+        },
+        "fw": "0.1.0",
+    }
+    assert record.last_rx == RX
+    # Tam yuk CEKILMEZ: 1.000 panoda fark buradan gelir.
+    assert "t_conn" not in record.payload and "elec" not in record.payload
+
+
+@needs_db
+def test_list_panel_health_returns_null_payload_without_telemetry(store, db, pano_id):
+    db.execute("INSERT INTO panels (pano_id, name) VALUES (%s, 'Test TM-02')", (pano_id,))
+
+    [record] = [r for r in store.list_panel_health() if r.pano_id == pano_id]
+
+    assert (record.payload, record.last_rx) == (None, None)
+
+
+@needs_db
 def test_list_panels_includes_registered_panel_without_telemetry(store, db, pano_id):
     db.execute("INSERT INTO panels (pano_id, name, lat, lon) VALUES (%s, 'Test TM-01', 38.1, 27.1)", (pano_id,))
 

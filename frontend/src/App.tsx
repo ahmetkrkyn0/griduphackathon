@@ -21,6 +21,11 @@ export function App() {
             <Route path="/pano/:panoId" element={<PanoDetay />} />
             <Route path="/alarmlar" element={<AlarmKonsolu />} />
             <Route path="/trend" element={<TrendKorelasyon />} />
+            {/*
+              /trend/:panoId dusurulemez: TrendKorelasyon pano secicisinde
+              navigate(`/trend/${id}`) yapiyor ve useParams().panoId okuyor.
+              Rota olmazsa pano degistirme NotFound'a duser.
+            */}
             <Route path="/trend/:panoId" element={<TrendKorelasyon />} />
             <Route path="/olay" element={<OlayAnalizi />} />
             <Route path="/olay/:eventId" element={<OlayAnalizi />} />

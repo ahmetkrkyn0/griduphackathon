@@ -6,18 +6,9 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from .views import last_seen, panel_detail, panel_health_summary, panel_summary
+from .views import last_seen, panel_detail, panel_summary
 
 router = APIRouter(prefix="/api/v1", tags=["panels"])
-
-
-@router.get("/fleet/health")
-def get_fleet_health(request: Request, limit: int = Query(2000, ge=0, le=5000)) -> list[dict[str, Any]]:
-    state = request.app.state
-    now = state.clock()
-    records = state.store.list_panels()
-    records.sort(key=lambda r: r.pano_id)
-    return [panel_health_summary(r, state.contracts, now) for r in records[:limit]]
 
 
 @router.get("/panels")

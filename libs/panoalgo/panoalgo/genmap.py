@@ -10,7 +10,14 @@ baslik yeniden uretilir ve C tarafi otomatik takip eder.
 Uretilen dosya elle duzenlenmez; basinda bunu soyleyen bir uyari vardir.
 
 CLI:
-    python -m panoalgo.genmap --out firmware/core/modbus_map_generated.h
+    python -m panoalgo.genmap            # yeniler
+    python -m panoalgo.genmap --check    # guncel degilse 1 ile cikar (PR oncesi)
+
+--check NEDEN VAR: dort dokuman ureteci (scripts/gen_*.py) bu bayragi tasiyordu,
+bu besincisi tasimiyordu. Harita degisip baslik yeniden uretilmezse firmware
+testleri BAYAT haritaya karsi sessizce gecer — firmware/tests/test_modbus_map.c
+uretilmis basligi KULLANIR ama guncelligini SINAMAZ. Bayragi kilitleyen test
+libs/panoalgo/tests/test_genmap.py icindedir.
 """
 
 from __future__ import annotations
@@ -113,11 +120,23 @@ def default_output() -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Modbus harita basligi ureteci (Kisi A)")
     parser.add_argument("--out", default=None)
+    parser.add_argument("--check", action="store_true", help="baslik guncel degilse 1 ile cik")
     args = parser.parse_args(argv)
 
     path = Path(args.out) if args.out else default_output()
+    # Yazma ve denetim AYNI baytlar uzerinden gider; ikisi ayri yollardan
+    # hesaplanirsa --check "guncel" derken dosya farkli olabilirdi.
+    fresh = render().encode("utf-8")
+
+    if args.check:
+        if not path.exists() or path.read_bytes() != fresh:
+            print(f"{path} guncel degil: python -m panoalgo.genmap")
+            return 1
+        print("guncel")
+        return 0
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render(), encoding="utf-8", newline="\n")
+    path.write_bytes(fresh)
     print(f"{path} uretildi ({path.stat().st_size} bayt)")
     return 0
 
