@@ -17,10 +17,11 @@ Pano Beyni kontrolcü kartı için özet:
 
 | Ölçek | Birim maliyet (yaklaşık) |
 |---|---|
-| Adet 1 (prototip) | ~56 USD/kontrolcü kartı |
-| Adet 1.000 | ~37 USD/kontrolcü kartı |
+| Adet 1 (prototip) | **70,73 USD**/kontrolcü kartı |
+| Adet 1.000 | **47,68 USD**/kontrolcü kartı |
 
-Bu rakamlara sensör düğümleri (S1–S5), SIM/veri aboneliği ve kurulum işçiliği **dahil değildir**
+Bu rakamlar `bom.csv` satır kalemlerinin toplamıdır (hücresel modem dahil) ve `python -c` ile
+yeniden hesaplanabilir. Sensör düğümleri (S1–S5), SIM/veri aboneliği ve kurulum işçiliği **dahil değildir**
 (BOM yalnızca Pano Beyni kartını kapsar; sensör düğümleri bu teslimde kavramsal seviyede,
 `hardware/sensor-dugumu/` içinde ayrı bir revizyon olarak planlanmıştır).
 
@@ -49,7 +50,7 @@ trafo yüzlerce aboneyi besler; önlenen her arıza bu tazminatı doğrudan azal
 | Sistemin tespit oranı — **ölçülen** ([`docs/12`](12-dogrulama-sonuclari.md) §1) | Etiketli senaryo setinde **recall 1,00**: beklenen alarmı olan 8 senaryonun 8'inde kaçan yok, yasaklı alarm yok |
 | Sistemin tespit oranı — **hesapta kullanılan** | **%70** — bilinçli iskonto, ölçülen değer değil. Gerekçe: ölçüm sentetik ve etiketli 10 senaryo üzerindedir; saha çeşitliliği, sensör arızası ve bakım gecikmesi bu orana dahil değildir |
 | Pano başına yıllık beklenen önlenen kayıp | 0,03 × 8.000 × 0,70 ≈ **168 USD/pano/yıl** (aynı hesap ölçülen 1,00 ile 240 USD/pano/yıl verir; tabloda temkinli olan kullanıldı) |
-| Pano başına sistem maliyeti (Temel paket, adet 1.000) | ~37 USD (yalnızca kontrolcü) + sensör/kurulum |
+| Pano başına sistem maliyeti (Temel paket, adet 1.000) | 47,68 USD (yalnızca kontrolcü) + sensör/kurulum |
 | Basit geri ödeme (yalnızca kontrolcü maliyetiyle) | < 1 yıl |
 
 > **Not:** Bu tablo bir hesaplayıcı taslağıdır; gerçek P(arıza) ve arıza maliyeti ADM/GDZ'nin
@@ -57,7 +58,7 @@ trafo yüzlerce aboneyi besler; önlenen her arıza bu tazminatı doğrudan azal
 
 ## 4. Ölçeklenebilirlik ile ilişkisi
 
-Birim maliyetin adet 1.000'de düşmesi (%34 azalma), `docs/09-olceklenebilirlik.md`'deki (Kişi B)
+Birim maliyetin adet 1.000'de düşmesi (70,73 → 47,68 USD, **%32,6** azalma), `docs/09-olceklenebilirlik.md`'deki (Kişi B)
 1.000 sanal pano yük testiyle birlikte okunmalıdır: donanım maliyeti düşerken sunucu tarafı da
 aynı ölçekte doğrusala yakın büyüyor (bkz. o doküman), yani birim ekonomi saha sayısı arttıkça
 iyileşiyor.
@@ -115,7 +116,7 @@ girmeyen kalemler ve haritadan sayılan adetleri:
 | Ek kablaj ve işçilik | ölçülmedi | kablo boyu ve işçilik depoda kayıtlı değil | depoda yok |
 
 Buna karşılık **ödenen** kalem ölçülüdür: `bom.csv`'deki izole RS485 arayüzü — **4,90 USD** (adet 1) /
-**3,70 USD** (adet 1.000), yani kontrolcü kartının adet 1.000 maliyetinin (~37 USD) yaklaşık **%10**'u.
+**3,70 USD** (adet 1.000), yani kontrolcü kartının adet 1.000 maliyetinin (47,68 USD) yaklaşık **%8**'i.
 BOM'da bu parçadan 2 adet var; ikincisi SCADA ağ geçidinin slave portudur, yeniden kullanımın bedeli değildir.
 
 Kaçınılan kalemlerin birim fiyatı depoda olmadığı için **net fark "veri yok"**tur. Fiyat girilirse betik
