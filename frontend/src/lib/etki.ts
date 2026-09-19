@@ -5,8 +5,14 @@ import type { PanelSummary } from "../api/types";
  *
  * Saf fonksiyon olarak ayri duruyor cunku asil karar burada: matris ne zaman gercekten
  * iki boyutlu olur, ne zaman eski (tek boyutlu) davranisina duser. Bu karari bir
- * bilesenin icine gomseydik testle kilitlenemezdi — vitest bu depoda `environment: "node"`
- * ile calisir ve yalnizca `src/**\/*.test.ts` dosyalarini toplar.
+ * bilesenin icine gomseydik kurali TEK BASINA sinayamazdik: bir bilesen testi matrisin
+ * CIZILMIS halini gorur, karari degil.
+ *
+ * 19 Eylul notu: bu yorum eskiden "vitest `environment: node` ile calisir ve yalnizca
+ * `src/**\/*.test.ts` toplar" diyordu; K7/7.1 ile ikisi de degisti — `include` artik
+ * `src/**\/*.test.ts?(x)` ve `.tsx` testleri jsdom'da kosuyor (vite.config.ts
+ * `environmentMatchGlobs`). Yani bugun bilesen testi YAZILABILIR; bu fonksiyonun ayri
+ * durma gerekcesi bir ARAC kisiti degil, kararin gorunur olmasidir.
  */
 
 /** Ekseni okunur bir yuvarlak sayida bitirir (1240 -> 1500). */

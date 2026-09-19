@@ -101,3 +101,14 @@ graphify-out/.*
 # --- Yerel Agent araclari ---
 .claude/
 
+# --- Playwright e2e ciktisi (K7 / 7.2) ---
+# Bastaki '/' SART ve bu depoda BEDELI OLCULMUS bir kural: deploy/certs ornegindeki
+# (yukarida, satir 14-16) ayni tuzak. Capasiz "test-results/" her derinlikteki ayni
+# adli dizini gizlerdi. Burada ayrica IZLENEN dosya yutma riski var:
+# assets/ekran/*.png izlenen dosyalardir ve e2e spec'i onlari YENIDEN URETIR —
+# ignore'a "*.png" ya da capasiz bir desen girseydi kanit dosyalari sessizce
+# commit disi kalirdi. backend/tests/test_sir_sizintisi.py bu durumu yakalar.
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+/frontend/.last-run.json
