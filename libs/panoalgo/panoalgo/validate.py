@@ -16,6 +16,11 @@ Olculen seyler ve tanimlari:
   yanlis     S0 (tamamen saglikli) senaryosunda cikan her alarm yanlis alarmdir.
              100 pano x gun olcegine tasinir, cunku operatorun gunluk alarm butcesi
              sozlesmede bu olcekte tanimli (alarms_per_operator_day_acceptable).
+  model      Senaryonun uretildigi fizik, dedektorun (detect.py) VARSAYDIGI fizikle
+             ayni mi: `eslesen` / `uyumsuz`. Etiketteki `unmodelled_physics` alanindan
+             okunur; alan yoksa `eslesen`. Bu ayrim olmadan "duyarlilik 1,00" cumlesi
+             yaniltici olur, cunku eslesen modelde kestirici kendi ileri modelini ters
+             ceviriyordur. Gerekce: contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md
   prognoz    Tahmin edilen kalan omur (min_ttl_h) ile GERCEK kalan omur
              (l0_breach_at - t) karsilastirilir: alfa-lambda, prognostic horizon,
              goreli dogruluk, yakinsama. Olcutlerin tanimi prognostics.py'dedir.
@@ -52,6 +57,20 @@ TTL_ALARM_CODE = "ALM-TTL-14D"  # ttl tahmininin ALARMA dondugu kod (sozlesme bi
 CENTRE_ONLY_CODES = frozenset({"ALM-COMMS-LOST"})
 SECONDS_PER_HOUR = 3600.0
 
+# Etiket kokundeki alan adi (contracts/scenario-labels.schema.json). Bu modul
+# panoalgo.scenarios'tan HICBIR SEY import etmez — olcum, ureteci taniyan koddan
+# bagimsiz kalmalidir (modul basindaki durustluk notu). Bu yuzden "hangi senaryo
+# uyumsuz" bilgisi senaryo kimliginden TURETILMEZ, ETIKETTEN OKUNUR.
+UNMODELLED_PHYSICS_KEY = "unmodelled_physics"
+
+# Insan okunur fizik adlari — docs/12 SAF ASCII'dir, bu tablo da oyle.
+PHYSICS_TEXT: dict[str, str] = {
+    "thermal_coupling": "terminal grubu ici isil kuplaj (dedektor: tek nokta)",
+    "load_dependent_tau": "yuke bagli zaman sabiti (dedektor: tau sabit)",
+    "second_time_constant": "ikinci (yavas) isil kutup (dedektor: birinci mertebe)",
+    "sensor_nonlinearity": "olcum zinciri dogrusalsizligi (dedektor: dogrusal olcum)",
+}
+
 
 @dataclass(frozen=True)
 class ScenarioResult:
@@ -60,6 +79,7 @@ class ScenarioResult:
     scenario_id: str
     duration_h: float
     samples: int
+    unmodelled_physics: tuple[str, ...]
     expected: int
     detected: int
     forbidden_fired: tuple[str, ...]
@@ -68,6 +88,14 @@ class ScenarioResult:
     lead_time_h: float | None
     l0_breach_at: str | None
     first_l1_at: str | None
+    # `first_l1_at` anindaki L1 kodlari. AYRI BIR ALAN OLMASININ SEBEBI OLCULDU:
+    # one alma suresi "ilk L1 kodu" ile tanimlidir ve ALM-TTL-14D de bir L1 kodudur
+    # (contracts/alarm-codes.yaml). S1'de sayiyi tetikleyen kod ALM-TTL-14D'dir
+    # (13 Tem 22:15), K indeksi 41 saat SONRA uyarir (ALM-K-WARN, 15 Tem 10:45).
+    # Yani manset "209 saat" tespit katmanindan degil PROGNOZDAN gelir — ve docs/12
+    # §4 ayni prognozun geri testinin KOTU oldugunu yayinliyor. Bu celiski sutunda
+    # gorunmeden tablo dogru okunamaz.
+    first_l1_codes: tuple[str, ...]
     false_alarm_codes: tuple[str, ...]
     false_alarms_per_100_panel_days: float
     prognosis: prognostics.PrognosisResult | None
@@ -85,6 +113,15 @@ class ScenarioResult:
     @property
     def precision_ok(self) -> bool:
         return not self.forbidden_fired
+
+    @property
+    def model_match(self) -> bool:
+        """Senaryo dedektorun varsaydigi fizikle mi uretildi?"""
+        return not self.unmodelled_physics
+
+    @property
+    def model_text(self) -> str:
+        return "eslesen" if self.model_match else "uyumsuz"
 
 
 def load_layers(contracts_dir: Path | None = None) -> dict[str, str]:
@@ -120,6 +157,7 @@ def validate_scenario(
     lead_time_h: float | None = None
     l0_breach_at: str | None = None
     first_l1_at: str | None = None
+    first_l1_codes: tuple[str, ...] = ()
 
     for label in labels["labels"]:
         window = frame[
@@ -139,10 +177,12 @@ def validate_scenario(
         breach = label.get("l0_breach_at")
         if breach and l0_breach_at is None:
             l0_breach_at = breach
-            hit = window.loc[window["alarm_set"].map(lambda s: bool(s & l1_codes)), "ts"]
+            mask = window["alarm_set"].map(lambda s: bool(s & l1_codes))
+            hit = window.loc[mask, "ts"]
             if not hit.empty:
                 first_l1_at = hit.iloc[0].isoformat()
                 lead_time_h = (pd.Timestamp(breach) - hit.iloc[0]).total_seconds() / SECONDS_PER_HOUR
+                first_l1_codes = tuple(sorted(window.loc[mask, "alarm_set"].iloc[0] & l1_codes))
 
     false_codes, per_100 = _false_alarms(frame, labels, duration_h)
     prognosis, false_prognoses, false_prognosis_alarms = _prognosis(
@@ -152,6 +192,7 @@ def validate_scenario(
         scenario_id=labels["scenario_id"],
         duration_h=duration_h,
         samples=len(frame),
+        unmodelled_physics=tuple(labels.get(UNMODELLED_PHYSICS_KEY, ())),
         expected=expected_total,
         detected=detected_total,
         forbidden_fired=tuple(sorted(forbidden)),
@@ -160,6 +201,7 @@ def validate_scenario(
         lead_time_h=lead_time_h,
         l0_breach_at=l0_breach_at,
         first_l1_at=first_l1_at,
+        first_l1_codes=first_l1_codes,
         false_alarm_codes=false_codes,
         false_alarms_per_100_panel_days=per_100,
         prognosis=prognosis,
@@ -239,8 +281,29 @@ def validate_all(fixtures_dir: Path, contracts_dir: Path | None = None) -> list[
 # --------------------------------------------------------------------- rapor
 
 
+def _scenario_order(scenario_id: str) -> tuple[int, str]:
+    """S10 -> 10, S2 -> 2. SAYISAL siralama sart.
+
+    Duz metin siralamasinda "S10_coupling" < "S1_loose_conn" cikar ('0' = 48 <
+    '_' = 95), yani uyumsuz senaryolar eslesen bloklarin ORTASINA serpilirdi.
+    """
+    head = scenario_id.split("_", 1)[0]
+    return (int(head[1:]), scenario_id) if head[1:].isdigit() else (10**6, scenario_id)
+
+
+def order_results(results: list[ScenarioResult]) -> list[ScenarioResult]:
+    """Once ESLESEN blok, sonra UYUMSUZ blok; her blok kendi icinde sayisal sirada.
+
+    Siralama RENDERER'IN ISIDIR, cagiranin degil: docs/12'nin blok yapisi bir
+    sunum karari ve tek bir yerde yasamali. validate_all dosya adina gore glob
+    sirasi verir; oradan gelen sira burada yeniden kurulur.
+    """
+    return sorted(results, key=lambda r: (not r.model_match, _scenario_order(r.scenario_id)))
+
+
 def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = None) -> str:
     """docs/12-dogrulama-sonuclari.md govdesini uretir."""
+    results = order_results(results)
     directory = contracts_dir or default_contracts_dir()
     thresholds = yaml.safe_load((directory / "alarm-codes.yaml").read_text(encoding="utf-8"))["thresholds"]
     stamp = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -256,8 +319,13 @@ def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = 
         "",
         "## 1. Senaryo bazinda tespit basarisi",
         "",
-        "| Senaryo | Sure (s) | Ornek | Beklenen | Yakalanan | Recall | Yasakli alarm | Kacan |",
-        "|---|---:|---:|---:|---:|---:|---|---|",
+        "Tablo IKI BLOKTUR. `eslesen` satirlarda uretec ile dedektor AYNI isil",
+        "denklemi kullanir; `uyumsuz` satirlarda uretece dedektorun varsaymadigi bir",
+        "fizik eklenmistir (bkz. Bolum 1.1). Ikisi ayni sayi degildir ve birlikte",
+        "okunmalidir: eslesen blok yontemin TAVANINI, uyumsuz blok SINIRINI olcer.",
+        "",
+        "| Senaryo | Model | Sure (s) | Ornek | Beklenen | Yakalanan | Recall | Yasakli alarm | Kacan |",
+        "|---|---|---:|---:|---:|---:|---:|---|---|",
     ]
     for r in results:
         recall = "-" if r.recall is None else f"{r.recall:.2f}"
@@ -266,9 +334,11 @@ def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = 
         if r.centre_only:
             missed += f" (merkezde: {', '.join(r.centre_only)})"
         lines.append(
-            f"| `{r.scenario_id}` | {r.duration_h:.0f} | {r.samples} | {r.expected} | "
+            f"| `{r.scenario_id}` | {r.model_text} | {r.duration_h:.0f} | {r.samples} | {r.expected} | "
             f"{r.detected} | {recall} | {forbidden} | {missed} |"
         )
+
+    lines += _model_mismatch_section(results)
 
     lines += [
         "",
@@ -277,17 +347,43 @@ def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = 
         f"Sabit esik = `thresholds.term_rise_alarm_k` = {thresholds['term_rise_alarm_k']} K "
         f"(`{FIXED_THRESHOLD_CODE}`). Fizik katmani (L1) bu esikten kac saat once uyardi?",
         "",
-        "| Senaryo | Ilk L1 tespiti | 70 K ihlali | One alma (saat) | One alma (gun) |",
-        "|---|---|---|---:|---:|",
+        "| Senaryo | Model | Ilk L1 tespiti | Tetikleyen kod | 70 K ihlali | One alma (saat) | One alma (gun) |",
+        "|---|---|---|---|---|---:|---:|",
     ]
+    ttl_driven = []
     for r in results:
         if r.l0_breach_at is None:
             continue
         lead_h = "-" if r.lead_time_h is None else f"{r.lead_time_h:.1f}"
         lead_d = "-" if r.lead_time_h is None else f"{r.lead_time_h / 24.0:.1f}"
+        codes = ", ".join(f"`{c}`" for c in r.first_l1_codes) or "-"
+        if TTL_ALARM_CODE in r.first_l1_codes:
+            ttl_driven.append(r.scenario_id)
         lines.append(
-            f"| `{r.scenario_id}` | {r.first_l1_at or 'tespit yok'} | {r.l0_breach_at} | {lead_h} | {lead_d} |"
+            f"| `{r.scenario_id}` | {r.model_text} | {r.first_l1_at or 'tespit yok'} | {codes} | "
+            f"{r.l0_breach_at} | {lead_h} | {lead_d} |"
         )
+    if ttl_driven:
+        lines += [
+            "",
+            f"**Durustluk kaydi — sayiyi tetikleyen kod.** `{TTL_ALARM_CODE}` de bir L1",
+            "kodudur (`contracts/alarm-codes.yaml`), dolayisiyla \"ilk L1 tespiti\" onu da",
+            "sayar. Yukaridaki senaryolarda one alma suresini tetikleyen kod TESPIT degil",
+            f"PROGNOZ: {', '.join('`' + i + '`' for i in ttl_driven)}. Ayni prognozun geri",
+            "testi Bolum 4'te yayimlaniyor ve **kotu** (koni icinde kalma orani dusuk,",
+            "ufuk yok). Yani bu satirlardaki sure, guvenilirligi ayni dosyada olculup",
+            "zayif bulunmus bir tahminden geliyor. K indeksi esiginin (`ALM-K-WARN`)",
+            "kendi uyari ani ayri bir sayidir ve daha gectir; ikisi karistirilmamalidir.",
+        ]
+    absent = [r for r in results if r.l0_breach_at is None and not r.model_match]
+    if absent:
+        lines += [
+            "",
+            "Bu tabloda YER ALMAYAN uyumsuz senaryolar sabit esigi HIC tetiklemedi "
+            f"({', '.join('`' + r.scenario_id + '`' for r in absent)}): sabit esik o",
+            "senaryolarda ariziyi tamamen kacirdi, dolayisiyla 'one alma' tanimsizdir.",
+            "Bu bir olcum eksigi degil, olcumun kendisidir.",
+        ]
 
     lines += [
         "",
@@ -299,12 +395,15 @@ def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = 
         f"Sozlesme hedefi: gunde {thresholds['alarms_per_operator_day_acceptable']} kabul edilebilir, "
         f"{thresholds['alarms_per_operator_day_max']} ust sinir (100 pano olceginde).",
         "",
-        "| Senaryo | Yanlis alarm / 100 pano / gun | Cikan kodlar |",
-        "|---|---:|---|",
+        "| Senaryo | Model | Yanlis alarm / 100 pano / gun | Cikan kodlar |",
+        "|---|---|---:|---|",
     ]
     for r in results:
         codes = ", ".join(r.false_alarm_codes) or "yok"
-        lines.append(f"| `{r.scenario_id}` | {r.false_alarms_per_100_panel_days:.1f} | {codes} |")
+        lines.append(
+            f"| `{r.scenario_id}` | {r.model_text} | "
+            f"{r.false_alarms_per_100_panel_days:.1f} | {codes} |"
+        )
 
     lines += _prognosis_section(results)
 
@@ -312,6 +411,102 @@ def render_markdown(results: list[ScenarioResult], contracts_dir: Path | None = 
               "python -m panoalgo.scenarios --all --seed 1304 --out data/fixtures",
               "python scripts/validate.py --out docs/12-dogrulama-sonuclari.md", "```", ""]
     return "\n".join(lines)
+
+
+def _model_mismatch_section(results: list[ScenarioResult]) -> list[str]:
+    """docs/12 Bolum 1.1 — model uyumsuzlugu blogunun okunmasi.
+
+    BOLUM NUMARASI 1.1'DIR VE ARAYA YENI BIR ANA BOLUM GIRMEZ: docs/10 Bolum 1'e,
+    juri kartlari Bolum 3'e atif veriyor (bkz. _prognosis_section docstring'i).
+    Alt bolum eklemek bu atiflari bozmaz.
+
+    Buradaki HER SAYI olculen sonuclardan turetilir; elle yazilan tek sey cumlelerin
+    kendisidir. Uyumsuz senaryo yoksa bolum HIC basilmaz, boylece S0-S9'dan ibaret
+    bir fixture dizini eski ciktiyi aynen verir.
+    """
+    mismatched = [r for r in results if not r.model_match]
+    if not mismatched:
+        return []
+
+    matched = [r for r in results if r.model_match and r.recall is not None]
+    scored = [r for r in mismatched if r.recall is not None]
+
+    def toplam(rows: list[ScenarioResult]) -> tuple[int, int]:
+        return sum(r.detected for r in rows), sum(r.expected for r in rows)
+
+    m_det, m_exp = toplam(matched)
+    u_det, u_exp = toplam(scored)
+    oran = lambda d, e: "-" if e == 0 else f"{d / e:.2f}"
+
+    lines = [
+        "",
+        "### 1.1 Model uyumsuzlugu — yontemin siniri",
+        "",
+        "Dedektor (`libs/panoalgo/panoalgo/detect.py`) isil davranisi su ayrik",
+        "denklemle kestirir: `dT[k+1] = a*dT[k] + beta*I2[k]`, `K = beta/(1-a)`.",
+        "Uretec S0-S9'da AYNI denklemi kullanir. Bu, tespit basarisinin bir kismini",
+        "yapisal olarak garanti eder: kestirici kendi ileri modelini ters ceviriyordur.",
+        "Asagidaki senaryolar uretece dedektorun VARSAYMADIGI bir fizik ekler ve ayni",
+        "tespit boru hattini yeniden olcer. Dedektor DEGISTIRILMEDI — amac onu",
+        "guclendirmek degil, sinirini olcmektir.",
+        "",
+        "| Senaryo | Eklenen fizik | Dedektorun varsayimi |",
+        "|---|---|---|",
+    ]
+    for r in mismatched:
+        for name in r.unmodelled_physics:
+            text = PHYSICS_TEXT.get(name, name)
+            eklenen, _, varsayim = text.partition(" (dedektor: ")
+            lines.append(
+                f"| `{r.scenario_id}` | {eklenen} | "
+                f"{varsayim.rstrip(')') if varsayim else '-'} |"
+            )
+
+    lines += [
+        "",
+        f"**Olculen.** Eslesen modelde beklenen alarmlarin {m_det}/{m_exp}'i yakalandi "
+        f"(recall {oran(m_det, m_exp)}); dedektorun varsaymadigi fizik eklendiginde "
+        f"{u_det}/{u_exp} (recall {oran(u_det, u_exp)}).",
+        "",
+    ]
+
+    kacan: dict[str, list[str]] = {}
+    for r in mismatched:
+        for code in r.missed:
+            kacan.setdefault(code, []).append(r.scenario_id)
+    if kacan:
+        lines.append("Uyumsuz blokta kacan kodlar ve hangi senaryoda kactiklari:")
+        lines.append("")
+        for code, ids in sorted(kacan.items()):
+            lines.append(f"- `{code}` — {', '.join('`' + i + '`' for i in ids)}")
+        lines.append("")
+    else:
+        lines += [
+            "Uyumsuz blokta HICBIR beklenen kod kacmadi. Bu, olcumun basarisizligi",
+            "degil sonucudur ve nedeni yapisaldir: alarm kurallari K'yi degil K/K0",
+            "ORANINI okur (`contracts/alarm-codes.yaml`, `k_ratio_warn`/`k_ratio_alarm`)",
+            "ve taban K0 ayni uyumsuz fizikle ogrenildigi icin duragan bir yanlilik",
+            "payda ile birlikte sadelesir. Uyumsuzlugun bedeli duyarlilikta degil",
+            "Bolum 2 (one alma), Bolum 3 (yanlis alarm) ve Bolum 4 (prognoz)",
+            "sutunlarinda gorunur — oraya bakin.",
+            "",
+        ]
+
+    yasakli = [r for r in mismatched if r.forbidden_fired]
+    if yasakli:
+        lines.append("Uyumsuz blokta YASAKLI alarm cikan senaryolar (yanlis teshis):")
+        lines.append("")
+        for r in yasakli:
+            lines.append(f"- `{r.scenario_id}` — {', '.join(r.forbidden_fired)}")
+        lines.append("")
+
+    lines += [
+        "**Nasil okunmali.** Eslesen bloktaki sayi yontemin TAVANIDIR ve tek basina",
+        "yayimlanirsa yaniltir. Uyumsuz bloktaki sayi ayni algoritmanin, ayni",
+        "esiklerle, dedektorun bilmedigi bir fizik altindaki davranisidir. Ikisinin",
+        "farki bu calismada olculebilir hale getirilen seydir.",
+    ]
+    return lines
 
 
 def _prognosis_section(results: list[ScenarioResult]) -> list[str]:
@@ -405,11 +600,24 @@ def _prognosis_section(results: list[ScenarioResult]) -> list[str]:
                 )
 
     lines += ["", "### 4.3 Durustluk kayitlari", ""]
-    lines.append(
-        f"- **Sonuc {len(scored)} yorungeden geliyor (n = {len(scored)}).** Guven araligi "
-        "YOKTUR; tek bir seed'li senaryonun tek bir bozulma yorungesi olculmustur. "
-        "Yukaridaki yuzdeler bu yorungenin ozellikleridir, populasyon istatistigi degildir."
-    )
+    matched_scored = [r for r in scored if r.model_match]
+    mismatched_scored = [r for r in scored if not r.model_match]
+    if mismatched_scored:
+        lines.append(
+            f"- **Sonuc {len(scored)} olcumden geliyor ama n HALA 1'DIR.** Guven araligi "
+            f"YOKTUR. Bunlarin {len(matched_scored)} tanesi eslesen, "
+            f"{len(mismatched_scored)} tanesi uyumsuz modeldendir; hepsi AYNI tohumun "
+            "AYNI bozulma yorungesidir, yalnizca farkli model dunyalarinda okunmustur. "
+            "Yani dort sayi birbirinin BAGIMSIZ tekrari degildir ve ortalamalari bir "
+            "populasyon istatistigi vermez. Bagimsiz tekrar icin coklu tohum gerekir "
+            "(Yapilacaklar 2.2); bu is onu KAPSAMAZ."
+        )
+    else:
+        lines.append(
+            f"- **Sonuc {len(scored)} yorungeden geliyor (n = {len(scored)}).** Guven araligi "
+            "YOKTUR; tek bir seed'li senaryonun tek bir bozulma yorungesi olculmustur. "
+            "Yukaridaki yuzdeler bu yorungenin ozellikleridir, populasyon istatistigi degildir."
+        )
     for r in breached:
         if r.prognosis is None:
             lines.append(
@@ -460,12 +668,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(results)} senaryo olculdu -> {out_path}")
         return 0
 
-    for r in results:
+    for r in order_results(results):
         recall = "-" if r.recall is None else f"{r.recall:.2f}"
         lead = "-" if r.lead_time_h is None else f"{r.lead_time_h:7.1f} h"
         flag = "" if r.precision_ok else f"  YASAKLI: {', '.join(r.forbidden_fired)}"
+        if not r.model_match:
+            flag += f"  UYUMSUZ: {', '.join(r.unmodelled_physics)}"
         print(
-            f"{r.scenario_id:<16} recall={recall:<5} one alma={lead:<10} "
+            f"{r.scenario_id:<20} {r.model_text:<8} recall={recall:<5} one alma={lead:<10} "
             f"yanlis/100pano/gun={r.false_alarms_per_100_panel_days:6.1f}{flag}"
         )
     return 0

@@ -20,9 +20,13 @@
         "S6_comms_loss",
         "S7_harmonic",
         "S8_sensor_fault",
-        "S9_pd_trend"
+        "S9_pd_trend",
+        "S10_coupling",
+        "S11_load_tau",
+        "S12_two_pole",
+        "S13_sensor_nonlin"
       ],
-      "description": "Rapor 15.2 etiketli ariza enjeksiyonlari + 8.2 demo senaryolari"
+      "description": "Rapor 15.2 etiketli ariza enjeksiyonlari + 8.2 demo senaryolari + S10-S13 model uyumsuzlugu (contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md)"
     },
     "seed": {
       "type": "integer",
@@ -38,6 +42,21 @@
     "data_file": {
       "type": "string",
       "description": "ayni dizindeki CSV/Parquet dosya adi, or. S1_loose_conn.csv"
+    },
+    "unmodelled_physics": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "thermal_coupling",
+          "load_dependent_tau",
+          "second_time_constant",
+          "sensor_nonlinearity"
+        ]
+      },
+      "description": "Uretecin uyguladigi ama DEDEKTORUN VARSAYMADIGI fizikler. ALAN YOKSA senaryo 'eslesen' modeldir (uretec ile detect.py ayni denklemi cozer) — bu yuzden S0-S9 etiketleri degismeden kalir. Dolu ise senaryo 'uyumsuz'dur ve scripts/validate.py tabloyu iki bloga bu alana gore ayirir. Bos dizi YAZILMAZ (minItems: 1): 'eslesen'in tek gosterimi alanin YOKLUGUdur, yoksa ayni bilgi iki bicimde kodlanirdi."
     },
     "labels": {
       "type": "array",

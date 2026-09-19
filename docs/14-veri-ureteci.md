@@ -147,13 +147,20 @@ yorumunda da yazılıdır (`libs/panoalgo/panoalgo/generator.py`, `DT_AT_RATED_K
 | `S7_harmonic` | THD ×3,5 | `ALM-NEUTRAL-THD` | 168 h |
 | `S8_sensor_fault` | donma + sürüklenme + düşme | `ALM-DQ-BELOW-AMBIENT`; yasaklı: `ALM-THR-TERM-ALM`, `ALM-K-ALM` | 168 h |
 | `S9_pd_trend` | OG panoda PD etkinliği artar | `ALM-PD-TREND` | 168 h |
+| `S10_coupling` | S1 + terminal grubu içi ısıl kuplaj | S1 ile **aynı** `expect` | 720 h |
+| `S11_load_tau` | S1 + yüke bağlı zaman sabiti | S1 ile **aynı** `expect` | 720 h |
+| `S12_two_pole` | S1 + ikinci (yavaş) ısıl kutup | S1 ile **aynı** `expect` | 720 h |
+| `S13_sensor_nonlin` | S1 + ölçüm zinciri doğrusalsızlığı | S1 ile **aynı** `expect` | 720 h |
+
+Son dört satır **model-uyumsuzluğu** senaryolarıdır ve `S1_loose_conn`'un kontrollü
+klonudur; ayrıntısı §9'dadır.
 
 Tablo `libs/panoalgo/panoalgo/scenarios.py` içindeki `SCENARIOS` sözlüğünün `expect` /
 `not_expect` alanlarını birebir yansıtır; "yasaklı" sütun parçası `not_expect`tir.
 
 **S8'in yasaklı listesi bir pano alarmını yakalamıyor ve bunu saklamıyoruz.** Ölçüm:
-`S8_sensor_fault` senaryosunda 70 K sınırı **hiç aşılmadığı hâlde 99 prognoz üretildi** ve
-bunların **89'u `ALM-TTL-14D`** olarak açıldı — bu kod `contracts/alarm-codes.yaml`'da
+`S8_sensor_fault` senaryosunda 70 K sınırı **hiç aşılmadığı hâlde 183 prognoz üretildi** ve
+bunların **86'sı `ALM-TTL-14D`** olarak açıldı — bu kod `contracts/alarm-codes.yaml`'da
 **P3 / L1**'dir, yani veri kalitesi ya da sistem alarmı değil, tam anlamıyla bir **pano
 alarmıdır**. `not_expect` yalnızca `ALM-THR-TERM-ALM` ve `ALM-K-ALM`'i yasakladığı için
 senaryo bunu kırmızıya düşürmez. Ölçülmüş bir **prognoz yanlış-alarmıdır**:
@@ -415,3 +422,117 @@ ve sözleşmenin kabul edilebilir günlük bütçesini (150) aşar. Tam tablolar
 (ör. `::test_rerunning_the_detection_gives_the_same_numbers_as_the_shortcut`,
 `::test_rerunning_never_touches_the_frozen_contract`,
 `::test_the_dew_thresholds_in_the_contract_are_unchanged`).
+
+## 9. Model uyumsuzluğu enjeksiyonları
+
+Bu bölümün var olma sebebi bir **itiraftır.** §3'teki ısıl model ile
+`libs/panoalgo/panoalgo/detect.py`'nin kestirdiği model **aynı denklemdir**:
+
+```
+üreteç   dT[k+1] = a·dT[k] + (1−a)·K·I²[k]          a = exp(−Ts/τ)
+dedektör dT[k+1] = a·dT[k] + β·I²[k]      ,  K = β/(1−a)
+```
+
+Arıza da `spec.k0 · _k_multiplier[...]` ile **doğrudan kestirilen parametreye** enjekte
+ediliyor. Dolayısıyla [docs/12](12-dogrulama-sonuclari.md) §1'deki "sekiz senaryoda
+duyarlılık 1,00" sonucunun bir bölümü *"kestirici kendi ileri modelini ters
+çevirebiliyor"* demektir. Sahadaki asıl zorluklar — komşu terminal kuplajı, yüke bağlı
+zaman sabiti, ikinci ısıl kutup, ölçüm zinciri doğrusalsızlığı — 19 Eylül'e kadar
+**hiç sınanmamıştı**.
+
+`ModelMismatch` (`generator.py`) bu dördünü ekler. **Hepsi varsayılan olarak kapalıdır**
+ve kapalıyken üreteç bit düzeyinde TA1 davranışındadır (ölçüldü: S0–S9'un on CSV'si
+`cmp` altında bayt bayt aynı). **Dedektöre hiçbir şey eklenmedi** — amaç onu
+güçlendirmek değil, **sınırını ölçmek**.
+
+### 9.1 Dört fizik
+
+| Bayrak | Denklem | Dedektörün bozulan varsayımı |
+|---|---|---|
+| `coupling_k` | `+ c·(ort(dT_komşu) − dT_kendi)` | regresör `[dT, I²]` — nokta **tek başınadır** |
+| `tau_load_coeff` | `τ = τ₀·exp(c·I/Iₙ)` | `a = exp(−Ts/τ)` **sabit** parametredir |
+| `slow_share` | hızlı bara kutbu + yavaş kabin havası kutbu | sistem **birinci mertebedir** |
+| `sensor_gain_per_k` | `dT_ölçülen = dT/(1 + g·dT)` | ölçüm **doğrusaldır** |
+
+"Komşu", aynı terminal grubundaki diğer noktalardır (`GIRIS_L1/L2/L3/N` kendi arasında,
+`DSYA3_L1/L2/L3` kendi arasında). Gruplama `detect.phase_compare`'in kullandığı
+gruplamanın **aynısıdır** ve bu bilinçlidir: kuplaj, faz karşılaştırmasının referans
+medyanını **içeriden** kirletir — kuralın en sert sınavı budur.
+
+**Kuplaj neden toplamalı değil difüzif.** İlk taslak `steady += c·ort(dT_komşu)`'ydu.
+Kararlı hâli `K·I²/(1−c)` yapıyor, yani **panoyu ısıtıyor**: ölçüldü, tepe artış
+79,0 K → 90,6 K (c = 0,25). O zaman ölçülen fark "model yanlış" ile "pano daha sıcak"
+arasında ayrıştırılamazdı. Difüzif biçimde (Fourier: akış sıcaklık **farkıyla**
+orantılıdır) grup tekdüze ısındığında terim **sıfırdır**; değişen şey panonun ortalama
+sıcaklığı değil **grup içindeki yapıdır**.
+
+**İkinci kutupta arıza çarpanı İKİ kutba da girer**, yani kararlı hâl toplamı korunur ve
+uyumsuzluk tamamen **dinamiktedir**. Alternatif (çarpanı yalnızca hızlı kutba uygulamak)
+ölçüldü ve reddedildi: tepe artış 64,8 K'ya düşüyor ve 70 K sınırına hiç ulaşılmıyor —
+ölçülen şey model uyumsuzluğu değil **çalışma noktası kayması** olurdu.
+
+### 9.2 Ölçülen — hipotez kısmen yanlışlandı
+
+Beklenti *"uyumsuz senaryolarda duyarlılık 1,00'ın altına iner"* idi. Ölçüm bunu
+**yalnızca bir senaryoda** doğruladı ve nedenini açıkladı. Alarm kuralları K'yı değil
+**K/K₀ oranını** okur; taban K₀ **aynı uyumsuz fizikle** öğrenildiği için durağan bir
+yanlılık payda ile birlikte sadeleşir:
+
+```
+k_ratio = (g·K) / (g·K₀) = K / K₀
+```
+
+720 h, tohum 1304, yaz, `DSYA3_L2`; her satır eşleşen ikizle **aynı** koşulda:
+
+| Konfigürasyon | Gerçek tepe artış | Ölçülen tepe artış | Yayımlanan τ | Recall | Yasaklı alarm |
+|---|---:|---:|---:|---:|---|
+| eşleşen (taban, `S1`) | 78,90 K | 78,96 K | 689 s | 1,00 | yok |
+| `coupling_k = 0,15` | — | 73,0 K | 903 s | 1,00 | yok |
+| `tau_load_coeff = −0,8` | — | 79,3 K | 481 s | 1,00 | yok |
+| `slow_share = 0,45` | — | 72,3 K | **6.576 s** | 1,00 | **`ALM-DQ-DRIFT`** |
+| `sensor_gain_per_k = 0,008` | **78,90 K** | **48,48 K** | 2.489 s | **0,50** | yok |
+
+Dört bulgu, dördü de `docs/12`'den yeniden üretilebilir:
+
+1. **Ölçüm zinciri doğrusalsızlığında sabit 70 K eşiği tamamen körleşiyor.** Terminal
+   gerçekte **78,90 K**'da — eşleşen ikizle **ondalık basamağına kadar aynı**; pano aynı
+   derecede sıcak, yalan söyleyen **alet**. Ölçüm 48,48 K gösteriyor, `ALM-THR-TERM-ALM`
+   ve `ALM-THR-TERM-WARN` **hiç çıkmıyor** ve recall 0,50'ye iniyor. Oran tabanlı K
+   tespiti ise **ayakta kalıyor** (`k_ratio` 3,01 > 1,6). Bu, `docs/05` §1'deki "neden
+   sabit eşik yetmiyor" sorusunun **deneysel** cevabıdır.
+2. **Yayımlanan τ 9,5 kata kadar yanlış** (689 s → 6.576 s). τ, `min_ttl_h` hesabına
+   girer; bu, `docs/12` §4'teki kötü prognoz sonucunun bir **açıklamasıdır**.
+3. **Kayma kuralı yanlış teşhis koyuyor.** İkinci ısıl kutupta `ALM-DQ-DRIFT` tetikleniyor
+   ve işaretlenen nokta senaryonun **gerçekten arızalı** olduğu noktadır (`DSYA3_L2`;
+   tohum 42 / 168 h: 13 örnek, ilk kez 79,25 saat sonra). Yani gerçek bir ısıl olay
+   "kalibrasyon şüpheli" diye etiketleniyor — operatörün gerçek arızayı alet hatası
+   sanıp kapatmasına yol açabilecek en kötü yanlış teşhis. Kilitleyen test:
+   `test_drift.py::test_kayma_yalnizca_kayan_sensorde_isaretlenir[S12_two_pole]`.
+4. **Kuplaj arızayı yanlış terminale yazdırıyor.** `k_ratio` eşiğini aşan nokta sayısı
+   1'den **2'ye** çıkıyor: arızasız bir komşu da suçlanıyor. Teşhis "hangi pano"
+   düzeyinde doğru, **"hangi klemens" düzeyinde yanlıştır** — saha ekibi yanlış uca gider.
+
+`S11_load_tau` tabloda **"uyumsuz ama recall 1,00"** satırıdır ve bilerek yayımlanır:
+bloğun seçmeci olmadığının kanıtıdır. τ işaretinin fiziksel yönü ölçülmemiştir (doğal
+taşınım negatifi, katılan kütlenin derinleşmesi pozitifi işaret eder), ama **sonuç
+işaretten bağımsızdır**: c = −0,8 (τ 481 s), −0,4 (569 s), +1,0 (1.223 s) — üçünde de
+tepe `k_ratio` 3,00–3,02 ve beklenen dört kodun **dördü de** çıkıyor.
+
+### 9.3 Bilinen sınır (GK10)
+
+Dört fizik de **sentetiktir ve saha verisiyle doğrulanmamıştır.** Katsayılar fiziksel
+olarak makul aralıklardan seçilmiş, **ölçülmemiştir**. Sahada kapatmak için gereken:
+
+| Bayrak | Gereken saha ölçümü |
+|---|---|
+| `coupling_k` | aynı grupta iki terminale termokupl, birine kontrollü ek direnç; farkın komşuya geçiş oranı |
+| `tau_load_coeff` | yük basamağı testi; iki farklı yük seviyesinde τ'nun ayrı ayrı kestirimi |
+| `slow_share` | kabin içi hava sıcaklığının bağımsız ölçümü; basamak yanıtının iki üstel ile uydurulması |
+| `sensor_gain_per_k` | sensörün referans termokupla karşı kalibrasyonu, 20–100 K artış aralığında |
+
+Ayrıca dördü **tek tek** açılıyor. Gerçek bir panoda hepsi aynı anda vardır ve etkileri
+toplanabilir de, birbirini götürebilir de. Birleşik senaryo bilerek eklenmedi: ölçüm o
+zaman hangi varsayıma atfedileceğini kaybederdi. Bu, **kapatılmamış bir boşluktur**.
+
+Tam gerekçe ve onay süreci:
+[`contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md`](../contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md).

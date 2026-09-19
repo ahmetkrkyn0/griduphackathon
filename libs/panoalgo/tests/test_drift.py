@@ -136,7 +136,7 @@ def test_dt_alani_olmayan_nokta_patlatmaz():
 
 @pytest.mark.parametrize("scenario_id", sorted(SCENARIOS))
 def test_kayma_yalnizca_kayan_sensorde_isaretlenir(scenario_id):
-    """ON senaryonun HEPSI kosulur: yalnizca S8'in suruklenen noktasi isaretlenmeli.
+    """TUM senaryolar kosulur: S8'in suruklenen noktasi ve S12'nin YANLIS TESHISI.
 
     Olculdu (seed 42, 168 saat): S8_sensor_fault'ta DSYA4_L3 230 kez, enjeksiyondan
     26,25 saat sonra ilk kez. Diger dokuz senaryoda — GERCEK gevsek baglanti
@@ -157,6 +157,27 @@ def test_kayma_yalnizca_kayan_sensorde_isaretlenir(scenario_id):
     if scenario_id == "S8_sensor_fault":
         assert set(flagged) == {"DSYA4_L3"}, f"beklenmeyen nokta: {sorted(flagged)}"
         assert flagged["DSYA4_L3"] > 100
+    elif scenario_id == "S12_two_pole":
+        # OLCULMUS BASARISIZLIK — kural burada YANLIS TESHIS koyuyor ve bu bilerek
+        # kilitlenmistir (19 Eylul, model uyumsuzlugu calismasi).
+        #
+        # S12 uretece IKINCI BIR ISIL KUTUP ekler (hizli bara + yavas kabin havasi).
+        # Kayma kurali fizige dayanir: "dT = a*I^2 + b"de b'nin buyumesi SENSOR
+        # kaymasidir, cunku yuk yokken isinma olmaz. Yavas kutup tam da bunu taklit
+        # eder: saatler mertebesinde bir zaman sabiti, 48 saatlik pencere icinde
+        # yukten BAGIMSIZ gorunen bir taban gibi davranir.
+        #
+        # Olculdu (seed 42, 168 saat): DSYA3_L2 13 kez, enjeksiyondan 79,25 saat
+        # sonra ilk kez. Isaretlenen nokta senaryonun GERCEKTEN ARIZALI oldugu
+        # noktadir — yani sistem gercek bir isil olayi "kalibrasyon supheli" diye
+        # etiketliyor. Operator icin en kotu yanlis teshis budur: gercek ariza
+        # alet hatasi sanilip kapatilabilir.
+        #
+        # Kural DUZELTILMEDI. Bu is dedektoru guclendirmeyi degil sinirini olcmeyi
+        # amaclar; duzeltme ayri bir istir ve docs/05 §10'da yazilidir. Senaryonun
+        # not_expect listesinde ALM-DQ-DRIFT bulundugu icin bulgu docs/12 §1
+        # tablosunda "yasakli alarm" olarak da gorunur.
+        assert set(flagged) == {"DSYA3_L2"}, f"beklenmeyen nokta: {sorted(flagged)}"
     else:
         assert flagged == {}, f"{scenario_id} yanlis pozitif uretti: {flagged}"
 
