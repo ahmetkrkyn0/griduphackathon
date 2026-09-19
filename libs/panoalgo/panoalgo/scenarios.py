@@ -34,7 +34,13 @@ from pathlib import Path
 
 from .detect import load_thresholds
 from .edge import EdgePipeline
-from .generator import PanelSimulator, contract_point_names, format_pano_id, parse_detector
+from .generator import (
+    ModelMismatch,
+    PanelSimulator,
+    contract_point_names,
+    format_pano_id,
+    parse_detector,
+)
 from .quality import codes_from_bits
 
 EXPORT_PERIOD_S = 900.0          # 15 dk (rapor 15.2 Excel uyumu)
@@ -78,6 +84,18 @@ class ScenarioSpec:
     profile: str = "karma"
     medium_voltage: bool = False
     params: dict = field(default_factory=dict)
+    # Dedektorun VARSAYMADIGI fizikler (Yapilacaklar 2.1). None = eslesen model,
+    # yani uretec ile detect.py ayni denklemi cozer. Bu bir ARIZA DEGILDIR: panonun
+    # ve olcum zincirinin kendi ozelligidir, bu yuzden _inject() icinde surulmez,
+    # PanelSimulator kurulurken verilir ve TABAN OGRENME PENCERESINDE DE ACIKTIR.
+    # Ortada acilsaydi dedektor model uyumsuzlugunu degil bir basamak degisimini
+    # yakalardi — yani senaryo cevabi fisildamis olurdu.
+    mismatch: ModelMismatch | None = None
+
+    @property
+    def unmodelled_physics(self) -> tuple[str, ...]:
+        """Acik uyumsuzluklarin sozlesme adlari; eslesen modelde bos demet."""
+        return () if self.mismatch is None else self.mismatch.names()
 
 
 TARGET_POINT = "DSYA3_L2"
@@ -181,6 +199,119 @@ SCENARIOS: dict[str, ScenarioSpec] = {
         severity="P3",
         expect=("ALM-PD-TREND",),
         medium_voltage=True,
+    ),
+    # --- S10-S13: model uyumsuzlugu (Yapilacaklar 2.1) --------------------------
+    # DORDU DE S1_loose_conn'un KONTROLLU KLONUDUR: ayni sure (720 h), ayni nokta
+    # (DSYA3_L2), ayni mevsim (yaz), ayni yuk carpani (0,95), ayni K buyumesi (%200)
+    # ve ayni `expect`. TEK degisken `mismatch` alanidir, yani olculen her farkin
+    # tek acikamasi o fizik terimidir. Tohum da ayni tutulur (fixture uretimi 1304).
+    #
+    # `expect` NEDEN GEVSETILMEDI: ariza gercekten oradadir, dolayisiyla beklenen
+    # kodlar degismez. Recall = yakalanan/beklenen oldugu icin paydayi kucultmek
+    # uyumsuzlugu ODULLENDIRIRDI — "daha az bekle, daha yuksek recall al". Payda
+    # sabit kalinca tablo dogru soruyu cevaplar: ayni ariza, ayni esikler, farkli
+    # fizik — kac tanesi hala yakalaniyor?
+    #
+    # `ALM-DQ-DRIFT` her dordunun `not_expect`indedir ve bu BILINCLI bir sinavdir:
+    # kayma kurali (quality.py) "dT = a*I^2 + b"de b'nin buyumesini sensor kaymasi
+    # sayar. Yavas kutup ve kuplaj da yukten bagimsiz gorunen bir bilesen uretir;
+    # kural bunlari sensor arizasi sanirsa GERCEK bir isil olayi "kalibrasyon
+    # supheli" diye yanlis etiketler. Cikarsa tabloda YASAKLI ALARM olarak gorunur.
+    "S10_coupling": ScenarioSpec(
+        text="Model uyumsuzlugu: terminal grubu ici isil kuplaj (dedektor tek nokta varsayar)",
+        default_duration_h=720.0,
+        season="yaz",
+        label_type="loose_connection",
+        point=TARGET_POINT,
+        severity="P2",
+        expect=("ALM-K-WARN", "ALM-K-ALM", "ALM-THR-TERM-WARN", "ALM-THR-TERM-ALM"),
+        not_expect=("ALM-I-OVER", "ALM-DQ-DRIFT"),
+        params={"k_growth_pct": 200, "load_multiplier": 0.95},
+        # 0,15 OLCULEREK secildi (720 h, seed 1304, eslesen ikizle ayni kosul).
+        # Tarama — tepe k_ratio / tepe dT / esik ustu nokta sayisi / yayimlanan tau:
+        #   0,05 -> 2,90 · 76,7 K · 1 nokta ·  755 s
+        #   0,10 -> 2,82 · 74,7 K · 1 nokta ·  826 s
+        #   0,15 -> 2,74 · 73,0 K · 2 NOKTA ·  903 s   <- secildi
+        #   0,25 -> 2,62 · 70,0 K · 1 nokta · 1039 s
+        # Iki kisit birlikte saglanmali: (a) 70 K sinirinin HALA asilmasi gerekir,
+        # yoksa "one alma" tanimsiz kalir ve olculen sey kuplaj degil sogumadir —
+        # 0,25'te tepe tam 70,0 K, yani olcum gurultusu (sigma 0,2 K) mertebesinde
+        # yazi-tura; (b) kuplajin ASIL etkisi gorunmeli, o da YANLIS YERELLESTIRME:
+        # 0,15'te k_ratio esigini asan nokta sayisi 1'den 2'ye cikiyor, yani arizasiz
+        # bir komsu terminal de suclanmaya basliyor. Saha ekibi yanlis uca gider.
+        mismatch=ModelMismatch(coupling_k=0.15),
+    ),
+    "S11_load_tau": ScenarioSpec(
+        text="Model uyumsuzlugu: yuke bagli zaman sabiti (dedektor tau'yu sabit varsayar)",
+        default_duration_h=720.0,
+        season="yaz",
+        label_type="loose_connection",
+        point=TARGET_POINT,
+        severity="P2",
+        expect=("ALM-K-WARN", "ALM-K-ALM", "ALM-THR-TERM-WARN", "ALM-THR-TERM-ALM"),
+        not_expect=("ALM-I-OVER", "ALM-DQ-DRIFT"),
+        params={"k_growth_pct": 200, "load_multiplier": 0.95},
+        # Isaret NEGATIF secildi: dogal tasinimda h, dT ile buyur ve tau = C/(h*A)
+        # KUCULUR. Buyukluk 0,8 -> anma akiminda tau exp(-0,8) = 0,45 katina iner.
+        # OLCULDU (720 h, seed 1304) — yayimlanan tau ve tespit sonucu:
+        #   c = -0,8 -> tau 689 s -> 481 s (0,70x) · k_ratio 3,00 · 4/4 kod cikti
+        #   c = -0,4 -> tau 689 s -> 569 s (0,83x) · k_ratio 3,01 · 4/4 kod cikti
+        #   c = +1,0 -> tau 689 s -> 1223 s (1,8x) · k_ratio 3,02 · 4/4 kod cikti
+        # Yani SONUC ISARETTEN BAGIMSIZDIR ve bu senaryonun bulgusu tam olarak budur:
+        # tau kestirimi belirgin sekilde saprken tespit HIC bozulmuyor, cunku alarm
+        # K'yi degil K/K0 oranini okur ve taban ayni uyumsuz fizikle ogrenilmistir.
+        # Bu senaryo tabloda "uyumsuz ama recall 1,00" satiridir; blogun secmeci
+        # olmadiginin kanitidir.
+        mismatch=ModelMismatch(tau_load_coeff=-0.8),
+    ),
+    "S12_two_pole": ScenarioSpec(
+        text="Model uyumsuzlugu: ikinci (yavas) isil kutup (dedektor birinci mertebe varsayar)",
+        default_duration_h=720.0,
+        season="yaz",
+        label_type="loose_connection",
+        point=TARGET_POINT,
+        severity="P2",
+        expect=("ALM-K-WARN", "ALM-K-ALM", "ALM-THR-TERM-WARN", "ALM-THR-TERM-ALM"),
+        not_expect=("ALM-I-OVER", "ALM-DQ-DRIFT"),
+        params={"k_growth_pct": 200, "load_multiplier": 0.95},
+        # 0,45 OLCULEREK secildi. Tarama (720 h, seed 1304) — yayimlanan tau /
+        # tepe dT / 70 K asildi mi / ALM-DQ-DRIFT cikti mi:
+        #   0,30 ->  4129 s · 74,3 K · evet · EVET
+        #   0,45 ->  6576 s · 72,3 K · evet · EVET   <- secildi
+        #   0,60 ->  9338 s · 70,7 K · evet · EVET
+        #   0,75 -> 12440 s · 69,1 K · HAYIR · EVET
+        # 0,75 reddedildi: 70 K hic asilmiyor, yani sabit esik ariziyi kaciriyor ve
+        # bu senaryo iki seyi birden olcmeye baslar. 0,45 yavas kutbu belirgin kilar
+        # (yayimlanan tau 689 s -> 6576 s, 9,5 KAT) ama sinir ihlalini korur.
+        # ASIL BULGU BURADA: ALM-DQ-DRIFT tetikleniyor ve bu senaryonun not_expect
+        # listesindedir. Kayma kurali (quality.py) "dT = a*I^2 + b"de b'nin buyumesini
+        # SENSOR kaymasi sayar; yavas isil kutup da yukten bagimsiz gorunen bir bilesen
+        # uretir. Yani GERCEK bir isil olay "kalibrasyon supheli" diye etiketleniyor.
+        mismatch=ModelMismatch(slow_share=0.45),
+    ),
+    "S13_sensor_nonlin": ScenarioSpec(
+        text="Model uyumsuzlugu: olcum zinciri dogrusalsizligi (dedektor dogrusal olcum varsayar)",
+        default_duration_h=720.0,
+        season="yaz",
+        label_type="loose_connection",
+        point=TARGET_POINT,
+        severity="P2",
+        expect=("ALM-K-WARN", "ALM-K-ALM", "ALM-THR-TERM-WARN", "ALM-THR-TERM-ALM"),
+        not_expect=("ALM-I-OVER", "ALM-DQ-DRIFT"),
+        params={"k_growth_pct": 200, "load_multiplier": 0.95},
+        # 0,008 1/K OLCULEREK secildi. Tarama (720 h, seed 1304) — tepe OLCULEN dT /
+        # 70 K asildi mi / kacan kodlar (gercek tepe artis her satirda 79,0 K'dir):
+        #   0,004 -> 60,0 K · HAYIR · ALM-THR-TERM-ALM
+        #   0,008 -> 48,5 K · HAYIR · ALM-THR-TERM-ALM + ALM-THR-TERM-WARN  <- secildi
+        #   0,015 -> 36,3 K · HAYIR · ayni ikisi (+ faz farki da kayboluyor)
+        #   0,025 -> 26,8 K · HAYIR · ayni ikisi, ayrica sahte ALM-DQ-DRIFT
+        # 0,008 secildi: IKI L0 esigini de korlestiriyor ama kayma kuralini yanlis
+        # tetiklemiyor, yani olculen tek sey olcum zinciri dogrusalsizligidir.
+        # BU SENARYO CALISMANIN EN NET SONUCUDUR: pano eslesen ikiziyle TAM OLARAK
+        # AYNI DERECEDE SICAK (gercek artis 79,0 K); yalan soyleyen alettir. Sabit
+        # 70 K esigi tamamen korlesirken oran tabanli K tespiti AYAKTA KALIYOR
+        # (k_ratio 3,01 > 1,6). "Neden sabit esik yetmiyor" sorusunun deneysel cevabi.
+        mismatch=ModelMismatch(sensor_gain_per_k=0.008),
     ),
 }
 
@@ -293,6 +424,7 @@ def iter_samples(scenario: ScenarioPlan):
         start=scenario.start,
         contracts_dir=scenario.contracts_dir,
         medium_voltage=spec.medium_voltage,
+        mismatch=spec.mismatch,
     )
     pipeline = EdgePipeline(profile=spec.profile, contracts_dir=scenario.contracts_dir)
     injected_from: datetime | None = None
@@ -489,7 +621,7 @@ def _labels(
         entry["l0_breach_at"] = l0_breach_at
         labels.append(entry)
 
-    return {
+    root = {
         "scenario_id": scenario_id,
         "seed": seed,
         "pano_id": pano_id,
@@ -502,6 +634,12 @@ def _labels(
         "data_file": f"{scenario_id}.csv",
         "labels": labels,
     }
+    # KOSULLU YAZIM: eslesen senaryolarda anahtar HIC olusmaz, boylece S0-S9'un
+    # on etiket dosyasi bayt duzeyinde korunur (bos liste yazmak bile onlari
+    # degistirirdi). scripts/validate.py alanin yoklugunu "eslesen" okur.
+    if spec.unmodelled_physics:
+        root["unmodelled_physics"] = list(spec.unmodelled_physics)
+    return root
 
 
 def write_fixture(
@@ -548,7 +686,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.list:
         for entry in list_scenarios():
-            print(f"{entry['scenario_id']:<16} {entry['default_duration_h']:>7.0f} h  {entry['text']}")
+            print(f"{entry['scenario_id']:<20} {entry['default_duration_h']:>7.0f} h  {entry['text']}")
         return 0
 
     targets = list(SCENARIOS) if args.all else ([args.build] if args.build else [])
@@ -560,7 +698,7 @@ def main(argv: list[str] | None = None) -> int:
     for scenario_id in targets:
         csv_path, labels_path = write_fixture(scenario_id, args.seed, args.duration_h, out_dir)
         size_kb = csv_path.stat().st_size / 1024
-        print(f"{scenario_id:<16} -> {csv_path.name} ({size_kb:.0f} KB), {labels_path.name}")
+        print(f"{scenario_id:<20} -> {csv_path.name} ({size_kb:.0f} KB), {labels_path.name}")
     return 0
 
 

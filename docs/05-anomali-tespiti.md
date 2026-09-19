@@ -303,9 +303,18 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   ([12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §4): S1'deki 790 tahminin
   yalnızca **%5,2'si** ±%20 konisinin içinde; **prognostic horizon yok** — tahmin hiçbir
   noktadan sonra konide kalmıyor; ihlale 48 saatten az kala koni içinde kalma oranı
-  **%0**; ortalama göreli doğruluk **−5,12**. Manşetteki 209 saatlik öne alma **tespit**
-  katmanından (K/K₀ eşiği) gelir, bu tahminden değil; ikisi karıştırılmamalıdır. Sonuç
-  **tek yörüngeden** (n = 1) gelir, güven aralığı yoktur.
+  **%0**; ortalama göreli doğruluk **−5,12**. Sonuç **tek yörüngeden** (n = 1) gelir, güven aralığı yoktur.
+- **Manşetteki 209 saatlik öne alma, bu güvenilmez tahminin KENDİSİNDEN geliyor —
+  19 Eylül'de ölçüldü ve bu belgenin önceki hâli bunun tersini yazıyordu.** Öne alma
+  süresi "ilk L1 kodu" ile tanımlıdır ve `ALM-TTL-14D` de `contracts/alarm-codes.yaml`'da
+  **L1**'dir. `S1_loose_conn`'da ilk çıkan L1 kodu `ALM-TTL-14D`'dir (13 Tem 22:15);
+  K indeksi eşiği (`ALM-K-WARN`) **41 saat sonra** uyarır (15 Tem 10:45). Yani 209 saat,
+  geri testi aynı dosyada yapılıp **zayıf bulunan** bir tahminden gelir; yalnızca K/K₀
+  eşiğine dayanan öne alma daha kısadır (ölçülen ~172 saat). `S2_overload`'daki 1,2 saati
+  tetikleyen kod ise `ALM-DEW-*`'dır, yani ısıl tespit değil çiy kuralı.
+  [docs/12](12-dogrulama-sonuclari.md) §2 artık **tetikleyen kodu ayrı bir sütunda**
+  basar, böylece sayı bir daha yanlış okunamaz. Eşik tanımı **değiştirilmedi**: değiştirmek
+  manşet sayıyı sessizce düşürürdü ve bu kararın ayrı verilmesi gerekir.
 - **Prognoz yanlış-alarmı (S8, sensör arızası) — 18 Eylül'de kısmen kapandı (F-31).**
   Sınır hiç aşılmadığı hâlde **183 tahmin** üretiliyor ve bunların **86'sı** `ALM-TTL-14D`
   (P3) alarmına dönüyor (`docs/12` §4.3). Tahminlerin kaynağı `DSYA4_L3`, yani S8'in
@@ -326,6 +335,33 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   kestirimi `q` hesabından önce yapar), yani nokta "kalibrasyon şüpheli" işaretlenmiş olsa
   bile tahmin üretilmeye devam eder. Bu bir tespit değil **tahmin** yanlış-alarmıdır ve
   docs/12 §3'teki yanlış alarm sayacı onu görmez. Saklanmıyor, burada duruyor.
+- **Dedektörün dört varsayımı 19 Eylül'de sınandı; biri kırıldı, üçü dayandı (S10–S13).**
+  `detect.py` şunları varsayar: (a) nokta tek başınadır (regresör `[dT, I²]`), (b) τ
+  sabittir, (c) sistem birinci mertebedir, (d) ölçüm doğrusaldır. Üreteç S0–S9'da
+  **aynı** denklemi çözdüğü için "duyarlılık 1,00" bu varsayımları hiç sınamıyordu.
+  `ModelMismatch` dördünü de bozabiliyor (varsayılan kapalı, dedektöre hiçbir şey
+  eklenmedi) ve dört senaryo bunları tek tek açıyor. **Ölçülen** ([docs/12](12-dogrulama-sonuclari.md)
+  §1.1, [docs/14](14-veri-ureteci.md) §9):
+  - **(d) kırıldı.** Ölçüm zinciri doğrusalsızlığında terminal gerçekte **78,90 K**'da —
+    eşleşen ikizle ondalık basamağına kadar aynı — ama ölçüm **48,48 K** gösteriyor.
+    Sabit 70 K eşiği **tamamen körleşiyor**, recall **0,50**'ye iniyor. Oran tabanlı K
+    tespiti ayakta kalıyor (`k_ratio` 3,01 > 1,6). Bu, §1'deki "sabit eşik yetmiyor"
+    savının deneysel kanıtıdır — ama aynı zamanda **kendi L0 katmanımızın da kör
+    olabileceğini** gösterir.
+  - **(a), (b), (c) dayandı, ve nedeni yapısaldır:** alarm kuralları K'yı değil
+    **K/K₀ oranını** okur; taban K₀ aynı uyumsuz fizikle öğrenildiği için durağan bir
+    yanlılık payda ile sadeleşir (`k_ratio = g·K / g·K₀ = K/K₀`). Bu bir **güçtür** ve
+    seçilerek değil ölçülerek bulunmuştur.
+  - **Bedel başka yerde çıktı.** İkinci ısıl kutupta yayımlanan τ **9,5 kat** sapıyor
+    (689 s → 6.576 s) ve `ALM-DQ-DRIFT` **gerçekten arızalı** noktayı "kalibrasyon
+    şüpheli" diye etiketliyor — operatörün gerçek arızayı alet hatası sanmasına yol
+    açabilecek bir yanlış teşhis. Kuplajda ise `k_ratio` eşiğini aşan nokta sayısı
+    1'den 2'ye çıkıyor: teşhis "hangi pano" düzeyinde doğru, **"hangi klemens"
+    düzeyinde yanlış**.
+  - **Kapatılmamış:** dört fizik **tek tek** açılıyor; gerçek panoda hepsi aynı andadır
+    ve birleşik etkileri ölçülmedi. Katsayılar da sentetiktir, saha ölçümü yoktur
+    (gerekecek ölçümler `docs/14` §9.3'te). Gerekçe:
+    `contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md`.
 - **PD yalnızca OG içindir.** AG panoda `pd` bloğu şema gereği `null`. Gerekçesi sık
   tekrarlanan "400 V, Paschen minimumunun (~327 V) altındadır" kısayolu **değildir** — o
   kısayol eksiktir: 400 V sistemde faz-faz tepe gerilimi √2 × 400 ≈ 566 V'tur, yani 327 V'un
