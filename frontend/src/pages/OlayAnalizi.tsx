@@ -228,7 +228,7 @@ function KaraKutu({ eventId }: { eventId: string }) {
   const panoName = summary?.name ?? data.pano_id;
   const panoType = panoTypeText(summary?.pano_type);
   const pointTags = Object.keys(data.series).filter((t) => t.startsWith("t_conn."));
-  const narrative = useMemo(() => generateIncidentNarrative(data, panoName), [data, panoName]);
+  const narrative = generateIncidentNarrative(data, panoName);
 
   // beforeprint'i desteklemeyen tarayicida da damga taze olsun diye dugme de tazeler.
   const yazdir = () => {

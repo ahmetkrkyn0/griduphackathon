@@ -21,6 +21,8 @@ node_modules/
 dist/
 .vite/
 *.tsbuildinfo
+playwright-report/
+test-results/
 
 # --- Derleme ---
 build/
@@ -77,4 +79,3 @@ graphify-out/.*
 # --- Yerel Agent araclari ---
 .claude/
 .superpowers/
-

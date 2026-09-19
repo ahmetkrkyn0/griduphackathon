@@ -6,7 +6,7 @@ import { PRIO_NAME } from "../lib/labels";
 import { axisFraction, effectivePrio } from "../lib/worklist";
 import { ttlText } from "../lib/format";
 
-const H = 286;
+const H = 310;
 const L = 65,
   R = 36,
   T = 24,
@@ -21,6 +21,11 @@ export function RiskMatrisi({ panels }: { panels: PanelSummary[] }) {
   const focused = panels.find((p) => p.pano_id === active);
   return (
     <div className="riskmx" ref={ref}>
+      <div className="risk-chart-summary">
+        <span>VARLIK SAĞLIĞI</span>
+        <strong>{panels.length} pano</strong>
+        <span>{panels.filter((p) => p.ttl_h != null).length} süre tahmini</span>
+      </div>
       <div className="chart-viewport">
         <svg
           className="chart-svg"
@@ -28,6 +33,14 @@ export function RiskMatrisi({ panels }: { panels: PanelSummary[] }) {
           role="group"
           aria-label="Pano risk dağılımı: düşey risk skoru, yatay sınıra kalan süre. Süre tahmini olmayanlar ayrı sütundadır."
         >
+          <rect
+            x={L + 95}
+            y={T}
+            width={Math.max(0, W - L - R - 95)}
+            height={H - T - B}
+            fill="#fafbfd"
+            rx={4}
+          />
           <rect
             x={L - 19}
             y={T}
@@ -56,7 +69,9 @@ export function RiskMatrisi({ panels }: { panels: PanelSummary[] }) {
             </g>
           ))}
           {ticks
-            .filter((h) => W > 460 || (W < 360 ? [0, 336] : [0, 72, 336]).includes(h))
+            .filter(
+              (h) => W > 460 || (W < 360 ? [0, 336] : [0, 72, 336]).includes(h),
+            )
             .map((h) => (
               <g key={h}>
                 <line
@@ -122,7 +137,7 @@ export function RiskMatrisi({ panels }: { panels: PanelSummary[] }) {
                   className="riskmx-dot"
                   cx={px}
                   cy={py}
-                  r={selected ? 6 : 4.5}
+                  r={selected ? 7 : 5.5}
                 />
                 {(selected || (W > 460 && p.risk_score >= 70)) && (
                   <text

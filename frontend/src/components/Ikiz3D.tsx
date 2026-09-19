@@ -1064,6 +1064,7 @@ export function Ikiz3D({
 
   return (
     <div className="i3">
+      <div className="i3-stage-heading"><span>DİJİTAL İKİZ / BAĞLANTI İNCELEME</span><span>{selected ? pointLabel(selected) : "NOKTA SEÇİN"}</span></div>
       <div className="i3-stage" ref={stageRef} />
       <div className="i3-tip" ref={tipRef} hidden />
       {failed ? (
@@ -1142,10 +1143,10 @@ export function Ikiz3D({
             <div className="i3-thermal-scale" aria-label="Termal renk skalası">
               <span className="i3-thermal-bar" />
               <div className="i3-thermal-labels">
-                <span>0 °C</span>
-                <span>20 °C</span>
-                <span>40 °C</span>
-                <span>65+ °C ΔT</span>
+                <span>0 K</span>
+                <span>20 K</span>
+                <span>40 K</span>
+                <span>65+ K ΔT</span>
               </div>
             </div>
           )}

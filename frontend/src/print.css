@@ -13,6 +13,18 @@
 }
 
 @media print {
+  body:has(.report) { background: white !important; }
+  .app-shell:has(.report) .sidebar,
+  .app-shell:has(.report) .workspace-topbar,
+  .app-shell:has(.report) .environment-strip,
+  .app-shell:has(.report) .workspace-footer,
+  .app-shell:has(.report) .skip-link,
+  .report .narrative-card { display: none !important; }
+  .app-shell:has(.report) .app-workspace { margin-left: 0; }
+  .app-shell .page.report { max-width: none; margin: 0; padding: 0; }
+  .report .narrative-box { display: block; }
+  .report .instrument-tools, .report .instrument-data { display: none !important; }
+  .report .instrument-chart { break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* A4 dikey. Kenar boslugu 12 mm: imza satirlari kagit kenarina yapismaz. */
   @page {
     size: A4 portrait;

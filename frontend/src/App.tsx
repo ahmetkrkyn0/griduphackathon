@@ -21,6 +21,7 @@ export function App() {
             <Route path="/pano/:panoId" element={<PanoDetay />} />
             <Route path="/alarmlar" element={<AlarmKonsolu />} />
             <Route path="/trend" element={<TrendKorelasyon />} />
+            <Route path="/trend/:panoId" element={<TrendKorelasyon />} />
             <Route path="/olay" element={<OlayAnalizi />} />
             <Route path="/olay/:eventId" element={<OlayAnalizi />} />
             <Route path="/cihaz-sagligi" element={<CihazSagligi />} />
