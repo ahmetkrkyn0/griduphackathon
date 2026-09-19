@@ -4,11 +4,18 @@ import { authHeader, clearToken, getToken, onTokenChange, setToken } from "./ses
 /**
  * F-19 — istemci tarafinda belirtec deposu.
  *
- * SINIR: vitest "node" ortaminda kosar (vite.config.ts) ve depoda jsdom yok; yeni npm
- * bagimliligi da yasak. Bu yuzden `sessionStorage` ve `localStorage` asagida bellek ici
- * TAKLITLERLE saglaniyor — print.test.ts'teki ayni yaklasim. Taklit, gercek tarayici
+ * SINIR: bu dosya "node" ortaminda kosar (vite.config.ts) ve `sessionStorage` ile
+ * `localStorage` asagida bellek ici TAKLITLERLE saglanir. Taklit, gercek tarayici
  * davranisinin yerine gecmez; olculen sey session.ts'in DOGRU DEPOYU secip secmedigi ve
  * depo patladiginda cagirani kirip kirmadigidir.
+ *
+ * 19 Eylul duzeltmesi: bu yorum eskiden "depoda jsdom yok; yeni npm bagimliligi yasak"
+ * diyordu — K7/7.1 ile ikisi de yanlis oldu (jsdom kurulu). Dosyanin node'da KALMASI
+ * yine de bilincli ve OLCULMUS bir karardir: global `environment: "jsdom"` denendiginde
+ * 12 dosyanin 3'u kirildi (38 test) ve sure 1,95 s'den 40,02 s'ye cikti; gerekce
+ * vite.config.ts'te yazili. Ayrica asagidaki `Object.assign(globalThis, ...)` deseni
+ * jsdom'da Window uzerindeki salt-okunur erisimcilere carpma riski tasir — bellek ici
+ * taklit, olculmek istenen seyi (depo secimi) daha dar ve daha kesin sinar.
  *
  * Asil kilit: "yalnizca sessionStorage kullanir". localStorage'a kaymasi, kontrol
  * odasindaki paylasilan bir makinede belirtecin sonraki vardiyada da durmasi demekti.

@@ -4,9 +4,12 @@ import type { OutageEvent } from "../api/types";
  * Ust sebeke kesintisinin (F-22) arayuz yardimcilari.
  *
  * Saf fonksiyonlar olarak ayri duruyor cunku burada korunmasi gereken bir DURUSTLUK
- * kurali var: etkilenen abone sayisi BILINMIYORSA sifir gosterilmez. vitest bu depoda
- * `environment: "node"` ile calisir ve yalnizca `src/**\/*.test.ts` toplar; kurali bir
- * bilesenin JSX'ine gomseydik testle kilitleyemezdik.
+ * kurali var: etkilenen abone sayisi BILINMIYORSA sifir gosterilmez. Kurali bir bilesenin
+ * JSX'ine gomseydik onu ancak cizilmis ciktidan DOLAYLI olarak sinayabilirdik.
+ *
+ * 19 Eylul notu: bu yorum eskiden vitest'in `environment: "node"` ile kostugunu ve
+ * yalnizca `src/**\/*.test.ts` topladigini soyluyordu; K7/7.1 ile ikisi de degisti
+ * (bkz. vite.config.ts). Ayrim artik bir arac kisiti degil, bilincli bir tasarim.
  */
 
 /** pano_id -> fider_id. Haritada kesintiye dahil panolari isaretlemek icin. */

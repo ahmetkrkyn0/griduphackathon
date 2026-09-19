@@ -19,6 +19,7 @@
 | **Model-uyumsuzluğu senaryosu (madde 1 / §2.1)** — S10–S13, `ModelMismatch`, `docs/12` §1'de eşleşen/uyumsuz blokları | `libs/panoalgo/` · `docs/05` · `docs/12` · `docs/14` · `README.md` | ✅ ölçüldü (19 Eylül, dal `tuna/yapilacaklar-uygulama`) |
 | `docs/05` §10'daki **yanlış iddia düzeltildi** — "209 saatlik öne alma tespit katmanından gelir" YANLIŞTI; sayıyı `ALM-TTL-14D` (prognoz) tetikliyor | `docs/05-anomali-tespiti.md` · `docs/12` §2 | ✅ ölçüldü |
 | **ROI hesaplayıcı + OPEX (madde 2 / §2 K8)** — `--duyarlilik`, üç sütunlu parametre dosyası, pano başına toplam maliyet, OPEX bölümü, başa baş eşiği · **8.4 fiyat yerine eşik: sapma, kayıtlı** | `scripts/tazminat_maruziyeti.py` · `scripts/roi-ornek-parametreler.yaml` · `docs/10` §5.3/§6/§7 · `backend/tests/` | ✅ ölçüldü (19 Eylül, dal `tuna/yapilacaklar-uygulama`) |
+| **Bileşen testleri + Playwright tezgâhı (madde 3 / §2 K7)** — 4 davranış kilitlendi, `e2e/smoke.spec.ts` 7 ekranı geziyor, `assets/ekran/` görüntülerini artık spec üretiyor, `@axe-core/playwright` + `theme.test.ts` · **tezgâh ilk koşusunda üretimdeki bir çökmeyi buldu** (kara kutu ekranı React #310 ile boştu) | `frontend/e2e/` · `frontend/playwright.config.ts` · `frontend/src/**/*.test.tsx` · `frontend/src/pages/OlayAnalizi.tsx` · `docs/16` · `docs/17` · `README.md` | ✅ ölçüldü (19 Eylül, dal `tuna/yapilacaklar-uygulama`) |
 | Eski **~56 / ~37 USD** rakamları beş dosyada daha yaşıyordu (BOM düzeltmesi yalnızca README ve `docs/10`'a uygulanmış) — beşi de düzeltildi ve **testle kilitlendi** | `docs/17` (2 yer) · `docs/18` · `docs/19` · `demo/sunum/sunum-taslagi.md` | ✅ ölçüldü |
 | **Eskimiş olgunluk etiketi:** `hardware/sensor-dugumu/` ve `hardware/pd-karti/` artık boş değil; "kavramsal / dizin boştur" ifadeleri *"belgelendi ama doğrulanmadı"* olarak düzeltildi | `docs/10` · `docs/17` · `docs/19` · `README.md` · `hardware/pano-beyni/README.md` | ✅ ölçüldü |
 
@@ -32,7 +33,7 @@
 |:--:|---|:--:|:--:|:--:|---|
 | ~~**1**~~ | ~~Model-uyumsuzluğu senaryosu~~ **✅ YAPILDI** | K2 | +1,5 | — | Tamamlandı 19 Eylül. Sonuç tahmin edilenden **farklı ve daha güçlü** çıktı: duyarlılık üç uyumsuzlukta düşmedi (oran yapısı sabit kazancı sadeleştiriyor — bu bir **güç**), ölçüm zinciri doğrusalsızlığında **0,50**'ye indi ve sabit 70 K eşiğinin tamamen körleştiği gösterildi. Ayrıntı §2.1'de. |
 | ~~**2**~~ | ~~ROI hesaplayıcı + OPEX~~ **✅ YAPILDI (8.4 saptı)** | K8 | +2,0 | — | Tamamlandı 19 Eylül. Sonuç **tahminden üç yerde saptı**: (a) düğüm sayısı N=5 değil, sözleşme **25** tanımlıyor ve aralık **4–25**; pano başına toplam tek sayı değil **103,48–396,43 USD**. (b) Duyarlılık, "hangi varsayım belirliyor" sorusunun **cevabı olmadığını** gösterdi — üç varsayımın kaldıracı **birebir eşit** (1,33×, çarpımsal model); asıl belirleyici bir belirsizlik değil **yapılandırma seçimi** (N: 7,4 → 28,3 ay). (c) Maruziyette tarifenin kaldıracı **üstten 1,00× ile sınırlı**, eşiğe olan mesafeninki **sınırsız** (0,09×–3,57×) — ilk yazdığımız *"sıralama değişmez"* iddiası **bağımsız denetimde yanlışlandı ve düzeltildi**. 8.4'te fiyat **uydurulmadı**, yerine ölçülmüş **başa baş eşiği** (0,37 USD) kondu — bu spec'ten bir **sapmadır** ve öyle yazıldı. Ayrıntı §2 K8'de. |
-| **3** | Bileşen testleri + Playwright spec'i depoya | K7 | +0,5 | 1 gün | Ucuz. Arayüzün **hiç** testi yok; "0 konsol hatası" iddiasının tezgahı depoda değil. |
+| ~~**3**~~ | ~~Bileşen testleri + Playwright spec'i depoya~~ **✅ YAPILDI** | K7 | +0,5 | — | Tamamlandı 19 Eylül. **Bu maddenin kendi teşhisi iki yerde yanlıştı.** (a) *"Arayüzün **hiç** testi yok"* yanlıştı: 136 test vardı, olmayan şey **DOM/bileşen** testiydi (`.test.tsx` = 0) — bugün 17 dosya / **154 test**, 5'i gerçek DOM'da çiziyor. (b) Plandaki `environment: 'jsdom'` adımı **uygulanmadı**, çünkü denendiğinde 12 dosyanın 3'ü kırıldı (**38 test**, süre 1,95 s → 40,02 s); yalnızca `.tsx` dosyaları jsdom'a alındı. **Asıl kazanç tahmin edilen yerde çıkmadı:** tezgâh ilk koşusunda, hem örnek veri hem **üretim derlemesinde** kara kutu ekranını tamamen boş bırakan bir React #310 çökmesi buldu — yani *"7 ekranda 0 konsol hatası"* iddiası yazıldığı sırada **7 değil 6 ekran için** doğruydu. Düzeltildi, testle kilitlendi, yeniden ölçüldü: iki kipte de **0 hata / 0 uyarı**. Erişilebilirlik taraması ise **gizlenmeyen** bir sonuç verdi: örnek veri kipinde 5, canlı kipte **23 kontrast ihlali**. Ayrıntı §2 K7'de. |
 | **4** | Çoklu tohumla FPR/precision dağılımı | K2 | +0,5 | 1–2 gün | `validate.py:410` zaten "tek tohum, tek yörünge" diyor. n=10'dan n=500'e çıkmak ucuz. |
 | **5** | Devreye alma prosedürünü gerçekleştir | K3 | +1,0 | 2–3 gün | **Saha jürisinin en çok bakacağı yer.** `docs/08` 3.787 bayt — bir ekibin izleyeceği belge değil. |
 | **6** | Sıkıştırma oranını ölçülebilir kıl | K6 | +0,5 | 0,5 gün | Tek doğrulanamayan ölçüm. Betikle kapanır. |
@@ -40,10 +41,10 @@
 | **8** | Birim→pano eşlemesini çalışma anında yayınla | K5 | +0,3 | 1 saat | Tek satırlık iş, K5'i 10'a yaklaştırır. |
 | **9** | `docs/01` Paschen çelişkisini düzelt | K1 | +0,3 | 15 dakika | İki doküman birbirini yalanlıyor. |
 | **10** | 10k pano projeksiyonu | K6 | +0,3 | 0,5 gün | Ölçülmüş 1.000 pano verisinden türetilir. |
-| **11** | Bileşen düşüşünde arayüz davranışı | K4 | +0,3 | 1 gün | "Bayat veri" göstergesi. |
+| **11** | Bileşen düşüşünde arayüz davranışı | K4 | +0,3 | 1 gün | "Bayat veri" göstergesi. **Madde 3 ile KAPATILMADI ve bu bilinçli:** §2 K4 4.1'in metni *"bunu 7.1'deki bileşen testleriyle kilitleyin"* diyor, ama **kilitlenecek özellik henüz yok** (`AppShell.tsx:140` yalnızca "Veri akışı bağlı" gösteriyor). Önce UI kodu yazmak gerekir; o da test işi değil. |
 | **12** | S3_condense senaryosu | K2 | 0 / −risk | 2 saat | Karar: **bırakılıyor.** Riski aşağıda yazılı. |
 
-**Toplam potansiyel:** eşit ağırlıkta ~7,6 → **~9,0**. **Madde 1 ve madde 2 kapandı (19 Eylül);** kalan sıralama 3'ten başlar.
+**Toplam potansiyel:** eşit ağırlıkta ~7,6 → **~9,0**. **Madde 1, 2 ve 3 kapandı (19 Eylül);** kalan sıralama **4'ten** başlar.
 
 ---
 
@@ -404,6 +405,145 @@ Bu sayıyı yayımlayabilmek için `hardware/sensor-dugumu/` "kavramsal" etiketi
 
 ### K7 — Kullanıcı / operasyon deneyimi · şu an **8**
 
+#### 7.1–7.3 ✅ Bileşen testleri + Playwright tezgâhı + erişilebilirlik taraması — **7.1, 7.2, 7.3 TAMAMLANDI (19 Eylül 2026)**
+
+> **Durum:** dal `tuna/yapilacaklar-uygulama`, commit `e3038a1`. Frontend **12 dosya / 136
+> test → 17 dosya / 154 test**, hepsi yeşil (vitest 2.1.9). `npm run build`
+> (`tsc --noEmit && vite build`) yeşil. Backend **880 geçti / 37 atlandı** ve
+> `libs/panoalgo` **498** bozulmadı. `scripts/check_contracts.py` → **SOZLESMELER
+> TUTARLI**, `scripts/sir_taramasi.py` → **temiz** (484 izlenen dosya, 14 ignore kuralı).
+>
+> **Aşağıdaki analiz, işin gerekçesi olarak olduğu gibi bırakıldı.** Ne çıktığı hemen
+> altındaki "Ölçülen sonuç" bloğundadır — ve **maddenin kendi teşhisi iki yerde
+> yanlışlandı, bir yerde de tezgâh beklenmedik bir kusur buldu.**
+
+##### Ölçülen sonuç — tezgâh ilk koşusunda üretimdeki bir çökmeyi buldu
+
+**1. En önemli sonuç: "7 ekranda 0 konsol hatası" yazıldığı sırada DOĞRU DEĞİLDİ.**
+Tezgâh kurulup ilk kez koşturulduğunda **kara kutu ekranı (`/olay/:id`) tamamen boş
+çıktı.** `OlayAnalizi.tsx`'te bir `useMemo`, `if (error)` / `if (!data)` erken
+dönüşlerinin **altındaydı**: ilk çizimde `data` null olduğu için çağrılmıyor, veri
+gelince çağrılıyordu; hook sayısı 9 → 10 değişince React **#310** fırlatıyordu
+(*"Rendered more hooks than during the previous render"*). Hem `npm run dev:mock`'ta hem
+**:3000 üretim derlemesinde** doğrulandı — yani hata dev'e özgü değildi, dağıtılan
+arayüzde de vardı. **Yedi ekranın yedisi değil, altısı hatasızdı.**
+
+Bu, maddenin kendi savunduğu şeyin en iyi kanıtı: *"sonuç doğruydu ama yeniden
+üretilemiyordu"* demek yetmiyormuş — **yeniden üretilemeyen sonuç aynı zamanda
+yanlışlanamıyordu.** Kusur düzeltildi ve regresyonu `frontend/src/pages/OlayAnalizi.test.tsx`
+ile kilitlendi. Testin gerçekten iş gördüğü **düzeltme geri alınarak doğrulandı**:
+kusurluyken kırmızı, düzeltmeyle yeşil.
+
+Düzeltmeden **sonra** ölçülen: örnek veri kipinde 10 rotada **0 hata / 0 uyarı**, canlı
+kipte 10 rotada **0 hata / 0 uyarı**.
+
+**2. `test.environment = 'jsdom'` adımı (7.1'in 1. maddesi) UYGULANMADI — ölçüm onu
+yanlışladı.** Plan global `jsdom` diyordu. Denendi ve **12 dosyanın 3'ü kırıldı**:
+
+| Kırılan | Test | Sebep |
+|---|--:|---|
+| `print.test.ts` | 14 | `readFileSync(new URL(…, import.meta.url))` — jsdom'da `import.meta.url` `file:` şemasında değil |
+| `labels.test.ts` | 16 | aynı |
+| `panelGeometry.test.ts` | 8 | aynı |
+
+Toplam **38 test** düştü (136 → 98) ve süre **1,95 s → 40,02 s** çıktı. Ayrıca bu
+dosyanın kendi uyarısı (`session.test.ts`'in `Object.assign(globalThis, …)` yüzünden
+kırılacağı) **tutmadı** — o dosya sorunsuz geçti. Uygulanan çözüm:
+`environmentMatchGlobs` ile **yalnızca `.tsx` testleri** jsdom'a giriyor; node testleri
+bedel ödemiyor. Gerekçe `vite.config.ts`'te yazılı.
+
+**3. ★ Sessiz başarısızlık kapatıldı.** `vite.config.ts`'in `include`'u
+`src/**/*.test.ts` idi — yani **`.tsx` test dosyaları hiç toplanmıyordu.** Bu
+düzeltilmeden yazılan her bileşen testi yazılır, `npm test` yine "136 passed" der ve
+**yeşil görünürdü**. Artık `src/**/*.test.ts?(x)`; doğrulama ölçütü *"Test Files sayısı
+12'den büyük"*tür ve bugün **17**'dir.
+
+**4. Erişilebilirlik: ihlaller bulundu, düzeltilmedi, GİZLENMEDİ — testte kilitlendi.**
+`@axe-core/playwright` ile WCAG 2.1 A + AA taraması:
+
+| Kip | `color-contrast` ihlali | Başka axe kuralı |
+|---|--:|---|
+| örnek veri (`:5173`) | **5 düğüm** | yok |
+| canlı (`:3000`) | **23 düğüm** | yok |
+
+Farkın tamamı `AppShell`'deki **iki ögeden** gelir ve ikisi de örnek veri kipinde hiç
+çizilmez: `.connection-pill` **4,26:1** ve `.btn-link` **2,91:1**. Her rotada göründükleri
+için 2 × 10 = 20, artı `/`de 3 `.focus-number` = 23. **Yani "arayüzde 5 kontrast ihlali
+var" demek yanlış olurdu; hangi kipten söz edildiği söylenmek zorunda.** Bu, iki kipi
+ayırmanın en somut karşılığıdır.
+
+Renk paleti **değiştirilmedi** — palet kararı test işi değildir ve `docs/16` ile
+`frontend/TASARIM-REVIZYONU.md`'deki tasarım kaydını geçersiz kılardı. Sayı testte kilitli:
+yeni ihlal çıkarsa test düşer, **biri düzeltilirse de düşer** ve bu doğrudur, çünkü o zaman
+`docs/16` §4'teki tablonun da yeniden ölçülmesi gerekir.
+
+**5. Elle hesabın göremediği şey ölçüldü.** Elle kontrast hesabı zeminin her zaman `--bg`
+olduğunu varsayar. axe gerçekten çizilen rengi okur ve varsayımın yanlış olduğu yerde
+patladı: `/bölge`deki `.kesinti-serit` zemini `--bg` (#f5f6f8) değil **#ebecee** ve aynı
+`--dim` token'ı orada 4,61:1 değil **4,21:1** veriyor — **AA'nın altında.**
+
+**6. Bu işi yaparken yazılan bir varsayım da yanlışlandı.** `theme.test.ts`'e önce
+*"`--p1`/`--p2`/`--p3` beyaz zeminde AA'yı geçer"* diye yazıldı; test kırıldı. `app.css`
+okununca gerçek çiftlerin bambaşka olduğu görüldü: `.prio` metni **beyaz**, `.prio-P3` ise
+`--ink`/`--p3` = **3,67:1** ile eşiğin **altında**. Test ölçülene göre yeniden yazıldı.
+Üstelik axe o düğümü **hiç değerlendirmedi**, çünkü taranan yedi ekranın hiçbirinde P3
+rozeti çizilmedi — bu da bir ölçüm boşluğu olarak kayda geçti. Ders madde 2'dekiyle aynı:
+**tek örnekten genel sonuç çıkarma.**
+
+##### Bu testin NEYİ kilitlediği — dürüst kapsam
+
+"0 konsol hatası" **bir örneğin sonucudur, özelliğin garantisi değildir.** Ölçülen:
+tek tarayıcı (Chromium 153), tek genişlik (1425 px), yalnızca **sayfa açılışı**.
+**Ölçülmeyenler, açıkça:**
+
+- **Etkileşim sonrası hatalar** — tıklama, form gönderimi, sekme değiştirme.
+- **3B ikiz sekmesi** bilerek tıklanmıyor: `Ikiz3D.tsx:104` WebGL yoksa fırlatır; hata
+  sınırı (`PanoDetay.tsx:288-295`) yakalasa bile React yine `console.error` basar. 3B
+  varsayılan sekme değil ve `lazy()` ile yükleniyor, yani tıklanmadıkça hiç çalışmıyor.
+- **390 px viewport** hâlâ elle kontrol ediliyor; e2e tek genişlikte koşar.
+- **P3 rozetinin 3,67:1 oranı** axe kapsamına hiç girmedi (ekranlarda P3 rozeti yoktu).
+- **Diğer tarayıcılar** (yalnızca chromium kuruldu), yavaş ağ, sahadaki veri çeşitliliği.
+- **Canlı kipten ekran görüntüsü** üretilmedi; commit edilen 8 PNG örnek veri kipindendir
+  (`GRIDUP_E2E_EKRAN=1` ile canlıdan üretme yolu açık bırakıldı ama koşulmadı).
+- **CI'a bağlanmadı** — §3 madde 1 kapsamı, bilinçli olarak dışarıda bırakıldı.
+
+##### Yan çıktı: bayat sayı zinciri aynı anda kapatıldı
+
+`docs/16` §1/§4/§5 (kontrast **~16:1 → 13,33:1**, ikincil **~5,8:1 → 4,61:1**,
+`--bg #ffffff → #f5f6f8`, "otomatik viewport testi yok" gerekçesi), `docs/11` satır 18,
+`docs/17` (frontend **85 → 154** dört ayrı yerde, panoalgo **401 → 498**, backend
+**661 → 880/37**), `README.md` (panoalgo **489 → 498**, backend **853 → 880/37**, frontend
+**136 → 154**, DSN'li koşu "890" → **917 toplanır**; DSN'li geçme sayısı bu oturumda
+**ölçülmedi** ve öyle yazıldı). `KALAN-EKSIKLER.md` **tarihli bir anlık görüntü** olduğu
+için sayıları değiştirilmedi; `5c969d1` kaydı korunup üstüne 19 Eylül notu düşüldü.
+`docs/17`'nin *"doğru kaynak bu tablodur"* notu **kendi kendini yanlışlamıştı** (tablo
+85'te kalmışken README zaten 136 diyordu) ve bu ders olarak yazıldı.
+
+**Atıf hatası, kayda geçiyor:** aşağıdaki özgün analiz iddianın yerini `docs/17:159`
+diyor; gerçek satır **160**'tı ve aynı iddia `docs/17`'de **40** ile **193**. satırlarda
+**da** vardı. Yani "tek yeri düzelttim" tuzağı buradaydı; üçü birden düzeltildi. (Özgün
+blok belge kaydı olarak değiştirilmeden bırakıldığı için yanlış satır numarası orada
+duruyor; satır numaraları bu düzenlemelerden sonra zaten kaymıştır — kalıcı referans
+olarak satır numarası değil **dosya + bölüm** kullanılmalıdır.)
+
+Ayrıca **bu işin yanlışladığı dört kaynak yorumu** düzeltildi: `frontend/src/print.test.ts`
+ve `src/api/session.test.ts`'teki *"DOM yok"* / *"yeni npm bağımlılığı yasak"* ifadeleri ile
+`src/lib/etki.ts` ve `src/lib/kesinti.ts`'teki *"`environment: node`, yalnızca `*.test.ts`
+toplanır"* ifadeleri. Dördünde de gerçek sınır **daha dar** yazıldı.
+
+##### Nasıl koşulur
+
+```bash
+cd frontend && npm ci
+npm test                                  # 17 dosya / 154 test — "Test Files" 12'den BÜYÜK olmalı
+npm run build                             # tsc --noEmit && vite build
+npm run e2e                               # örnek veri kipi (:5173) — Vite'i spec kendi kaldırır
+GRIDUP_E2E_KIP=canli npx playwright test   # canlı yığın (:3000 ÖNCEDEN ayakta olmalı)
+```
+
+<details>
+<summary><strong>Özgün analiz (iş başlamadan önce yazıldı) — olduğu gibi bırakıldı</strong></summary>
+
 #### 7.1 ⭐ Bileşen testleri (P0 — ucuz)
 
 **Durum (koddan):** `frontend/package.json` yalnızca `vitest` içeriyor; `@testing-library/react`, `jsdom`/`happy-dom` **yok**. 136 testin **tamamı** `src/lib/` ve `src/api/` saf fonksiyon testi; `.test.tsx` dosyası **sıfır**. Yani yedi ekranın hiçbiri, hiçbir alarm kartı, hiçbir etkileşim test altında değil — çalıştıklarını elle gördük, ama bir regresyon bunu sessizce bozar.
@@ -426,6 +566,8 @@ Bu sayıyı yayımlayabilmek için `hardware/sensor-dugumu/` "kavramsal" etiketi
 #### 7.3 Erişilebilirlik ölçümünü otomatikleştirin (P2)
 
 Kontrast değeri (`13,33:1`) elle hesaplandı ve bir kez daha eskiyecek. `@axe-core/playwright` ile smoke spec'e bir erişilebilirlik taraması ekleyin; sayı artık dokümanda değil **testte** yaşar.
+
+</details>
 
 ---
 
