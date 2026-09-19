@@ -48,8 +48,8 @@ deterministik bir teste dönüştürülmesi; bu, S8'in kendisiyle ilgisiz, ayrı
 düzeltmesidir).
 
 *Düzeltildi (final whole-branch review sonrası, commit `b80ef2c`):* `edge.py:223`'teki yazım
-hatası ("hiclbir"), `:226`'daki tek Türkçe karakter (`içerir`), `:225`'teki geçersiz kelime
-("kucuklenmez") ve `:227`'deki bozuk parantez ifadesi ("(s/zamaninda implemented degil)")
+hatası ("hiclbir"), `:226`'daki tek Türkçe karakter (`içerir`), `:227`'deki geçersiz kelime
+("kucuklenmez") ve `:229`'daki bozuk parantez ifadesi ("(s/zamaninda implemented degil)")
 temizlendi; dosyanın geri kalanıyla aynı ASCII harf-çevirisine (`siniri`, `surunen` gibi) uyumlu.
 
 ### Task 2 — nokta geçerliliğinin backend'de türetilmesi
