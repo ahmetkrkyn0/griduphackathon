@@ -1,0 +1,124 @@
+# ORNEKTIR — GERCEK ISLETME VERISI DEGILDIR.
+#
+# Bu dosya scripts/tazminat_maruziyeti.py'nin --parametreler bayraginin BICIMINI gosterir ve juriye
+# calistirabilecegi bir baslangic noktasi verir. Icindeki hicbir sayi sahadan alinmamistir.
+#
+# Her girdinin UC SUTUNU vardir ve ucu de zorunludur:
+#   deger  : sayi, dogru/yanlis, metin — ya da null
+#   kaynak : bu degerin NEREDEN geldigi (depo icinde dosya:satir, ya da disarida hangi belge)
+#   guven  : asagidaki bes etiketten biri
+#
+#   olculdu            bu depoda olculmus, yeniden uretilebilir bir sayi (kaynakta dosya adi vardir)
+#   turetildi          olculmus bir sayidan ya da donmus bir sozlesmeden cikarilmis secim
+#   varsayim           OLCUM DEGILDIR — birinin makul buldugu bir sayidir, sonucu bu belirler
+#   ornek              depoda duran ornek veri; sahadan alinmadi (ornegin ornek CBS aktarimi)
+#   isletmeci-doldurur deger null'dur ve OYLE KALMALIDIR; betik bunu uydurmaz, "veri yok" der
+#
+# KURAL: guven "isletmeci-doldurur" ise deger null OLMAK ZORUNDADIR; deger doluysa guven
+# diger dortten biri olmak zorundadir. Betik bunu dosyayi okurken denetler ve ihlalde hata verir
+# (backend/tests/test_tazminat_maruziyeti.py bu denetimi kilitler).
+#
+# Kullanim:
+#   backend/.venv/Scripts/python scripts/tazminat_maruziyeti.py --parametreler scripts/roi-ornek-parametreler.yaml
+#   backend/.venv/Scripts/python scripts/tazminat_maruziyeti.py --parametreler scripts/roi-ornek-parametreler.yaml --duyarlilik
+#
+# Komut satiri bayraklari bu dosyayi EZER: --parametreler ... --dugum-sayisi 25 dersen 25 gecerlidir.
+
+surum: 1
+
+parametreler:
+
+  # --------------------------------------------------------------- tazminat maruziyeti (EPDK)
+  # Yonetmeligin esikleri, dagitim bedeli ve abone basina ortalama talep BU DEPODA YOKTUR.
+  # Hepsi bilerek null birakildi: betigin "veri yok" demesi, uydurulmus bir sayidan iyidir.
+  abone:
+    deger: 412
+    kaynak: "scripts/ornek-cbs-aktarim.json — ADM-00001 abone_sayisi (ORNEK aktarim, gercek CBS disa aktarimi degil)"
+    guven: ornek
+  kesinti_saat:
+    deger: null
+    kaynak: "isletmecinin kesinti kayitlari (SCADA/OSOS) — degerlendirme donemindeki toplam kesinti suresi"
+    guven: isletmeci-doldurur
+  esik_saat:
+    deger: null
+    kaynak: "EPDK Dagitim ve Perakende Satis Faaliyetlerine Iliskin Kalite Yonetmeligi — ilgili kullanici grubunun sure esigi"
+    guven: isletmeci-doldurur
+  ortalama_talep_kw:
+    deger: null
+    kaynak: "isletmecinin abone basina ortalama talebi (kW) — OSOS/tuketim istatistiginden"
+    guven: isletmeci-doldurur
+  dagitim_bedeli:
+    deger: null
+    kaynak: "EPDK yururlukteki tarife tablosu — dagitim bedeli (TL/kWh)"
+    guven: isletmeci-doldurur
+  kesinti_sayisi:
+    deger: null
+    kaynak: "isletmecinin kesinti kayitlari — degerlendirme donemindeki kesinti sayisi"
+    guven: isletmeci-doldurur
+  esik_sayi:
+    deger: null
+    kaynak: "EPDK Kalite Yonetmeligi — kesinti sayisi esigi"
+    guven: isletmeci-doldurur
+  kesinti_basi_tazminat:
+    deger: null
+    kaynak: "EPDK Kalite Yonetmeligi — esigi asan her kesinti icin abone basina tazminat (TL)"
+    guven: isletmeci-doldurur
+
+  # --------------------------------------------------------------- kacinilan kalemlerin birim fiyati
+  # Bu dort kalem, mevcut MPR-53CS ve TVOC-2 sensor olarak okundugu icin BOM'a EKLENMEZ.
+  # Adetleri sozlesmeden SAYILIR (4 / 3 / 2 / 1), ama birim fiyatlari depoda yoktur.
+  # Fiyat girilmezse betik "veri yok" der ve bunun yerine BASA BAS esigini basar: kacinilan
+  # kalemlerin ortalama birim fiyati bu esigi gectigi anda yeniden kullanim kendini oder.
+  # Esik olculur (odenen RS485 arayuzunun fiyatindan), tahmin edilmez.
+  at_fiyat:
+    deger: null
+    kaynak: "olcum sinifi akim trafosu — tedarikci teklifi veya kamuya acik katalog (orani, dogruluk sinifi ve burden'i yazilmali)"
+    guven: isletmeci-doldurur
+  gerilim_fiyat:
+    deger: null
+    kaynak: "gerilim olcum girisi (bolucu + koruma + izolasyon) — tedarikci teklifi veya katalog"
+    guven: isletmeci-doldurur
+  ark_dedektor_fiyat:
+    deger: null
+    kaynak: "ark isigi dedektoru (nokta veya fiber tip) — tedarikci teklifi veya katalog"
+    guven: isletmeci-doldurur
+  ark_unite_fiyat:
+    deger: null
+    kaynak: "ark koruma merkez unitesi — tedarikci teklifi veya katalog"
+    guven: isletmeci-doldurur
+
+  # --------------------------------------------------------------- pano basina maliyet (BOM'dan olculur)
+  # Birim fiyatlarin kendisi parametre DEGILDIR: uc bom.csv dosyasinin satir kalemlerinden toplanir.
+  # Parametre olan tek sey yapilandirmadir — kac dugum, PD karti var mi, hangi olcek.
+  dugum_sayisi:
+    deger: 7
+    kaynak: "loadtest/fleet.py:348 varsayilani (ana giris L1/L2/L3/N + DSYA1'in uc fazi); sozlesme contracts/modbus-map.yaml conn_temp 25 nokta tanimlar, yani 7 ALT SINIR, 25 UST SINIRDIR. docs/09 §4 ikisini de olctu"
+    guven: turetildi
+  pd_karti:
+    deger: false
+    kaynak: "docs/10 §1 — PD karti yalnizca OG+PD paketindedir; AG panoda yoktur"
+    guven: turetildi
+  olcek:
+    deger: adet1000
+    kaynak: "hardware/*/bom.csv — adet 1 ve adet 1.000 sutunlari; yayginlastirma olcegi adet 1.000'dir"
+    guven: turetildi
+
+  # --------------------------------------------------------------- yillik fayda (GERI ODEMEYI BU BELIRLER)
+  # UCU DE VARSAYIMDIR, olcum degildir. docs/10 §3 bunlari zaten varsayim olarak isaretliyor;
+  # buraya da ayni etiketle tasindilar. --duyarlilik bu ucunun sonucu ne kadar belirledigini olcer.
+  ariza_olasiligi_yil:
+    deger: 0.03
+    kaynak: "docs/10 §3 ornek hesap — VARSAYIM, olcum degil; gercek deger isletmecinin ariza istatistigindedir"
+    guven: varsayim
+  ariza_basi_maliyet_usd:
+    deger: 8000
+    kaynak: "docs/10 §3 ornek hesap — VARSAYIM (ekipman + iscilik + tazminat), olcum degil"
+    guven: varsayim
+  tespit_orani:
+    deger: 0.70
+    kaynak: "docs/10 §3 — bilincli iskonto. OLCULEN degerler docs/12 §1'de IKI BLOKTUR: ESLESEN modelde recall 1,00, UYUMSUZ modelde (S13, olcum zinciri dogrusalsizligi) 0,50. Saha cesitliligi ve sensor arizasi olcume dahil olmadigi icin hesapta 0,70 kullanildi"
+    guven: varsayim
+  opex_yillik_usd:
+    deger: null
+    kaynak: "hucresel M2M tarifesi + sunucu + bakim — TARIFE DEPODA YOK. Olculen HACIM docs/09 §6.1'dedir (632 MB/pano/ay, uyarlanabilir %2); tarifeyle carpilinca bu hucre dolar"
+    guven: isletmeci-doldurur

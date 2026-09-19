@@ -32,5 +32,7 @@ sonraki iterasyonun ilk adımıdır (`docs/16-ux-tasarim.md` ve `STATUS.md`'de n
 
 - [`../yerlesim/`](../yerlesim/) — EK-II/14 üzerinde sensör yerleşimi (SVG)
 - [`../mekanik/`](../mekanik/) — DIN kutu mekanik tasarımı (OpenSCAD kaynağı)
-- [`../sensor-dugumu/`](../sensor-dugumu/), [`../pd-karti/`](../pd-karti/) — Could seviyesi, bu
-  teslimde yalnızca kavramsal (rapor §3.7, §6.2 S1/S9)
+- [`../sensor-dugumu/`](../sensor-dugumu/), [`../pd-karti/`](../pd-karti/) — Could seviyesi. **17 Eylül'de
+  ikisi de bu dizinle aynı üçlüye kavuştu** (blok diyagramı + I/O tablosu + BOM); sensör düğümü ayrıca bir
+  enerji ve termal hesap taşır. Yani artık "kavramsal" değiller — ama bu dizin gibi onlar da **veri sayfasıyla
+  doğrulanmadı ve üretilmedi** (`docs/19` §3)
