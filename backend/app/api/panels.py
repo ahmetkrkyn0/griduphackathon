@@ -41,3 +41,28 @@ def get_panel(request: Request, pano_id: str) -> dict[str, Any]:
     if record is None:
         raise HTTPException(status_code=404, detail=f"pano bulunamadi: {pano_id}")
     return panel_detail(record, state.contracts, state.clock(), state.alarms.active_for_panel(pano_id))
+
+
+@router.get("/panels/{pano_id}/power-quality")
+def get_panel_power_quality(request: Request, pano_id: str) -> dict[str, Any]:
+    from panoalgo.power_quality import evaluate_power_quality
+
+    state = request.app.state
+    if not state.contracts.pano_id_re.fullmatch(pano_id):
+        raise HTTPException(status_code=422, detail=f"gecersiz pano_id bicimi: {pano_id}")
+    record = state.store.get_panel(pano_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"pano bulunamadi: {pano_id}")
+
+    payload = record.payload or {}
+    elec = payload.get("elec") or {}
+    u_ph = elec.get("u_ph") or [230.0, 230.0, 230.0]
+    unbal = float(elec.get("unbal_pct", 0.0))
+    thd_i = elec.get("thd_i")
+    report = evaluate_power_quality(u_ph, unbal, thd_i)
+    return {
+        "pano_id": pano_id,
+        "ts": payload.get("ts"),
+        "power_quality": report.to_dict(),
+    }
+

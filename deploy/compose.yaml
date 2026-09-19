@@ -112,6 +112,9 @@ services:
       WHATSAPP_RECIPIENTS: ${WHATSAPP_RECIPIENTS:-}
       WHATSAPP_TEMPLATE: ${WHATSAPP_TEMPLATE:-}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v25.0}
+      # --- Telegram Bot API (Anlik zengin bildirim kanali — telefon/tablet) ---
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       # --- SCADA Modbus TCP ag gecidi (TB3). Varsayilan SALT OKUNUR ve yalnizca ozel aglardan. ---
       # Harita: contracts/modbus-map.yaml -> docs/03-modbus-haritasi.md. Konteyner icinde port hep 502.
       MODBUS_ENABLED: ${MODBUS_ENABLED:-1}

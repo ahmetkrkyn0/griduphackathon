@@ -80,7 +80,7 @@ CREATE INDEX IF NOT EXISTS alarms_pano_idx       ON alarms (pano_id, raised_at D
 CREATE TABLE IF NOT EXISTS notifications (
     id          BIGSERIAL PRIMARY KEY,
     alarm_id    BIGINT      NOT NULL REFERENCES alarms (id),
-    channel     TEXT        NOT NULL CHECK (channel IN ('sms','whatsapp','call','scada','relay','ui')),
+    channel     TEXT        NOT NULL CHECK (channel IN ('sms','whatsapp','telegram','call','scada','relay','ui')),
     recipient   TEXT        NOT NULL,               -- maskelenmis saklanir, or. +90*****4567
     sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     ok          BOOLEAN     NOT NULL DEFAULT TRUE,

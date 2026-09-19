@@ -167,6 +167,43 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def rbac_middleware(request: Request, call_next):
+        """IEC 62351-8 Rol Tabanli Erisim Kontrolu (RBAC) middleware'i.
+
+        Roller:
+          - viewer: Yalnizca GET (okuma); alarmlari onaylama/susturma yasak (403)
+          - operator: Okuma + alarmlari onaylama (ack)
+          - supervisor / admin: Tum islemler (alarm askiya alma / shelve dahil)
+        """
+        path = request.url.path
+        if path in ("/health", "/docs", "/openapi.json") or path.startswith("/api/v1/stream"):
+            return await call_next(request)
+
+        role = request.headers.get("X-Operator-Role", "").lower().strip()
+        auth_required = os.getenv("GRIDUP_AUTH_REQUIRED", "0") == "1"
+
+        if auth_required and not role:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Kimlik dogrulama zorunlu: X-Operator-Role veya X-API-Key basligi eksik"},
+            )
+
+        if role == "viewer" and request.method not in ("GET", "HEAD", "OPTIONS"):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Erisim reddedildi: 'viewer' rolu yalnizca okuma yetkisine sahiptir"},
+            )
+
+        if role == "operator" and "/shelve" in path and request.method == "POST":
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Erisim reddedildi: Alarmi askiya alma (shelve) icin 'supervisor' veya 'admin' rolu gereklidir (IEC 62351-8)"},
+            )
+
+        return await call_next(request)
+
     app.add_exception_handler(StoreError, _store_unavailable)
     app.include_router(panels.router)
     app.include_router(insights.router)
@@ -212,12 +249,13 @@ def create_app(
 def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Callable[[], datetime]) -> Notifier:
     """Kanallar ortam degiskenlerinden (deploy/.env): SMS_DEVICE, ALERT_*, WHATSAPP_*."""
     config = NotifyConfig.from_env()
-    sms, whatsapp = channels_from_env()
+    sms, whatsapp, telegram = channels_from_env()
     notifier = Notifier(
         contracts,
         config,
         sms=sms,
         whatsapp=whatsapp,
+        telegram=telegram,
         on_delivery=alarm_service.record_delivery,
         on_reply=lambda alarm_id, by, note: alarm_service.ack(alarm_id, by=by, note=note),
         clock=clock,
@@ -230,9 +268,10 @@ def _start_notifier(contracts: Contracts, alarm_service: AlarmService, clock: Ca
     notifier.start()
     digest_at = digest_at_from_env()
     log.info(
-        "bildirim kanallari: sms=%s whatsapp=%s, %d saha + %d eskalasyon alicisi; gunluk ozet %s",
+        "bildirim kanallari: sms=%s whatsapp=%s telegram=%s, %d saha + %d eskalasyon alicisi; gunluk ozet %s",
         "acik" if sms else "kapali",
         "acik" if whatsapp else "kapali",
+        "acik" if telegram else "kapali",
         len(config.recipients),
         len(config.escalation),
         f"{digest_at:%H:%M} (sunucu saati)" if digest_at is not None else "kapali",

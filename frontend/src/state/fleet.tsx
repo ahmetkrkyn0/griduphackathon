@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { errorText } from "../api/errors";
 import { useStream, type StreamStatus } from "../api/stream";
 import type { FleetKpi, PanelSummary, StreamMessage } from "../api/types";
+import { playAlarmChime } from "../lib/audio";
 
 const REST_REFRESH_MS = 30_000; // WebSocket kopsa bile liste bayatlamaz
 const ALARM_RELOAD_DEBOUNCE_MS = 1_000; // alarm seli sirasinda listeyi saniyede bir kez yenile
@@ -73,11 +74,16 @@ export function FleetProvider({ children }: { children: ReactNode }) {
           setLastSync(now);
           break;
         }
-        case "alarm":
-          setTouched((t) => ({ ...t, [message.payload.pano_id]: now }));
+        case "alarm": {
+          const al = message.payload;
+          setTouched((t) => ({ ...t, [al.pano_id]: now }));
+          if (al.state === "active" && (al.prio === "P1" || al.prio === "P2")) {
+            playAlarmChime(al.prio);
+          }
           clearTimeout(alarmReload.current);
           alarmReload.current = setTimeout(() => void reload(), ALARM_RELOAD_DEBOUNCE_MS);
           break;
+        }
         case "kpi":
           setKpi(message.payload);
           break;

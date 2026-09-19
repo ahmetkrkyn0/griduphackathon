@@ -90,3 +90,27 @@ def digest_sms(summary: Digest, portal_url: str) -> str:
 def whatsapp_alarm(alarm: Alarm, text: str, portal_url: str) -> str:
     link = f"{portal_url.rstrip('/')}/alarmlar/{alarm.id}"
     return f"GRIDUP {alarm.prio} alarm: {alarm.pano_id} - {fold(text).rstrip('. ')}. Detay (VPN): {link}"
+
+
+def telegram_alarm(alarm: Alarm, text: str, portal_url: str) -> str:
+    point_val = getattr(alarm, "point", None)
+    point = f" (Nokta: <code>{point_val}</code>)" if point_val else ""
+    link = f"{portal_url.rstrip('/')}/alarmlar"
+    ttl_h = getattr(alarm, "ttl_h", None)
+    ttl_info = f"\n⏱ <b>Kalan Ömür (RUL):</b> {ttl_h:.1f} saat" if ttl_h is not None else ""
+    advice = getattr(alarm, "advice", None)
+    advice_info = f"\n💡 <b>Öneri:</b> {advice}" if advice else ""
+    prio = getattr(alarm, "prio", getattr(alarm, "priority", "P2"))
+    pano = getattr(alarm, "pano_id", getattr(alarm, "panel_id", "BILINMEYEN"))
+    code = getattr(alarm, "code", "UNKNOWN")
+    state = getattr(alarm, "state", "ACTIVE")
+    prio_icon = "🔴" if prio == "P1" else ("🟠" if prio == "P2" else "🟡")
+    return (
+        f"{prio_icon} <b>[GRIDUP {prio} ALARM]</b>\n"
+        f"<b>Pano:</b> <code>{pano}</code>{point}\n"
+        f"<b>Alarm Kodu:</b> <code>{code}</code>\n"
+        f"<b>Açıklama:</b> {text}\n"
+        f"<b>Durum:</b> {state.upper()}{ttl_info}{advice_info}\n\n"
+        f"🔗 <a href='{link}'>GridUp İzleme Konsolunu Aç</a>"
+    )
+

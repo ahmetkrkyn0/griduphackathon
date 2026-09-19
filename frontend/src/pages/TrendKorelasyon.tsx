@@ -9,7 +9,6 @@ import { num } from "../lib/format";
 import { pointLabel } from "../lib/labels";
 import { useFleet } from "../state/fleet";
 
-const WINDOW_DAYS = 14; // rapor S1 senaryosuyla ayni pencere (14 gunluk gevsek baglanti rampasi)
 const PHASE_INDEX: Record<string, number> = { L1: 0, L2: 1, L3: 2 };
 
 function phaseIndexOf(pt: string): number | null {
@@ -32,25 +31,37 @@ export function TrendKorelasyon() {
   const [series, setSeries] = useState<SeriesResponse | null>(null);
   const [envSeries, setEnvSeries] = useState<SeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [windowDays, setWindowDays] = useState(14);
 
   useEffect(() => {
     if (!panoId) return;
     setDetail(null);
+    setPoint("");
+    setSeries(null);
+    setError(null);
+    const controller = new AbortController();
     api
-      .panel(panoId)
+      .panel(panoId, controller.signal)
       .then((d) => {
+        if (controller.signal.aborted) return;
         setDetail(d);
-        setPoint(d.points[0]?.pt ?? "");
+        setPoint(
+          d.active_alarms?.find((a) => a.reason?.point)?.reason?.point ??
+            d.points[0]?.pt ??
+            "",
+        );
       })
-      .catch((e) => setError(errorText(e)));
+      .catch((e) => !controller.signal.aborted && setError(errorText(e)));
+    return () => controller.abort();
   }, [panoId]);
 
   useEffect(() => {
     if (!panoId || !point) return;
     setSeries(null);
+    setError(null);
     const controller = new AbortController();
     const to = new Date();
-    const from = new Date(to.getTime() - WINDOW_DAYS * 86_400_000);
+    const from = new Date(to.getTime() - windowDays * 86_400_000);
     const idx = phaseIndexOf(point);
     const tags = [`t_conn.${point}.k_ratio`, `t_conn.${point}.dt_c`];
     if (idx != null) tags.push(`elec.i_ph.${idx}`);
@@ -59,19 +70,20 @@ export function TrendKorelasyon() {
       .then(setSeries)
       .catch((e) => !controller.signal.aborted && setError(errorText(e)));
     return () => controller.abort();
-  }, [panoId, point]);
+  }, [panoId, point, windowDays]);
 
   useEffect(() => {
     if (!panoId) return;
+    setEnvSeries(null);
     const controller = new AbortController();
     const to = new Date();
-    const from = new Date(to.getTime() - WINDOW_DAYS * 86_400_000);
+    const from = new Date(to.getTime() - windowDays * 86_400_000);
     api
       .series(panoId, ["env.td_margin_k"], from, to, "1h", controller.signal)
       .then(setEnvSeries)
-      .catch(() => {});
+      .catch((e) => !controller.signal.aborted && setError(errorText(e)));
     return () => controller.abort();
-  }, [panoId]);
+  }, [panoId, windowDays]);
 
   const scatter = useMemo(() => {
     if (!series || !point) return null;
@@ -81,10 +93,11 @@ export function TrendKorelasyon() {
     const i = series[`elec.i_ph.${idx}`];
     if (!dt || !i) return null;
     const mid = Math.floor(dt.length / 2);
+    const currents = new Map(i);
     const pairs = (from: number, to: number) => {
       const out: Array<[number, number]> = [];
       for (let k = from; k < to; k++) {
-        const iv = i[k]?.[1];
+        const iv = currents.get(dt[k][0]);
         const dv = dt[k]?.[1];
         if (iv != null && dv != null) out.push([iv * iv, dv]);
       }
@@ -108,94 +121,178 @@ export function TrendKorelasyon() {
     <main className="page">
       <div className="hero">
         <h1>Trend ve korelasyon</h1>
-        <p>Yük-normalize ısınma: sağlıklı bağlantıda tek eğim, gevşeyen bağlantıda daha dik bir eğim oluşur.</p>
+        <p>
+          Yük-normalize ısınma: sağlıklı bağlantıda tek eğim, gevşeyen
+          bağlantıda daha dik bir eğim oluşur.
+        </p>
       </div>
 
       <div className="console-filters">
-        <label className="dim small" htmlFor="pano-select">
-          Pano
-        </label>
-        <select id="pano-select" value={panoId} onChange={(e) => navigate(`/trend/${e.target.value}`)}>
-          {panels.map((p) => (
-            <option key={p.pano_id} value={p.pano_id}>
-              {p.name} ({p.pano_id})
-            </option>
-          ))}
-        </select>
+        <div className="analysis-field">
+          <label className="dim small" htmlFor="pano-select">
+            Pano
+          </label>
+          <select
+            id="pano-select"
+            value={panoId}
+            onChange={(e) => navigate(`/trend/${e.target.value}`)}
+          >
+            {panels.map((p) => (
+              <option key={p.pano_id} value={p.pano_id}>
+                {p.name} ({p.pano_id})
+              </option>
+            ))}
+          </select>
+        </div>
         {detail && (
-          <>
+          <div className="analysis-field">
             <label className="dim small" htmlFor="point-select">
               Nokta
             </label>
-            <select id="point-select" value={point} onChange={(e) => setPoint(e.target.value)}>
+            <select
+              id="point-select"
+              value={point}
+              onChange={(e) => setPoint(e.target.value)}
+            >
               {detail.points.map((p: ConnPoint) => (
                 <option key={p.pt} value={p.pt}>
                   {p.label ?? pointLabel(p.pt)}
                 </option>
               ))}
             </select>
-          </>
+          </div>
         )}
+        <div className="chart-range" role="group" aria-label="Analiz dönemi">
+          {[7, 14].map((days) => (
+            <button
+              key={days}
+              aria-pressed={windowDays === days}
+              onClick={() => setWindowDays(days)}
+            >
+              Son {days} gün
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <p className="dim">{error}</p>}
 
-      <section className="phases">
-        <h3>I² – ΔT dağılımı</h3>
-        {phaseIndexOf(point) == null ? (
-          <p className="dim small">Bu nokta tek bir faza bağlı değil (ör. nötr); dağılım grafiği faz akımı gerektirir.</p>
-        ) : scatter ? (
-          <>
+      <div className="analytics-context">
+        <span>
+          <strong>{detail?.name ?? panoId}</strong>
+        </span>
+        <span>Saatlik ölçümler · Son {windowDays} gün</span>
+        {detail && (
+          <span>
+            Güncel risk: <strong>{num(detail.risk_score ?? 0, 0)} / 100</strong>
+          </span>
+        )}
+      </div>
+      <div className="analysis-grid">
+        <section className="phases">
+          <h3>Yük ve ısınma ilişkisi</h3>
+          {phaseIndexOf(point) == null ? (
             <p className="dim small">
-              Son {WINDOW_DAYS} günün ilk ve ikinci yarısı karşılaştırılır: eğim dikleşiyorsa ısıl direnç (K) artıyor demektir.
+              Bu nokta tek bir faza bağlı değil (ör. nötr); dağılım grafiği faz
+              akımı gerektirir.
             </p>
-            <SacilimGrafik
-              xLabel="Faz akımı² (A²)"
-              yLabel="Ortam üstü artış (K)"
+          ) : scatter ? (
+            <>
+              <p className="dim small">
+                Son {windowDays} günün ilk ve ikinci yarısı karşılaştırılır.
+                Kesikli çizgiler doğrusal eğilimi gösterir.
+              </p>
+              <SacilimGrafik
+                xLabel="Faz akımı² (A²)"
+                yLabel="Ortam üstü artış (K)"
+                series={[
+                  {
+                    key: "early",
+                    label: "Dönemin ilk yarısı",
+                    color: "#456da8",
+                    points: scatter.early,
+                  },
+                  {
+                    key: "late",
+                    label: "Dönemin ikinci yarısı",
+                    color: "#D9530F",
+                    points: scatter.late,
+                  },
+                ]}
+              />
+            </>
+          ) : (
+            <p className="dim small">Yükleniyor…</p>
+          )}
+        </section>
+
+        <section className="phases">
+          <h3>Bağlantı sağlığı · K/K₀</h3>
+          <p className="dim small">
+            Başlangıç ısıl direncine göre değişim. Yükselen değerler inceleme
+            gerektirir.
+          </p>
+          {series ? (
+            <CizgiGrafik
               series={[
-                { key: "early", label: `İlk ${WINDOW_DAYS / 2} gün`, color: "#9AA3AA", points: scatter.early },
-                { key: "late", label: `Son ${WINDOW_DAYS / 2} gün`, color: "#DD6418", points: scatter.late },
+                {
+                  key: "k",
+                  label: "K/K₀",
+                  color: "#003DA5",
+                  points: series[`t_conn.${point}.k_ratio`] ?? [],
+                },
               ]}
+              yLabelLeft="K/K₀"
+              thresholdLeft={{ value: 1, label: "Başlangıç · 1,0" }}
             />
-          </>
-        ) : (
-          <p className="dim small">Yükleniyor…</p>
-        )}
-      </section>
+          ) : (
+            <p className="dim small">Yükleniyor…</p>
+          )}
+        </section>
 
-      <section className="phases">
-        <h3>Isıl direnç indeksi (K/K₀) trendi</h3>
-        {series ? (
-          <CizgiGrafik
-            series={[
-              { key: "k", label: "K/K₀", color: "#003DA5", points: series[`t_conn.${point}.k_ratio`] ?? [] },
-              { key: "dt", label: "ΔT (K)", color: "#D9530F", points: series[`t_conn.${point}.dt_c`] ?? [], axis: "right" },
-            ]}
-            yLabelLeft="K/K₀"
-            yLabelRight="ΔT (K)"
-          />
-        ) : (
-          <p className="dim small">Yükleniyor…</p>
-        )}
-      </section>
-
-      <section className="phases">
-        <h3>Çiy noktası marjı</h3>
-        {envSeries ? (
-          <CizgiGrafik series={[{ key: "td", label: "Çiy noktası marjı (K)", color: "#1F8A70", points: envSeries["env.td_margin_k"] ?? [] }]} yLabelLeft="K" />
-        ) : (
-          <p className="dim small">Yükleniyor…</p>
-        )}
-      </section>
-
-      {detail && (
-        <div className="facts">
-          <div className="fact">
-            <div className="k">Risk skoru</div>
-            <div className="v">{num(detail.risk_score ?? 0, 0)}</div>
-          </div>
-        </div>
-      )}
+        <section className="phases">
+          <h3>Ortam üstü sıcaklık · ΔT</h3>
+          <p className="dim small">
+            Bağlantı ile pano içi ortam arasındaki sıcaklık farkı.
+          </p>
+          {series ? (
+            <CizgiGrafik
+              series={[
+                {
+                  key: "dt",
+                  label: "ΔT (K)",
+                  color: "#D9530F",
+                  points: series[`t_conn.${point}.dt_c`] ?? [],
+                },
+              ]}
+              yLabelLeft="ΔT (K)"
+            />
+          ) : (
+            <p className="dim small">Yükleniyor…</p>
+          )}
+        </section>
+        <section className="phases">
+          <h3>Yoğuşma payı · Çiy noktası marjı</h3>
+          <p className="dim small">
+            Sıfıra yaklaşan marj, yoğuşma koşullarına yaklaşıldığını gösterir.
+          </p>
+          {envSeries ? (
+            <CizgiGrafik
+              series={[
+                {
+                  key: "td",
+                  label: "Çiy noktası marjı (K)",
+                  color: "#1F8A70",
+                  points: envSeries["env.td_margin_k"] ?? [],
+                },
+              ]}
+              yLabelLeft="K"
+            />
+          ) : (
+            <p className="dim small">Yükleniyor…</p>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

@@ -33,6 +33,8 @@ const httpApi: Api = {
   panels: (signal) => request<PanelSummary[]>("/api/v1/panels?sort=risk&limit=2000", { signal }),
   panel: (panoId, signal) => request<PanelDetail>(`/api/v1/panels/${encodeURIComponent(panoId)}`, { signal }),
   fleetKpi: (signal) => request<FleetKpi>("/api/v1/fleet/kpi", { signal }),
+  // GET /fleet/health bir `limit` parametresi ALMAZ (backend/app/api/views.py); sorguya
+  // eklenseydi sunucu tarafinda sessizce yok sayilir, arayuz de sinirladigini sanirdi.
   fleetHealth: (signal) => request<PanelHealth[]>("/api/v1/fleet/health", { signal }),
   fleetAssets: (signal) => request<AssetFleet>("/api/v1/fleet/assets", { signal }),
   outages: (state = "acik", signal) => request<OutageEvent[]>(`/api/v1/outages?state=${state}`, { signal }),

@@ -345,11 +345,39 @@ export type StreamMessage =
   | { type: "alarm"; payload: Alarm }
   | { type: "kpi"; payload: FleetKpi };
 
+/**
+ * GET /fleet/health satirinin GEVSEK karsiligi (main). Canli uc PanelHealth dondurur —
+ * bu tip onun alt kumesidir (maint_mode yok, name/baseline_day opsiyonel). Sozlesmeyi
+ * gevsetmemek icin Api.fleetHealth PanelHealth kullanir; tip, ucu daha az varsayimla
+ * tuketen kodu kirmamak adina birakildi.
+ */
+export interface FleetHealthItem {
+  pano_id: string;
+  name?: string;
+  nodes_ok: number | null;
+  nodes_total: number | null;
+  rssi_dbm: number | null;
+  vbak_pct: number | null;
+  buffered: number | null;
+  fw: string | null;
+  comms_ok: boolean;
+  last_seen: string;
+  baseline_day?: number | null;
+}
+
 export interface Api {
   panels(signal?: AbortSignal): Promise<PanelSummary[]>;
   panel(panoId: string, signal?: AbortSignal): Promise<PanelDetail>;
   fleetKpi(signal?: AbortSignal): Promise<FleetKpi>;
-  fleetHealth(signal?: AbortSignal): Promise<PanelHealth[]>;
+  /**
+   * Toplu cihaz sagligi (GET /fleet/health).
+   *
+   * `limit` YOKTUR: backend bu ucta sayfalama parametresi okumaz, yollamak yaniltici olurdu.
+   * Donen satir PanelHealth'tir (maint_mode ve baseline_day dahil, alanlar `| null`).
+   * Isaret opsiyoneldir cunku Cihaz Sagligi ekrani ucu desteklemeyen bir backend'e karsi
+   * pano-basina cekime dusuyor; o geri-uyum yolu bu kontrol ile seciliyor.
+   */
+  fleetHealth?(signal?: AbortSignal): Promise<PanelHealth[]>;
   fleetAssets(signal?: AbortSignal): Promise<AssetFleet>;
   outages(state?: "acik" | "hepsi", signal?: AbortSignal): Promise<OutageEvent[]>;
   epdkKaydi(outageId: string, signal?: AbortSignal): Promise<EpdkKaydi>;
