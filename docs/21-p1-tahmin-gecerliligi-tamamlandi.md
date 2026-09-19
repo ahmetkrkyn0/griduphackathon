@@ -3,8 +3,9 @@
 > Kaynak görev: [INOVASYON-UYGULAMA-PLANI.md](../INOVASYON-UYGULAMA-PLANI.md) §4 (P1 — Tahmin geçerliliği ve
 > kanıt kartı), uygulama planı [docs/superpowers/plans/2026-09-18-p1-tahmin-gecerliligi.md](superpowers/plans/2026-09-18-p1-tahmin-gecerliligi.md).
 > Bu dosya P1'in 8 görevinin (Task 1-8) neyi değiştirdiğini, plan §4'teki 5 kabul senaryosunun
-> hangi testte kanıtlandığını ve P1'in kapatamadığı/kısmen kapattığı bilinen sınırı tek yerde
-> toplar. **19 Eylül 2026** tarihinde üretildi, commit aralığı `f1f01b5..239cd3e` (dal `berke/upgrade`).
+> hangi testte kanıtlandığını ve P1'in kapatamadığı/kısmen kapattığı bilinen sınırları (S8 ve
+> alarm kartı raise-time snapshot'ı) tek yerde toplar. **19 Eylül 2026** tarihinde üretildi, commit
+> aralığı `f1f01b5..239cd3e` (dal `berke/upgrade`).
 >
 > **Kapsam notu:** Bu bir tamamlanma raporudur, plan belgesinin kendisi değildir. Aşağıdaki tüm
 > dosya:satır referansları bu raporun yazıldığı anda gerçek kodla karşılaştırılarak doğrulandı.
@@ -146,7 +147,7 @@ basmadığını kilitler (`templates.py`'deki var olan `if ttl_h is not None` ko
 
 Commit: `239cd3e`.
 
-*Açık kalan takip — bkz. §5.* Ayrıca küçük bir netlik notu: `test_ttl_suppressed_for_quality_encodes_as_na`
+*Açık kalan takip — bkz. §6.* Ayrıca küçük bir netlik notu: `test_ttl_suppressed_for_quality_encodes_as_na`
 içindeki `tel_payload["t_conn"][1]["q"] = 1` ve `["ttl_h"] = None` satırları, yapılan asıl
 iddia (`risk.ttl_hours` register'ı) için nedensel olarak etkisizdir — onu yalnızca üçüncü satır
 (`tel_payload["risk"]["ttl_h"] = None`) sürüklüyor. Test doğru sonucu doğru şekilde kilitliyor;
@@ -162,7 +163,7 @@ kanıtlanıyor:
 |---|---|---|---|---|
 | 1 | Sağlıklı ölçüm, öğrenme tamamlanmamış | Öğrenme bilgisi; doğrulanmamış süre tahmini yok | `test_healthy_measurement_still_learning_shows_no_unverified_duration` (satır 45-53) | `gecerlilik == "ogreniyor"`, `ttl_h is None` |
 | 2 | Gevşek bağlantı belirtisi, yeterli veri | Erken uyarı korunur, dayanaklar görünür | `test_loose_connection_signature_keeps_early_warning_with_evidence` (satır 56-64) | `state == "warn"`, `gecerlilik == "tahmin_gecerli"`, `ttl_h == 150.5` (sayı hâlâ görünür) |
-| 3 | Sensör sapması | Şüphe nedeni ve geçersiz tahmin durumu; yanıltıcı geri sayım yok | `test_sensor_drift_shows_suspicion_and_no_misleading_countdown` (satır 67-81) | `gecerlilik == "sensor_supheli"`, `ttl_h is None` |
+| 3 | Sensör sapması | Şüphe nedeni ve geçersiz tahmin durumu; yanıltıcı geri sayım yok | `test_sensor_drift_shows_suspicion_and_no_misleading_countdown` (satır 67-81) | `gecerlilik == "sensor_supheli"`, `ttl_h is None` (canlı görünümler için — nokta şüpheli olmadan ÖNCE açılmış, hâlâ açık bir alarm kartı için geçerli değildir, bkz. §5) |
 | 4 | Veri kopması | Son veri zamanı ve izleme kaybı; son değer canlı gibi görünmez | `test_data_loss_shows_last_seen_not_a_live_looking_value` (satır 84-98) | `state == "stale"`, `gecerlilik == "veri_yetersiz"` (comms `store.set_last_rx` ile koparılarak, `ts` alanı değil) |
 | 5 | Sınır aşılmış | "Sınır aşıldı"; kritik ölçüm alarmı bağımsız kalır | `test_breached_limit_keeps_critical_alarm_independent_of_validity` (satır 101-108) | `state == "alarm"`, `gecerlilik == "sinir_asildi"` |
 
@@ -171,7 +172,7 @@ Satır 3'ün testi kasıtlı olarak `IngestPipeline`'a doğrudan yazıyor (`Edge
 ayrıca ve doğrudan `test_edge.py::test_ttl_is_suppressed_when_the_point_quality_is_suspect`'te
 kanıtlanıyor (bkz. §2, Task 1). İki test farklı katmanları doğruluyor, birbirini tekrar etmiyor.
 
-Beşi de bu raporun §6'sındaki `pytest -q` koşusunun içinde, tamamı **PASS**.
+Beşi de bu raporun §7'sindeki `pytest -q` koşusunun içinde, tamamı **PASS**.
 
 ## 4. Bilinen sınır: S8 (sürüklenen sensör) — dürüst sonuç
 
@@ -198,7 +199,45 @@ Task 1'in eklediği garanti kendi başına gerçek ve kalıcıdır: zaten işare
 asla yanıltıcı bir geri sayım göstermemesi, S8'den bağımsız bir kazanımdır. Tam metin ve gerekçe
 [docs/05-anomali-tespiti.md](05-anomali-tespiti.md) §10'da güncellendi.
 
-## 5. Açık kalan takip: IEC104 IV bayrağı `risk.ttl_hours`'a özel bağlı değil
+## 5. Bilinen sınır: alarm kartı geçerliliği donmuş (raise-time snapshot)
+
+**Bu P1'in getirdiği bir kusur değil; P1'den önce de var olan bir tasarımın P1'e miras kalan
+sonucu.** `backend/app/alarm_manager.py`'deki `Condition` (satır 68-76) ve `Alarm` (satır 79-100)
+veri sınıfları `reason`/`advice`/`ttl_h` alanlarını alarm **oluştuğu an** dondurur; bu P1'den önce
+de böyleydi (bkz. `backend/app/db.py:158`: "Açıklama (reason/advice/ttl_h) alarm oluştuğu anın
+kanıtıdır: güncellenmez." — hemen altındaki `_ALARM_MUTABLE` listesi, satır 159-162, bu üç alanı
+güncellenebilir sütunların dışında bilinçli olarak bırakır).
+
+P1, `gecerlilik`'i **aynı donmuş `reason` sözlüğünün içine** ekledi (`backend/app/risk.py:154`,
+bkz. §2 Task 3). Sonuç: bir nokta `tahmin_gecerli` iken (gerçek, sayısal bir `ttl_h` ile) bir alarm
+açılırsa, o alarmın kartı bu `ttl_h`'i ve `gecerlilik`'i SONSUZA KADAR o andaki hâliyle taşır —
+nokta daha sonra kalite şüpheli hâle gelse (`q != 0`) bile. `AlarmNedeni.tsx`'in "Ne kadar acil?"
+bölümü (satır 118-136) bunu somutlaştırır: `ttl = ttlText(alarm.ttl_h)` doluysa (satır 121-125) her
+zaman o dondurulmuş sayıyı gösterir; `validityHint(gecerlilik, alarm.prio)` (satır 127) YALNIZCA
+`ttl` boşken çağrılır — yani alarmın kendi `ttl_h`'i zaten doluysa, o alarmın kartı canlı
+`gecerlilik`'i hiç sormaz.
+
+Aynı sayfada bunun somut, çelişkili görünümü: ölçüm tablosu (`PanoDetay.tsx`, §2 Task 7) her
+`GET /api/v1/panels/{id}` çağrısında `panel_detail()`'in taze hesapladığı `gecerlilik`'i gösterir —
+nokta kalite şüpheli olduğunda doğru şekilde "Sensör şüpheli" / "–" yazar. Ama aynı anda, o nokta
+için ÖNCEDEN açılmış bir alarmın kartı hâlâ eski sayısal `ttl_h`'i göstermeye devam eder; iki
+bileşen aynı noktayı farklı "an"lardan anlatır.
+
+**Bu yüzden plan §4'ün 3. satırındaki ("yanıltıcı geri sayım yok") kabul kriteri (bkz. §3, satır 3)
+tam değil, KOŞULLU doğrudur:** taze hesaplanan görünümler için geçerlidir — ölçüm tablosu (her
+zaman) ve yeni açılan bir alarm (kendi koşulu hesaplandığı anda nokta zaten şüpheliyse, `gecerlilik`
+baştan `sensor_supheli` gelir). Ama nokta şüpheli hâle gelmeden ÖNCE açılmış ve hâlâ açık duran bir
+alarm için geçerli DEĞİLDİR — o kart, dondurulmuş anının `gecerlilik`'ini göstermeye devam eder.
+
+`ttl_h`'in kendisinin donması zaten P1'den önce vardı (`_ALARM_MUTABLE`, yukarıda); P1 yalnızca
+`gecerlilik`'i aynı donmuş yapıya ekleyip bu sınırı ONA da miras bıraktı, kapatmadı. Bu incelemede
+önerilen ve burada uygulanan yol "düzeltmek" değil "açıkça belgelemek"tir: `AlarmNedeni.tsx`'in
+props/mimarisini değiştirmek (örn. kartın kendi `gecerlilik`'ini alarmın `pano_id`+`point`'inden
+ayrıca ve CANLI olarak çekmesi) bu düzeltme turunun kapsamından daha büyük, daha riskli bir
+değişiklik olurdu. **Kapsam dışı, gerçek bir sınır olarak burada kayıt altına alınıyor;** kapatılması
+ayrı bir görev gerektirir.
+
+## 6. Açık kalan takip: IEC104 IV bayrağı `risk.ttl_hours`'a özel bağlı değil
 
 Task 8'in incelemesinde ortaya çıkan, P1'de kapatılmayan tek gerçek boşluk: `risk.ttl_hours`
 register'ının `None` olduğunda IEC104 tarafında `QDS_IV` (geçersiz) kalite bayrağı taşıdığını
@@ -222,7 +261,7 @@ sessizce kapatmak yerine belgeleme geleneğiyle tutarlı).
 **Önerilen takip:** `test_iec104_points.py`'ye, `risk.ttl_h = None` iken `risk.ttl_hours`'un
 IOA'sının döndüğü `PointValue.quality`'nin `QDS_IV` olduğunu doğrudan kontrol eden tek bir test.
 
-## 6. Nasıl yeniden üretilir
+## 7. Nasıl yeniden üretilir
 
 ```bash
 cd libs/panoalgo && python -m pytest -q
