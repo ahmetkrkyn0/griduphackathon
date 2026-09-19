@@ -238,10 +238,13 @@ def panel_detail(
     health = dict(payload["health"])
     if "fw" in payload:
         health["fw"] = payload["fw"]
+    baseline_day = health.get("baseline_day")
+    if baseline_day is None:
+        baseline_day = record.baseline_day
     detail.update(
         ts=payload["ts"],
         risk_contributions=(payload.get("risk") or {}).get("contributions", {}),
-        points=[point_view(p, contracts.thresholds, comms_ok, health.get("baseline_day")) for p in payload["t_conn"]],
+        points=[point_view(p, contracts.thresholds, comms_ok, baseline_day) for p in payload["t_conn"]],
         env=payload["env"],
         elec=payload["elec"],
         pd=payload.get("pd"),

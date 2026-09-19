@@ -260,6 +260,28 @@ def test_point_validity_prioritises_sensor_suspicion_over_everything_else(
     assert points[0]["gecerlilik"] == expected
 
 
+def test_panel_detail_falls_back_to_record_baseline_day_when_health_omits_it(contracts, tel_payload):
+    """panel_summary/panel_health_summary taban gunu health'te yoksa record.baseline_day'e
+    duser (views.py:141/161). panel_detail'in point_view() cagrisi bu dusmeyi
+    UYGULAMIYORDU (health.get("baseline_day") dogrudan geciriliyordu) — sema-gecerli ama
+    health.baseline_day EKSIK bir yukte (alan mqtt-telemetry.schema.json'da opsiyonel),
+    hala ogrenen bir nokta yanlislikla 'model_kapsami_disi' raporlanirdi. Bu test
+    panel_detail'in de ayni dusmeyi uyguladigini kilitler."""
+    del tel_payload["health"]["baseline_day"]  # sema opsiyonel: alan hic gelmeyebilir
+    point = tel_payload["t_conn"][0]
+    point.update({"dt_c": 16.5, "t_c": 41.5, "q": 0, "k_ratio": 1.02, "excited": True, "ttl_h": None})
+
+    panels = [{"pano_id": "ADM-00001", "name": "Efeler TM-14", "baseline_day": 3}]
+    store = MemoryStore(panels)
+    ingest(contracts, store, tel_payload, received_at=NOW)
+    app = create_app(Settings(contracts_dir=CONTRACTS_DIR, ingest_enabled=False), store=store, clock=lambda: NOW)
+
+    with TestClient(app) as client:
+        points = client.get("/api/v1/panels/ADM-00001").json()["points"]
+
+    assert points[0]["gecerlilik"] == "ogreniyor"  # duzeltme oncesi: model_kapsami_disi
+
+
 def test_all_points_are_stale_when_panel_is_silent(client):
     points = client.get("/api/v1/panels/GDZ-00001").json()["points"]
 
