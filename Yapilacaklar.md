@@ -16,6 +16,8 @@
 | BOM dipnotları satır toplamına eşitlendi (70,73/47,68 ve 19,80/11,79) | `hardware/pano-beyni/bom.csv:19`, `hardware/pd-karti/bom.csv:11` | ✅ |
 | Maliyet dokümanındaki 5 türev sayı düzeltildi (%34 → %32,6 dahil) | `docs/10-bom-maliyet-roi.md` | ✅ |
 | **nginx `resolver` açığı kapatıldı** — backend yeniden başlayınca arayüz artık ≤10 s'de kendini toparlıyor | `frontend/nginx.conf` | ✅ ölçüldü |
+| **Model-uyumsuzluğu senaryosu (madde 1 / §2.1)** — S10–S13, `ModelMismatch`, `docs/12` §1'de eşleşen/uyumsuz blokları | `libs/panoalgo/` · `docs/05` · `docs/12` · `docs/14` · `README.md` | ✅ ölçüldü (19 Eylül, dal `tuna/yapilacaklar-uygulama`) |
+| `docs/05` §10'daki **yanlış iddia düzeltildi** — "209 saatlik öne alma tespit katmanından gelir" YANLIŞTI; sayıyı `ALM-TTL-14D` (prognoz) tetikliyor | `docs/05-anomali-tespiti.md` · `docs/12` §2 | ✅ ölçüldü |
 
 `nginx.conf` düzeltmesi şöyle doğrulandı: backend konteyneri silinip yeniden yaratıldı ve `172.18.0.5 → 172.18.0.13` IP'sine taşındı; **frontend'e hiç dokunulmadan** 30 saniye boyunca `/api/v1/panels` sürekli `200` döndü. Sorgu dizesi (`?limit=2`) ve WebSocket (`101 Switching Protocols`) de doğrulandı.
 
@@ -25,7 +27,7 @@
 
 | Sıra | İş | Kriter | Tahmini kazanç | Emek | Neden bu sırada |
 |:--:|---|:--:|:--:|:--:|---|
-| **1** | Model-uyumsuzluğu senaryosu | K2 | +1,5 | 2–4 gün | Projenin **en büyük yapısal açığı**. "Duyarlılık 1,00" şu an dedektörün kendi modelini ters çevirmesini ölçüyor; bu iş onu gerçek bir başarı kanıtına çevirir. |
+| ~~**1**~~ | ~~Model-uyumsuzluğu senaryosu~~ **✅ YAPILDI** | K2 | +1,5 | — | Tamamlandı 19 Eylül. Sonuç tahmin edilenden **farklı ve daha güçlü** çıktı: duyarlılık üç uyumsuzlukta düşmedi (oran yapısı sabit kazancı sadeleştiriyor — bu bir **güç**), ölçüm zinciri doğrusalsızlığında **0,50**'ye indi ve sabit 70 K eşiğinin tamamen körleştiği gösterildi. Ayrıntı §2.1'de. |
 | **2** | ROI hesaplayıcı + OPEX | K8 | +2,0 | 2–3 gün | **En düşük puanlı kriter.** F-36 ölçümü (632 MB/pano/ay) OPEX'i besleyecek gerçek sayıyı zaten üretti — bağlamak kaldı. |
 | **3** | Bileşen testleri + Playwright spec'i depoya | K7 | +0,5 | 1 gün | Ucuz. Arayüzün **hiç** testi yok; "0 konsol hatası" iddiasının tezgahı depoda değil. |
 | **4** | Çoklu tohumla FPR/precision dağılımı | K2 | +0,5 | 1–2 gün | `validate.py:410` zaten "tek tohum, tek yörünge" diyor. n=10'dan n=500'e çıkmak ucuz. |
@@ -38,7 +40,7 @@
 | **11** | Bileşen düşüşünde arayüz davranışı | K4 | +0,3 | 1 gün | "Bayat veri" göstergesi. |
 | **12** | S3_condense senaryosu | K2 | 0 / −risk | 2 saat | Karar: **bırakılıyor.** Riski aşağıda yazılı. |
 
-**Toplam potansiyel:** eşit ağırlıkta ~7,6 → **~9,0**.
+**Toplam potansiyel:** eşit ağırlıkta ~7,6 → **~9,0**. **Madde 1 kapandı (19 Eylül);** kalan sıralama 2'den başlar.
 
 ---
 
@@ -46,7 +48,65 @@
 
 ### K2 — Anomali ve risk tespit yaklaşımı · şu an **7**
 
-#### 2.1 ⭐ Model-uyumsuzluğu senaryosu (P0 — en önemli tek iş)
+#### 2.1 ✅ Model-uyumsuzluğu senaryosu — **TAMAMLANDI (19 Eylül 2026)**
+
+> **Durum:** dal `tuna/yapilacaklar-uygulama`, commit `3674756`. 498 test geçiyor
+> (taban 489 + 9 yeni). S0–S9'un 10 CSV'si **bit bit** korundu.
+>
+> **Aşağıdaki analiz, işin gerekçesi olarak olduğu gibi bırakıldı.** Ne çıktığı
+> hemen altındaki "Ölçülen sonuç" bloğundadır — ve **tahminden sapmıştır**.
+
+##### Ölçülen sonuç — hipotez kısmen yanlışlandı
+
+Beklenti *"uyumsuz senaryolarda duyarlılık 1,00'ın altına inecek"* idi. Üç fizik
+önerilen biçimde uygulandığında **hiçbiri tespiti bozmadı** ve sebep yapısaldır:
+alarm kuralları K'yı değil **K/K₀ oranını** okur, taban K₀ da aynı uyumsuz fizikle
+öğrenildiği için durağan yanlılık `(g·K)/(g·K₀)` içinde **birebir sadeleşir**. Bu
+yöntemin bir **gücüdür** ve `docs/05` §10'a öyle yazıldı.
+
+| Senaryo | Uyumsuzluk | Recall | Asıl bedel |
+|---|---|---:|---|
+| `S10_coupling` | difüzif ısıl kuplaj | 1,00 | `k_ratio` eşiğini aşan nokta 1 → **2**: teşhis "hangi pano" düzeyinde doğru, **"hangi klemens" düzeyinde yanlış** |
+| `S11_load_tau` | yüke bağlı τ | 1,00 | τ sapıyor, tespit sağlam — **bloğun seçmeci olmadığının kanıtı**, bilerek yayımlandı |
+| `S12_two_pole` | ikinci ısıl kutup | 1,00 | yayımlanan τ **9,5 kat** yanlış (689 s → 6.576 s) + **yasaklı alarm**: `ALM-DQ-DRIFT` gerçekten arızalı noktayı "kalibrasyon şüpheli" diyor |
+| `S13_sensor_nonlin` | ölçüm sıkışması | **0,50** | terminal gerçekte **78,90 K**, ölçüm **48,48 K** → **sabit 70 K eşiği tamamen körleşiyor**; oran tabanlı K tespiti ayakta kalıyor |
+
+**Jüri masasında okunuşu:** *"Eşleşen modelde 8/8, duyarlılık 1,00. Dedektörün
+varsaymadığı fiziği ekleyince 0,88 — ve nerede kırıldığını biliyoruz: ölçüm zinciri
+sıkışırsa sabit 70 K eşiği tamamen körleşiyor, bizim oran tabanlı tespitimiz ise
+ayakta kalıyor. Dedektöre hiçbir şey eklemedik; amaç güçlendirmek değil sınırı
+ölçmekti."* Bu, "duyarlılık 1,00" demekten çok daha güçlüdür.
+
+##### Tahminden sapan üç karar (gerekçeleriyle)
+
+1. **S10–S12 değil, S10–S13.** Madde "en az üç fizik" diyor; problem tanımının kendisi
+   dört saha zorluğu sayıyor ve dördüncüsü (**sensör doğrusalsızlığı**) en net sonucu
+   veren oldu. Her senaryo dedektörün **tek** bir varsayımını bozuyor — ikisi birden
+   açılsaydı ölçüm hangi varsayıma atfedileceğini kaybederdi.
+2. **Kuplaj toplamalı değil difüzif.** Önerilen `steady += c·ort(dT_komşu)` kararlı
+   hâli `K·I²/(1−c)` yapıyor, yani panoyu **ısıtıyor** (ölçüldü: tepe artış 79,0 →
+   90,6 K). O zaman "model yanlış" ile "pano daha sıcak" ayrıştırılamazdı. Difüzif
+   biçimde (Fourier) grup tekdüze ısındığında terim sıfır; değişen tek şey **grup içi
+   yapı** — yani `phase_compare`'in ölçtüğü büyüklük.
+3. **τ(I) üstel biçimde** (`τ₀·exp(c·I/Iₙ)`): doğrusal formun birinci mertebe eşi, ama
+   2× aşırı yükte τ'yu pozitif tutuyor. İşaretin fiziksel yönü **ölçülmedi**; sonuç
+   işaretten bağımsız çıktı (c = −0,8 / −0,4 / +1,0 → aynı tespit).
+
+##### Açık kalan
+
+- **Sözleşme değişikliği üç onay bekliyor** (`contracts/changes/2026-09-19-model-uyumsuzlugu-senaryolari.md`). Şema değişikliği
+  (enum + `unmodelled_physics`) onaydan önce fiilen uygulandı; akışa uygun
+  görülmezse geri alınıp onay sonrasına bırakılabilir.
+- **Dört fizik tek tek açılıyor.** Gerçek panoda hepsi aynı andadır; birleşik etki
+  ölçülmedi (bilinçli — attribution korunsun diye). `docs/05` §10'da yazılı.
+- **Katsayılar sentetik**, saha ölçümü yok. Her biri için gereken ölçüm `docs/14`
+  §9.3'te tablo hâlinde.
+
+---
+
+<details>
+<summary>İşin özgün analizi (19 Eylül öncesi) — gerekçe olarak korundu</summary>
+
 
 **Sorun (koddan):** [`generator.py:558-580`](libs/panoalgo/panoalgo/generator.py) ısıyı şu denklemle ilerletiyor:
 
@@ -70,6 +130,8 @@ Sonuç: "8 senaryoda duyarlılık 1,00" büyük ölçüde *"kestirici kendi iler
 **Beklenen sonuç ve nasıl sunulur:** Uyumsuz senaryolarda duyarlılık muhtemelen 1,00'ın altına inecek. **Bu kötü haber değil, asıl kanıttır.** README'de şöyle okunur: *"Eşleşen modelde 8/8; dedektörün varsaymadığı fizik eklendiğinde 2/3 — yöntemin sınırı budur ve ölçtük."* Jüri masasında "duyarlılık 1,00" demekten **çok daha** güçlüdür, çünkü değerlendiricinin ilk soracağı şey budur (bkz. `TAM_ANALIZ.md` §9 soru 1).
 
 **Dikkat:** Yeni fizik `detect.py`'ye **eklenmemeli**. Amaç dedektörü güçlendirmek değil, sınırını ölçmek.
+
+</details>
 
 #### 2.2 Çoklu tohumla gerçek FPR (P1)
 
@@ -298,7 +360,7 @@ Değerlendirme sırasında cevabı dokümanda hazır olmayan beş soru çıktı 
 
 | Soru | Kapatan madde |
 |---|---|
-| Dedektörün varsaymadığı fizik eklenirse duyarlılık ne olur? | **2.1** |
+| Dedektörün varsaymadığı fizik eklenirse duyarlılık ne olur? | ✅ **ölçüldü** — 0,88; kırılan yer ölçüm zinciri doğrusalsızlığı (§2.1) |
 | BOM toplamı ile dipnot neden tutmuyor? | ✅ düzeltildi |
 | "14-22 ay" hangi hesaptan çıkıyor? | **8.1** (ve iddia kaldırıldı) |
 | Backend yeniden başlayınca operatör ekranı? | ✅ düzeltildi |
