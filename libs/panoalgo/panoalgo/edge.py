@@ -220,14 +220,13 @@ class EdgePipeline:
     def _suppress_ttl_when_quality_suspect(self, payload: dict) -> None:
         """_update_points, _update_quality'den ONCE calisir, yani TTL kestirimi q'yu
         hic gormeden yapilir. Zaten varolan bir kalite kurali tarafindan isaretlenmis
-        bir nokta (q != 0) hiclbir durumda da TTL tahmini tasimasin — bu metod bu
+        bir nokta (q != 0) hicbir durumda da TTL tahmini tasimasin — bu metod bu
         kontrati garanti eder.
 
-        Not: S8 bilinen siniri (docs/05 #10) surunen sensoru tespiti içerir, ama
-        drift varolan ALM-DQ-* kurallari tarafindan kucuklenmez (q asla set olmaz).
+        Not: S8 bilinen siniri (docs/05 #10) surunen sensoru tespiti icerir, ama
+        drift varolan ALM-DQ-* kurallari tarafindan yakalanmaz (q asla set olmaz).
         Bu metod zaten-isaretli noktalar icin kontrati garantiler, drift tespitini
-        degil. Drift tespiti ayri, ozel bir kalite kurali gerekir (s/zamaninda
-        implemented degil)."""
+        degil. Drift tespiti ayri, ozel bir kalite kurali gerekir (henuz eklenmedi)."""
         for point in payload["t_conn"]:
             if point.get("q", 0) != 0:
                 point["ttl_h"] = None
