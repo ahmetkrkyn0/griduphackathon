@@ -3,31 +3,29 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * K7 / 7.2 — "7 ekranda 0 konsol hatasi" iddiasinin TEZGAHI.
  *
- * Bu dosyadan once o cumle bir IDDIAYDI: sonuc dogru olabilir ama depodan yeniden
- * uretilemiyordu. Buradaki amac sayiyi savunmak degil, olcumu TEKRARLANABILIR kilmak.
+ * Bu dosya iki dalin birlesimidir. main tarafi olcum tezgahini (mock/canli kipi,
+ * 1425 px goruntu boru hatti, retry YOK) getirdi; berke/upgrade tarafi sanayi
+ * arayuzu spec'lerini (industrial + twin) getirdi. Ikisi tek bir `use` blogunu
+ * paylasamaz — cozum Playwright'in `projects` dizisidir: her spec kumesi kendi
+ * viewport'u ve zaman asimiyla kosar, hicbir ayar feda edilmez.
  *
- * ── IKI KIP, IKI AYRI SONUC ────────────────────────────────────────────────────
+ * ── IKI KIP ───────────────────────────────────────────────────────────────────
  * Kip `GRIDUP_E2E_KIP` ile secilir; varsayilan "mock".
  *
- *  mock  (varsayilan) : `npm run dev:mock` (:5173) — bu spec Vite'i KENDISI kaldirir.
+ *  mock  (varsayilan) : `npm run dev:mock` (:5173) — bu config Vite'i KENDISI kaldirir.
  *                       Veri src/api/mock.ts'ten gelir; backend, veritabani, broker
- *                       GEREKMEZ. `assets/ekran/` goruntuleri yalnizca bu kipte
- *                       uretilir; docs/16 §5 de goruntulerin ornek veri kipinde
- *                       alindigini zaten soyluyor.
+ *                       GEREKMEZ. `assets/ekran/` goruntuleri yalnizca bu kipte uretilir.
  *  canli              : ZATEN AYAKTA olan yigina baglanir (:3000 nginx + :8000 API).
  *                       `webServer` BU KIPTE TANIMLANMAZ: spec konteyneri baslatmaz,
  *                       durdurmaz, tohumlamaz. scripts/seed_demo.py MUNHASIR bir
- *                       veritabani ister (seed_demo.py:336-340) ve yazicilar acikken
- *                       kirilir; testi ona bagimli yapmak, testi yigin bakim islerine
- *                       bagimli yapmak olurdu. Tohumlama AYRI bir hazirlik adimidir.
- *
- * Ayrim SART: :3000'deki konteyner MOCK DEGILDIR (Dockerfile:9 duz `npm run build`,
- * yani VITE_USE_MOCKS kapali). Iki kip ayrilmazsa "hangi sayiyi olctuk" sorusu
- * cevapsiz kalir — KALAN-EKSIKLER.md:34'teki "gercek API ile" tam olarak canli kiptir.
+ *                       veritabani ister ve yazicilar acikken kirilir; testi ona
+ *                       bagimli yapmak, testi yigin bakim islerine bagimli yapardi.
  *
  * Kosum:
- *   npx playwright test                         -> mock kipi (Vite'i kendi kaldirir)
- *   GRIDUP_E2E_KIP=canli npx playwright test    -> canli kip (yigin ONCEDEN ayakta olmali)
+ *   npm run e2e                                  -> mock kipi, HER IKI proje
+ *   npx playwright test --project=sanayi         -> yalnizca sanayi spec'leri
+ *   GRIDUP_E2E_KANAL=msedge npm run e2e          -> berke'nin Edge ortami
+ *   GRIDUP_E2E_KIP=canli npm run e2e             -> yalnizca 7 ekran + axe
  */
 const KIP = process.env.GRIDUP_E2E_KIP === "canli" ? "canli" : "mock";
 const MOCK_URL = "http://127.0.0.1:5173";
@@ -41,36 +39,67 @@ const CANLI_URL = process.env.GRIDUP_E2E_URL ?? "http://127.0.0.1:3000";
  */
 export const EKRAN_GENISLIK = 1425;
 
+/**
+ * berke'nin makinesinde Edge kanali kullanilmisti. Kanal ZORUNLU DEGIL: bos
+ * birakilirsa paket ici Chromium kosar, yani CI'da ek kurulum istemez. Berke'nin
+ * ortamini birebir tekrarlamak icin GRIDUP_E2E_KANAL=msedge verilir.
+ */
+const SANAYI_KANALI = process.env.GRIDUP_E2E_KANAL;
+
+const ORTAK = { locale: "tr-TR", timezoneId: "Europe/Istanbul" } as const;
+
+/** 7 ekran + axe erisilebilirlik kontrolu: kipe gore mock ya da canli. */
+const ekranProjesi = {
+  name: KIP,
+  testMatch: /smoke\.spec\.ts$/,
+  use: {
+    ...devices["Desktop Chrome"],
+    ...ORTAK,
+    baseURL: KIP === "canli" ? CANLI_URL : MOCK_URL,
+    // SIRA ONEMLI: `devices["Desktop Chrome"]` kendi viewport'unu (1280x720) tasir;
+    // 1425 SPREAD'DEN SONRA yazilmazsa sessizce ezilir ve goruntuler mevcut 8
+    // PNG'den farkli olcekte cikar.
+    viewport: { width: EKRAN_GENISLIK, height: 900 },
+  },
+};
+
+/**
+ * Sanayi arayuzu (industrial + twin): SABIT ornek-veri kimlikleri ve sabit satir
+ * sayilari iddia eder, o yuzden YALNIZCA mock kipinde anlamlidir. baseURL kosulsuz
+ * MOCK_URL: biri elle `--project=sanayi` derse bile canli yigina yonelmez.
+ */
+const sanayiProjesi = {
+  name: "sanayi",
+  testMatch: /(industrial|twin)\.spec\.ts$/,
+  timeout: 45_000,
+  use: {
+    ...devices["Desktop Chrome"],
+    ...ORTAK,
+    ...(SANAYI_KANALI ? { channel: SANAYI_KANALI } : {}),
+    baseURL: MOCK_URL,
+    viewport: { width: 1440, height: 1000 },
+    trace: "retain-on-failure" as const,
+  },
+};
+
 export default defineConfig({
-  // MUTLAKA "./e2e": frontend kokune birakilirsa Playwright `src` altindaki 16 vitest
-  // dosyasini da toplamaya calisir ve `describe is not defined` ile patlar.
+  // MUTLAKA "./e2e": frontend kokune birakilirsa Playwright `src` altindaki vitest
+  // dosyalarini da toplamaya calisir ve `describe is not defined` ile patlar.
   testDir: "./e2e",
+  fullyParallel: false,
   // Goruntuler `assets/ekran/`e yazilir; iki isci ayni dosyayi ezebilirdi.
   workers: 1,
   // Yeniden deneme YOK ve bu bilincli: konsol hatasi SAYAN bir testte retry,
   // kararsiz bir hatayi "gecti" diye gizler. Kararsizlik gorulmeli, yutulmamali.
   retries: 0,
   reporter: [["list"]],
-  projects: [
-    {
-      name: KIP,
-      use: {
-        ...devices["Desktop Chrome"],
-        baseURL: KIP === "canli" ? CANLI_URL : MOCK_URL,
-        locale: "tr-TR",
-        timezoneId: "Europe/Istanbul",
-        // SIRA ONEMLI: `devices["Desktop Chrome"]` kendi viewport'unu (1280x720)
-        // tasir; 1425 SPREAD'DEN SONRA yazilmazsa sessizce ezilir ve goruntuler
-        // mevcut 8 PNG'den farkli olcekte cikar.
-        viewport: { width: EKRAN_GENISLIK, height: 900 },
-      },
-    },
-  ],
-  // webServer yalnizca mock kipinde; canli kipte yigini spec YONETMEZ.
+  // Canli kipte sanayi projesi listeye HIC girmez: mock.ts kimliklerine dayaniyor.
+  projects: KIP === "canli" ? [ekranProjesi] : [ekranProjesi, sanayiProjesi],
+  // webServer yalnizca mock kipinde; canli kipte yigini config YONETMEZ.
   ...(KIP === "mock"
     ? {
         webServer: {
-          // dev:mock -> VITE_USE_MOCKS=1 yalnizca bu kipte acilir (api/client.ts:6).
+          // dev:mock -> VITE_USE_MOCKS=1 yalnizca bu kipte acilir (api/client.ts).
           command: "npm run dev:mock -- --host 127.0.0.1 --port 5173 --strictPort",
           url: MOCK_URL,
           reuseExistingServer: !process.env.CI,

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Alarm, AlarmSignal } from "../api/types";
 import { ago, measure, ttlText } from "../lib/format";
-import { CHANNEL_TEXT, adviceText, alarmText, hypText, signalLabel, unitText } from "../lib/labels";
+import { CHANNEL_TEXT, adviceText, alarmText, hypText, signalLabel, unitText, validityHint } from "../lib/labels";
 import { PrioMark } from "./PrioMark";
 
 interface Props {
@@ -51,6 +51,7 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
   const verify = alarm.reason?.verify;
   const confirmed = verify ? verify.total - verify.missing.length : 0;
   const ttl = ttlText(alarm.ttl_h);
+  const gecerlilik = alarm.reason?.gecerlilik;
   const advice = adviceText(alarm.advice);
   const notified = (alarm.notified ?? []).map((channel) => CHANNEL_TEXT[channel] ?? channel);
   const canShelve = onShelve && alarm.prio !== "P1" && (alarm.state === "active" || alarm.state === "acked");
@@ -123,7 +124,7 @@ export function AlarmNedeni({ alarm, panoName, onAck, onShelve, ackBusy = false,
               <b>{ttl}</b>
             </div>
           ) : (
-            <p>{alarm.prio === "P1" ? "Hemen müdahale gerekir." : "Süre tahmini yok."}</p>
+            <p>{validityHint(gecerlilik, alarm.prio)}</p>
           )}
           {notified.length > 0 && (
             <p className="dim">

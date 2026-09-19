@@ -100,6 +100,7 @@ graphify-out/.*
 
 # --- Yerel Agent araclari ---
 .claude/
+.superpowers/
 
 # --- Playwright e2e ciktisi (K7 / 7.2) ---
 # Bastaki '/' SART ve bu depoda BEDELI OLCULMUS bir kural: deploy/certs ornegindeki

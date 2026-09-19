@@ -373,3 +373,23 @@ def test_payload_without_edge_alarms_and_clean_quality_yields_nothing(engine, co
         point["q"] = 0
 
     assert engine.evaluate(to_sample(contracts, payload)) == []
+
+
+def test_condition_reason_carries_point_gecerlilik_alongside_verify(engine, contracts, tel_payload):
+    """Alarm karti (AlarmNedeni.tsx "Ne kadar acil?") ile nokta tablosu (PanoDetay.tsx)
+    AYNI kaynaktan okumali; ikisi de risk.py/views.py'deki tek point_validity()'den gelir."""
+    conditions = by_key(engine.evaluate(to_sample(contracts, tel_payload)))
+
+    condition = conditions[("ALM-K-WARN", "GIRIS_L2")]
+
+    assert condition.reason["gecerlilik"] == "tahmin_gecerli"  # GIRIS_L2: q=0, excited, ttl_h=150.5, warn (alarm degil)
+
+
+def test_panel_wide_conditions_do_not_carry_gecerlilik(engine, contracts, tel_payload):
+    """Nokta kavrami olmayan panel-geneli alarmlarda (or. ALM-DEW-WARN) gecerlilik uydurulmaz."""
+    tel_payload["env"]["td_margin_k"] = 1.0
+    tel_payload["alarms"] = ["ALM-DEW-WARN"]
+
+    [condition] = engine.evaluate(to_sample(contracts, tel_payload))
+
+    assert "gecerlilik" not in condition.reason

@@ -7,6 +7,14 @@ const BACKEND = process.env.GRIDUP_BACKEND ?? "http://localhost:8000";
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: [
+      "echarts/core",
+      "echarts/renderers",
+      "echarts-gl/charts",
+      "echarts-gl/components",
+    ],
+  },
   server: {
     port: 5173,
     proxy: {
@@ -43,4 +51,3 @@ export default defineConfig({
     setupFiles: ["src/test/setup.ts"],
   },
 });
-

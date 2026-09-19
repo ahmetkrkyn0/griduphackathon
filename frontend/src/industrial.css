@@ -1,0 +1,906 @@
+/* Original industrial interface, informed by Siemens iX chart and pane patterns. */
+:root {
+  --sans: "Inter", "Segoe UI", sans-serif;
+  --cond: "Inter", "Segoe UI", sans-serif;
+  --display: "Inter", "Segoe UI", sans-serif;
+  --bg: #eef2f6;
+  --surface: #fff;
+  --well: #f3f6fa;
+  --ink: #182c44;
+  --dim: #61738a;
+  --line: #dbe3ed;
+  --radius: 5px;
+  --radius-sm: 3px;
+  --shadow-sm: 0 2px 5px #182c4405;
+}
+body {
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.app-shell .sidebar {
+  background: #101b2c;
+  border-color: #24344b;
+}
+.app-shell .product-brand {
+  height: 88px;
+  border-bottom: 1px solid #27354a;
+}
+.app-shell .workspace-scope {
+  margin-top: 22px;
+  background: #19283b;
+  border-color: #334158;
+  border-radius: 4px;
+}
+.app-shell .side-link {
+  border-radius: 3px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+.app-shell .side-link.active {
+  background: #25364c;
+  border-color: #43536b;
+  box-shadow: inset 3px 0 var(--brand);
+}
+.app-shell .side-link:hover {
+  background: #223349;
+}
+.app-shell .workspace-topbar {
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 2px var(--brand);
+}
+.app-shell .page {
+  max-width: 1700px;
+}
+.app-shell .hero h1,
+.app-shell .page-heading h1 {
+  font-weight: 600;
+  letter-spacing: -0.7px;
+}
+.section-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.7px;
+  color: #687e97;
+  margin-bottom: 8px;
+}
+.app-shell .metric-strip {
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  overflow: visible;
+}
+.app-shell .metric {
+  position: relative;
+  background: white;
+  border: 1px solid var(--line);
+  border-top: 3px solid #536b89;
+  border-radius: 4px;
+  padding: 18px 22px;
+}
+.app-shell .metric.critical {
+  border-top-color: var(--p1);
+}
+.app-shell .metric:last-child {
+  border: 1px solid var(--line);
+  border-top: 3px solid #168a81;
+}
+.app-shell .metric > strong {
+  font-size: 38px;
+  font-weight: 500;
+}
+.app-shell .panel,
+.app-shell .phases {
+  border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+}
+.app-shell .panel-heading {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.app-shell .focus-list > a {
+  border-left: 3px solid transparent;
+}
+.app-shell .focus-list > a:hover {
+  background: #f0f5fa;
+  border-left-color: var(--brand);
+}
+.app-shell .table-tabs button,
+.app-shell .chart-range button {
+  border-radius: 3px;
+}
+.app-shell .chart-range {
+  background: #e9eff6;
+  padding: 4px;
+  border-radius: 4px;
+}
+.app-shell .chart-range button[aria-pressed="true"] {
+  background: #22374f;
+  color: white;
+  border-color: #22374f;
+  box-shadow: none;
+}
+.app-shell .console-filters {
+  border-radius: 5px;
+  border-left: 3px solid #68829d;
+  padding: 16px 20px;
+}
+.app-shell table thead th {
+  background: #f1f5f9;
+  color: #556c86;
+  font-weight: 600;
+}
+.app-shell .analytics-context {
+  padding: 12px 0 18px;
+}
+.analysis-readouts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: #dbe3ed;
+  border: 1px solid #dbe3ed;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.analysis-readouts > div {
+  background: #ffffff;
+  padding: 19px 22px;
+}
+.analysis-readouts > div > span {
+  color: #586779;
+  font-size: 12px;
+}
+.analysis-readouts strong {
+  display: block;
+  color: #243449;
+  font-size: 34px;
+  line-height: 1.4;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.analysis-readouts small {
+  font-size: 13px;
+  font-weight: 400;
+  color: #61738a;
+  margin-left: 8px;
+}
+.analysis-readouts p {
+  font-size: 12px;
+  color: #61738a;
+  margin: 3px 0 0;
+}
+.analysis-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.analysis-mode-bar h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+}
+.analysis-mode-bar .section-kicker {
+  margin-bottom: 2px;
+}
+.app-shell .analysis-grid {
+  gap: 20px;
+  align-items: start;
+}
+.app-shell .analysis-grid > .phases:first-child {
+  grid-column: auto;
+}
+.app-shell .analysis-grid > .phases {
+  padding: 20px;
+  border-top: 2px solid #8396ae;
+  min-width: 0;
+}
+.analysis-grid h3 {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+.analysis-grid .phases > p {
+  min-height: 34px;
+}
+.instrument-chart {
+  background: #ffffff;
+  color: #243449;
+  border: 1px solid #e3e8ee;
+  border-radius: 4px;
+  min-width: 0;
+  overflow: hidden;
+  margin-top: 16px;
+}
+.instrument-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #e3e8ee;
+  min-height: 44px;
+}
+.instrument-caption {
+  font-size: 11px;
+  color: #637386;
+  letter-spacing: 1.3px;
+}
+.instrument-tools > div {
+  display: flex;
+  gap: 6px;
+}
+.instrument-chart button {
+  font: inherit;
+  color: #42546b;
+  background: transparent;
+  border: 1px solid #dbe3ed;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.instrument-chart button:hover {
+  background: #fff1e7;
+  color: #9e3d12;
+}
+.instrument-chart :focus-visible {
+  outline: 2px solid #c64c12;
+  outline-offset: 3px;
+}
+.echart-host {
+  width: 100%;
+  min-width: 0;
+}
+.chart-loading {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  margin-top: 16px;
+  background: #f7f9fb;
+  color: #586779;
+  border-radius: 4px;
+}
+.instrument-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px 14px;
+}
+.instrument-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-color: transparent;
+}
+.instrument-legend i {
+  width: 16px;
+  height: 3px;
+  display: inline-block;
+}
+.instrument-legend span {
+  color: #637386;
+  font-size: 12px;
+}
+.instrument-legend button[aria-pressed="false"] {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.instrument-data {
+  padding: 10px 14px;
+  border-top: 1px solid #e3e8ee;
+  color: #526579;
+  font-size: 12px;
+}
+.instrument-data summary {
+  cursor: pointer;
+}
+.instrument-data label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+.instrument-data input {
+  flex: 1;
+  accent-color: #c64c12;
+  min-width: 0;
+}
+.instrument-data table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.app-shell .instrument-data table th,
+.app-shell .instrument-data table td {
+  background: #f7f9fb;
+  color: #243449;
+  border-bottom: 1px solid #dbe3ed;
+  padding: 6px 10px;
+}
+.instrument-table-scroll {
+  max-height: 230px;
+  overflow: auto;
+}
+.spatial-section {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: white;
+  margin-bottom: 20px;
+}
+.spatial-section h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.spatial-section > p {
+  color: var(--dim);
+  font-size: 13px;
+  max-width: 850px;
+}
+.spatial-host {
+  height: 430px;
+}
+.spatial-hint {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  font-size: 12px;
+  color: #637386;
+  padding: 8px 15px 16px;
+}
+.spatial-chart > p {
+  padding: 12px 20px;
+}
+.spatial-periods {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 0 16px 16px;
+  font-size: 12px;
+  color: #526579;
+}
+.spatial-periods i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+}
+.app-shell .i3 {
+  border: 1px solid #b8c8d9;
+  border-radius: 5px;
+}
+.i3-stage-heading {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+  color: #455e79;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+.app-shell .i3-bar {
+  background: #16263c;
+  border: 1px solid #3e526c;
+  padding: 8px;
+  border-radius: 4px;
+  gap: 6px;
+}
+.app-shell .i3-bar button {
+  background: #21354e;
+  color: #d6e2f1;
+  border-color: #425873;
+  font-size: 11px;
+}
+.app-shell .i3-bar button[aria-pressed="true"] {
+  background: #287e7c;
+  border-color: #45b7ab;
+  color: white;
+}
+@media (max-width: 1100px) {
+  .analysis-readouts > div {
+    padding: 14px;
+  }
+  .analysis-readouts strong {
+    font-size: 29px;
+  }
+}
+@media (max-width: 760px) {
+  .analysis-readouts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .analysis-mode-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .app-shell .analysis-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell .analysis-grid > .phases,
+  .spatial-section {
+    padding: 14px;
+  }
+  .instrument-tools {
+    flex-wrap: wrap;
+    padding: 10px;
+  }
+  .instrument-caption {
+    font-size: 8px;
+  }
+  .spatial-host {
+    height: 350px;
+  }
+  .app-shell .metric-strip {
+    gap: 8px;
+  }
+  .app-shell .metric {
+    padding: 14px;
+  }
+  .i3-stage-heading {
+    font-size: 8px;
+  }
+}
+
+/* Light workspace refinement: ThingsBoard-style measurement cards and ABB-style asset planning. */
+.app-shell .small,
+.app-shell .dim.small {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.app-shell .side-link {
+  font-size: 14px;
+}
+.app-shell .panel-heading h2,
+.app-shell .phases h3 {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.app-shell .panel-heading p,
+.app-shell .metric p,
+.app-shell .metric > a,
+.app-shell .metric > span {
+  font-size: 13px;
+}
+.app-shell .tbl td {
+  font-size: 13px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+.app-shell .tbl th,
+.app-shell .analytics-context,
+.app-shell .section-kicker {
+  font-size: 12px;
+}
+.app-shell .console-filters button,
+.app-shell .chart-range button {
+  font-size: 13px;
+  font-weight: 500;
+}
+.app-shell .console-filters button[aria-pressed="true"],
+.app-shell .chart-range button[aria-pressed="true"],
+.surface-mode button[aria-pressed="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: none;
+}
+.app-shell .analytics-page .console-filters {
+  align-items: flex-end;
+  gap: 16px;
+}
+.analysis-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.analysis-field label {
+  line-height: 1.3;
+}
+.analysis-field select {
+  height: 40px;
+  margin: 0;
+  font-size: 13px;
+}
+.app-shell .analytics-page .console-filters .chart-range {
+  height: 40px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+}
+.app-shell .analytics-page .console-filters .chart-range button {
+  height: 32px;
+  padding: 4px 12px;
+}
+.app-shell .chart-range {
+  background: #f3f5f7;
+}
+.instrument-caption {
+  letter-spacing: 0.6px;
+}
+.instrument-chart button,
+.instrument-data {
+  font-size: 12px;
+}
+.instrument-tools {
+  background: #fafbfd;
+}
+.spatial-host {
+  height: 480px;
+}
+.surface-mode {
+  display: flex;
+  gap: 8px;
+  padding: 16px 16px 0;
+  flex-wrap: wrap;
+}
+.surface-mode button {
+  font-size: 13px;
+  padding: 8px 12px;
+}
+.surface-mode button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.surface-explanation {
+  background: #fff8f1;
+  border-left: 3px solid var(--brand);
+  margin: 16px;
+  color: #705136;
+  font-size: 13px;
+}
+.spatial-periods[hidden] {
+  display: none;
+}
+.risk-chart-summary,
+.planning-heading {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  color: #647386;
+  font-size: 12px;
+  padding: 10px 0 18px;
+  flex-wrap: wrap;
+}
+.risk-chart-summary > span:first-child,
+.planning-heading > span {
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+.risk-chart-summary strong,
+.planning-heading strong {
+  font-weight: 500;
+  color: #344651;
+}
+.app-shell .riskmx .chart-grid {
+  stroke: #e1e6ed;
+  stroke-dasharray: 3 4;
+}
+.app-shell .riskmx .chart-tick,
+.app-shell .riskmx .chart-units {
+  font-size: 12px;
+  fill: #596b7c;
+}
+.app-shell .riskmx .riskmx-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+.app-shell .risk-footer {
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.planning-chart {
+  padding: 0 22px 18px;
+}
+.planning-axis,
+.planning-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 85px;
+  gap: 20px;
+  align-items: center;
+}
+.planning-axis {
+  font-size: 11px;
+  color: #647386;
+  margin: 8px 0 16px;
+}
+.planning-axis > div {
+  position: relative;
+  height: 22px;
+  margin-right: 14px;
+}
+.planning-axis > div > span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.planning-axis > div > span:first-child {
+  transform: none;
+}
+.planning-row {
+  text-decoration: none;
+  border-top: 1px solid #e6ebf0;
+  padding: 16px 0;
+  font-size: 13px;
+}
+.planning-row:hover {
+  background: #fff8f3;
+}
+.planning-row > span {
+  font-weight: 500;
+}
+.planning-row small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #68788a;
+  margin-top: 3px;
+}
+.planning-row > strong {
+  text-align: right;
+  font-weight: 500;
+}
+.planning-track {
+  height: 12px;
+  background: #f1f4f7;
+  border-radius: 6px;
+  position: relative;
+  margin-right: 14px;
+}
+.planning-track i {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  opacity: 0.65;
+}
+.planning-track b {
+  position: absolute;
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 2px #536479;
+  transform: translateX(-50%);
+}
+.planning-unknown {
+  background: #f7f9fb;
+  padding: 14px;
+  border-radius: 5px;
+  margin-top: 14px;
+}
+.planning-unknown > span {
+  font-size: 12px;
+  color: #68788a;
+}
+.planning-unknown > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.planning-unknown a {
+  background: white;
+  border: 1px solid #dfe5ec;
+  border-radius: 4px;
+  padding: 5px 9px;
+  font-size: 12px;
+  text-decoration: none;
+}
+.planning-unknown i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+.planning-note {
+  font-size: 12px;
+  color: #68788a;
+  margin-bottom: 0;
+}
+@media (max-width: 760px) {
+  .app-shell .instrument-caption {
+    font-size: 10px;
+  }
+  .app-shell .analysis-readouts strong {
+    font-size: 27px;
+  }
+  .planning-axis,
+  .planning-row {
+    grid-template-columns: 100px minmax(0, 1fr) 65px;
+    gap: 12px;
+  }
+  .planning-chart {
+    padding: 0 14px 14px;
+  }
+  .planning-axis > div > span:nth-child(2),
+  .planning-axis > div > span:nth-child(3) {
+    display: none;
+  }
+  .spatial-host {
+    height: 380px;
+  }
+}
+
+/* 3D inspection workspace: controls do not cover equipment. */
+.twin-workbench {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.twin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.twin-toolbar label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--dim);
+  flex: 1 1 180px;
+}
+.twin-toolbar select {
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: white;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.twin-toolbar button {
+  min-height: 36px;
+  font: 500 12px var(--sans);
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 4px;
+  padding: 7px 10px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.twin-toolbar button:hover {
+  background: #fff1e8;
+  border-color: var(--brand);
+}
+.twin-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.app-shell .twin-workbench .i3 {
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+.twin-workbench .i3-stage {
+  position: relative;
+  inset: auto;
+  height: 530px;
+}
+.twin-workbench .i3-stage-heading {
+  position: relative;
+  inset: auto;
+  padding: 12px 14px;
+  background: #f7f9fb;
+  font-size: 10px;
+}
+.twin-workbench .i3-controls {
+  position: relative;
+  inset: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: #f7f9fb;
+}
+.app-shell .twin-workbench .i3-bar {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 6px;
+}
+.app-shell .twin-workbench .i3-bar button {
+  background: white;
+  color: var(--ink);
+  border: 1px solid #d2dce6;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+.app-shell .twin-workbench .i3-bar button[aria-pressed="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+.twin-workbench .i3-thermal-scale {
+  position: static;
+  width: 100%;
+  max-width: 350px;
+  padding: 8px;
+}
+.twin-workbench .i3-thermal-scale p {
+  font-size: 11px;
+  color: var(--dim);
+  margin: 6px 0 0;
+}
+.twin-inspector {
+  padding: 16px;
+  border-top: 1px solid var(--line);
+}
+.twin-inspector-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.twin-inspector-title span {
+  color: var(--dim);
+  font-size: 12px;
+}
+.twin-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+}
+.twin-inspector dt {
+  font-size: 11px;
+  color: var(--dim);
+}
+.twin-inspector dd {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 3px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.twin-inspector p,
+.twin-footnote {
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.6;
+}
+.twin-footnote {
+  padding: 0 16px 14px;
+  margin: 0;
+}
+.twin-workbench:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  padding: 0 4vw;
+  background: #fff;
+}
+.twin-workbench:fullscreen .i3-stage {
+  height: max(400px, calc(100vh - 370px));
+}
+.twin-workbench:fullscreen .i3 {
+  height: auto;
+}
+@media (max-width: 600px) {
+  .twin-workbench .i3-stage {
+    height: 420px;
+  }
+  .twin-inspector dd {
+    font-size: 17px;
+  }
+  .twin-inspector dt {
+    min-height: 32px;
+  }
+}

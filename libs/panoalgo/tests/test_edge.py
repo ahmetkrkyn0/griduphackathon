@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from panoalgo.detect import time_to_limit
 from panoalgo.edge import EdgePipeline
 from panoalgo.generator import PanelSimulator
 
@@ -98,6 +99,56 @@ def test_data_quality_is_reported_through_the_q_bit_field(alarm_codes):
     point = next(p for p in payload["t_conn"] if p["pt"] == "DSYA6_L1")
     assert point["q"] & (1 << bit)
     assert not [c for c in payload["alarms"] if c.startswith("ALM-DQ-")]
+
+
+def test_ttl_is_suppressed_when_the_point_quality_is_suspect():
+    """S8 bilinen siniri (docs/05 #10): q biti set olan bir nokta artik canli bir
+    ttl_h gostermemeli. time_to_limit'in kendisi (test_detect.py:40-50'deki ayni
+    hesap) once gercek, pozitif bir tahmin urettigini kanitlar; bu test o gercek
+    degerin q set olunca None'a cekildigini, q=0 iken dokunulmadan kaldigini dogrular."""
+    ttl = time_to_limit(k_now=2.0e-4, k_slope_per_h=1.0e-5, expected_i2=lambda _h: 250_000.0, limit_k=70.0, step_h=0.25)
+    assert ttl == pytest.approx(8.0, abs=0.3)  # on-kosul: gercekten pozitif bir tahmin
+
+    pipeline = EdgePipeline()
+    payload = {"t_conn": [{"pt": "DSYA3_L2", "ttl_h": ttl, "q": 0}]}
+
+    pipeline._suppress_ttl_when_quality_suspect(payload)
+    assert payload["t_conn"][0]["ttl_h"] == ttl  # q=0: degismez
+
+    payload["t_conn"][0]["q"] = 1
+    pipeline._suppress_ttl_when_quality_suspect(payload)
+    assert payload["t_conn"][0]["ttl_h"] is None  # q != 0: ASIL IDDIA
+
+
+def test_process_wires_the_suppression_into_the_pipeline(monkeypatch):
+    """Onceki test _suppress_ttl_when_quality_suspect'i DOGRUDAN cagirir; bu test
+    process()'in onu GERCEKTEN cagirdigini kanitlar (edge.py:111). Bu satir
+    silinirse (metodun kendisi degil, cagrisi) yukaridaki test hala gecer ama
+    S8 korumasi devre disi kalir -- bu test o bosluk icin.
+
+    _update_points de sahtelenir: saglikli simulasyonda K/K0 hicbir zaman surekli
+    yukselmez (bkz. detect.py _slope_is_persistent), yani gercek boru hattinda
+    ttl_h zaten hep None olur ve line 111 silinse bile bu test yanlislikla YESIL
+    kalirdi. Burada her noktaya GERCEK (bastirilmasi gereken) bir ttl_h degeri
+    yazdirilir ki test yalnizca bastirmanin CAGRILDIGINI degil, cagrilmadiginda
+    GERCEKTEN kirildigini da kanitlasin."""
+    pipeline, sim = EdgePipeline(), _sim()
+    _run(pipeline, sim, 200)
+
+    def _fake_update_points(self, payload, pano_id, ts, period_s):
+        for point in payload["t_conn"]:
+            point["ttl_h"] = 5.0
+
+    monkeypatch.setattr(EdgePipeline, "_update_points", _fake_update_points)
+    monkeypatch.setattr(
+        EdgePipeline,
+        "_update_quality",
+        lambda self, payload: [p.__setitem__("q", 1) for p in payload["t_conn"]] and None,
+    )
+    payload = _run(pipeline, sim, 1)
+    assert all(p["ttl_h"] is None for p in payload["t_conn"])
+    assert payload["risk"]["ttl_h"] is None
+    assert "ALM-TTL-14D" not in payload["alarms"]
 
 
 def test_alarm_codes_are_all_defined_in_the_contract(alarm_codes):

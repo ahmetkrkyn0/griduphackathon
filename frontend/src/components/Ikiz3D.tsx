@@ -60,6 +60,8 @@ interface SceneApi {
   focusOn: (pt: string) => void;
   home: () => void;
   front: () => void;
+  side: (side: "left" | "right") => void;
+  zoom: (factor: number) => void;
   /** Zaman kaydirici onizlemesi: t=null canli veriye doner, 0..1 gecmisteki ilerlemeyi gosterir. */
   previewPoint: (pt: string, t: number | null) => void;
 }
@@ -106,6 +108,7 @@ function buildScene(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.12;
   renderer.domElement.setAttribute("role", "img");
   renderer.domElement.setAttribute(
     "aria-label",
@@ -122,7 +125,7 @@ function buildScene(
   stage.appendChild(labelRenderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#edf0f2");
+  scene.background = new THREE.Color("#f1f4f6");
   const environmentRoom = new RoomEnvironment();
   const pmrem = new THREE.PMREMGenerator(renderer);
   const environmentTarget = pmrem.fromScene(environmentRoom, 0.04);
@@ -144,7 +147,9 @@ function buildScene(
   const sun = new THREE.DirectionalLight("#ffffff", 1.65);
   sun.position.set(1800, 3200, 2600);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.normalBias = 1.5;
+  sun.shadow.bias = -0.0001;
   Object.assign(sun.shadow.camera, {
     left: -1600,
     right: 1600,
@@ -165,12 +170,29 @@ function buildScene(
     new THREE.ShadowMaterial({ opacity: 0.12 }),
   );
   floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -66;
   floor.receiveShadow = true;
   scene.add(floor);
 
   // Fiziksel malzemeler: pano govdesi RAL 7035, bakir, izolator. Durum rengi degil, malzeme rengi.
   // Gercekcilik gecisi (kullanici istegi): govdeye boyali sacin hafif parlakligini veren clearcoat,
   // baralara/DIN raya/bakira daha metalik degerler.
+  // Procedural microtexture keeps the model offline and avoids repeated flat highlights.
+  const textureCanvas = document.createElement("canvas");
+  textureCanvas.width = textureCanvas.height = 128;
+  const textureContext = textureCanvas.getContext("2d")!;
+  const pixels = textureContext.createImageData(128, 128);
+  let seed = 37;
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const value = 110 + (seed % 35);
+    pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = value;
+    pixels.data[i + 3] = 255;
+  }
+  textureContext.putImageData(pixels, 0, 0);
+  const coatingTexture = new THREE.CanvasTexture(textureCanvas);
+  coatingTexture.wrapS = coatingTexture.wrapT = THREE.RepeatWrapping;
+  coatingTexture.repeat.set(12, 12);
   const mat = {
     ral7035: new THREE.MeshPhysicalMaterial({
       color: "#CDD1CC",
@@ -178,6 +200,8 @@ function buildScene(
       metalness: 0.08,
       clearcoat: 0.35,
       clearcoatRoughness: 0.45,
+      bumpMap: coatingTexture,
+      bumpScale: 0.3,
     }),
     ral7035glass: new THREE.MeshStandardMaterial({
       color: "#CDD1CC",
@@ -189,7 +213,7 @@ function buildScene(
     plate: new THREE.MeshStandardMaterial({ color: "#E2E5E1", roughness: 0.9 }),
     bar: new THREE.MeshStandardMaterial({
       color: "#B7865F",
-      roughness: 0.32,
+      roughness: 0.27,
       metalness: 0.85,
     }),
     rail: new THREE.MeshStandardMaterial({
@@ -314,6 +338,26 @@ function buildScene(
   }
   box(1500, 25, 26, mat.ral7035, 50, 1460, 410);
   box(1500, 25, 26, mat.ral7035, 50, 5, 410);
+  // Folded door flanges, hinge barrels and cable glands are representational details.
+  for (const side of [0, 1580])
+    for (const y of [180, 750, 1320]) {
+      const hinge = new THREE.Mesh(
+        new THREE.CylinderGeometry(9, 9, 66, 16),
+        mat.rail,
+      );
+      hinge.position.set(side + 10, y, 444);
+      hinge.castShadow = true;
+      root.add(hinge);
+    }
+  for (let n = 1; n < FIRST_SPARE_DSYA; n++) {
+    const gland = new THREE.Mesh(
+      new THREE.CylinderGeometry(22, 25, 18, 12),
+      mat.insul,
+    );
+    gland.position.set(dsyaX(n), 14, 258);
+    gland.castShadow = true;
+    root.add(gland);
+  }
   // Perforated wiring ducts and earth rail. Their colors denote materials, not measured status.
   for (const x of [40, 1250]) {
     box(34, 970, 32, mat.plate, x, 160, 55);
@@ -585,8 +629,13 @@ function buildScene(
   const previewColor = new THREE.Color();
   /** Bir dugumun rengini/halkasini canli duruma veya zaman kaydirici onizlemesine gore boyar. */
   function paintNode(n: Node) {
-    if (thermalMode && n.point) {
-      const dt = Math.max(0, n.point.dt_c ?? 0);
+    if (
+      thermalMode &&
+      n.point &&
+      n.state !== "stale" &&
+      Number.isFinite(n.point.dt_c)
+    ) {
+      const dt = Math.max(0, n.point.dt_c);
       const thCol = getThermalColor(dt);
       n.mesh.material.color.copy(thCol);
       n.mesh.material.emissive.copy(thCol);
@@ -670,6 +719,9 @@ function buildScene(
   const fit = () => Math.max(1, 1.2 / camera.aspect);
   controls.addEventListener("change", () => {
     dirty = true;
+  });
+  controls.addEventListener("start", () => {
+    fly = null;
   });
 
   // Ekranda cakisan etiketlerden onemsiz olani gizle: secili > arizali > bizim donanim > diger.
@@ -776,7 +828,7 @@ function buildScene(
       ? `${name}: ${num(node.point.t_c)} °C, ${STATE_TEXT[node.state]}`
       : `${name}: veri yok`;
     tip.style.left = `${e.clientX - r.left + 14}px`;
-    tip.style.top = `${e.clientY - r.top + 10}px`;
+    tip.style.top = `${stage.offsetTop + e.clientY - r.top + 10}px`;
   };
   let down: { x: number; y: number } | null = null;
   const onDown = (e: PointerEvent) => {
@@ -865,7 +917,10 @@ function buildScene(
       flyTo(
         target
           .clone()
-          .addScaledVector(new THREE.Vector3(650, 380, 1900), fit()),
+          .addScaledVector(
+            new THREE.Vector3(280, 180, 1050),
+            Math.min(fit(), 1.5),
+          ),
         target,
       );
     },
@@ -880,6 +935,27 @@ function buildScene(
         new THREE.Vector3(0, 750, 4200 * fit()),
         new THREE.Vector3(0, 750, 0),
       );
+    },
+    side(side) {
+      flyTo(
+        new THREE.Vector3(
+          side === "left" ? -2600 : 2600,
+          1050,
+          2000,
+        ).multiplyScalar(fit()),
+        HOME_TARGET.clone(),
+      );
+    },
+    zoom(factor) {
+      const offset = camera.position.clone().sub(controls.target);
+      offset.setLength(
+        THREE.MathUtils.clamp(
+          offset.length() * factor,
+          controls.minDistance,
+          controls.maxDistance,
+        ),
+      );
+      flyTo(controls.target.clone().add(offset), controls.target.clone());
     },
     previewPoint(pt, t) {
       const n = nodes.get(pt);
@@ -910,6 +986,7 @@ function buildScene(
     geometries.forEach((g) => g.dispose());
     materials.forEach((m) => m.dispose());
     equipmentTextures.forEach((texture) => texture.dispose());
+    coatingTexture.dispose();
     environmentTarget.dispose();
     renderer.dispose();
     stage.replaceChildren();
@@ -933,6 +1010,9 @@ export function Ikiz3D({
   panoId,
   ackedPoints,
 }: Props) {
+  const workbenchRef = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [viewMessage, setViewMessage] = useState("");
   const stageRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneApi | null>(null);
@@ -949,6 +1029,34 @@ export function Ikiz3D({
   });
   const [history, setHistory] = useState<HistorySample[]>([]);
   const [sliderPos, setSliderPos] = useState(1);
+  useEffect(() => {
+    const sync = () =>
+      setFullscreen(document.fullscreenElement === workbenchRef.current);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === workbenchRef.current)
+        await document.exitFullscreen();
+      else await workbenchRef.current?.requestFullscreen();
+      setViewMessage("");
+    } catch {
+      setViewMessage(
+        "Bu tarayıcı tam ekranı açamadı. Mevcut alanda incelemeye devam edebilirsiniz.",
+      );
+    }
+  };
+  const inspect = (pt: string) => {
+    onSelect(pt);
+    sceneRef.current?.focusOn(pt);
+  };
+  const attention = points.filter((p) => isAbnormal(p.state ?? "stale"));
+  const nextAttention = () => {
+    if (!attention.length) return;
+    const index = attention.findIndex((p) => p.pt === selected);
+    inspect(attention[(index + 1) % attention.length].pt);
+  };
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -1063,94 +1171,208 @@ export function Ikiz3D({
         })();
 
   return (
-    <div className="i3">
-      <div className="i3-stage" ref={stageRef} />
-      <div className="i3-tip" ref={tipRef} hidden />
-      {failed ? (
-        <p className="i3-fail">
-          Bu tarayıcıda 3D görünüm (WebGL) açılamadı. Ön görünüş aynı bilgiyi
-          gösterir.
-        </p>
-      ) : (
-        <div className="i3-controls">
-          {showSlider && (
-            <div
-              className="i3-time"
-              role="group"
-              aria-label={`${pointLabel(selected!)} zaman kaydırıcısı`}
-            >
-              <span className="i3-time-edge">{HISTORY_DAYS} gün önce</span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.001}
-                value={sliderPos}
-                onChange={(e) => setSliderPos(Number(e.target.value))}
-                aria-label={`Zaman: ${timeReadout}`}
-              />
-              <span className="i3-time-edge">Şimdi</span>
-              <span className="i3-time-readout">{timeReadout}</span>
-            </div>
-          )}
-          <div
-            className="i3-bar"
-            role="toolbar"
-            aria-label="3D ikiz kontrolleri"
+    <div className="twin-workbench" ref={workbenchRef}>
+      <div className="twin-toolbar">
+        <label>
+          Ölçüm noktası
+          <select
+            aria-label="3D ölçüm noktası"
+            value={selected ?? ""}
+            onChange={(e) => inspect(e.target.value)}
           >
-            <button
-              type="button"
-              aria-pressed={toggles.cover}
-              onClick={() => flip("cover")}
+            <option value="" disabled>
+              Nokta seçin
+            </option>
+            {points.map((p) => (
+              <option value={p.pt} key={p.pt}>
+                {p.label ?? pointLabel(p.pt)} · {STATE_TEXT[p.state ?? "stale"]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={!attention.length || failed}
+          onClick={nextAttention}
+        >
+          Sonraki uyarı ({attention.length})
+        </button>
+        <button type="button" onClick={toggleFullscreen}>
+          {fullscreen ? "Tam ekrandan çık" : "Tam ekran"}
+        </button>
+      </div>
+      {viewMessage && <p role="status">{viewMessage}</p>}
+      <div className="i3">
+        <div className="i3-stage-heading">
+          <span>DİJİTAL İKİZ / BAĞLANTI İNCELEME</span>
+          <span>{selected ? pointLabel(selected) : "NOKTA SEÇİN"}</span>
+        </div>
+        <div className="i3-stage" ref={stageRef} />
+        <div className="i3-tip" ref={tipRef} hidden />
+        {failed ? (
+          <p className="i3-fail">
+            Bu tarayıcıda 3D görünüm (WebGL) açılamadı. Ön görünüş aynı bilgiyi
+            gösterir.
+          </p>
+        ) : (
+          <div className="i3-controls">
+            {showSlider && (
+              <div
+                className="i3-time"
+                role="group"
+                aria-label={`${pointLabel(selected!)} zaman kaydırıcısı`}
+              >
+                <span className="i3-time-edge">{HISTORY_DAYS} gün önce</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  value={sliderPos}
+                  onChange={(e) => setSliderPos(Number(e.target.value))}
+                  aria-label={`Zaman: ${timeReadout}`}
+                />
+                <span className="i3-time-edge">Şimdi</span>
+                <span className="i3-time-readout">{timeReadout}</span>
+              </div>
+            )}
+            <div
+              className="i3-bar"
+              role="toolbar"
+              aria-label="3D ikiz kontrolleri"
             >
-              Saydam kapak
-            </button>
-            <button
-              type="button"
-              aria-pressed={toggles.coverage}
-              onClick={() => flip("coverage")}
-            >
-              Ark koruma kapsaması
-            </button>
-            <button
-              type="button"
-              aria-pressed={toggles.labels}
-              onClick={() => flip("labels")}
-            >
-              Etiketler
-            </button>
-            <button type="button" aria-pressed={toggles.thermal} onClick={() => flip("thermal")}>
-              Termal görünüm
-            </button>
-            <span className="i3-sep" />
-            <button type="button" onClick={() => sceneRef.current?.home()}>
-              3/4 görünüş
-            </button>
-            <button type="button" onClick={() => sceneRef.current?.front()}>
-              Önden
-            </button>
-            {selected && (
               <button
                 type="button"
-                onClick={() => sceneRef.current?.focusOn(selected)}
+                onClick={() => sceneRef.current?.side("left")}
               >
-                Seçili noktaya odaklan
+                Soldan
               </button>
+              <button
+                type="button"
+                onClick={() => sceneRef.current?.side("right")}
+              >
+                Sağdan
+              </button>
+              <button
+                type="button"
+                aria-label="3D yakınlaştır"
+                onClick={() => sceneRef.current?.zoom(0.8)}
+              >
+                Yakınlaştır +
+              </button>
+              <button
+                type="button"
+                aria-label="3D uzaklaştır"
+                onClick={() => sceneRef.current?.zoom(1.25)}
+              >
+                Uzaklaştır −
+              </button>
+              <button
+                type="button"
+                aria-pressed={toggles.cover}
+                onClick={() => flip("cover")}
+              >
+                Saydam kapak
+              </button>
+              <button
+                type="button"
+                aria-pressed={toggles.coverage}
+                onClick={() => flip("coverage")}
+              >
+                Ark koruma kapsaması
+              </button>
+              <button
+                type="button"
+                aria-pressed={toggles.labels}
+                onClick={() => flip("labels")}
+              >
+                Etiketler
+              </button>
+              <button
+                type="button"
+                aria-pressed={toggles.thermal}
+                onClick={() => flip("thermal")}
+              >
+                Termal görünüm
+              </button>
+              <span className="i3-sep" />
+              <button type="button" onClick={() => sceneRef.current?.home()}>
+                3/4 görünüş
+              </button>
+              <button type="button" onClick={() => sceneRef.current?.front()}>
+                Önden
+              </button>
+              {selected && (
+                <button
+                  type="button"
+                  onClick={() => sceneRef.current?.focusOn(selected)}
+                >
+                  Seçili noktaya odaklan
+                </button>
+              )}
+            </div>
+            {toggles.thermal && (
+              <div
+                className="i3-thermal-scale"
+                aria-label="Termal renk skalası"
+              >
+                <span className="i3-thermal-bar" />
+                <div className="i3-thermal-labels">
+                  <span>0 K</span>
+                  <span>20 K</span>
+                  <span>40 K</span>
+                  <span>65+ K ΔT</span>
+                </div>
+                <p>Noktasal ΔT ölçümü · termal kamera görüntüsü değildir.</p>
+              </div>
             )}
           </div>
-          {toggles.thermal && (
-            <div className="i3-thermal-scale" aria-label="Termal renk skalası">
-              <span className="i3-thermal-bar" />
-              <div className="i3-thermal-labels">
-                <span>0 °C</span>
-                <span>20 °C</span>
-                <span>40 °C</span>
-                <span>65+ °C ΔT</span>
-              </div>
+        )}
+      </div>
+      {focusPoint && (
+        <div className="twin-inspector" aria-live="polite">
+          <div className="twin-inspector-title">
+            <strong>{focusPoint.label ?? pointLabel(focusPoint.pt)}</strong>
+            <span>
+              {STATE_TEXT[focusPoint.state ?? "stale"]} · Güncel ölçüm
+            </span>
+          </div>
+          <dl>
+            <div>
+              <dt>Sıcaklık</dt>
+              <dd>
+                {Number.isFinite(focusPoint.t_c) ? num(focusPoint.t_c, 1) : "—"}{" "}
+                °C
+              </dd>
             </div>
+            <div>
+              <dt>Ortam üstü artış</dt>
+              <dd>
+                {Number.isFinite(focusPoint.dt_c)
+                  ? num(focusPoint.dt_c, 1)
+                  : "—"}{" "}
+                K
+              </dd>
+            </div>
+            <div>
+              <dt>K/K₀</dt>
+              <dd>
+                {focusPoint.k_ratio != null ? num(focusPoint.k_ratio, 2) : "—"}
+              </dd>
+            </div>
+          </dl>
+          {showSlider && sliderPos < 0.999 && (
+            <p>
+              Geçmiş seçimi yalnızca K/K₀ değişiminin görsel önizlemesidir. Bu
+              karttaki ölçümler günceldir.
+            </p>
           )}
         </div>
       )}
+      <p className="twin-footnote">
+        Temsili yerleşim · Sürükleyerek döndürün, tekerlekle yakınlaştırın.
+        Nokta seçimi klavyeyle de kullanılabilir.
+      </p>
     </div>
   );
 }

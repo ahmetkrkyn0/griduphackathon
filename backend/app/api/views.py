@@ -76,6 +76,39 @@ def point_state(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: boo
     return "normal"
 
 
+def point_validity(
+    point: dict[str, Any], state: str, comms_ok: bool, thresholds: dict[str, Any], baseline_day: int | None
+) -> str:
+    """Bir noktanin tahminine ne kadar guvenilebilecegini tek bir nedene indirger.
+
+    Sozlesmede (contracts/openapi.yaml, DONMUS) yeni bir alan degil; AlarmReason.verify
+    ornegindeki gibi (backend/app/risk.py _verify) acik nesneye eklenen turetilmis bir
+    deger. Girdileri zaten sozlesmede aciktaki alanlardir (q, excited, ttl_h, state,
+    health.baseline_day) — panoalgo'ya veya mqtt semasina yeni bir ham alan eklenmez.
+
+    `state` tek basina yetmez: point_state() hem "comms koptu" hem "q != 0" durumunu
+    AYNI "stale" degerine indirger (views.py:63-64), ama bunlar farkli nedenlerdir
+    (veri hic gelmiyor vs. veri geliyor ama supheli) — comms_ok ayrica alinir.
+
+    Oncelik sirasi: veri yetersiz (comms koptu) > sensor supheli (q != 0) >
+    sinir asildi > ogreniyor > veri yetersiz (uyarim yok) > model kapsami disi >
+    tahmin gecerli.
+    """
+    if not comms_ok:
+        return "veri_yetersiz"
+    if state == "stale":  # comms_ok=True iken stale yalnizca q != 0'dan gelir
+        return "sensor_supheli"
+    if state in ("alarm", "critical"):
+        return "sinir_asildi"
+    if baseline_day is not None and baseline_day < thresholds["baseline_learning_days"]:
+        return "ogreniyor"
+    if not point.get("excited", False):
+        return "veri_yetersiz"
+    if point.get("ttl_h") is None:
+        return "model_kapsami_disi"
+    return "tahmin_gecerli"
+
+
 def _risk(payload: dict[str, Any] | None) -> tuple[int, str, float | None]:
     if payload is None:
         return 0, NEVER_REPORTED_MODE, None
@@ -187,7 +220,7 @@ def panel_health(record: PanelRecord, contracts: Contracts, now: datetime) -> di
     return view
 
 
-def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool) -> dict[str, Any]:
+def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool, baseline_day: int | None) -> dict[str, Any]:
     view = {
         "pt": point["pt"],
         "label": point_label(point["pt"]),
@@ -199,7 +232,9 @@ def point_view(point: dict[str, Any], thresholds: dict[str, Any], comms_ok: bool
     if "excited" in point:
         view["excited"] = point["excited"]
     view["q"] = point.get("q", 0)
-    view["state"] = point_state(point, thresholds, comms_ok)
+    state = point_state(point, thresholds, comms_ok)
+    view["state"] = state
+    view["gecerlilik"] = point_validity(point, state, comms_ok, thresholds, baseline_day)
     return view
 
 
@@ -271,10 +306,13 @@ def panel_detail(
     health = dict(payload["health"])
     if "fw" in payload:
         health["fw"] = payload["fw"]
+    baseline_day = health.get("baseline_day")
+    if baseline_day is None:
+        baseline_day = record.baseline_day
     detail.update(
         ts=payload["ts"],
         risk_contributions=(payload.get("risk") or {}).get("contributions", {}),
-        points=[point_view(p, contracts.thresholds, comms_ok) for p in payload["t_conn"]],
+        points=[point_view(p, contracts.thresholds, comms_ok, baseline_day) for p in payload["t_conn"]],
         env=payload["env"],
         elec=payload["elec"],
         pd=payload.get("pd"),

@@ -5,6 +5,11 @@
 
 export type Prio = "P1" | "P2" | "P3" | "INFO" | "SYS";
 export type PointState = "normal" | "warn" | "alarm" | "critical" | "stale";
+/** Sozlesme disi uzanti (contracts/openapi.yaml DONMUS): backend/app/api/views.py
+ * point_validity() / risk.py _condition() tarafindan hesaplanir, ConnPoint ve
+ * AlarmReason'in acik (additionalProperties kapali degil) govdesine eklenir —
+ * AlarmReason.verify ile ayni desen. */
+export type Gecerlilik = "sensor_supheli" | "sinir_asildi" | "ogreniyor" | "veri_yetersiz" | "model_kapsami_disi" | "tahmin_gecerli";
 export type AlarmState = "active" | "acked" | "shelved" | "cleared";
 export type NotifyChannel = "sms" | "whatsapp" | "call" | "scada" | "relay";
 
@@ -139,6 +144,7 @@ export interface ConnPoint {
   excited?: boolean;
   q?: number;
   state?: PointState;
+  gecerlilik?: Gecerlilik;
 }
 
 export interface Env {
@@ -212,6 +218,7 @@ export interface AlarmReason {
   basis?: string;
   point?: string | null;
   verify?: AlarmVerify;
+  gecerlilik?: Gecerlilik;
 }
 
 export interface Alarm {

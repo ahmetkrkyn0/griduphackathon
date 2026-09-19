@@ -150,6 +150,7 @@ class EdgePipeline:
 
         self._update_points(payload, pano_id, ts, period_s)
         self._update_quality(payload)
+        self._suppress_ttl_when_quality_suspect(payload)
 
         previous = self._previous.get(pano_id)
         codes = [
@@ -273,6 +274,20 @@ class EdgePipeline:
         for point in payload["t_conn"]:
             codes = per_point.get(point["pt"], [])
             point["q"] = quality.q_bits(codes, self._contracts_dir)
+
+    def _suppress_ttl_when_quality_suspect(self, payload: dict) -> None:
+        """_update_points, _update_quality'den ONCE calisir, yani TTL kestirimi q'yu
+        hic gormeden yapilir. Zaten varolan bir kalite kurali tarafindan isaretlenmis
+        bir nokta (q != 0) hicbir durumda da TTL tahmini tasimasin — bu metod bu
+        kontrati garanti eder.
+
+        Not: S8 bilinen siniri (docs/05 #10) surunen sensoru tespiti icerir, ama
+        drift varolan ALM-DQ-* kurallari tarafindan yakalanmaz (q asla set olmaz).
+        Bu metod zaten-isaretli noktalar icin kontrati garantiler, drift tespitini
+        degil. Drift tespiti ayri, ozel bir kalite kurali gerekir (henuz eklenmedi)."""
+        for point in payload["t_conn"]:
+            if point.get("q", 0) != 0:
+                point["ttl_h"] = None
 
     def _risk_block(self, payload: dict, codes: list[str]) -> dict:
         worst_ratio = max((p.get("k_ratio") or 1.0) for p in payload["t_conn"])

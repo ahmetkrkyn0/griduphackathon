@@ -1,66 +1,78 @@
 ﻿import { Link } from "react-router-dom";
 import type { PanelSummary } from "../api/types";
 import { ttlText } from "../lib/format";
-import { effectivePrio } from "../lib/worklist";
+import { axisFraction, effectivePrio } from "../lib/worklist";
 export function SureEkseni({ worklist }: { worklist: PanelSummary[] }) {
-  const lanes = [
-    {
-      name: "Süre tahmini yok",
-      sub: "Alarm nedenini inceleyin",
-      points: worklist.filter((p) => p.ttl_h == null),
-    },
-    {
-      name: "İlk 72 saat",
-      sub: "Yakın dönem",
-      points: worklist.filter((p) => p.ttl_h != null && p.ttl_h <= 72),
-    },
-    {
-      name: "3–7 gün",
-      sub: "Bakım planlaması",
-      points: worklist.filter(
-        (p) => p.ttl_h != null && p.ttl_h > 72 && p.ttl_h <= 168,
-      ),
-    },
-    {
-      name: "7 gün ve sonrası",
-      sub: "İzleme",
-      points: worklist.filter((p) => p.ttl_h != null && p.ttl_h > 168),
-    },
-  ];
+  const known = worklist
+    .filter((p) => p.ttl_h != null && Number.isFinite(p.ttl_h))
+    .sort((a, b) => a.ttl_h! - b.ttl_h!);
+  const unknown = worklist.filter(
+    (p) => p.ttl_h == null || !Number.isFinite(p.ttl_h),
+  );
   return (
-    <div
-      className="schedule-lanes"
-      role="group"
-      aria-label="Tahmini sınıra kalan süreye göre panolar"
-    >
-      {lanes.map((lane) => (
-        <div className="schedule-lane" key={lane.name}>
-          <div>
-            <strong>{lane.name}</strong>
-            <small>{lane.sub}</small>
-          </div>
-          <div>
-            {lane.points.map((p) => (
-              <Link
-                key={p.pano_id}
-                to={`/pano/${p.pano_id}`}
-                style={{
-                  borderLeftColor: `var(--${effectivePrio(p)?.toLowerCase() ?? "dot"})`,
-                }}
-              >
-                <span>{p.name}</span>
-                <small>{ttlText(p.ttl_h) || "Tahmin yok"}</small>
-              </Link>
-            ))}
-            {!lane.points.length && (
-              <span className="dim small">Bu aralıkta pano yok</span>
-            )}
-          </div>
+    <div className="planning-chart">
+      <div className="planning-heading">
+        <span>BAKIM UFUKLARI</span>
+        <strong>
+          {known.length} süre tahmini · {unknown.length} değerlendirme bekleyen
+        </strong>
+      </div>
+      <div className="planning-axis">
+        <span>Pano</span>
+        <div>
+          {[0, 72, 168, 336].map((h) => (
+            <span key={h} style={{ left: `${axisFraction(h) * 100}%` }}>
+              {h === 0 ? "Şimdi" : `${h / 24} gün`}
+            </span>
+          ))}
         </div>
+        <span>Kalan süre</span>
+      </div>
+      {known.map((p) => (
+        <Link
+          className="planning-row"
+          key={p.pano_id}
+          to={`/pano/${p.pano_id}`}
+        >
+          <span>
+            {p.name}
+            <small>Risk {p.risk_score} / 100</small>
+          </span>
+          <div className="planning-track">
+            <i
+              style={{
+                width: `${Math.max(2, axisFraction(p.ttl_h!) * 100)}%`,
+                background: `var(--${effectivePrio(p)?.toLowerCase() ?? "dot"})`,
+              }}
+            />
+            <b
+              style={{
+                left: `${Math.min(98, Math.max(2, axisFraction(p.ttl_h!) * 100))}%`,
+              }}
+            />
+          </div>
+          <strong>{ttlText(p.ttl_h)}</strong>
+        </Link>
       ))}
-      <p className="dim small">
-        Gösterilen süreler arıza zamanı değil, izlenen sınıra ilişkin
-        tahminlerdir.
+      {!known.length && <p className="empty">Bu seçimde süre tahmini yok.</p>}
+      <div className="planning-unknown">
+        <span>Süre tahmini olmayanlar</span>
+        <div>
+          {unknown.map((p) => (
+            <Link to={`/pano/${p.pano_id}`} key={p.pano_id}>
+              <i
+                style={{
+                  background: `var(--${effectivePrio(p)?.toLowerCase() ?? "dot"})`,
+                }}
+              />
+              {p.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+      <p className="planning-note">
+        Logaritmik zaman ölçeği · 14 gün üzeri sağ uçta gösterilir. Süreler
+        arıza zamanı değil, izlenen sınıra ilişkin tahminlerdir.
       </p>
     </div>
   );

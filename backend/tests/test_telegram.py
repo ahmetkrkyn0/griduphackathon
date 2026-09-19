@@ -87,6 +87,38 @@ def test_telegram_template_formatting():
     assert "http://gridup.local/alarmlar" in msg
 
 
+def test_telegram_omits_rul_line_when_ttl_h_is_none():
+    """P1 Task 1 (S8 bilinen siniri): kalite bayragi set olan bir noktada ttl_h artik
+    panoalgo'da kaynaginda None'a cekiliyor (EdgePipeline._suppress_ttl_when_quality_
+    suspect) ve bu deger risk.py _condition() uzerinden dogrudan Alarm.ttl_h'e akiyor.
+    templates.py:99-100'deki `if ttl_h is not None` korumasi ZATEN dogru calisiyordu;
+    bu test gercek Alarm dataclass'ini ttl_h=None ile kurup mesajda "Kalan Omur (RUL)"
+    satirinin hic basilmadigini kilitler -- koruma kaldirilirsa (veya bicimleme None'a
+    uygulanirsa) bu test TypeError'la veya beklenmeyen metinle kirilir."""
+    from app.alarm_manager import Alarm
+    from helpers import utc
+
+    t = utc(2026, 9, 13, 9, 0)
+    alarm = Alarm(
+        id=7,
+        pano_id="ADM-00001",
+        code="ALM-K-WARN",
+        prio="P3",
+        point="GIRIS_L2",
+        event_id="EVT-7",
+        raised_at=t,
+        last_true_at=t,
+        annunciated_at=t,
+        ttl_h=None,
+    )
+
+    msg = telegram_alarm(alarm, "K/K0 esigi asildi", "http://gridup.local")
+
+    assert "Kalan Ömür (RUL)" not in msg
+    assert "ADM-00001" in msg
+    assert "ALM-K-WARN" in msg
+
+
 def test_notifier_dispatches_telegram_alarm(contracts):
     from app.alarm_manager import AlarmManager, Condition
     from app.notify.dispatcher import NotifyConfig, Notifier

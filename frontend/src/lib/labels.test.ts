@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ADVICE_TEXT, ALARM_TEXT, HYP_TEXT, adviceText, panoTypeText, pointLabel, signalLabel, unitText } from "./labels";
+import { ADVICE_TEXT, ALARM_TEXT, GECERLILIK_TEXT, HYP_TEXT, adviceText, panoTypeText, pointLabel, signalLabel, unitText } from "./labels";
 
 // Sozluk sozlesmeden kopmasin: yeni kod eklenirse bu test Turkce metni ister.
 const contract = readFileSync(new URL("../../../contracts/alarm-codes.yaml", import.meta.url), "utf8");
@@ -20,6 +20,10 @@ describe("sözleşme ile sözlük eşleşmesi", () => {
   it("Türkçe metinler eşik sayısı içermez (kural 10)", () => {
     const withNumbers = Object.entries(ALARM_TEXT).filter(([, text]) => /\d+\s*(K|°C|degC|%)/.test(text));
     expect(withNumbers).toEqual([]);
+  });
+  it("her gecerlilik değerinin Türkçe metni var", () => {
+    const gecerlilikValues = ["sensor_supheli", "sinir_asildi", "ogreniyor", "veri_yetersiz", "model_kapsami_disi", "tahmin_gecerli"];
+    expect(gecerlilikValues.filter((v) => !(v in GECERLILIK_TEXT))).toEqual([]);
   });
 });
 

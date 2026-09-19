@@ -1,4 +1,4 @@
-/* Small identity accents use the existing GDZ orange token (#ff671d).
+/* Small identity accents use the existing GDZ orange token (#ff671e).
    Alarm priorities, connection states and chart series keep their own colors. */
 .app-shell {
   --brand-wash: color-mix(in srgb, var(--brand) 7%, white);
