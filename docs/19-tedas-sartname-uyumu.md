@@ -94,7 +94,7 @@ Sütunların anlamı:
 | 5 | İzoleli AC/DC SMPS 5 V 2 A — MEAN WELL IRM-10-5 | 1 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] + **rakım ≤ 2000 m** + yalıtım (3000 Vrms hedefi) | **Doğrulanmadı** | **En yüksek öncelikli üç kalemden biri.** Şebekeye doğrudan bağlanan tek parça. Üç ayrı doğrulama gerekir: (i) sıcaklık sınıfı ve **sıcaklıkla güç düşümü (derating)**, (ii) 2000 m rakımda yalıtım/soğutma düşümü, (iii) 3000 Vrms yalıtım iddiası. Ayrıca modem TX tepe akımını (2 A) karşılayıp karşılamadığı **ölçülmedi.** |
 | 6 | 3V3 LDO regülatör — Texas Instruments TLV1117-33 | 1 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] | **Doğrulanmadı** | Lineer regülatör ısı üretir; **+70 °C ortamda kendi ısınmasıyla birlikte** ısıl bütçe bu teslimde **hesaplanmadı.** |
 | 7 | Süperkapasitör 10 F 2,7 V — Eaton HB1840-2R7107-R | 2 (seri) | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] −25…+70 °C | **Doğrulanmadı** | **En yüksek öncelikli üç kalemden biri.** Süperkapasitörlerde kapasite ve eşdeğer seri direnç sıcaklıkla ve yaşlanmayla değişir; bu, "son nefes" hesabını (`docs/13` §2, ~15,8 s) doğrudan etkiler. Hesap **yeni ve oda sıcaklığındaki** bir parça varsayar. **Ömür sonu ve düşük sıcaklık davranışı hesaba katılmamıştır.** |
-| 8 | 802.15.4/BLE modül — Nordic nRF52840 tabanlı modül (ör. Fanstel BT840F) | 1 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] | **Doğrulanmadı** | Ayrıca **kablosuz menzil/paket kaybı metal kabin içinde hiç ölçülmedi** — bu, sıcaklık sınıfından daha büyük bir risktir. Sensör düğümü tarafının donanımı **hiç tasarlanmadı** (aşağıdaki kapsam notu). |
+| 8 | 802.15.4/BLE modül — Nordic nRF52840 tabanlı modül (ör. Fanstel BT840F) | 1 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] | **Doğrulanmadı** | Ayrıca **kablosuz menzil/paket kaybı metal kabin içinde hiç ölçülmedi** — bu, sıcaklık sınıfından daha büyük bir risktir. Sensör düğümü tarafının donanımı **19 Eylül'de belgelendi** (`hardware/sensor-dugumu/`, aşağıdaki kapsam notu) ama menzil ölçümü hâlâ **yapılmadı**. |
 | 9 | Hücresel modem — Quectel EC200A-EU | 1 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] | **Doğrulanmadı** | **En yüksek öncelikli üç kalemden biri.** Modemlerde tipik olarak "çalışma" ve "genişletilmiş/sınırlı işlev" sıcaklık aralıkları ayrı tanımlanır; hangi aralıkta hangi işlevin garanti edildiği **bilinmiyor.** Ayrıca operatör/bant onayı ve özel APN erişimi **doğrulanmadı.** |
 | 10 | Kuru kontak röle 24 V — Omron G5LE-1-VD 24DC | 2 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] + [D] V-0 (gövde plastiği) | **Doğrulanmadı** | Elektromekanik parça: sıcaklık **ve** titreşim/deprem (0,5 g) altında kontak davranışı, ayrıca gövde plastiğinin alev sınıfı doğrulanmalı. |
 | 11 | Darlington dizi sürücü — Texas Instruments ULN2003AN | 1 | Doğrulanmadı — üretici veri sayfası kontrol edilmedi | [C] | **Doğrulanmadı** | Röle bobini sürerken güç harcar; yüksek ortam sıcaklığında paket ısı düşümü **hesaplanmadı.** |
@@ -109,12 +109,17 @@ Sütunların anlamı:
 **bu oturumda hiçbir üretici veri sayfasına erişilmediği** anlamına gelir. Tabloyu "uygun" diye
 doldurmak, doğrulanabilir tek çıktımız olan dürüstlüğü harcamak olurdu.
 
-**Maliyet notu:** `bom.csv` toplam satırı **adet 1'de ~56 USD/kontrolcü kartı, adet 1.000'de
-~37 USD/kontrolcü kartı** (**sensör düğümleri S1–S5**, SIM/veri aboneliği ve kurulum işçiliği
-**hariç**; BOM yalnızca Pano Beyni kontrolcü kartını kapsar — `docs/10` §2). Yani bu rakam
-**pano başına toplam donanım maliyeti değildir**; §3.1'de listelenen kalemlerin hiçbirini içermez.
-**Tip test ve sertifikasyon maliyeti de bu rakamın içinde değildir ve bu teslimde
-hesaplanmamıştır.**
+**Maliyet notu (19 Eylül'de düzeltildi):** `bom.csv` satır toplamı **adet 1'de 70,73 USD/kontrolcü kartı,
+adet 1.000'de 47,68 USD/kontrolcü kartı**'dır. Bu paragraf daha önce **~56 / ~37 USD** diyordu; aradaki
+fark tam olarak **hücresel modem kalemidir** (14,50 / 10,80 USD) ve dipnot yalnızca "SIM/veri hariç"
+dediği için modem donanımının dışarıda bırakıldığı sanılmıştı. Toplam artık testle kilitlidir
+(`backend/tests/test_tazminat_maruziyeti.py`).
+
+Bu rakam **pano başına toplam donanım maliyeti değildir** — yalnızca kontrolcü kartıdır. Sensör düğümü
+dahil pano başına toplam **103,48 – 396,43 USD** aralığındadır (adet 1.000, düğüm sayısına göre;
+`docs/10` §7). Kurulum işçiliği, SIM/veri aboneliği, montaj malzemesi ve §3.1'de listelenen kalemlerin
+hiçbiri **hiçbir toplamda yoktur**. **Tip test ve sertifikasyon maliyeti de bu rakamların içinde değildir
+ve bu teslimde hesaplanmamıştır.**
 
 ### 3.1 Bu tablonun kapsamadıkları (BOM'da satırı olmayanlar)
 
@@ -122,8 +127,8 @@ Aşağıdakiler için **BOM satırı yoktur**, dolayısıyla şartname sınırla
 
 | Kalem | Durum |
 |---|---|
-| **Kablosuz bağlantı sıcaklık düğümü (S1)** ve ortam düğümü (S3/S4) | `hardware/sensor-dugumu/` dizini **boştur.** Düğüm donanımı bu teslimde tasarlanmadı; `PLAN.md` MoSCoW listesinde **"gerçek sensör" Won't kümesindedir**, düğüm donanımının/BOM'unun kendisi ise **hiçbir MoSCoW kümesinde yer almaz** (`PLAN.md` MoSCoW bölümü, `docs/10` §2). Oysa şartname sınırlarına **en çok maruz kalan parça budur** — bara üzerinde, en sıcak noktada duruyor. Pil/enerji toplama, gövde malzemesi (V-0), yalıtım mesafesi ve sıcaklık sınıfı **tamamen açıktır.** |
-| **PD ön uç kartı** | `hardware/pd-karti/` dizini **boştur**; bilinçli kapsam dışı (rapor §3.7, `docs/11`). |
+| **Kablosuz bağlantı sıcaklık düğümü (S1)** ve ortam düğümü (S3/S4) | **19 Eylül düzeltmesi:** bu satır *"dizin boştur, düğüm donanımı tasarlanmadı"* diyordu; **artık doğru değil.** `hardware/sensor-dugumu/` blok diyagramı, I/O tablosu, BOM ve bir enerji/termal hesap taşıyor; gövde (Lexan 940A, UL94 V-0), yalıtım (IEC 60664-1, 1 kV / 6 kV Kat. III), sıcaklık sınıfı (−40…+105 °C bileşen, 105 °C bara) ve pil/enerji hasadı (LTC3331 + LiSOCl2) **belgelenmiştir**. **Değişmeyen sınır:** bu BOM'un 11 satırının hiçbiri veri sayfasına karşı doğrulanmadı, düğüm üretilmedi, kablosuz menzil/paket kaybı metal kabin içinde **hiç ölçülmedi**. Şartname sınırlarına en çok maruz kalan parça hâlâ budur ve **doğrulaması açıktır** |
+| **PD ön uç kartı** | **19 Eylül düzeltmesi:** bu satır da *"dizin boştur"* diyordu. `hardware/pd-karti/` bugün blok diyagramı, I/O tablosu, HF analog ön uç notu ve BOM taşıyor (9 satır kalemi, adet 1.000: 11,79 USD). Kart düzeyinde **kapsam dışı olma gerekçesi değişmedi** (rapor §3.7, `docs/11`): AG panoda PD ölçümü yapılmadı, kart üretilmedi, doğrulanmadı |
 | Montaj malzemesi: kablo, kablo bağı, braket, kelepçe, nem alıcı, TVS bileşenleri | BOM'da **yok.** `docs/08` ve `docs/13` bunlara metin içinde atıf yapıyor ama **parça seçimi yapılmadı** — hepsi V-0 ve sıcaklık sınıfı kontrolü gerektirir. |
 | SIM/veri aboneliği, kurulum işçiliği | BOM'da **bilinçli olarak hariç** (bom.csv toplam satırı). |
 
@@ -175,7 +180,9 @@ Bu bölüm **bir sonraki fazın işidir**; bu teslimde **hiçbiri yapılmamışt
    doğrulamasını etkileyip etkilemediği.
 4. **Harici tip pano varyantı** (IP54, −25 °C, kirlilik Düzey III) için ayrı bir BOM türetilmesi —
    bugünkü BOM **yalnızca dahili tip** içindir.
-5. Kablosuz sensör düğümü BOM'unun yazılması (`hardware/sensor-dugumu/` bugün **boş**).
+5. ~~Kablosuz sensör düğümü BOM'unun yazılması~~ — **yazıldı** (`hardware/sensor-dugumu/bom.csv`, 11 satır
+   kalemi, adet 1: 23,25 USD / adet 1.000: 13,95 USD). Kalan iş, bu BOM'un **11 satırını** da yukarıdaki tabloda
+   olduğu gibi **veri sayfasına karşı doğrulamaktır**; bu yapılmadı.
 
 ---
 
