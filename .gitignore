@@ -10,10 +10,14 @@ deploy/.env.*
 *.key
 secrets/
 # --- Ucuncu parti agent skill'leri ---
-# `npx skills add` skill'i PROJE dizinine kurar (.agents/skills/, 17 MB mp3/ogg
-# varliklariyla) ve gitignore'a kendisi eklemez. Deponun parcasi degil, gelistirici
-# araci: klonlayan herkes kendi kurar. 20 Eylul'de brag kurulurken fark edildi.
-.agents/
+# `npx skills add` skill'i PROJE dizinine kurar (.agents/skills/, onlarca MB
+# varlikla) ve gitignore'a kendisi eklemez. Deponun parcasi degil, gelistirici
+# araci: klonlayan herkes kendi kurar.
+#
+# DIKKAT: yalnizca skills/ alt dizini. `.agents/` komple yok sayilirsa graphify'in
+# izlenen .agents/rules/ ve .agents/workflows/ dosyalarinin yanina eklenecek her
+# YENI dosya sessizce gorunmez olur.
+.agents/skills/
 skills-lock.json
 # NOT: *.key Apple Keynote sunumlarini da yutar; sunumu .pdf/.pptx olarak koyun.
 
