@@ -311,6 +311,52 @@ def phase_offsets(count: int, *, period_s: float, seed: int) -> list[float]:
     return [rng.random() * period_s for _ in range(count)]
 
 
+def kosum_makinesi() -> dict:
+    """Kosumun KOSTUGU DONANIMI esere yazar.
+
+    NEDEN (20 Eylul): eser CPU/bellek KULLANIMINI kaydediyordu ama KAPASITESINI
+    kaydetmiyordu. Duzenek yalnizca docs/09 #3'te, elle, tek sefer yazilmisti.
+    Sonuc: 20 Eylul'de ayni tablo farkli bir makinede (28 -> 8 is parcacigi)
+    kosuldu ve aradaki fark once "performans gerilemesi" diye okundu. Iki kosumu
+    sessizce farkli donanimda karsilastirmak bir daha mumkun olmasin diye bu blok
+    eklendi. Hicbir alan tahmin degildir; okunamayan alan None birakilir.
+    """
+    import platform
+    import shutil
+    import subprocess
+
+    bilgi: dict = {
+        "islemci": platform.processor() or None,
+        "isletim_sistemi": f"{platform.system()} {platform.release()}",
+        "mantiksal_cpu": os.cpu_count(),
+        "fiziksel_cekirdek": None,
+        "ram_gb": None,
+        "docker_cpu": None,
+        "docker_bellek_gb": None,
+        "docker_surum": None,
+    }
+    try:  # psutil zorunlu degil: yoksa alan None kalir, betik durmaz
+        import psutil
+
+        bilgi["fiziksel_cekirdek"] = psutil.cpu_count(logical=False)
+        bilgi["ram_gb"] = round(psutil.virtual_memory().total / 1024**3, 1)
+    except Exception:
+        pass
+    if shutil.which("docker"):
+        try:
+            cikti = subprocess.run(
+                ["docker", "info", "--format", "{{.NCPU}}\t{{.MemTotal}}\t{{.ServerVersion}}"],
+                capture_output=True, text=True, timeout=20, check=True,
+            ).stdout.strip().split("\t")
+            if len(cikti) == 3:
+                bilgi["docker_cpu"] = int(cikti[0])
+                bilgi["docker_bellek_gb"] = round(int(cikti[1]) / 1024**3, 2)
+                bilgi["docker_surum"] = cikti[2]
+        except Exception:
+            pass
+    return bilgi
+
+
 def parse_docker_stats(line: str) -> tuple[str, float, float]:
     """`docker stats --format '{{json .}}'` satiri -> (konteyner, CPU %, bellek MiB)."""
     data = json.loads(line)
@@ -679,6 +725,7 @@ def run(config: Config) -> dict[str, Any]:
         "config": {k: v for k, v in asdict(config).items() if k != "db"},
         "detect_panels": (len(detect_ids) or config.panels) if config.generator == "physics" else 0,
         "clock_offset_ms": round(offset * 1000.0, 1),
+        "makine": kosum_makinesi(),
         "publish": publish,
         "ingest": {
             "written": written,

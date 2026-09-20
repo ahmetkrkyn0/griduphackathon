@@ -1,0 +1,417 @@
+{
+  "arac": "loadtest/veri_butcesi.py",
+  "surum": 1,
+  "tohum": 20260918,
+  "olu_bant_kesri_varsayilan": 0.02,
+  "olu_bantlar": {
+    "t_conn.X.dt_c": 1.0,
+    "t_conn.X.t_c": 1.0,
+    "t_conn.X.k_ratio": 0.006,
+    "t_conn.X.ttl_h": 6.72,
+    "elec.i_ph.0": 41.616,
+    "elec.thd_i.0": 0.3,
+    "env.t_low_c": 0.8,
+    "env.td_margin_k": 0.06,
+    "env.rh_low_pct": 2.0
+  },
+  "sozlesme_sessizlik_zaman_asimi_s": 300.0,
+  "bayt_muhasebesi": {
+    "json": "compact JSON (separators=',',':'), UTF-8 — OLCULDU",
+    "mqtt": "loadtest/storage.py mqtt_publish_bytes (QoS 1 PUBLISH cercevesi) — OLCULDU",
+    "faturalanan": "+110 B/mesaj TCP/IP+TLS+ACK — TAHMIN, olcum degil"
+  },
+  "normal_rejim": {
+    "panolar": 5,
+    "olcum_penceresi_saat": 48.0,
+    "isinma_gun": 7.0,
+    "tespit_periyodu_s": 10.0,
+    "azami_sessizlik_s": 60.0,
+    "ariza_rejimi": false,
+    "ornek": 86400,
+    "nokta_sayisi": 25,
+    "json_kodlama_farki": {
+      "not": "Butce SIKISTIRILMIS JSON ile raporlanir; sim/panosim.py bosluklu yayinlar.",
+      "bosluklu_buyume_orani": 1.1387
+    },
+    "politikalar": [
+      {
+        "ad": "sabit-10s",
+        "mesaj": 86400,
+        "json_mb": 344.787,
+        "mqtt_mb": 347.552,
+        "faturalanan_mb": 357.056,
+        "pano_basina_aylik_mb": 1071.2,
+        "bastirilan_oran": 0.0,
+        "gerekce_dagilimi": {
+          "ilk": 5,
+          "olay": 10496,
+          "saydam": 75899
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {}
+      },
+      {
+        "ad": "uyarlanabilir-%1",
+        "mesaj": 81350,
+        "json_mb": 324.687,
+        "mqtt_mb": 327.29,
+        "faturalanan_mb": 336.239,
+        "pano_basina_aylik_mb": 1008.7,
+        "bastirilan_oran": 0.0584,
+        "gerekce_dagilimi": {
+          "": 5050,
+          "ilk": 5,
+          "olay": 10886,
+          "olu-bant": 70457,
+          "sessizlik": 2
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 20.8,
+          "elec.i_ph.1": 20.6,
+          "elec.i_ph.0": 19.0,
+          "elec.i_n": 9.6,
+          "t_conn.DSYA2_L2.ttl_h": 3.0,
+          "t_conn.DSYA6_L3.ttl_h": 3.0,
+          "t_conn.DSYA6_L2.ttl_h": 3.0,
+          "t_conn.GIRIS_L2.ttl_h": 3.0
+        }
+      },
+      {
+        "ad": "uyarlanabilir-%2",
+        "mesaj": 50932,
+        "json_mb": 203.588,
+        "mqtt_mb": 205.218,
+        "faturalanan_mb": 210.82,
+        "pano_basina_aylik_mb": 632.5,
+        "bastirilan_oran": 0.4105,
+        "gerekce_dagilimi": {
+          "": 35468,
+          "ilk": 5,
+          "olay": 11563,
+          "olu-bant": 35753,
+          "sessizlik": 3611
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 40.4,
+          "elec.i_ph.1": 38.3,
+          "elec.i_ph.0": 37.3,
+          "elec.i_n": 12.9,
+          "t_conn.DSYA2_L2.ttl_h": 6.0,
+          "t_conn.GIRIS_L3.ttl_h": 6.0,
+          "t_conn.DSYA6_L3.ttl_h": 6.0,
+          "t_conn.DSYA6_L2.ttl_h": 6.0
+        }
+      },
+      {
+        "ad": "uyarlanabilir-%5",
+        "mesaj": 41843,
+        "json_mb": 167.354,
+        "mqtt_mb": 168.692,
+        "faturalanan_mb": 173.295,
+        "pano_basina_aylik_mb": 519.9,
+        "bastirilan_oran": 0.5157,
+        "gerekce_dagilimi": {
+          "": 44557,
+          "ilk": 5,
+          "olay": 12053,
+          "olu-bant": 24919,
+          "sessizlik": 4866
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 52.0,
+          "elec.i_ph.1": 45.9,
+          "elec.i_ph.0": 44.3,
+          "t_conn.DSYA2_L2.ttl_h": 16.0,
+          "t_conn.GIRIS_L3.ttl_h": 16.0,
+          "t_conn.DSYA6_L3.ttl_h": 16.0,
+          "t_conn.DSYA6_L2.ttl_h": 16.0,
+          "t_conn.DSYA3_L2.ttl_h": 16.0
+        }
+      },
+      {
+        "ad": "uyarlanabilir-%10",
+        "mesaj": 33093,
+        "json_mb": 132.371,
+        "mqtt_mb": 133.43,
+        "faturalanan_mb": 137.07,
+        "pano_basina_aylik_mb": 411.2,
+        "bastirilan_oran": 0.617,
+        "gerekce_dagilimi": {
+          "": 53307,
+          "ilk": 5,
+          "olay": 13158,
+          "olu-bant": 13842,
+          "sessizlik": 6088
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 52.0,
+          "elec.i_ph.1": 45.9,
+          "elec.i_ph.0": 44.3,
+          "t_conn.DSYA6_L3.ttl_h": 31.0,
+          "t_conn.DSYA6_L2.ttl_h": 31.0,
+          "t_conn.DSYA4_L2.ttl_h": 31.0,
+          "t_conn.DSYA7_L2.ttl_h": 31.0,
+          "t_conn.DSYA5_L3.ttl_h": 31.0
+        }
+      }
+    ]
+  },
+  "ariza_rejimi": {
+    "panolar": 5,
+    "olcum_penceresi_saat": 48.0,
+    "isinma_gun": 7.0,
+    "tespit_periyodu_s": 10.0,
+    "azami_sessizlik_s": 60.0,
+    "ariza_rejimi": true,
+    "ornek": 86400,
+    "nokta_sayisi": 25,
+    "json_kodlama_farki": {
+      "not": "Butce SIKISTIRILMIS JSON ile raporlanir; sim/panosim.py bosluklu yayinlar.",
+      "bosluklu_buyume_orani": 1.1386
+    },
+    "politikalar": [
+      {
+        "ad": "sabit-10s",
+        "mesaj": 86400,
+        "json_mb": 345.448,
+        "mqtt_mb": 348.213,
+        "faturalanan_mb": 357.717,
+        "pano_basina_aylik_mb": 1073.2,
+        "bastirilan_oran": 0.0,
+        "gerekce_dagilimi": {
+          "ilk": 5,
+          "olay": 10613,
+          "saydam": 75782
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-THR-BUS-ALM": 15617,
+          "ALM-THR-PHASE-DIF": 6224,
+          "ALM-THR-TERM-ALM": 15161,
+          "ALM-THR-TERM-WARN": 6743,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {}
+      },
+      {
+        "ad": "uyarlanabilir-%1",
+        "mesaj": 81456,
+        "json_mb": 325.756,
+        "mqtt_mb": 328.363,
+        "faturalanan_mb": 337.323,
+        "pano_basina_aylik_mb": 1012.0,
+        "bastirilan_oran": 0.0572,
+        "gerekce_dagilimi": {
+          "": 4944,
+          "ilk": 5,
+          "olay": 10997,
+          "olu-bant": 70452,
+          "sessizlik": 2
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-THR-BUS-ALM": 15617,
+          "ALM-THR-PHASE-DIF": 6224,
+          "ALM-THR-TERM-ALM": 15161,
+          "ALM-THR-TERM-WARN": 6743,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 20.8,
+          "elec.i_ph.1": 20.6,
+          "elec.i_ph.0": 19.0,
+          "elec.i_n": 9.6,
+          "t_conn.DSYA2_L2.ttl_h": 3.0,
+          "t_conn.DSYA6_L3.ttl_h": 3.0,
+          "t_conn.DSYA6_L2.ttl_h": 3.0,
+          "t_conn.GIRIS_L2.ttl_h": 3.0
+        }
+      },
+      {
+        "ad": "uyarlanabilir-%2",
+        "mesaj": 51321,
+        "json_mb": 205.638,
+        "mqtt_mb": 207.28,
+        "faturalanan_mb": 212.925,
+        "pano_basina_aylik_mb": 638.8,
+        "bastirilan_oran": 0.406,
+        "gerekce_dagilimi": {
+          "": 35079,
+          "ilk": 5,
+          "olay": 11659,
+          "olu-bant": 36129,
+          "sessizlik": 3528
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-THR-BUS-ALM": 15617,
+          "ALM-THR-PHASE-DIF": 6224,
+          "ALM-THR-TERM-ALM": 15161,
+          "ALM-THR-TERM-WARN": 6743,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 40.4,
+          "elec.i_ph.1": 38.3,
+          "elec.i_ph.0": 37.3,
+          "elec.i_n": 12.9,
+          "t_conn.DSYA2_L2.ttl_h": 6.0,
+          "t_conn.GIRIS_L3.ttl_h": 6.0,
+          "t_conn.DSYA6_L3.ttl_h": 6.0,
+          "t_conn.DSYA6_L2.ttl_h": 6.0
+        }
+      },
+      {
+        "ad": "uyarlanabilir-%5",
+        "mesaj": 42038,
+        "json_mb": 168.534,
+        "mqtt_mb": 169.879,
+        "faturalanan_mb": 174.504,
+        "pano_basina_aylik_mb": 523.5,
+        "bastirilan_oran": 0.5134,
+        "gerekce_dagilimi": {
+          "": 44362,
+          "ilk": 5,
+          "olay": 12145,
+          "olu-bant": 25047,
+          "sessizlik": 4841
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-THR-BUS-ALM": 15617,
+          "ALM-THR-PHASE-DIF": 6224,
+          "ALM-THR-TERM-ALM": 15161,
+          "ALM-THR-TERM-WARN": 6743,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 52.0,
+          "elec.i_ph.1": 45.9,
+          "elec.i_ph.0": 44.3,
+          "t_conn.DSYA2_L2.ttl_h": 16.0,
+          "t_conn.GIRIS_L3.ttl_h": 16.0,
+          "t_conn.DSYA6_L3.ttl_h": 16.0,
+          "t_conn.DSYA6_L2.ttl_h": 16.0,
+          "t_conn.DSYA3_L2.ttl_h": 16.0
+        }
+      },
+      {
+        "ad": "uyarlanabilir-%10",
+        "mesaj": 33135,
+        "json_mb": 132.852,
+        "mqtt_mb": 133.912,
+        "faturalanan_mb": 137.557,
+        "pano_basina_aylik_mb": 412.7,
+        "bastirilan_oran": 0.6165,
+        "gerekce_dagilimi": {
+          "": 53265,
+          "ilk": 5,
+          "olay": 13241,
+          "olu-bant": 13817,
+          "sessizlik": 6072
+        },
+        "alarm_turu": {
+          "ALM-DEW-ALM": 0,
+          "ALM-DEW-WARN": 0,
+          "ALM-K-ALM": 509,
+          "ALM-K-WARN": 222,
+          "ALM-THR-BUS-ALM": 15617,
+          "ALM-THR-PHASE-DIF": 6224,
+          "ALM-THR-TERM-ALM": 15161,
+          "ALM-THR-TERM-WARN": 6743,
+          "ALM-TTL-14D": 0
+        },
+        "azami_geri_kurma_hatasi": {
+          "elec.i_ph.2": 52.0,
+          "elec.i_ph.1": 45.9,
+          "elec.i_ph.0": 44.3,
+          "t_conn.DSYA6_L3.ttl_h": 31.0,
+          "t_conn.DSYA6_L2.ttl_h": 31.0,
+          "t_conn.DSYA4_L2.ttl_h": 31.0,
+          "t_conn.DSYA7_L2.ttl_h": 31.0,
+          "t_conn.DSYA5_L3.ttl_h": 31.0
+        }
+      }
+    ]
+  },
+  "alarm_gecikmesi": {
+    "normal": {
+      "karsilastirilan_kod": [
+        "ALM-DEW-ALM",
+        "ALM-DEW-WARN",
+        "ALM-K-ALM",
+        "ALM-K-WARN",
+        "ALM-TTL-14D"
+      ],
+      "gecikenler": [],
+      "sonuc": "alarm ani DEGISMEDI"
+    },
+    "ariza": {
+      "karsilastirilan_kod": [
+        "ALM-DEW-ALM",
+        "ALM-DEW-WARN",
+        "ALM-K-ALM",
+        "ALM-K-WARN",
+        "ALM-THR-BUS-ALM",
+        "ALM-THR-PHASE-DIF",
+        "ALM-THR-TERM-ALM",
+        "ALM-THR-TERM-WARN",
+        "ALM-TTL-14D"
+      ],
+      "gecikenler": [],
+      "sonuc": "alarm ani DEGISMEDI"
+    }
+  },
+  "filo_carpimi": {
+    "not": "Bu bir CARPIMDIR, olcum degildir: pano basina olculen aylik bayt x pano sayisi.",
+    "filo_panosu": 1000,
+    "sabit_10s_gb_ay": 1071.2,
+    "uyarlanabilir_gb_ay": 632.5
+  }
+}

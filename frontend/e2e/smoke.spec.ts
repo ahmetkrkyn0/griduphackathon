@@ -142,36 +142,45 @@ test.describe("Yedi ekran — konsol hatasi ve ekran goruntusu", () => {
  * `--dim` token'i orada 4,61:1 degil 4,21:1 verir — AA esiginin ALTINA duser.
  * Elle hesap bunu hicbir zaman goremezdi.
  *
- * OLCULEN SONUC (19 Eylul, mock kipi, Chromium 153, 1425 px):
- *   WCAG 2.1 AA ihlali TOPLAM 5 dugum, hepsi `color-contrast`, hepsi "serious".
- *   Baska hicbir axe kurali ihlal edilmiyor.
- *     /       .focus-number x3            -> 2,27:1  (#a4adb4 / #ffffff, 11 px)
- *     /trend  .scatter-summary strong x1  -> 4,04:1  (#d9530f / #ffffff, 12 px kalin)
- *     /bolge  .kesinti-serit .dim x1      -> 4,21:1  (#65717d / #ebecee, 14 px)
+ * OLCULEN SONUC (20 Eylul, mock kipi, Chromium, 1425 px, dort ayri kosum):
+ *   WCAG 2.1 AA ihlali TOPLAM 0. Kontrast dahil, hicbir axe kurali ihlal edilmiyor.
  *
- * CANLI KIPTE SAYI FARKLI — ve bu, iki kipi ayirmanin en somut karsiligidir.
- * OLCULEN (19 Eylul, :3000 uretim derlemesi, ayni tarayici): 10 rotada TOPLAM 23 dugum.
- * Farkin tamami AppShell'deki IKI ogeden geliyor; ikisi de mock kipinde HIC CIZILMEZ:
- *     .connection-pill -> 4,26:1  (#24836a / #f0f7f4, 11 px) — "Bağlı" rozeti; mock
- *                         kipinde ayni oge "Demo" sinifiyla cizilir (AppShell.tsx:179)
- *     .btn-link        -> 2,91:1  (#ff671d / #ffffff, 13 px) — OperatorGirisi dugmesi;
- *                         yalnizca backend kimlik dogrulamayi ACIK bildirince cizilir
- * Ikisi de HER rotada oldugu icin 2 x 10 = 20, arti `/`de 3 `.focus-number` = 23.
- * Yani "arayuzde 5 kontrast ihlali var" demek YANLIS olurdu: mock kipinde 5, canli
- * kipte 23. Depodaki iddia hangi kipten soz ettigini SOYLEMEK ZORUNDADIR.
+ * BURAYA NASIL GELINDI — sayi "iyi oldugu icin" yazilmadi, olculdu:
+ *   19 Eylul'de mock kipinde 5 ihlal olculmustu. 20 Eylul'de ayni olcum 83 verdi.
+ *   Bu bir GERILEMEDIR: `main` birlesmesiyle (c6b5dcd) gelen sanayi kabugu
+ *   `industrial.css` icinde paletin TAMAMINI yeniden tanimliyordu ve `--dim`
+ *   degerini #65717d'den #61738a'ya tasimisti. Sonuc: 83 ihlalin 69'u TEK BIR
+ *   RENKTEN geliyordu ve hepsi 3,71-4,47 araliginda, yani esigin hemen altinda.
  *
- * NEDEN DUZELTILMEDI: hepsi renk PALETI kararidir, test isi degil; paleti bu oturumda
- * degistirmek `docs/16` ve `frontend/TASARIM-REVIZYONU.md`teki tasarim kaydini
- * gecersiz kilardi. Sayi bu yuzden GIZLENMIYOR, KILITLENIYOR: asagidaki beklenti
- * olculen halin AYNISIDIR. Yeni bir ihlal cikarsa test duser; biri DUZELTILIRSE de
- * duser — ve bu DOGRUDUR, cunku o zaman hem buradaki hem `docs/16` §4'teki sayinin
- * yeniden olculmesi gerekir. Olculmus 5 ihlal, olculmemis 0 ihlalden iyidir.
+ *   Bu gerilemeyi `theme.test.ts` GOREMEDI, cunku o test yalnizca `theme.css`
+ *   metnini okuyor; ezen dosya `industrial.css` idi. Kilidin kor noktasi buydu
+ *   ve artik kapatildi (bkz. theme.test.ts, "ezen palet" testi).
+ *
+ *   Olculen dort kok renk ve duzeltmeleri:
+ *     --dim  #61738a -> #58687d   69 ihlal   (industrial.css :root)
+ *     --brand uzerine beyaz -> --brand-deep    9 ihlal   (aria-pressed dugmeler)
+ *     .focus-number #a4adb4 -> #6a7680          3 ihlal   (2,27:1 idi, en kotusu)
+ *     .section-kicker #687e97 -> #5b6e84        2 ihlal
+ *   Hicbiri yeni renk icadi degil: ucu ayni tonun koyulastirilmisi, biri zaten
+ *   palette duran --brand-deep. Secim gozle degil hesapla yapildi — her aday,
+ *   bu kabukta GERCEKTEN kullanilan alti zeminin hepsine karsi sinandi.
+ *
+ * CANLI KIPTE SAYI FARKLI OLABILIR ve bu, iki kipi ayirmanin en somut karsiligidir.
+ * OLCULEN (19 Eylul, :3000 uretim derlemesi): 10 rotada 23 dugum. Farkin tamami
+ * AppShell'deki IKI ogeden geliyordu; ikisi de mock kipinde HIC CIZILMEZ:
+ *     .connection-pill  4,26:1  (#24836a / #f0f7f4) — "Bagli" rozeti
+ *     .btn-link         2,91:1  (#ff671d / #ffffff) — OperatorGirisi dugmesi
+ * O 23 rakami BUGUNE AIT DEGILDIR ve guncel diye yazilmiyor: yukaridaki palet
+ * duzeltmesi canli kipi de etkiler ama canli kip bu oturumda yeniden olculmedi.
+ *
+ * Yani "arayuzde N kontrast ihlali var" demek, N'in hangi kipten ve hangi
+ * derlemeden geldigini SOYLEMEDEN yanlistir.
+ *
+ * ASAGIDAKI BEKLENTI BIR KILITTIR, bir dilek degil. Bos nesne "olctuk, sifir
+ * cikti" demektir. Yeni bir ihlal girerse test DUSER; bu dosyanin isi sayiyi
+ * sifirda tutmak degil, sayinin sessizce degismesini ENGELLEMEKTIR.
  */
-const BILINEN_KONTRAST: Record<string, number> = {
-  "/": 3,
-  "/trend": 1,
-  "/bolge": 1,
-};
+const BILINEN_KONTRAST: Record<string, number> = {};
 
 test.describe("Erisilebilirlik — axe-core taramasi", () => {
   test("yedi ekranda WCAG 2.1 AA ihlalleri", async ({ page, baseURL }, testInfo) => {

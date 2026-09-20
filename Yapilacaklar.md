@@ -535,7 +535,7 @@ toplanır"* ifadeleri. Dördünde de gerçek sınır **daha dar** yazıldı.
 
 ```bash
 cd frontend && npm ci
-npm test                                  # 17 dosya / 154 test — "Test Files" 12'den BÜYÜK olmalı
+npm test                                  # 19 dosya / 166 test — "Test Files" 12'den BÜYÜK olmalı
 npm run build                             # tsc --noEmit && vite build
 npm run e2e                               # örnek veri kipi (:5173) — Vite'i spec kendi kaldırır
 GRIDUP_E2E_KIP=canli npx playwright test   # canlı yığın (:3000 ÖNCEDEN ayakta olmalı)

@@ -145,6 +145,26 @@ paths:
                       - { type: integer, description: "unix ms" }
                       - { type: [number, "null"] }
 
+  /api/v1/panels/{pano_id}/power-quality:
+    get:
+      tags: [panels]
+      summary: EN 50160 guc kalitesi degerlendirmesi (gerilim toleransi + dengesizlik)
+      description: >
+        Degerlendiriciyi libs/panoalgo/panoalgo/power_quality.py saglar; yanit
+        govdesi o modulun PowerQualityReport.to_dict() ciktisindan TURETILMISTIR.
+        Esikler EN 50160'tan gelir: 230 V nominal, +-%10 (207/253 V), alt uc
+        -%15 (195,5 V), dengesizlik siniri %2.
+      parameters:
+        - $ref: "#/components/parameters/PanoId"
+      responses:
+        "200":
+          description: Guc kalitesi degerlendirmesi
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PowerQuality" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/alarms:
     get:
       tags: [alarms]
@@ -1019,6 +1039,43 @@ components:
         baseline_day: { type: integer }
         last_seen: { type: string, format: date-time }
         comms_ok: { type: boolean }
+
+    PowerQuality:
+      type: object
+      required: [pano_id, power_quality]
+      properties:
+        pano_id: { type: string }
+        ts: { type: [string, "null"], format: date-time }
+        power_quality:
+          type: object
+          required: [compliant, status, score, u_ph, phases, unbal_pct, unbal_status, notes]
+          properties:
+            compliant: { type: boolean, description: "EN 50160 siniri icinde mi" }
+            status: { type: string, enum: [NORMAL, WARN, ALARM] }
+            score: { type: integer, minimum: 0, maximum: 100 }
+            u_ph:
+              type: array
+              minItems: 3
+              maxItems: 3
+              items: { type: number, description: "faz-notr gerilim (V)" }
+            phases:
+              type: array
+              minItems: 3
+              maxItems: 3
+              items:
+                type: object
+                required: [phase, voltage_v, deviation_pct, status]
+                properties:
+                  phase: { type: integer, minimum: 1, maximum: 3 }
+                  voltage_v: { type: number }
+                  deviation_pct: { type: number, description: "230 V nominale gore sapma (%)" }
+                  status: { type: string }
+            unbal_pct: { type: number, description: "gerilim dengesizligi (%)" }
+            unbal_status: { type: string }
+            notes:
+              type: array
+              items: { type: string }
+              description: "Insan okunur gerekce; bos dizi = itiraz yok"
 
     PanelDetail:
       type: object

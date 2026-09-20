@@ -276,7 +276,9 @@ Oynatma bitince hangi alarmın kaçıncı simüle saatte çıktığı ve etiketi
 karşılaştırması ekrana yazılır. S1'de sıralama şöyle görünür: `ALM-K-WARN` → `ALM-K-ALM`
 → (çok sonra) sabit 70 K eşiğinin ihlali `ALM-THR-TERM-ALM`. Ekrandaki saatlerin
 **çözünürlüğü seyreltme adımı kadardır**; öne alma süresinin ölçülmüş değeri seyreltilmemiş
-veriden hesaplanır ve `docs/12`'dedir: **209 saat** (kabul kriteri 48 saat).
+veriden hesaplanır ve `docs/12`'dedir: **209 saat** (kabul kriteri 48 saat) — ama bu sayıyı
+tetikleyen kod `ALM-TTL-14D`'dir, yani prognoz; yukarıdaki K/K₀ sıralamasına dayanan öne alma
+**172,5 saattir** (`docs/05` §10).
 
 ### 7.3 Zaman damgası kararı (K3, 15 Eylül)
 

@@ -211,6 +211,43 @@ for path in required_paths:
 if "x-websocket" not in openapi:
     fail("OpenAPI: x-websocket bolumu eksik (canli akis sozlesmesi)")
 
+# --- TERS YON: kodda olup sozlesmede OLMAYAN uc (P3-2) ---------------------
+# Yukaridaki liste yalnizca "sozlesmede olup kaybolani" yakalar. Ters yon
+# denetlenmedigi surece kodda sessizce yeni bir uc acilabilir ve sozlesme tek
+# kaynak olmaktan cikar. Nitekim cikti da: GET /panels/{pano_id}/power-quality
+# canli calisiyordu ama openapi.yaml'da YOKTU (20 Eylul'de eklendi).
+#
+# FastAPI uygulamasi BILEREK import EDILMIYOR: import veritabani/broker
+# baglantisi ve backend bagimliliklari ister, bu betik ise bagimliliksiz
+# kosabilmelidir. Onun yerine router dekoratorleri metin olarak taranir.
+API_DIR = ROOT / "backend" / "app" / "api"
+DEKORATOR = re.compile(r"""@router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']""")
+ONEK = re.compile(r"""APIRouter\([^)]*prefix\s*=\s*["']([^"']+)["']""")
+UYGULAMA = re.compile(r"""@app\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']""")
+
+koddaki: set[str] = set()
+if API_DIR.is_dir():
+    for py in sorted(API_DIR.glob("*.py")):
+        govde = py.read_text(encoding="utf-8")
+        onek_es = ONEK.search(govde)
+        onek = onek_es.group(1) if onek_es else ""
+        for _yontem, yol in DEKORATOR.findall(govde):
+            koddaki.add(onek + yol)
+
+MAIN = ROOT / "backend" / "app" / "main.py"
+if MAIN.is_file():
+    for _yontem, yol in UYGULAMA.findall(MAIN.read_text(encoding="utf-8")):
+        koddaki.add(yol)
+
+if not koddaki:
+    fail("OpenAPI ters denetim: backend/app/api altinda hic uc bulunamadi — tarayici bozuk")
+else:
+    eksik = sorted(koddaki - set(openapi["paths"]))
+    for yol in eksik:
+        fail(f"OpenAPI: '{yol}' KODDA var, sozlesmede YOK (PLAN.md kural 10: sozlesme tek kaynaktir)")
+    if not eksik:
+        notes.append(f"OpenAPI ters denetim: kodda {len(koddaki)} uc, hepsi sozlesmede")
+
 notes.append(f"OpenAPI: {len(openapi['paths'])} uc + WebSocket sozlesmesi")
 
 # ------------------------------------------------------------------- 7) surumler
