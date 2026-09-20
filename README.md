@@ -294,7 +294,7 @@ python scripts/gen_iec104_doc.py --check         # docs/04 güncel mi
 python scripts/gen_alarm_doc.py --check          # docs/06 güncel mi
 python scripts/gen_grafana_dashboards.py --check # Grafana panoları güncel mi
 python scripts/gen_olcek_doc.py --check          # docs/09 §4.1b, commit'li yük eserlerinden güncel mi
-python scripts/sir_taramasi.py                   # sır/sızıntı taraması (526 izlenen dosya; sayı depoya dosya eklendikçe değişir)
+python scripts/sir_taramasi.py                   # sır/sızıntı taraması (534 izlenen dosya; sayı depoya dosya eklendikçe değişir)
 python scripts/validate.py --out docs/12-dogrulama-sonuclari.md   # §1-§4 tablolarını yeniden üretir
 ```
 
