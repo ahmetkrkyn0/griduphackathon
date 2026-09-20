@@ -95,3 +95,46 @@ senaryo_oynat() {
     return 2
   fi
 }
+
+# backend_alarm_dokumu SIM-00004
+#
+# panosim yalnizca KENDI kenar tespitini sayar ve senaryo biter bitmez "beklenenlerden
+# 0/1 gorundu" yazabilir. Oysa backend'in alarm tiki (ALARM_TICK_S, varsayilan 5 sn)
+# senaryonun BITISINDEN SONRA calisir. 20 Eylul'de S4'te olculdu: panosim 0/1 dedi,
+# backend ALM-ARC-TRIP'i 20 saniye sonra yukseltti ve Telegram'a dustu. Jurinin
+# ekraninda bu iki satir arasinda kalmamak icin gercegi backend'e soruyoruz.
+backend_alarm_dokumu() {
+  local pano="$1" bekle="${GRIDUP_TIK_BEKLE:-25}"
+  echo
+  renk_ok "Backend alarm tiki bekleniyor (${bekle} sn) — panosim'in sayimi kenar tarafidir"
+  sleep "$bekle"
+
+  local json
+  if ! json="$(curl -fsS "$API_BASE/api/v1/alarms?pano_id=$pano" 2>/dev/null)"; then
+    renk_uyari "Alarm ucu okunamadi; arayuzden bakin: $FRONTEND_BASE/alarmlar"
+    return 0
+  fi
+
+  if ! python_bul; then
+    renk_uyari "Python yok, ham yanit: $json"
+    return 0
+  fi
+
+  # shellcheck disable=SC2086
+  printf '%s' "$json" | $PYTHON -c '
+import json, sys
+alarms = json.load(sys.stdin)
+if not alarms:
+    print("  Backend bu pano icin alarm yukseltmedi.")
+    raise SystemExit
+print(f"  Backend {len(alarms)} alarm yukseltti:")
+for a in alarms:
+    kanal = a.get("notified") or "-"
+    if isinstance(kanal, (list, tuple)):
+        kanal = ", ".join(str(k) for k in kanal) or "-"
+    prio = str(a.get("prio", "?"))
+    code = str(a.get("code", "?"))
+    state = str(a.get("state", "?"))
+    print(f"    {prio:4} {code:20} {state:8} bildirim: {kanal}")
+'
+}
