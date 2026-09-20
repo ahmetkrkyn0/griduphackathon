@@ -8,6 +8,7 @@
 | [`io-tablosu.md`](io-tablosu.md) | MCU pinout, sensör veri yolları (I2C), şarj yönetimi ve SWD programlama arayüzü |
 | [`bom.csv`](bom.csv) | Endüstriyel malzeme listesi, gerçek üretici parça kodları, sıcaklık sınıfları, 1 ve 1.000 adet fiyatları |
 | [`enerji-ve-termal-hesap.md`](enerji-ve-termal-hesap.md) | 105°C bara sıcaklık dayanımı analizi, 10 yıllık LiSOCl2 pil ömrü ve manyetik alan enerji hasat eşiği hesabı |
+| [`baglanti-tablosu.md`](baglanti-tablosu.md) | Blok-blok net listesi (güç/I2C/RF/SWD), hibrit kaynağın hangi akımda devreye girdiği, **depo içi çelişkiler** ve layout öncesi doğrulanması gerekenler. **Şematik değildir**; fiziksel pin numarası içermez, hiçbir net ölçülmedi |
 
 ---
 

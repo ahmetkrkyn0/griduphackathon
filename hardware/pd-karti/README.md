@@ -8,6 +8,7 @@
 | [`io-tablosu.md`](io-tablosu.md) | Pano Beyni (ESP32-S3) bağlantı konnektörü, SPI veri hatları ve hızlı tetikleme kesmesi |
 | [`bom.csv`](bom.csv) | HF analog ve RF komponent listesi, gerçek üretici parça kodları, 1 ve 1.000 adet maliyetleri |
 | [`hf-analog-frontend.md`](hf-analog-frontend.md) | 100 kHz - 20 MHz bant geçiren filtre hesabı, 50 Hz şebeke frekansı bastırması (>80 dB) ve IEC 60270 pC eşleme |
+| [`baglanti-tablosu.md`](baglanti-tablosu.md) | HFCT → LNA → filtre → log dedektör → ADC/karşılaştırıcı net listesi, besleme netleri ve Pano Beyni arayüzü; **depo içi çelişkiler** (konnektör adı, 3,3 V rayı, dinamik aralık) ve layout öncesi doğrulanması gerekenler. **Şematik değildir**; fiziksel pin numarası ve IEC 60270 madde numarası içermez |
 
 ---
 

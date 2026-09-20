@@ -67,7 +67,7 @@ mTLS profili (isteğe bağlı, **varsayılan kapalı**): `docker compose -f depl
 
 Sistem, kritik alarmları (P1 / P2) ücretsiz olarak teknik ekibin telefonuna iletebilir.
 
-> **Varsayılan yığında bu kanal kapalıdır.** `deploy/.env` içindeki `TELEGRAM_BOT_TOKEN` **boş gelir** (bot belirteci bir sırdır, depoya commit edilmez). Belirteç girilene kadar alarmlar yalnızca SMS/WhatsApp kanallarına düşer; canlı bir alarmın `notified` alanında bunu görebilirsiniz. Kanalın kodu ve testi hazırdır: [`backend/app/notify/telegram.py`](backend/app/notify/telegram.py) · [`backend/tests/test_telegram.py`](backend/tests/test_telegram.py).
+> **Varsayılan yığında bu kanal kapalıdır.** `deploy/.env` içindeki `TELEGRAM_BOT_TOKEN` **boş gelir** (bot belirteci bir sırdır, depoya commit edilmez). Belirteç girilene kadar alarmlar yalnızca **SMS** kanalına düşer — WhatsApp da varsayılan olarak kapalıdır (`WHATSAPP_TOKEN` boş) ve gerçek Meta Cloud API'ye karşı hiç denenmedi (`docs/18` §c.3); canlı bir alarmın `notified` alanında bunu görebilirsiniz. Kanalın kodu ve testi hazırdır: [`backend/app/notify/telegram.py`](backend/app/notify/telegram.py) · [`backend/tests/test_telegram.py`](backend/tests/test_telegram.py).
 
 * **Telegram Bot:** [`@gridupalarmbot`](https://t.me/gridupalarmbot)
 * **Özellikler:**
@@ -80,7 +80,7 @@ Sistem, kritik alarmları (P1 / P2) ücretsiz olarak teknik ekibin telefonuna il
 ### Kendi Telefonunuza Bağlama (1 Dakika)
 1. Telegram'da [`@gridupalarmbot`](https://t.me/gridupalarmbot) adresini açıp **BAŞLAT (START)** deyin.
 2. `@userinfobot` botundan Chat ID'nizi öğrenin.
-3. `deploy/.env` dosyasında `TELEGRAM_CHAT_ID=<id>` değerini girip backend'i yeniden başlatın:
+3. `deploy/.env` dosyasında **hem** `TELEGRAM_BOT_TOKEN=<belirteç>` **hem** `TELEGRAM_CHAT_ID=<id>` değerlerini girip backend'i yeniden başlatın. **İkisi birden dolu olmadan kanal açılmaz** (`backend/app/notify/dispatcher.py:95-97`). Belirteç bir sırdır ve depoya commit edilmez: ya ekipten alın, ya da BotFather'dan **kendi** botunuzu oluşturup onun belirtecini kullanın.
    ```powershell
    docker compose -f deploy/compose.yaml up -d backend
    ```

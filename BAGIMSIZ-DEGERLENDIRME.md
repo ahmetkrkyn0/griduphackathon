@@ -303,7 +303,7 @@ Eksik olan: ROC/PR eğrisi yok, çoğu sonuç tek işletme noktasında, uyumsuzl
 | `din-kutu.stl` **324 üçgen**, `din-kutu.scad`'den parametrik | `README:27` | **ÖLÇTÜM** | 16.284 bayt = 84 + 50×324; başlık alanı 324 diyor; ikili STL. `generate_stl.py` ile yeniden ürettim: **aynı SHA-256** (`1221b540…`). |
 | "Ark tespiti için ayrı kart yoktur; yalnızca PD kartı tasarlandı" | `README:27` | **ÖLÇTÜM** | `hardware/` altında üç paket var, `pd-karti` dâhil; ark için ayrı kart yok. TVOC-2 canlı yığında Modbus'tan okunuyor. |
 | "Hiçbiri veri sayfasına karşı doğrulanmadı ve üretilmedi" | `docs/19` §3, `docs/13:88` | **ÖLÇTÜM (dürüstlük)** | `docs/13:88` örnek niteliğinde: *"BOM kalemlerinin sıcaklık sınıfı üretici veri sayfalarından DOĞRULANMADI… sıcaklık döngüsü testi yapılmadı"*. `docs/19`'da 39 ayrı "doğrulanmadı/test edilmedi/yapılmadı" ifadesi saydım. |
-| FMEA, Ş×O×D = RÖS yöntemiyle, azaltma sonrası RÖS'le | `docs/07` | **ÖLÇTÜM (okudum)** | Yöntem doğru (ör. 9×3×5=135 → 9×2×2=36). Ama tablo **yalnızca ~5 satır** — bir saha cihazı için ince. |
+| FMEA, Ş×O×D = RÖS yöntemiyle, azaltma sonrası RÖS'le | `docs/07` + `docs/07b` | **ÖLÇTÜM (okudum)** | Yöntem doğru (ör. 9×3×5=135 → 9×2×2=36). **DÜZELTME (Ek B md. 10):** ilk yazdığımda "yalnızca ~5 satır, ince" demiştim — **yanlıştı.** FMEA iki dosyaya bölünmüş ve `docs/07:3-5` bölünmeyi açıkça yazıyor: donanım/saha satırları **1, 2, 3, 9, 10** `docs/07`'de, yazılım/sistem satırları **4–8 ve 11–14** `docs/07b`'de. Toplam **14 arıza modu**, numaralandırma sürekli. Bu, tek bir saha cihazı için makul bir kapsamdır. |
 | Operatör yükü 71,4 yanlış alarm/100 pano/gün < hedef 150 | `README:27` | **ÖLÇTÜM** | `threshold_sweep` ile üredi. |
 | IP20, V-0, −25…+70 °C, EMC 61000-6-5 | `docs/13:88-126` | **BEYAN** | Hedef olarak yazılı, **doğrulanmadığı da yazılı**. Tip test yok. |
 
@@ -807,6 +807,15 @@ uyuşmazlığı ikincil):
    YANILTICI, +3 karma), toplam **96**. Yani kapanma oranını %71 diye yazmışım, doğrusu
    **%81**. Kendi raporumda, projeden istediğim şeyin tam tersini yapmışım: bir sayıyı
    üreten işlemi koşmadan yazmışım. Düzelttim ve buraya kaydediyorum.
+
+10. **FMEA'yı "ince" diye yazdım — iki dosyanın yalnızca birini saymışım.** K3 defterinde
+    "tablo yalnızca ~5 satır, bir saha cihazı için ince" demiştim. `docs/07`'nin başlığı
+    (satır 3-5) bölünmeyi açıkça anlatıyor: donanım/saha satırları **1, 2, 3, 9, 10** orada,
+    yazılım/sistem satırları **4–8 ve 11–14** `docs/07b`'de. Toplam **14 arıza modu**.
+    `docs/07b`'yi okuduğumu §4'te yazmıştım ama satırlarını saymamışım; numaralandırmadaki
+    boşluğu (1,2,3,9,10) "eksik tablo" sanmışım. Defter satırını düzelttim. K3 puanı
+    değişmiyor (8) — o puan zaten esas olarak fiziksel doğrulamanın yokluğuyla sınırlıydı,
+    FMEA derinliğiyle değil; ama gerekçedeki bu cümle yanlıştı.
 
 **Değerlendirme bitiminde depo durumu:** `git status` → yalnızca `DEGERLENDIRME-GOREVI.md`
 izlenmiyor. Yaptığım hiçbir değişiklik depoda kalmadı.
