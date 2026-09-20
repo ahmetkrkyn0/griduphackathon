@@ -1,6 +1,11 @@
 # --- Sirlar (PLAN.md GK9) ---
 .env
 deploy/.env
+# Yedek/varyant .env'ler de sirdir: "deploy/.env" TAM eslesmedir, .env.yedek gibi
+# bir kopyayi yakalamaz ve `git add .` onu sessizce commit ederdi. 20 Eylul'de
+# PORTAL_URL duzeltilirken alinan yedekte olculdu. Ornek dosya muaf.
+deploy/.env.*
+!deploy/.env.example
 *.pem
 *.key
 secrets/
