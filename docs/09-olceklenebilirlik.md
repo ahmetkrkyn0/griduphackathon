@@ -61,7 +61,15 @@ pano için 5 dakika sonra `ALM-COMMS-LOST` üretirdi.
 
 ## 4. Sonuçlar
 
-### 4.1 Gecikme ve kayıp
+### 4.1 Gecikme ve kayıp — *elle yazılmış, kanıt dosyası yok*
+
+> **Bu tablonun hiçbir satırının kanıt dosyası klonda YOKTUR ve bunu saklamıyoruz.**
+> `loadtest/results/` 20 Eylül'e kadar `.gitignore` ile tamamen dışarıdaydı, yani
+> bu koşumların özet JSON'ları hiçbir zaman sürüm kontrolüne girmedi ve bugün geri
+> üretilemezler. Sayılar ölçülmüştür, ama **depoyu klonlayan biri bunları
+> doğrulayamaz** — okuyucu bize güvenmek zorunda kalır. Kanıt dosyası commit'li
+> olan koşumlar §4.1b'dedir; ikisi bilerek ayrı tutuldu, birleştirmek kanıtlı ile
+> kanıtsızı ayırt edilemez hâle getirirdi.
 
 | Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Reddedilen / düşürülen / yazma hatası |
 |---|---|---|---|---|---|---|
@@ -74,6 +82,40 @@ pano için 5 dakika sonra `ALM-COMMS-LOST` üretirdi.
 
 Görünme gecikmesinin ~400 ms'lik tabanı yazıcının **0,5 s parti aralığı** ile yoklamanın 250 ms tanesinden gelir; 100 ile 5.000 pano
 arasında neredeyse değişmemesi, sistemin bu aralıkta yük altında olmadığını gösterir. Aralık düşürülebilir (daha çok, daha küçük commit).
+
+### 4.1b Kanıt dosyası commit'li koşumlar — *`scripts/gen_olcek_doc.py` üretir*
+
+> Aşağıdaki iki tablo **elle yazılmaz**. `python scripts/gen_olcek_doc.py` onları
+> `loadtest/results/` altındaki **commit'li** JSON eserlerinden üretir;
+> `python scripts/gen_olcek_doc.py --check` güncel değilse 1 ile çıkar. Yeni bir
+> koşumun eseri commit'lenince satır kendiliğinden belirir, eser silinirse satır
+> kaybolur. Koşum makinesi ve koşulları §3'tedir; **yük üreteci ölçülen sistemle
+> AYNI makinededir**, yani sayılar temkinlidir.
+
+<!-- URETILMIS:kanitli-kosumlar -->
+| Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |
+|---|---|---|---|---|---|---|---|
+| 1.000 | 7 | 180 s | 18.000 | 1,4 / 12,8 / 63,6 ms | 404,5 / 710,5 / 835,9 ms | 0 / 0 / 0 | [`20260919T135916-1000p.json`](../loadtest/results/20260919T135916-1000p.json) |
+<!-- /URETILMIS:kanitli-kosumlar -->
+
+**Veri bütçesi koşumları** (`loadtest/veri_butcesi.py`). "Bastırma", sabit 10 s'lik
+yayına göre kaçınılan mesaj oranıdır; "pano başına aylık" 25 noktalı panoda ölçülen
+bayttan gelir.
+
+<!-- URETILMIS:veri-butcesi -->
+| Kanıt dosyası | Pencere | Pano | Nokta | Politika | Mesaj | Bastırma | Pano başına aylık |
+|---|---|---|---|---|---|---|---|
+| [`veri-butcesi-2p-0.06g-20260918.json`](../loadtest/results/veri-butcesi-2p-0.06g-20260918.json) | 0,7 sa | 2 | 25 | `sabit-10s` | 518 | %0 | 1068,5 MB |
+| ↳ | 0,7 sa | 2 | 25 | `uyarlanabilir-%1` | 488 | %5,8 | 1006,6 MB |
+| ↳ | 0,7 sa | 2 | 25 | `uyarlanabilir-%2` | 273 | %47,3 | 562,8 MB |
+| ↳ | 0,7 sa | 2 | 25 | `uyarlanabilir-%5` | 269 | %48,1 | 554,6 MB |
+| ↳ | 0,7 sa | 2 | 25 | `uyarlanabilir-%10` | 259 | %50 | 534 MB |
+| [`veri-butcesi-5p-9g-20260918.json`](../loadtest/results/veri-butcesi-5p-9g-20260918.json) | 48 sa | 5 | 25 | `sabit-10s` | 86.400 | %0 | 1071,2 MB |
+| ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%1` | 81.350 | %5,8 | 1008,7 MB |
+| ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%2` | 50.932 | %41 | 632,5 MB |
+| ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%5` | 41.843 | %51,6 | 519,9 MB |
+| ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%10` | 33.093 | %61,7 | 411,2 MB |
+<!-- /URETILMIS:veri-butcesi -->
 
 ### 4.2 Kaynak kullanımı
 

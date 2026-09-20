@@ -63,8 +63,13 @@ data/generated/*
 *.parquet
 *.db
 *.sqlite3
+# Yuk kosumu eserleri: HAM cikti buyuk ve gurultulu, ama OZET JSON'lari klona
+# girmek ZORUNDA. Aksi halde docs/09'daki her sayi "bize guvenin" olur; depoyu
+# klonlayan biri hicbirini dogrulayamaz. 20 Eylul'de acildi.
 loadtest/results/*
 !loadtest/results/.gitkeep
+!loadtest/results/*p.json
+!loadtest/results/veri-butcesi-*.json
 
 # --- Medya: link ile paylasilir, repoya girmez ---
 demo/video/*.mp4
