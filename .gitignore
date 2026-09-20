@@ -70,6 +70,7 @@ loadtest/results/*
 !loadtest/results/.gitkeep
 !loadtest/results/*p.json
 !loadtest/results/veri-butcesi-*.json
+!loadtest/results/ingest-maliyeti-*.json
 
 # --- Medya: link ile paylasilir, repoya girmez ---
 demo/video/*.mp4

@@ -154,30 +154,60 @@ noktasının ~9.000 panodan **~2.500 panoya** indiği anlamına gelir. Kayıp yi
 taşmayı emiyor, ama gecikme saniyelere çıkıyor — yani sistem veri kaybetmiyor, **geç
 kalıyor**.
 
-**Sebep aranırken üç hipotez ölçümle ELENDİ** (hiçbiri tahmin olarak bırakılmadı):
+#### Bileşenler tek tek ölçüldü — ve toplamları tutmuyor
 
-| Hipotez | Nasıl sınandı | Sonuç |
-|---|---|---|
-| Ingest'e yeni dinleyiciler eklendi (SCADA ağ geçidi, alarm servisi) | `git log -S` ile eklenme tarihleri | **Elendi** — ikisi de 13 Eylül'de, tablonun yazıldığı gün eklenmiş |
-| Veritabanı büyüdüğü için ekleme yavaşladı | 3.000 koşumu ~2 M satır daha büyük veritabanıyla **tekrarlandı** | **Elendi** — yazıcı 270,4 → **274,5** msj/s, CPU %163,5 → %160,8; tavan değişmedi |
-| Telemetri şeması büyüdü, doğrulama pahalılaştı | `wc -l` + `git log` | **Elendi** — şema 12 Eylül'den beri **hiç değişmemiş** (198 satır) |
+`loadtest/ingest_maliyeti.py` (20 Eylül'de yazıldı) mesaj başına maliyeti backend
+konteynerinin **kendi çalışma zamanında** ölçer. Kanıt dosyası:
+[`ingest-maliyeti-20260920.json`](../loadtest/results/ingest-maliyeti-20260920.json).
 
-**Ölçülen tek somut fark** (backend konteynerinin içinde, 7 noktalı 1.745 baytlık eşit
-yükle, 2.000 tekrar):
+| Bileşen | Mesaj başına | Tek başına tavan |
+|---|---:|---:|
+| `_parse` toplamı (json + NUL taraması + şema + flatten) | 851 µs | **1.175 msj/s** |
+| `write_batch` (COPY + upsert, parti 500) | 583 µs | **1.715 msj/s** |
+| İkisi **seri** koşsaydı | 1.434 µs | **~697 msj/s** |
+| **Gerçek boru hattı** | — | **~250 msj/s** |
 
-| Adım | 13 Eylül | **20 Eylül** | Kat |
-|---|---:|---:|---:|
-| `json.loads` | 15 µs | **25 µs** | 1,7 |
-| JSON şema doğrulaması | 501 µs | **941 µs** | **1,88** |
-| Tek thread alım tavanı | ~1.600 msj/s | **~1.035 msj/s** | 0,65 |
+**Aradaki 2,8 kat bu teslimde AÇIKLANAMADI.** Ne ayrıştırma ne de veritabanı yazma tek
+başına darboğaz; ikisinin toplamı bile ölçülen tavanın iki katından fazla. Geriye tek
+Python sürecinde GIL'i paylaşan **dinleyiciler** (`ingest.py` `_notify` → alarm servisi,
+SCADA ağ geçidi, WebSocket yayıncısı) kalıyor. Onların mesaj başına maliyeti
+**ölçülmedi**; bu, sonraki turun ilk maddesidir.
 
-**Bunun neden olduğu ÖLÇÜLMEDİ ve uydurulmuyor.** Şema aynı, kod yolu aynı; geriye
-çalışma zamanı ve kütüphane sürümleri kalıyor (bugün konteynerde Python 3.12.14 /
-`jsonschema` 4.23.0), ama 13 Eylül'deki imaj artık elde olmadığı için karşılaştırılamıyor.
-Ayrıca doğrulamanın 1,88 katı, yazıcının 3,4 katlık düşüşünü **tek başına açıklamaz**;
-aradaki farkın GIL paylaşımından mı yoksa yazma yolundan mı geldiği bu teslimde
-ölçülmemiştir. §4.4'teki kaldıraç listesi (derlenmiş doğrulayıcı, paylaşımlı abonelik)
-bu yüzden hâlâ geçerlidir — ve artık yalnızca bir iyileştirme değil, bir **gerekliliktir**.
+#### Ölçümle ELENEN yedi hipotez
+
+Hiçbiri tahmin olarak bırakılmadı; her biri ya koşuldu ya da kodda doğrulandı.
+
+| # | Hipotez | Nasıl sınandı | Sonuç |
+|---|---|---|---|
+| 1 | Veritabanı büyüdüğü için ekleme yavaşladı | 3.000 koşumu ~2 M satır daha büyük veritabanıyla **tekrarlandı** | **Elendi** — yazıcı 270,4 → 274,5 msj/s, CPU %163,5 → %160,8 |
+| 2 | Telemetri şeması büyüdü | `wc -l` + `git log` | **Elendi** — şema 12 Eylül'den beri hiç değişmedi (198 satır, tek commit `630067b`) |
+| 3 | `_parse` kod yolu değişti | `git show 318c47f:backend/app/ingest.py` ile karşılaştırma | **Elendi** — `_parse` **birebir aynı**; `_contains_nul` ve `best_match` zaten 12 Eylül'de vardı |
+| 4 | `write_batch` ya da SQL değişti | 318c47f ile bayt bayt karşılaştırma | **Elendi** — gövde ve dört SQL sabitinin dördü de **aynı** |
+| 5 | Bağımlılık sürümleri değişti | `diff` ile `requirements.txt` ve `Dockerfile` | **Elendi** — `requirements.txt` **birebir aynı** |
+| 6 | Aynı makinedeki diğer konteynerler CPU'da yarışıyor | `panosim`, `mpr-sim`, `tvoc-sim`, `frontend`, `grafana` **durduruldu**, ölçüm tekrarlandı | **Elendi** — şema doğrulaması 1.150–1.374 µs'ten 1.074–1.717 µs'e; **düzelmedi** |
+| 7 | **Merkez dedektör** (RLS + K/K₀) her örnekte koşuyor — 15 Eylül'de bağlandı, yani tablodan **sonra** | `CENTRAL_DETECTOR=0` ile 3.000 panoluk koşum **tekrarlandı** (A/B) | **Elendi** — yazıcı 270,4 → **244,5** msj/s; tavan **düzelmedi** |
+
+> **Bir düzeltme, kendi hesabımıza.** Bu listenin ilk hâlinde 7. madde *"dinleyiciler
+> 13 Eylül'de, tablonun yazıldığı gün eklenmişti, dolayısıyla sebep olamaz"* diye
+> **elenmiş sayılmıştı**. Bu yanlıştı: dinleyicinin *kaydı* 13 Eylül'de yapılmış ama
+> **içi 15 Eylül'de dolmuş** (`f7076f4`, `central_detector_enabled`). Hipotez bu yüzden
+> yeniden açıldı ve A/B ile sınandı. Kayıt tarihine bakıp içeriğe bakmamak, tam olarak
+> bu belgenin başka yerlerde uyardığı hatadır.
+
+#### Yayımlanan 501 µs karşılaştırılabilir değil — ve "1,88 kat" iddiası GERİ ÇEKİLDİ
+
+§4.4 mesaj başına 615 µs, bunun 501 µs'ini şema doğrulaması diye yayımlıyordu. Bu sayıyı
+üreten **hiçbir betik depoda yoktu**: hangi çalışma zamanında, hangi yükle, kaç tekrarla
+ölçüldüğü kayıtlı değildi. Dolayısıyla bugünkü ölçümle **karşılaştırılamaz** ve bu
+belgenin bir önceki hâlindeki *"doğrulama 501 → 941 µs, 1,88 kat yavaşladı"* cümlesi
+**geri çekilmiştir** — yeniden üretilemeyen bir tabana karşı kat hesaplamak, bu deponun
+kendi kuralını çiğnemekti.
+
+Bugün ölçülen (aynı betik, kanıt dosyasıyla, 7 tur): şema doğrulaması **738 µs**
+(724–883), `_parse` toplamı **851 µs**. Yükler de aynı değil: yayımlanan ölçüm 1.623
+baytlık / 81 satırlık bir mesaj kullanmış, bu betik sözleşmeden türettiği 1.212 baytlık /
+64 satırlık bir mesaj kullanıyor. **Bundan sonra karşılaştırma mümkündür**, çünkü betik
+de kanıt dosyası da depodadır.
 
 ### 4.2 Kaynak kullanımı
 
@@ -212,10 +242,13 @@ kuyruk bekler: p95, küçük bir **alarm selinin** gecikmesidir.
 
 ### 4.4 Kapasite sınırı ve darboğaz — *13 Eylül ölçümü, 20 Eylül'de kısmen geçersizleşti*
 
-> **Aşağıdaki sayılar 13 Eylül'e aittir ve bugün geçerli değildir.** 20 Eylül'de aynı
-> ölçümler tekrarlandı: şema doğrulaması 501 → **941 µs**, tek thread alım tavanı
-> ~1.600 → **~1.035 msj/s**, gerçek doyma ~918 → **~270 msj/s**. Ayrıntı ve elenen
-> hipotezler §4.1c'dedir. Bölüm silinmiyor çünkü **yöntemi** ve kaldıraç listesi hâlâ
+> **Aşağıdaki sayılar 13 Eylül'e aittir ve bugün geçerli değildir.** 20 Eylül'de ölçüm
+> `loadtest/ingest_maliyeti.py` ile **yeniden üretilebilir** hâle getirildi: `_parse`
+> toplamı **851 µs** (tek thread tavanı ~1.175 msj/s), `write_batch` **583 µs**
+> (~1.715 msj/s) — ama gerçek boru hattı **~250 msj/s**'de tavan yapıyor, yani ikisinin
+> toplamı bile açıklamıyor. **Aşağıdaki 615/501 µs değerleri bir betikle üretilmediği
+> için bugünkü ölçümle karşılaştırılamaz.** Ayrıntı, bileşen tablosu ve ölçümle elenen
+> yedi hipotez §4.1c'dedir. Bölüm silinmiyor çünkü **yöntemi** ve kaldıraç listesi hâlâ
 > doğru; geçersizleşen yalnızca sayılardır.
 
 10.000 panoda kayıp yoktur: 50.000'lik kuyruk 120 saniyelik aşırı yükü emdi ve yük bitince boşaldı. Ama alarm gecikmesi 9 saniyeye çıktı.
