@@ -1,0 +1,106 @@
+{
+  "run_id": "20260913T151000-20p",
+  "config": {
+    "panels": 20,
+    "period_s": 10.0,
+    "duration_s": 40.0,
+    "points": 7,
+    "connections": 2,
+    "alarm_panels": 2,
+    "probe_panels": 10,
+    "mqtt": "localhost:1883",
+    "api": "http://localhost:8000",
+    "out_dir": "C:\\Users\\ahmet\\Desktop\\git_projeler\\griduphackathon\\loadtest\\results",
+    "seed": 20260913,
+    "keep": false,
+    "run_id": "20260913T151000-20p"
+  },
+  "clock_offset_ms": 0.0,
+  "publish": {
+    "sent": 80,
+    "errors": 0,
+    "elapsed_s": 39.3,
+    "rate_msgs_per_s": 2.0,
+    "alarm_panels": [
+      "SIM-00001",
+      "SIM-00002"
+    ]
+  },
+  "ingest": {
+    "written": 95,
+    "rejected": 0,
+    "dropped": 0,
+    "write_errors": 0,
+    "receive_latency_ms": {
+      "n": 40,
+      "p50": 2.4,
+      "p95": 3.6,
+      "max": 4.6
+    },
+    "visible_latency_ms": {
+      "n": 40,
+      "p50": 368.2,
+      "p95": 621.8,
+      "max": 683.8
+    },
+    "written_per_s": {
+      "n": 6,
+      "p50": 2.0,
+      "p95": 2.6,
+      "max": 2.6
+    }
+  },
+  "resources": {
+    "backend": {
+      "cpu_pct_avg": 3.3,
+      "cpu_pct_max": 15.8,
+      "mem_mib_avg": 56.1,
+      "mem_mib_max": 56.8,
+      "samples": 7
+    },
+    "timescaledb": {
+      "cpu_pct_avg": 1.2,
+      "cpu_pct_max": 2.3,
+      "mem_mib_avg": 144.4,
+      "mem_mib_max": 145.4,
+      "samples": 7
+    },
+    "mosquitto": {
+      "cpu_pct_avg": 0.3,
+      "cpu_pct_max": 1.6,
+      "mem_mib_avg": 7.2,
+      "mem_mib_max": 7.5,
+      "samples": 7
+    }
+  },
+  "storage": {
+    "telemetry_rows": 6484,
+    "rows_per_message": 68.3,
+    "growth_mb": 1.4,
+    "bytes_per_row_uncompressed": 217.3,
+    "projection_100_panels": {
+      "messages_per_day": 864000,
+      "rows_per_day": 58970274,
+      "gb_per_day": 12.814702552834053
+    },
+    "projection_1000_panels": {
+      "messages_per_day": 8640000,
+      "rows_per_day": 589702737,
+      "gb_per_day": 128.14702487641702
+    }
+  },
+  "alarms": {
+    "injected": 2,
+    "raised": 2,
+    "raise_latency_ms": {
+      "n": 2,
+      "p50": 339.3,
+      "p95": 398.5,
+      "max": 398.5
+    },
+    "sms_deliveries": 0,
+    "sms_latency_ms": {
+      "n": 0
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "run_id": "20260913T152157-1000p",
+  "config": {
+    "panels": 1000,
+    "period_s": 10.0,
+    "duration_s": 180.0,
+    "points": 25,
+    "connections": 20,
+    "alarm_panels": 5,
+    "probe_panels": 50,
+    "mqtt": "localhost:1883",
+    "api": "http://localhost:8000",
+    "out_dir": "C:\\Users\\ahmet\\Desktop\\git_projeler\\griduphackathon\\loadtest\\results",
+    "seed": 20260913,
+    "keep": false,
+    "run_id": "20260913T152157-1000p"
+  },
+  "clock_offset_ms": -0.1,
+  "publish": {
+    "sent": 18000,
+    "errors": 0,
+    "elapsed_s": 180.0,
+    "rate_msgs_per_s": 100.0,
+    "alarm_panels": [
+      "SIM-00001",
+      "SIM-00002",
+      "SIM-00003",
+      "SIM-00004",
+      "SIM-00005"
+    ]
+  },
+  "ingest": {
+    "written": 18060,
+    "rejected": 0,
+    "dropped": 0,
+    "write_errors": 0,
+    "receive_latency_ms": {
+      "n": 900,
+      "p50": 2.2,
+      "p95": 7.9,
+      "max": 28.9
+    },
+    "visible_latency_ms": {
+      "n": 900,
+      "p50": 390.3,
+      "p95": 693.7,
+      "max": 821.4
+    },
+    "written_per_s": {
+      "n": 27,
+      "p50": 100.8,
+      "p95": 105.0,
+      "max": 105.4
+    }
+  },
+  "resources": {
+    "backend": {
+      "cpu_pct_avg": 20.7,
+      "cpu_pct_max": 37.3,
+      "mem_mib_avg": 77.3,
+      "mem_mib_max": 80.2,
+      "samples": 28
+    },
+    "timescaledb": {
+      "cpu_pct_avg": 10.2,
+      "cpu_pct_max": 18.8,
+      "mem_mib_avg": 805.2,
+      "mem_mib_max": 937.1,
+      "samples": 28
+    },
+    "mosquitto": {
+      "cpu_pct_avg": 1.2,
+      "cpu_pct_max": 2.8,
+      "mem_mib_avg": 7.6,
+      "mem_mib_max": 8.0,
+      "samples": 28
+    }
+  },
+  "storage": {
+    "telemetry_rows": 3402010,
+    "sim_messages_stored": 18000,
+    "rows_per_message": 189.0,
+    "growth_mb": 269.6,
+    "bytes_per_row_uncompressed": 79.2,
+    "projection_100_panels": {
+      "messages_per_day": 864000,
+      "rows_per_day": 163296480,
+      "gb_per_day": 12.940345344
+    },
+    "projection_1000_panels": {
+      "messages_per_day": 8640000,
+      "rows_per_day": 1632964800,
+      "gb_per_day": 129.40345344
+    }
+  },
+  "alarms": {
+    "injected": 5,
+    "raised": 5,
+    "raise_latency_ms": {
+      "n": 5,
+      "p50": 190.4,
+      "p95": 604.1,
+      "max": 604.1
+    },
+    "sms_deliveries": 5,
+    "sms_latency_ms": {
+      "n": 5,
+      "p50": 317.5,
+      "p95": 747.9,
+      "max": 747.9
+    }
+  }
+}
