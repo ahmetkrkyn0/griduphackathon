@@ -1,0 +1,117 @@
+{
+  "run_id": "20260920T112824-3000p",
+  "config": {
+    "panels": 3000,
+    "period_s": 10.0,
+    "duration_s": 120.0,
+    "points": 7,
+    "connections": 20,
+    "alarm_panels": 5,
+    "probe_panels": 50,
+    "mqtt": "localhost:1883",
+    "api": "http://localhost:8000",
+    "out_dir": "C:\\Users\\tuna9\\OneDrive\\Masaüstü\\griduphackathon\\loadtest\\results",
+    "seed": 20260913,
+    "keep": false,
+    "generator": "template",
+    "edge_all": false,
+    "run_id": "20260920T112824-3000p"
+  },
+  "detect_panels": 0,
+  "clock_offset_ms": 0.8,
+  "publish": {
+    "sent": 36000,
+    "errors": 0,
+    "elapsed_s": 120.0,
+    "rate_msgs_per_s": 300.0,
+    "alarm_panels": [
+      "SIM-00001",
+      "SIM-00002",
+      "SIM-00003",
+      "SIM-00004",
+      "SIM-00005"
+    ]
+  },
+  "ingest": {
+    "written": 36042,
+    "rejected": 0,
+    "dropped": 0,
+    "write_errors": 0,
+    "receive_latency_ms": {
+      "n": 600,
+      "p50": 3328.5,
+      "p95": 6962.6,
+      "max": 7351.6
+    },
+    "visible_latency_ms": {
+      "n": 600,
+      "p50": 3695.4,
+      "p95": 7357.2,
+      "max": 7816.4
+    },
+    "written_per_s": {
+      "n": 19,
+      "p50": 270.4,
+      "p95": 346.8,
+      "max": 346.8
+    }
+  },
+  "resources": {
+    "backend": {
+      "cpu_pct_avg": 86.7,
+      "cpu_pct_max": 163.5,
+      "mem_mib_avg": 96.9,
+      "mem_mib_max": 109.1,
+      "samples": 20
+    },
+    "timescaledb": {
+      "cpu_pct_avg": 48.5,
+      "cpu_pct_max": 109.8,
+      "mem_mib_avg": 1608.9,
+      "mem_mib_max": 1772.5,
+      "samples": 20
+    },
+    "mosquitto": {
+      "cpu_pct_avg": 4.3,
+      "cpu_pct_max": 7.3,
+      "mem_mib_avg": 10.6,
+      "mem_mib_max": 13.6,
+      "samples": 20
+    }
+  },
+  "storage": {
+    "telemetry_rows": 2916010,
+    "sim_messages_stored": 36000,
+    "rows_per_message": 81.0,
+    "growth_mb": 245.0,
+    "bytes_per_row_uncompressed": 84.0,
+    "projection_100_panels": {
+      "messages_per_day": 864000,
+      "rows_per_day": 69984240,
+      "gb_per_day": 5.881135104
+    },
+    "projection_1000_panels": {
+      "messages_per_day": 8640000,
+      "rows_per_day": 699842400,
+      "gb_per_day": 58.81135104
+    }
+  },
+  "alarms": {
+    "injected": 5,
+    "code": "ALM-K-ALM",
+    "raised": 5,
+    "raise_latency_ms": {
+      "n": 5,
+      "p50": 5174.3,
+      "p95": 6355.4,
+      "max": 6355.4
+    },
+    "sms_deliveries": 5,
+    "sms_latency_ms": {
+      "n": 5,
+      "p50": 5504.0,
+      "p95": 6800.1,
+      "max": 6800.1
+    }
+  }
+}

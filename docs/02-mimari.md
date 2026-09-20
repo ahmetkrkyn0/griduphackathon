@@ -88,7 +88,7 @@ sequenceDiagram
   IN->>WR: bellek kuyruğu (en çok 50.000)
   Note over WR: parti: 500 mesaj veya 0,5 s
   WR->>DB: tek transaction: COPY telemetry + panel_latest upsert
-  Note over DB: veritabanında görünme p95 657 ms
+  Note over DB: görünme p95 763 ms (20 Eyl, 1.000 pano)
   WR->>AL: dinleyiciler (yazma başarılıysa)
   AL->>AL: risk motoru → ISA-18.2 gözlem
   Note over AL: alarm açılması p95 337 ms (sensör zamanından)

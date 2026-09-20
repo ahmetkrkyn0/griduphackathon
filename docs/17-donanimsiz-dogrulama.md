@@ -126,7 +126,7 @@ Jüri demosu (QModMaster adımları): docs/03 §11.
 
 | Alan | Otomatik test | Mutasyon denetimi | Canlı / ölçüm |
 |---|---|---|---|
-| Ingest, veritabanı, API | ✅ (gerçek TimescaleDB entegrasyon testleri dahil) | — | 1.000 pano: görünme p95 657 ms, kayıp 0 |
+| Ingest, veritabanı, API | ✅ (gerçek TimescaleDB entegrasyon testleri dahil) | — | 1.000 pano: görünme p95 763 ms (20 Eyl; 13 Eyl'de 657 ms ölçülmüştü, `docs/09` §4.1c), kayıp 0 |
 | Alarm yöneticisi + bildirim | ✅ | TB2'de 107 mutasyonun tamamı | P1/P2 SMS, eskalasyon, SMS onayı |
 | Modbus TCP ağ geçidi | 35 + 61 + 9 + 84 = **189** (protokol · ağ geçidi politikası · uygulama · kodlayıcı) | 19/19 · 35/35 · kodlayıcı 28/28 | Modbus = API; GK6 yazma reddi |
 | IEC 60870-5-104 istasyonu | 30 + 24 + 12 + 3 + 5 = **74** (sunucu · kodek · nokta · uygulama · doküman) | 37/37 · 12/12 · 9/9 | IEC 104 = API = Modbus, 0 fark; komut reddi |

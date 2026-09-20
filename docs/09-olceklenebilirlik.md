@@ -7,6 +7,12 @@
 
 ## 1. Özet
 
+> ⚠️ **Aşağıdaki özet tablo 13 Eylül ölçümüdür ve 3.000 panodan itibaren bugün geçerli
+> değildir.** 20 Eylül'de aynı makinede aynı yöntemle yeniden koşuldu: 3.000 panoda
+> görünme p95 704 ms değil **7.357 ms** çıktı, doyma noktası ~9.000 panodan **~2.500'e**
+> indi. Bugünkü ölçümler ve kanıt dosyaları **§4.1b**'de, karşılaştırma ve elenen
+> hipotezler **§4.1c**'dedir. Tablo silinmiyor: 13 Eylül'de gerçekten ölçüldü.
+
 | Filo | Nokta/pano | Mesaj/s | Satır/s | Alım p95 | **Görünme p95** | Alarm → SMS p95 | Backend CPU (ort.) | DB RAM (maks.) | Kayıp |
 |---|---|---|---|---|---|---|---|---|---|
 | 100 pano | 7 | 10 | 810 | 2,8 ms | **657 ms** | 726 ms | 0,04 çekirdek | 177 MiB | 0 |
@@ -18,8 +24,8 @@
 
 - **R9 "en az 100 modül": 10 katı ölçüldü.** 1.000 panoda sensör zamanından veritabanında görünmeye p95 **657 ms** (plan hedefi
   < 2 s), mesaj kaybı **0**, alarm → SMS p95 **606 ms**; backend bir çekirdeğin ortalama **%16**'sını kullandı.
-- **Kapasite sınırı ölçüldü:** tek backend süreci **5.000 panoya** (500 mesaj/s) kadar görünme p95'i 1 saniyenin altında tuttu; **10.000
-  panoda** (1.000 mesaj/s) doydu. Veri kaybı yine yok ama görünme p95 19 s. Darboğaz ölçüldü: mesaj başına 615 µs'lik alım işinin
+- **Kapasite sınırı ölçüldü — ama 20 Eylül'de aşağı indi.** 13 Eylül'de tek backend süreci **5.000 panoya** (500 mesaj/s) kadar görünme p95'i 1 saniyenin altında tuttu ve **10.000
+  panoda** (1.000 mesaj/s) doydu. **20 Eylül ölçümünde doyma 3.000 panoda (300 mesaj/s) başlıyor** (§4.1c). Veri kaybı yine yok ama görünme p95 19 s. Darboğaz ölçüldü: mesaj başına 615 µs'lik alım işinin
   **501 µs'i şema doğrulaması** (§4.4).
 - **Depolama:** TimescaleDB sıkıştırması **46–48 kat** ölçüldü ve şemaya eklendi (`deploy/initdb/005_compression.sql`).
   100 pano × 7 nokta × 10 s: günde **13,9 GB → 0,29 GB**.
@@ -61,15 +67,20 @@ pano için 5 dakika sonra `ALM-COMMS-LOST` üretirdi.
 
 ## 4. Sonuçlar
 
-### 4.1 Gecikme ve kayıp — *elle yazılmış, kanıt dosyası yok*
+### 4.1 Gecikme ve kayıp — *13 Eylül ölçümü; 20 Eylül'de YENİDEN ÜRETİLEMEDİ*
 
-> **Bu tablonun hiçbir satırının kanıt dosyası klonda YOKTUR ve bunu saklamıyoruz.**
-> `loadtest/results/` 20 Eylül'e kadar `.gitignore` ile tamamen dışarıdaydı, yani
-> bu koşumların özet JSON'ları hiçbir zaman sürüm kontrolüne girmedi ve bugün geri
-> üretilemezler. Sayılar ölçülmüştür, ama **depoyu klonlayan biri bunları
-> doğrulayamaz** — okuyucu bize güvenmek zorunda kalır. Kanıt dosyası commit'li
-> olan koşumlar §4.1b'dedir; ikisi bilerek ayrı tutuldu, birleştirmek kanıtlı ile
-> kanıtsızı ayırt edilemez hâle getirirdi.
+> **Bu tablo 20 Eylül'de aynı makinede, aynı yöntemle yeniden koşuldu ve 3.000 panodan
+> itibaren tutmadı.** Sayılar silinmiyor — 13 Eylül'de gerçekten ölçüldüler ve bu
+> belgenin o günkü hâli doğruydu. Ama **bugünkü kod için geçerli değiller.** Bugün
+> ölçülen değerler, kanıt dosyalarıyla birlikte §4.1b'dedir; ikisini karşılaştırmak
+> §4.1c'dedir. Kendi sayımızı kendi ölçümümüzle çürütmek, onu olduğu gibi bırakmaktan
+> iyidir.
+>
+> Ayrıca bu tablonun **hiçbir satırının kanıt dosyası klonda yoktu**: `loadtest/results/`
+> 20 Eylül'e kadar `.gitignore` ile tamamen dışarıdaydı. Bu bir ayrıntı değil, tablonun
+> neden yeniden üretilemediğinin bir parçası — koşumun başlangıç koşulları (özellikle
+> veritabanının o anki büyüklüğü) hiçbir yerde kayıtlı değil, dolayısıyla **§3'teki
+> yöntem tarifi tek başına bu satırları tekrar üretmeye yetmez.**
 
 | Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Reddedilen / düşürülen / yazma hatası |
 |---|---|---|---|---|---|---|
@@ -93,9 +104,15 @@ arasında neredeyse değişmemesi, sistemin bu aralıkta yük altında olmadığ
 > AYNI makinededir**, yani sayılar temkinlidir.
 
 <!-- URETILMIS:kanitli-kosumlar -->
-| Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |
-|---|---|---|---|---|---|---|---|
-| 1.000 | 7 | 180 s | 18.000 | 1,4 / 12,8 / 63,6 ms | 404,5 / 710,5 / 835,9 ms | 0 / 0 / 0 | [`20260919T135916-1000p.json`](../loadtest/results/20260919T135916-1000p.json) |
+| Filo | Nokta | Süre | Mesaj | Üreteç | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |
+|---|---|---|---|---|---|---|---|---|
+| 100 | 7 | 180 s | 1.800 | `template` | 1,7 / 3 / 5,2 ms | 388,6 / 667,8 / 759,6 ms | 0 / 0 / 0 | [`20260920T111907-100p.json`](../loadtest/results/20260920T111907-100p.json) |
+| 1.000 | 7 | 180 s | 18.000 | `physics` | 1,4 / 12,8 / 63,6 ms | 404,5 / 710,5 / 835,9 ms | 0 / 0 / 0 | [`20260919T135916-1000p.json`](../loadtest/results/20260919T135916-1000p.json) |
+| 1.000 | 7 | 300 s | 30.000 | `template` | 1,7 / 13 / 277,9 ms | 385,5 / 763,2 / 2054,5 ms | 0 / 0 / 0 | [`20260920T112254-1000p.json`](../loadtest/results/20260920T112254-1000p.json) |
+| 1.000 | 25 | 180 s | 18.000 | `template` | 5,2 / 37,5 / 163,1 ms | 351 / 754,5 / 967,6 ms | 0 / 0 / 0 | [`20260920T113423-1000p.json`](../loadtest/results/20260920T113423-1000p.json) |
+| 3.000 | 7 | 120 s | 36.000 | `template` | 3328,5 / 6962,6 / 7351,6 ms | 3695,4 / 7357,2 / 7816,4 ms | 0 / 0 / 0 | [`20260920T112824-3000p.json`](../loadtest/results/20260920T112824-3000p.json) |
+| 5.000 | 7 | 120 s | 60.000 | `template` | 36478,4 / 42.460 / 43211,8 ms | 36988,6 / 42851,5 / 43678,7 ms | 0 / 0 / 0 | [`20260920T113800-5000p.json`](../loadtest/results/20260920T113800-5000p.json) |
+| 10.000 | 7 | 120 s | 120.000 | `template` | 39166,1 / 55476,5 / 56095,5 ms | 39702,2 / 55935,5 / 56.751 ms | 0 / 0 / 0 | [`20260920T113058-10000p.json`](../loadtest/results/20260920T113058-10000p.json) |
 <!-- /URETILMIS:kanitli-kosumlar -->
 
 **Veri bütçesi koşumları** (`loadtest/veri_butcesi.py`). "Bastırma", sabit 10 s'lik
@@ -116,6 +133,51 @@ bayttan gelir.
 | ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%5` | 41.843 | %51,6 | 519,9 MB |
 | ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%10` | 33.093 | %61,7 | 411,2 MB |
 <!-- /URETILMIS:veri-butcesi -->
+
+### 4.1c İki ölçümün karşılaştırması — **doyma noktası ~9.000 panodan ~2.500'e indi**
+
+Aynı makine, aynı yöntem, aynı `template` üreteci. Tek fark: **arada geçen bir hafta ve
+`main` birleşmesi.**
+
+| Filo / nokta | Gelen | 13 Eylül görünme p95 | **20 Eylül görünme p95** | Yazıcı p50 | Doydu mu |
+|---|---:|---:|---:|---:|:---:|
+| 100 / 7 | 10 msj/s | 657 ms | **667,8 ms** | 10,1 | hayır |
+| 1.000 / 7 | 100 msj/s | 657 ms | **763,2 ms** | 100,0 | hayır |
+| 1.000 / 25 | 100 msj/s | 694 ms | **754,5 ms** | 99,8 | hayır |
+| 3.000 / 7 | 300 msj/s | 704 ms | **7.357 ms** | 270,4 | **evet** |
+| 5.000 / 7 | 500 msj/s | 769 ms | **42.852 ms** | 251,3 | **evet** |
+| 10.000 / 7 | 1.000 msj/s | 18.941 ms | **55.936 ms** | 219,3 | **evet** |
+
+Tek bir sayı tabloyu açıklıyor: **yazıcı, yükten bağımsız olarak 220–270 mesaj/s'de tavan
+yapıyor.** §4.4'te yayımlanan tavan **918 mesaj/s** idi. 10 saniyelik periyotla bu, doyma
+noktasının ~9.000 panodan **~2.500 panoya** indiği anlamına gelir. Kayıp yine **0**: kuyruk
+taşmayı emiyor, ama gecikme saniyelere çıkıyor — yani sistem veri kaybetmiyor, **geç
+kalıyor**.
+
+**Sebep aranırken üç hipotez ölçümle ELENDİ** (hiçbiri tahmin olarak bırakılmadı):
+
+| Hipotez | Nasıl sınandı | Sonuç |
+|---|---|---|
+| Ingest'e yeni dinleyiciler eklendi (SCADA ağ geçidi, alarm servisi) | `git log -S` ile eklenme tarihleri | **Elendi** — ikisi de 13 Eylül'de, tablonun yazıldığı gün eklenmiş |
+| Veritabanı büyüdüğü için ekleme yavaşladı | 3.000 koşumu ~2 M satır daha büyük veritabanıyla **tekrarlandı** | **Elendi** — yazıcı 270,4 → **274,5** msj/s, CPU %163,5 → %160,8; tavan değişmedi |
+| Telemetri şeması büyüdü, doğrulama pahalılaştı | `wc -l` + `git log` | **Elendi** — şema 12 Eylül'den beri **hiç değişmemiş** (198 satır) |
+
+**Ölçülen tek somut fark** (backend konteynerinin içinde, 7 noktalı 1.745 baytlık eşit
+yükle, 2.000 tekrar):
+
+| Adım | 13 Eylül | **20 Eylül** | Kat |
+|---|---:|---:|---:|
+| `json.loads` | 15 µs | **25 µs** | 1,7 |
+| JSON şema doğrulaması | 501 µs | **941 µs** | **1,88** |
+| Tek thread alım tavanı | ~1.600 msj/s | **~1.035 msj/s** | 0,65 |
+
+**Bunun neden olduğu ÖLÇÜLMEDİ ve uydurulmuyor.** Şema aynı, kod yolu aynı; geriye
+çalışma zamanı ve kütüphane sürümleri kalıyor (bugün konteynerde Python 3.12.14 /
+`jsonschema` 4.23.0), ama 13 Eylül'deki imaj artık elde olmadığı için karşılaştırılamıyor.
+Ayrıca doğrulamanın 1,88 katı, yazıcının 3,4 katlık düşüşünü **tek başına açıklamaz**;
+aradaki farkın GIL paylaşımından mı yoksa yazma yolundan mı geldiği bu teslimde
+ölçülmemiştir. §4.4'teki kaldıraç listesi (derlenmiş doğrulayıcı, paylaşımlı abonelik)
+bu yüzden hâlâ geçerlidir — ve artık yalnızca bir iyileştirme değil, bir **gerekliliktir**.
 
 ### 4.2 Kaynak kullanımı
 
@@ -148,7 +210,13 @@ Alarm açılması görünmeden kısadır: alarm servisi, telemetri partisinin ya
 kadardır; gerçek şebekede operatörün teslim süresi (tipik birkaç saniye) eklenir. Beş alarm iki alıcıya sırayla gittiği için son SMS'ler
 kuyruk bekler: p95, küçük bir **alarm selinin** gecikmesidir.
 
-### 4.4 Kapasite sınırı ve darboğaz
+### 4.4 Kapasite sınırı ve darboğaz — *13 Eylül ölçümü, 20 Eylül'de kısmen geçersizleşti*
+
+> **Aşağıdaki sayılar 13 Eylül'e aittir ve bugün geçerli değildir.** 20 Eylül'de aynı
+> ölçümler tekrarlandı: şema doğrulaması 501 → **941 µs**, tek thread alım tavanı
+> ~1.600 → **~1.035 msj/s**, gerçek doyma ~918 → **~270 msj/s**. Ayrıntı ve elenen
+> hipotezler §4.1c'dedir. Bölüm silinmiyor çünkü **yöntemi** ve kaldıraç listesi hâlâ
+> doğru; geçersizleşen yalnızca sayılardır.
 
 10.000 panoda kayıp yoktur: 50.000'lik kuyruk 120 saniyelik aşırı yükü emdi ve yük bitince boşaldı. Ama alarm gecikmesi 9 saniyeye çıktı.
 Operasyonel açıdan bu, sistemin **doymuş** olduğu anlamına gelir. Alım gecikmesinin de (p95 3,7 s) büyümesi, sorunun veritabanında değil
