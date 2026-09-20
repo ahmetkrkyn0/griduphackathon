@@ -40,7 +40,10 @@ izleme + SCADA entegrasyonu + SMS/WhatsApp alarmı içeren; en az 100 modüle ö
    sorgulanıyor olabilir; mimarimiz üç kurulum senaryosuna (yeni kurulum / dinleme / şeffaf ağ
    geçidi) göre tasarlandı (rapor §6.4a).
 7. **Saydam kapak polikarbonat/cam, uzun dalga kızılötesini (8–14 µm) geçirmez.** Termal kamerayı
-   kapak dışına koyan bir çözüm sahada çalışmaz; sensör kapağın **içinde** olmalı.
+   kapak dışına koyan bir çözüm sahada çalışmaz; sensör kapağın **içinde** olmalı. **Bu gerekçe
+   kapak dışındaki kamerayı çürütür, teknolojinin kendisini değil:** kapak içine konabilecek termal
+   dizinin bu teslimde neden uygulanmadığı ayrıca yazılıdır —
+   [`18-konumlandirma-ve-standart-izi.md`](18-konumlandirma-ve-standart-izi.md) §c.2.
 
 ## Önerilen çözüm (özet)
 
@@ -50,6 +53,13 @@ mevcut MPR-53CS/TVOC-2'nin Modbus'tan okunması. Kenarda **fizik tabanlı** anom
 direnç indeksi + faz karşılaştırma + çiy noktası marjı), merkezde on-prem MQTT + zaman serisi DB +
 ISA-18.2 alarm yönetimi + SMS/WhatsApp + Modbus TCP/IEC 104 SCADA ağ geçidi + operasyon arayüzü.
 1.000 sanal pano ile ölçek kanıtı.
+
+> **Bu listede bilerek olmayanlar.** İzlenen veri türlerinin dışında bıraktığımız iki kalem
+> (**akustik/ultrasonik dinleme** ve **termal görüntü**) ile jürinin deneyemeyeceği bir bildirim
+> kanalı (**WhatsApp** — kodu ve birim testi var, gerçek Meta Cloud API'ye karşı hiç denenmedi;
+> gösterilebilir ikincil kanal **Telegram**'dır) için kapsam kararları, gerekçeleri ve
+> **gerekçelerin sınırları** tek yerdedir:
+> [`18-konumlandirma-ve-standart-izi.md`](18-konumlandirma-ve-standart-izi.md) §(c).
 
 ## Bizi ayıran 5 şey
 

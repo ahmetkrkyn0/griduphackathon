@@ -6,6 +6,7 @@
 |---|---|
 | [`blok-diyagrami.md`](blok-diyagrami.md) | Sistem blok diyagramı (Mermaid), fiziksel yerleşim, güç bütçesi, tasarım gerekçeleri |
 | [`io-tablosu.md`](io-tablosu.md) | 16 pin/arayüzün tam listesi: sinyal, yön, seviye, izolasyon, bağlı blok |
+| [`baglanti-tablosu.md`](baglanti-tablosu.md) | **Net (bağlantı) listesi:** her net için kaynak/hedef işlevsel uçlar, sinyal seviyesi, izolasyon alanı ve sınırı; J1–J10 çapraz referansı; net listesini kurarken ortaya çıkan 10 açık madde; layout öncesi veri sayfası kontrol listesi. **Şematik değildir** — fiziksel pin numarası, footprint, katman yığını ve gerber içermez (gerekçesi dosyanın §0.3'ünde) |
 | [`bom.csv`](bom.csv) | Malzeme listesi, gerçek üretici kodlarıyla, adet 1 ve adet 1.000 birim fiyatları |
 
 ## KiCad şeması hakkında dürüstlük notu
