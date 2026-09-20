@@ -39,9 +39,10 @@
 > `docs/17` §4 tablosu esastır. İki satır özellikle eskidi ve okuyucu yanılmasın diye
 > buraya yazılıyor:
 >
-> - **Frontend "71/71"** → 20 Eylül ölçümü **162/162** (19 dosya, vitest 2.1.9). Aradaki
->   zincir 71 → 85 → 136 → 154 → 162; 154'e kadarki artış K7/7.1 bileşen testlerinden,
->   son sekizi `main` birleşmesiyle gelen iki yeni dosyadan geliyor.
+> - **Frontend "71/71"** → 20 Eylül ölçümü **166/166** (19 dosya, vitest 2.1.9). Aradaki
+>   zincir 71 → 85 → 136 → 154 → 162 → 166; 154'e kadarki artış K7/7.1 bileşen
+>   testlerinden, sonraki sekizi `main` birleşmesiyle gelen iki yeni dosyadan, son
+>   dördü `theme.test.ts`'e eklenen **ezen palet** testlerinden geliyor.
 > - **"Arayüz gerçek API ile · 7 ekran, 0 konsol hatası / uyarısı"** → o gün **doğruydu ama
 >   tezgâhı depoda yoktu**, yani bir iddiaydı. 19 Eylül'de tezgâh eklendi
 >   (`frontend/playwright.config.ts` + `frontend/e2e/smoke.spec.ts`) ve **ölçüm bir kusur

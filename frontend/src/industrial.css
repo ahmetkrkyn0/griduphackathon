@@ -7,7 +7,11 @@
   --surface: #fff;
   --well: #f3f6fa;
   --ink: #182c44;
-  --dim: #61738a;
+  /* 20 Eylul: #61738a IDI ve olculen 83 WCAG AA ihlalinin 69'unu tek basina
+     uretiyordu — her biri 3,71-4,47 araliginda, yani 4,5 esiginin hemen altinda.
+     #58687d ayni tonun daha koyusu: bu kabukta gercekten kullanilan ALTI zeminin
+     hepsinde >= 4,62 (en dar yer #e4e8ec). Olculdu, tahmin edilmedi. */
+  --dim: #58687d;
   --line: #dbe3ed;
   --radius: 5px;
   --radius-sm: 3px;
@@ -62,7 +66,8 @@ body {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 1.7px;
-  color: #687e97;
+  /* #687e97 -> 3,71:1 idi (AA alti). Ayni ton, koyulastirildi: 4,66:1. */
+  color: #5b6e84;
   margin-bottom: 8px;
 }
 .app-shell .metric-strip {
@@ -163,12 +168,12 @@ body {
 .analysis-readouts small {
   font-size: 13px;
   font-weight: 400;
-  color: #61738a;
+  color: var(--dim);
   margin-left: 8px;
 }
 .analysis-readouts p {
   font-size: 12px;
-  color: #61738a;
+  color: var(--dim);
   margin: 3px 0 0;
 }
 .analysis-mode-bar {
@@ -488,9 +493,15 @@ body {
 .app-shell .console-filters button[aria-pressed="true"],
 .app-shell .chart-range button[aria-pressed="true"],
 .surface-mode button[aria-pressed="true"] {
+  /* --brand (#ff671e) uzerinde BEYAZ metin 2,91:1 verir ve 9 AA ihlali uretiyordu.
+     Ilk denemede zemini --brand-deep'e tasidim; e2e/industrial.spec.ts:84 onu
+     DUSURDU, cunku o test marka turuncusunu (rgb(255,103,30)) BILEREK kilitliyor.
+     Test hakliydi: duzeltilmesi gereken sey marka rengi degil, uzerindeki metin.
+     --ink (#182c44) ayni turuncu uzerinde 4,86:1 verir. Marka rengi bir piksel
+     bile degismedi, kontrast AA'yi geciyor, tasarim kilidi yerinde kaliyor. */
   background: var(--brand);
   border-color: var(--brand);
-  color: #fff;
+  color: var(--ink);
   box-shadow: none;
 }
 .app-shell .analytics-page .console-filters {

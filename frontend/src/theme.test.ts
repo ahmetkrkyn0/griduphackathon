@@ -103,3 +103,62 @@ describe("theme.css kontrast — olculen, yazilan degil", () => {
     expect(oran(token("ink"), token("p3"))).toBeLessThan(AA_GOVDE);
   });
 });
+
+/**
+ * EZEN PALET — yukaridaki testlerin KOR NOKTASI, 20 Eylul'de olculerek bulundu.
+ *
+ * Yukaridaki blok `theme.css`'i okur ve "--dim #65717d, ikincil metin 4,61:1"
+ * der. AMA sanayi kabugu `industrial.css` ayni degiskenleri KENDI :root blogunda
+ * yeniden tanimlar ve sonra yuklendigi icin EKRANDA KAZANAN odur. main
+ * birlesmesiyle (c6b5dcd) gelen surum --dim'i #61738a yapmisti; theme.test.ts
+ * hala yesildi, cunku ezen dosyaya hic bakmiyordu. Ayni gun axe ile olculen
+ * sonuc: 83 WCAG AA ihlali, 69'u dogrudan bu tek token'dan.
+ *
+ * Ders: bir token'i kilitlemek, o token'in EKRANDA gecerli oldugunu kanitlamaz.
+ * Asagidaki testler ezen paleti de ayni formulle olcer, boylece bir daha sessiz
+ * gecemez.
+ */
+const industrialCss = readFileSync(new URL("./industrial.css", import.meta.url), "utf8");
+
+function ezenToken(ad: string): string {
+  const m = industrialCss.match(new RegExp(`--${ad}:\s*([^;]+);`));
+  if (!m) throw new Error(`industrial.css icinde --${ad} bulunamadi`);
+  return m[1].trim();
+}
+
+describe("industrial.css ezen paleti — ekranda GERCEKTEN kazanan degerler", () => {
+  it("ezme gercekten var (varsayim degil): --bg, --ink, --dim uc dosyada da farkli", () => {
+    // Bu test, ezmenin kendisini kayit altina alir. Ezme bir gun kaldirilirsa
+    // test duser ve asagidaki testlerin varlik sebebi yeniden dusunulur.
+    expect(ezenToken("bg")).not.toBe(token("bg"));
+    expect(ezenToken("ink")).not.toBe(token("ink"));
+    expect(ezenToken("dim")).not.toBe(token("dim"));
+  });
+
+  it("ezen govde metni (--ink / --bg) 12,59:1 — theme.css'in 13,33'u DEGIL", () => {
+    // README ve docs/16 uzun sure 13,33 diyordu; o sayi theme.css ciftinindir ve
+    // sanayi kabugunda ekranda hic gorunmez. Olculen gercek burasi.
+    expect(oran(ezenToken("ink"), ezenToken("bg"))).toBeCloseTo(12.59, 2);
+  });
+
+  it("ezen ikincil metin (--dim) kabuktaki HER zeminde AA'yi geciyor", () => {
+    // Zeminler uydurulmadi: 20 Eylul axe kosumunda bu kabukta gercekten olculen
+    // alti zemin bunlardir. En dar yer #e4e8ec'tir; #61738a orada 3,94 veriyordu.
+    const zeminler = ["#eef2f6", "#f3f6fa", "#f3f5f7", "#e4e8ec", "#fdf3f2", "#ffffff"];
+    for (const zemin of zeminler) {
+      expect(oran(ezenToken("dim"), zemin), `--dim / ${zemin}`).toBeGreaterThanOrEqual(AA_GOVDE);
+    }
+  });
+
+  it("aria-pressed dugmeler: marka turuncusu uzerinde BEYAZ degil --ink metin", () => {
+    // --brand (#ff671e) uzerinde beyaz 2,91:1 verir ve 9 AA ihlali uretiyordu.
+    // Ilk duzeltme denemesi zemini --brand-deep yapmakti; e2e/industrial.spec.ts:84
+    // onu DUSURDU, cunku o test marka turuncusunu (rgb(255,103,30)) BILEREK
+    // kilitliyor. Test hakliydi: duzeltilecek sey marka rengi degil uzerindeki
+    // metindi. --ink ayni turuncu uzerinde 4,86:1 verir. Marka rengi bir piksel
+    // bile degismedi. Bu test her iki karari da kilitler: beyaz YETERSIZ, --ink YETERLI.
+    expect(oran("#ffffff", token("brand"))).toBeLessThan(AA_GOVDE);
+    expect(oran(ezenToken("ink"), token("brand"))).toBeGreaterThanOrEqual(AA_GOVDE);
+    expect(industrialCss).toMatch(/aria-pressed="true"\][\s\S]{0,700}?color: var\(--ink\)/);
+  });
+});
