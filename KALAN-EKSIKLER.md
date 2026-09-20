@@ -39,8 +39,9 @@
 > `docs/17` §4 tablosu esastır. İki satır özellikle eskidi ve okuyucu yanılmasın diye
 > buraya yazılıyor:
 >
-> - **Frontend "71/71"** → 19 Eylül ölçümü **154/154** (17 dosya, vitest 2.1.9). Aradaki
->   zincir 71 → 85 → 136 → 154; son artış K7/7.1 bileşen testlerinden geliyor.
+> - **Frontend "71/71"** → 20 Eylül ölçümü **162/162** (19 dosya, vitest 2.1.9). Aradaki
+>   zincir 71 → 85 → 136 → 154 → 162; 154'e kadarki artış K7/7.1 bileşen testlerinden,
+>   son sekizi `main` birleşmesiyle gelen iki yeni dosyadan geliyor.
 > - **"Arayüz gerçek API ile · 7 ekran, 0 konsol hatası / uyarısı"** → o gün **doğruydu ama
 >   tezgâhı depoda yoktu**, yani bir iddiaydı. 19 Eylül'de tezgâh eklendi
 >   (`frontend/playwright.config.ts` + `frontend/e2e/smoke.spec.ts`) ve **ölçüm bir kusur
@@ -174,7 +175,8 @@ Her dal kendi içinde doğruydu; `main`'de artık yanlış olan ifadeler:
 - [ ] **A kanıtları** (hepsi ölçülmüş, dosyaları `main`'de):
   - 331 Python testi; 5 C testi hem `double` hem `float` derlemede.
   - C↔Python farkı K 1,36e-8 / τ 1,42e-8, eşik 1e-6 (`firmware/akis-diyagramlari/ana-dongu.md`).
-  - S1'de K/K₀ 1,6 eşiği 70 K'dan **209 saat** önce aşılıyor (kriter 48 saat).
+  - S1'de K/K₀ 1,6 eşiği 70 K'dan **172,5 saat** önce aşılıyor (kriter 48 saat). İlk L1
+    kodu dahil edildiğinde 209 saat görünür, ama onu `ALM-TTL-14D` (prognoz) tetikler.
   - Recall 1,00 tüm senaryolarda; S0 yanlış alarm 71,4/100 pano/gün (sınır 150).
   - `docs/12` betikle birebir yeniden üretilebiliyor.
   - MPR-53CS CT = 500 ve L1 dönüşümü.

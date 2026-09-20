@@ -9,8 +9,9 @@ her eşiğin sözleşme karşılığı verilmiştir. Ölçülen sonuçlar [12-do
 
 Sabit bir sıcaklık eşiği, arızayı ancak hasar oluştuktan sonra görür. Biz sıcaklığı
 **akıma göre normalize ederek** bağlantının fiziksel sağlığını (ısıl direnç indeksi K)
-ölçüyoruz; K bozulmaya çok daha erken tepki verir. Ölçülen fark: aynı veride
-**209 saat (8,7 gün)** önce uyarı.
+ölçüyoruz; K bozulmaya çok daha erken tepki verir. Ölçülen fark: aynı veride yalnızca
+K/K₀ eşiğiyle **172,5 saat** önce uyarı. (İlk L1 kodu dahil edildiğinde **209 saat**
+görünür, ama o sayıyı `ALM-TTL-14D` yani **prognoz** tetikler — §10'a bakınız.)
 
 ## 1. Neden sabit eşik yetmiyor
 
@@ -310,7 +311,7 @@ Sonuçlar: [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md).
   **L1**'dir. `S1_loose_conn`'da ilk çıkan L1 kodu `ALM-TTL-14D`'dir (13 Tem 22:15);
   K indeksi eşiği (`ALM-K-WARN`) **41 saat sonra** uyarır (15 Tem 10:45). Yani 209 saat,
   geri testi aynı dosyada yapılıp **zayıf bulunan** bir tahminden gelir; yalnızca K/K₀
-  eşiğine dayanan öne alma daha kısadır (ölçülen ~172 saat). `S2_overload`'daki 1,2 saati
+  eşiğine dayanan öne alma daha kısadır (ölçülen **172,5 saat**). `S2_overload`'daki 1,2 saati
   tetikleyen kod ise `ALM-DEW-*`'dır, yani ısıl tespit değil çiy kuralı.
   [docs/12](12-dogrulama-sonuclari.md) §2 artık **tetikleyen kodu ayrı bir sütunda**
   basar, böylece sayı bir daha yanlış okunamaz. Eşik tanımı **değiştirilmedi**: değiştirmek

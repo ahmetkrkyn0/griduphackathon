@@ -198,7 +198,7 @@ eşik meselesi değildir; **örnekleme çözünürlüğünün sınırıdır ve a
 
 | Olay sınıfı | Gördüğümüz | Görmediğimiz |
 |---|---|---|
-| Gevşek/oksitlenmiş bağlantı ısınması (yavaş) | Isıl direnç indeksi K/K₀; ölçüldü: S1'de sabit 70 K eşiğinden **209,0 saat (8,7 gün)** önce uyarı (docs/12 §2) | **Ne zaman biteceğini güvenilir söyleyemiyoruz.** `ttl_h` geri testi S1'de: 790 tahminin yalnızca **%5,2'si** ±%20 konisinde, **prognostic horizon yok**, ihlale 48 saatten az kala koni içi oran **%0**, CRA **−5,12** (docs/12 §4, docs/05 §10). 209 saat **tespit** katmanındandır, tahmin değildir |
+| Gevşek/oksitlenmiş bağlantı ısınması (yavaş) | Isıl direnç indeksi K/K₀; ölçüldü: S1'de sabit 70 K eşiğinden **209,0 saat (8,7 gün)** önce uyarı (docs/12 §2) | **Ne zaman biteceğini güvenilir söyleyemiyoruz.** `ttl_h` geri testi S1'de: 790 tahminin yalnızca **%5,2'si** ±%20 konisinde, **prognostic horizon yok**, ihlale 48 saatten az kala koni içi oran **%0**, CRA **−5,12** (docs/12 §4, docs/05 §10). 209 saati tetikleyen kod `ALM-TTL-14D`'dir, yani **prognozdur**; yalnızca K/K₀ eşiğine dayanan öne alma **172,5 saattir** (`docs/12` §2 tetikleyen kodu ayrı sütunda basar) |
 | Aşırı yük | Görülüyor, ama öne alma yalnızca **1,2 saat** (docs/12 §2) — üstünlük iddiası yok | Kalan ömür kestirimi yok: S2'de `ttl_h` **hiç tahmin üretmedi** (0 tahmin, docs/12 §4) |
 | Yoğuşma / yüzeysel kaçak | Çiy noktası marjı eşikleri (docs/05 §6, §11) | — |
 | Ark parlaması (arc flash) | TVOC-2 **kendi optik dedektörüyle** tripledikten **sonra** `ALM-ARC-TRIP` (P1, L0) — bu bir **rapordur, tespit değil** | Ark oluşmadan önceki imza |
@@ -207,7 +207,7 @@ eşik meselesi değildir; **örnekleme çözünürlüğünün sınırıdır ve a
 
 Bu kayıt yeni değil, **birleştirilmiş** bir kayıttır: [05-anomali-tespiti.md](05-anomali-tespiti.md)
 §10 algoritmanın bilinen sınırlarını, [12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §4.3
-prognozun dürüstlük kayıtlarını (n = 1, güven aralığı yok, S8'de 99 tahminlik prognoz yanlış-alarmı)
+prognozun dürüstlük kayıtlarını (n = 1, güven aralığı yok, S8'de 183 tahminlik prognoz yanlış-alarmı)
 zaten açık tutuyor. Aradaki fark şudur: oradakiler **algoritmanın** sınırlarıydı, buradaki
 **donanım ve veri mimarisinin** sınırıdır.
 
