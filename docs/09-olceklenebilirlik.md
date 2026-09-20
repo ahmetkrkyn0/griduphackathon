@@ -2,7 +2,9 @@
 
 > **Sahip:** Kişi B · **Ölçüm tarihi:** 13 Eylül 2026 (§6.1 veri bütçesi: **18 Eylül 2026**) ·
 > **Araçlar:** `loadtest/fleet.py` (yük), `loadtest/storage.py` (depolama), `loadtest/veri_butcesi.py` (uyarlanabilir raporlama, §6.1)
-> **Ham sonuçlar:** `loadtest/results/*.json` (git dışı; bu dokümandaki her sayı oradan alındı) ·
+> **Ham sonuçlar:** `loadtest/results/*.json` — §4.1b'deki koşumların eserleri **commit'lidir**;
+> §1 ve §3'teki 13 Eylül koşumlarının eserleri **depoda yoktur** (o koşumun düzeneği §2'de
+> düzyazı olarak kayıtlıdır) ·
 > **Grafana:** "Grid Up — Ölçek ve yük testi" (koşu seçilerek) ve "Grid Up — Alarm KPI" · Rapor karşılığı: §6.8
 
 ## 1. Özet
@@ -100,12 +102,16 @@ arasında neredeyse değişmemesi, sistemin bu aralıkta yük altında olmadığ
 > `loadtest/results/` altındaki **commit'li** JSON eserlerinden üretir;
 > `python scripts/gen_olcek_doc.py --check` güncel değilse 1 ile çıkar. Yeni bir
 > koşumun eseri commit'lenince satır kendiliğinden belirir, eser silinirse satır
-> kaybolur. **Her eser artık koştuğu makineyi kendi içinde taşır** (`makine` bloğu:
-> mantıksal CPU, Docker'ın gördüğü CPU/bellek, sürüm) — §3'teki düzenek tablosuna
-> güvenmek zorunda değilsiniz, eseri açıp bakın. Aşağıdaki 20 Eylül koşumları
-> **i5-11300H / 8 iş parçacıklı** bir makinede alınmıştır, §3'teki i7-14700KF / 28 iş
-> parçacıklı düzenekte değil (§4.1c). Yük üreteci ölçülen sistemle **aynı makinededir**,
-> yani sayılar temkinlidir.
+> kaybolur.
+>
+> **Makine bilgisi — dürüstlük kaydı.** `loadtest/fleet.py` artık her esere bir `makine`
+> bloğu yazar (işlemci, mantıksal CPU, Docker'ın gördüğü CPU/bellek/sürüm; okunamayan alan
+> `null` bırakılır, tahmin edilmez). **Ama aşağıdaki tabloda listelenen eserlerin hiçbiri
+> bu bloğu taşımaz** — hepsi bu değişiklikten önce üretildi. Onlar için düzenek yalnızca bu
+> düzyazıda kayıtlıdır: **20 Eylül koşumları i5-11300H / 8 iş parçacıklı** bir makinede
+> alınmıştır, §3'teki i7-14700KF / 28 iş parçacıklı düzenekte değil (§4.1c). Blok, bundan
+> sonra commit'lenecek eserlerde bulunacaktır. Yük üreteci ölçülen sistemle **aynı
+> makinededir**, yani sayılar temkinlidir.
 
 <!-- URETILMIS:kanitli-kosumlar -->
 | Filo | Nokta | Süre | Mesaj | Üreteç | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |

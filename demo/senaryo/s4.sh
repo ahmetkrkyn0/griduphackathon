@@ -16,7 +16,7 @@ if ! senaryo_oynat "S4_arc" "$PANO_ID" "$SURE"; then
 fi
 
 echo
-echo "İzleyin: $FRONTEND_BASE/alarmlar → P1 kartı; telefonda gerçek SMS/WhatsApp (bkz. deploy/runtime/sms-log.txt)"
+echo "İzleyin: $FRONTEND_BASE/alarmlar → P1 kartı; SMS sanal modeme düşer (gerçek donanım değil): deploy/runtime/sms-log.txt"
 echo "Kara kutu: $FRONTEND_BASE/olay → olay öncesi 72 saatlik sinyaller + zaman çizelgesi"
 echo "Cihaz tarafı: aynı tripi Modbus düzeyinde de göstermek için"
 echo "  docker compose -f '$COMPOSE_FILE' run --rm -p 5021:5021 tvoc-sim python tvoc2_sim.py --slave-id 10 --trip-after 20"
