@@ -15,6 +15,8 @@ if ! senaryo_oynat "S4_arc" "$PANO_ID" "$SURE"; then
   exit 2
 fi
 
+backend_alarm_dokumu "$PANO_ID"
+
 echo
 echo "İzleyin: $FRONTEND_BASE/alarmlar → P1 kartı; SMS sanal modeme düşer (gerçek donanım değil): deploy/runtime/sms-log.txt"
 echo "Kara kutu: $FRONTEND_BASE/olay → olay öncesi 72 saatlik sinyaller + zaman çizelgesi"

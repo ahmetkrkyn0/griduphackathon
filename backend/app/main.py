@@ -341,6 +341,12 @@ def _configure_logging() -> None:
             level=os.getenv("LOG_LEVEL", "INFO").upper(),
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         )
+    # httpx INFO seviyesinde ISTEK URL'SININ TAMAMINI basar. Telegram Bot API'de
+    # belirtec URL yolunun icindedir (.../bot<BELIRTEC>/sendMessage), yani her
+    # bildirim `docker logs` ciktisina bot belirtecini dusururdu. 20 Eylul'de
+    # canli kosumda olculdu. Kendi gridup.notify.telegram logumuz yalnizca
+    # chat_id ve msg_id basar, bu yuzden susturmanin bilgi maliyeti yok.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def _panel_update_publisher(

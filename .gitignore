@@ -1,9 +1,20 @@
 # --- Sirlar (PLAN.md GK9) ---
 .env
 deploy/.env
+# Yedek/varyant .env'ler de sirdir: "deploy/.env" TAM eslesmedir, .env.yedek gibi
+# bir kopyayi yakalamaz ve `git add .` onu sessizce commit ederdi. 20 Eylul'de
+# PORTAL_URL duzeltilirken alinan yedekte olculdu. Ornek dosya muaf.
+deploy/.env.*
+!deploy/.env.example
 *.pem
 *.key
 secrets/
+# --- Ucuncu parti agent skill'leri ---
+# `npx skills add` skill'i PROJE dizinine kurar (.agents/skills/, 17 MB mp3/ogg
+# varliklariyla) ve gitignore'a kendisi eklemez. Deponun parcasi degil, gelistirici
+# araci: klonlayan herkes kendi kurar. 20 Eylul'de brag kurulurken fark edildi.
+.agents/
+skills-lock.json
 # NOT: *.key Apple Keynote sunumlarini da yutar; sunumu .pdf/.pptx olarak koyun.
 
 # --- F-27 mTLS: yerel sertifika otoritesi materyali ---
