@@ -7,11 +7,11 @@
 
 ## 1. Özet
 
-> ⚠️ **Aşağıdaki özet tablo 13 Eylül ölçümüdür ve 3.000 panodan itibaren bugün geçerli
-> değildir.** 20 Eylül'de aynı makinede aynı yöntemle yeniden koşuldu: 3.000 panoda
-> görünme p95 704 ms değil **7.357 ms** çıktı, doyma noktası ~9.000 panodan **~2.500'e**
-> indi. Bugünkü ölçümler ve kanıt dosyaları **§4.1b**'de, karşılaştırma ve elenen
-> hipotezler **§4.1c**'dedir. Tablo silinmiyor: 13 Eylül'de gerçekten ölçüldü.
+> ℹ️ **Bu özet tablo 13 Eylül ölçümüdür ve §3'teki düzeneğe (i7-14700KF, 28 iş parçacığı)
+> bağlıdır.** 20 Eylül'de daha küçük bir makinede (i5-11300H, 8 iş parçacığı) tekrarlandı:
+> **doymamış rejimde sayılar birebir tuttu** (1.000 panoda görünme p50 385 → 385,5 ms),
+> doyma noktası ise çekirdek sayısıyla orantılı olarak öne geldi. Kanıt dosyalı bugünkü
+> ölçümler **§4.1b**'de, karşılaştırma **§4.1c**'dedir.
 
 | Filo | Nokta/pano | Mesaj/s | Satır/s | Alım p95 | **Görünme p95** | Alarm → SMS p95 | Backend CPU (ort.) | DB RAM (maks.) | Kayıp |
 |---|---|---|---|---|---|---|---|---|---|
@@ -24,8 +24,8 @@
 
 - **R9 "en az 100 modül": 10 katı ölçüldü.** 1.000 panoda sensör zamanından veritabanında görünmeye p95 **657 ms** (plan hedefi
   < 2 s), mesaj kaybı **0**, alarm → SMS p95 **606 ms**; backend bir çekirdeğin ortalama **%16**'sını kullandı.
-- **Kapasite sınırı ölçüldü — ama 20 Eylül'de aşağı indi.** 13 Eylül'de tek backend süreci **5.000 panoya** (500 mesaj/s) kadar görünme p95'i 1 saniyenin altında tuttu ve **10.000
-  panoda** (1.000 mesaj/s) doydu. **20 Eylül ölçümünde doyma 3.000 panoda (300 mesaj/s) başlıyor** (§4.1c). Veri kaybı yine yok ama görünme p95 19 s. Darboğaz ölçüldü: mesaj başına 615 µs'lik alım işinin
+- **Kapasite sınırı ölçüldü ve DÜZENEĞE BAĞLIDIR.** 13 Eylül'de (28 iş parçacığı) tek backend süreci **5.000 panoya** (500 mesaj/s) kadar görünme p95'i 1 saniyenin altında tuttu ve **10.000
+  panoda** (1.000 mesaj/s) doydu. 20 Eylül'de **8 iş parçacıklı** bir makinede aynı sınır 3.000 ile 5.000 pano arasına indi (§4.1c) — oran, çekirdek oranıyla uyumludur. Veri kaybı yine yok ama görünme p95 19 s. Darboğaz ölçüldü: mesaj başına 615 µs'lik alım işinin
   **501 µs'i şema doğrulaması** (§4.4).
 - **Depolama:** TimescaleDB sıkıştırması **46–48 kat** ölçüldü ve şemaya eklendi (`deploy/initdb/005_compression.sql`).
   100 pano × 7 nokta × 10 s: günde **13,9 GB → 0,29 GB**.
@@ -67,20 +67,20 @@ pano için 5 dakika sonra `ALM-COMMS-LOST` üretirdi.
 
 ## 4. Sonuçlar
 
-### 4.1 Gecikme ve kayıp — *13 Eylül ölçümü; 20 Eylül'de YENİDEN ÜRETİLEMEDİ*
+### 4.1 Gecikme ve kayıp — *13 Eylül ölçümü, §3'teki düzenekte*
 
-> **Bu tablo 20 Eylül'de aynı makinede, aynı yöntemle yeniden koşuldu ve 3.000 panodan
-> itibaren tutmadı.** Sayılar silinmiyor — 13 Eylül'de gerçekten ölçüldüler ve bu
-> belgenin o günkü hâli doğruydu. Ama **bugünkü kod için geçerli değiller.** Bugün
-> ölçülen değerler, kanıt dosyalarıyla birlikte §4.1b'dedir; ikisini karşılaştırmak
-> §4.1c'dedir. Kendi sayımızı kendi ölçümümüzle çürütmek, onu olduğu gibi bırakmaktan
-> iyidir.
+> **Bu tablo 20 Eylül'de yeniden koşuldu — ama §3'teki makinede DEĞİL** (i7-14700KF /
+> 28 iş parçacığı yerine i5-11300H / 8 iş parçacığı). Doymamış rejimde (≤1.000 pano)
+> sayılar **birebir tuttu**; doyma noktası ise mevcut çekirdek sayısıyla orantılı olarak
+> daha erken geldi. Yani bu tablo **geçerlidir ve kendi düzeneğine bağlıdır.** Bugünkü
+> ölçümler ve kanıt dosyaları §4.1b'de, iki koşumun karşılaştırması ve bir önceki
+> sürümde yapılan **iki hatanın düzeltmesi** §4.1c'dedir.
 >
 > Ayrıca bu tablonun **hiçbir satırının kanıt dosyası klonda yoktu**: `loadtest/results/`
-> 20 Eylül'e kadar `.gitignore` ile tamamen dışarıdaydı. Bu bir ayrıntı değil, tablonun
-> neden yeniden üretilemediğinin bir parçası — koşumun başlangıç koşulları (özellikle
-> veritabanının o anki büyüklüğü) hiçbir yerde kayıtlı değil, dolayısıyla **§3'teki
-> yöntem tarifi tek başına bu satırları tekrar üretmeye yetmez.**
+> 20 Eylül'e kadar `.gitignore` ile tamamen dışarıdaydı, ve eser **koşum makinesini
+> kaydetmiyordu**. İkisi birden, 20 Eylül'de bu tablonun farklı bir donanımda koşulup
+> "gerileme" diye okunmasına yol açtı (§4.1c). Her ikisi de kapatıldı: eserler commit'li,
+> eser artık `makine` bloğunu taşıyor.
 
 | Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Reddedilen / düşürülen / yazma hatası |
 |---|---|---|---|---|---|---|
@@ -100,8 +100,12 @@ arasında neredeyse değişmemesi, sistemin bu aralıkta yük altında olmadığ
 > `loadtest/results/` altındaki **commit'li** JSON eserlerinden üretir;
 > `python scripts/gen_olcek_doc.py --check` güncel değilse 1 ile çıkar. Yeni bir
 > koşumun eseri commit'lenince satır kendiliğinden belirir, eser silinirse satır
-> kaybolur. Koşum makinesi ve koşulları §3'tedir; **yük üreteci ölçülen sistemle
-> AYNI makinededir**, yani sayılar temkinlidir.
+> kaybolur. **Her eser artık koştuğu makineyi kendi içinde taşır** (`makine` bloğu:
+> mantıksal CPU, Docker'ın gördüğü CPU/bellek, sürüm) — §3'teki düzenek tablosuna
+> güvenmek zorunda değilsiniz, eseri açıp bakın. Aşağıdaki 20 Eylül koşumları
+> **i5-11300H / 8 iş parçacıklı** bir makinede alınmıştır, §3'teki i7-14700KF / 28 iş
+> parçacıklı düzenekte değil (§4.1c). Yük üreteci ölçülen sistemle **aynı makinededir**,
+> yani sayılar temkinlidir.
 
 <!-- URETILMIS:kanitli-kosumlar -->
 | Filo | Nokta | Süre | Mesaj | Üreteç | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |
@@ -134,80 +138,96 @@ bayttan gelir.
 | ↳ | 48 sa | 5 | 25 | `uyarlanabilir-%10` | 33.093 | %61,7 | 411,2 MB |
 <!-- /URETILMIS:veri-butcesi -->
 
-### 4.1c İki ölçümün karşılaştırması — **doyma noktası ~9.000 panodan ~2.500'e indi**
+### 4.1c İki ölçümün karşılaştırması — **farklı makine, gerileme YOK**
 
-Aynı makine, aynı yöntem, aynı `template` üreteci. Tek fark: **arada geçen bir hafta ve
-`main` birleşmesi.**
+> **ÖNCEKİ SÜRÜMÜN ANA İDDİASI GERİ ÇEKİLDİ.** Bu bölümün 20 Eylül'deki ilk hâli
+> *"aynı makinede aynı yöntemle koşuldu, yazıcı 918'den 270 mesaj/s'ye düştü, doyma
+> noktası ~9.000 panodan ~2.500'e indi"* diyordu. **İkisi de yanlıştı.** Yanlışın nasıl
+> bulunduğu ve doğrusu aşağıdadır; cümleler silinmiyor, çünkü bu belgenin kuralı
+> düzeltilen hatayı da göstermektir.
 
-| Filo / nokta | Gelen | 13 Eylül görünme p95 | **20 Eylül görünme p95** | Yazıcı p50 | Doydu mu |
-|---|---:|---:|---:|---:|:---:|
-| 100 / 7 | 10 msj/s | 657 ms | **667,8 ms** | 10,1 | hayır |
-| 1.000 / 7 | 100 msj/s | 657 ms | **763,2 ms** | 100,0 | hayır |
-| 1.000 / 25 | 100 msj/s | 694 ms | **754,5 ms** | 99,8 | hayır |
-| 3.000 / 7 | 300 msj/s | 704 ms | **7.357 ms** | 270,4 | **evet** |
-| 5.000 / 7 | 500 msj/s | 769 ms | **42.852 ms** | 251,3 | **evet** |
-| 10.000 / 7 | 1.000 msj/s | 18.941 ms | **55.936 ms** | 219,3 | **evet** |
+#### Yanlış ①: iki ölçüm aynı makinede yapılmadı
 
-Tek bir sayı tabloyu açıklıyor: **yazıcı, yükten bağımsız olarak 220–270 mesaj/s'de tavan
-yapıyor.** §4.4'te yayımlanan tavan **918 mesaj/s** idi. 10 saniyelik periyotla bu, doyma
-noktasının ~9.000 panodan **~2.500 panoya** indiği anlamına gelir. Kayıp yine **0**: kuyruk
-taşmayı emiyor, ama gecikme saniyelere çıkıyor — yani sistem veri kaybetmiyor, **geç
-kalıyor**.
+§3'teki düzenek tablosu **i7-14700KF (20 çekirdek / 28 iş parçacığı), 31,8 GB**, Docker
+Desktop WSL2 **28 vCPU / 15,5 GiB** diyor. 20 Eylül koşumları o makinede **yapılmadı**;
+ölçüldü:
 
-#### Bileşenler tek tek ölçüldü — ve toplamları tutmuyor
+| | §3'te yazan (13 Eylül) | **20 Eylül koşumlarının makinesi** |
+|---|---|---|
+| İşlemci | i7-14700KF · 20 çekirdek / **28 iş parçacığı** | i5-11300H · 4 çekirdek / **8 iş parçacığı** |
+| RAM | 31,8 GB | 15,8 GB |
+| Docker | 28 vCPU / 15,5 GiB | **8 CPU / 7,63 GiB** |
 
-`loadtest/ingest_maliyeti.py` (20 Eylül'de yazıldı) mesaj başına maliyeti backend
-konteynerinin **kendi çalışma zamanında** ölçer. Kanıt dosyası:
-[`ingest-maliyeti-20260920.json`](../loadtest/results/ingest-maliyeti-20260920.json).
+**28 → 8 iş parçacığı = 3,5 kat.** Ölçülen doyma kayması da ~3,5 kat. `docs/09` §3
+yük üretecinin **aynı makinede** koştuğunu ve "CPU'da yığınla yarışır" olduğunu zaten
+yazıyor; 8 mantıksal CPU'da o yarışa 9 konteyner + `fleet.py` + backend'in üç thread'i
+birden giriyor.
 
-| Bileşen | Mesaj başına | Tek başına tavan |
+Bu, değerlendirmenin kendi kuralının ihlaliydi: §3'te yazan düzenek **doğrulanmadan**
+"aynı makine" diye kabul edildi. Bir sayıyı üreten koşulu okumak, onu ölçmek değildir.
+
+#### Yanlış ②: `written_per_s.p50` bir tavan değildir
+
+"Yazıcı 270 mesaj/s'de tavan yapıyor" cümlesi, `ingest.written_per_s.p50` alanının
+yanlış okunmasıydı. Aynı eserdeki toplamlar bunu çürütüyor:
+
+| Koşum | Gelen | **Ortalama yazılan** | `written_per_s` p50 | p95 | Düşürülen |
+|---|---:|---:|---:|---:|---:|
+| 100 / 7 | 10,0 | **10,3** | 10,1 | 11,1 | 0 |
+| 1.000 / 7 | 100,0 | **100,3** | 100,0 | 106,5 | 0 |
+| 1.000 / 25 | 100,0 | **100,3** | 99,8 | 107,8 | 0 |
+| 3.000 / 7 | 300,0 | **300,4** | 270,4 | 346,8 | 0 |
+| 5.000 / 7 | 500,0 | 335,4 | 251,3 | 307,2 | 0 |
+| 10.000 / 7 | 1.000,0 | 298,9 | 219,3 | 305,1 | 0 |
+
+**3.000 panoda yazıcı gelen her mesajı yazmıştır** (300,4 ≈ 300,0). p50'nin 270 çıkması
+n = 19 örneklik bir gürültüdür; aynı serinin p95'i 346,8, yani gelen hızın **üstünde**.
+Gerçek doyma 3.000 ile 5.000 pano arasındadır, 3.000'de değil.
+
+#### Doymamış rejimde gerileme YOKTUR — asıl kanıt bu
+
+| Filo / nokta | 13 Eylül görünme p50 | **20 Eylül görünme p50** |
 |---|---:|---:|
-| `_parse` toplamı (json + NUL taraması + şema + flatten) | 851 µs | **1.175 msj/s** |
-| `write_batch` (COPY + upsert, parti 500) | 583 µs | **1.715 msj/s** |
-| İkisi **seri** koşsaydı | 1.434 µs | **~697 msj/s** |
-| **Gerçek boru hattı** | — | **~250 msj/s** |
+| 100 / 7 | 386 ms | **388,6 ms** |
+| 1.000 / 7 | 385 ms | **385,5 ms** |
+| 1.000 / 25 | 390 ms | **351 ms** |
 
-**Aradaki 2,8 kat bu teslimde AÇIKLANAMADI.** Ne ayrıştırma ne de veritabanı yazma tek
-başına darboğaz; ikisinin toplamı bile ölçülen tavanın iki katından fazla. Geriye tek
-Python sürecinde GIL'i paylaşan **dinleyiciler** (`ingest.py` `_notify` → alarm servisi,
-SCADA ağ geçidi, WebSocket yayıncısı) kalıyor. Onların mesaj başına maliyeti
-**ölçülmedi**; bu, sonraki turun ilk maddesidir.
+Mesaj başına iş gerçekten 3 kat pahalansaydı, 1.000 panoda görünme gecikmesi de artardı.
+**Artmamış.** Değişen tek şey doyma noktasının yeri — bu, "kod pahalandı" imzası değil,
+**"paralel iş yapacak çekirdek kalmadı"** imzasıdır.
 
-#### Ölçümle ELENEN yedi hipotez
+Üstüne, yazıcı *aşaması* (görünme p50 − alım p50) 10.000 panoda 13 Eylül'de **8.319 ms**
+iken 20 Eylül'de **536 ms**'dir: yazıcı yavaşlamamış, darboğaz onun **arkasından önüne**
+(paho alım + `_parse`) taşınmıştır — ki bu da daha az çekirdekle beklenen davranıştır.
 
-Hiçbiri tahmin olarak bırakılmadı; her biri ya koşuldu ya da kodda doğrulandı.
+#### Geriye kalan gerçek bulgu: koşum düzeneği esere yazılmıyordu
 
-| # | Hipotez | Nasıl sınandı | Sonuç |
-|---|---|---|---|
-| 1 | Veritabanı büyüdüğü için ekleme yavaşladı | 3.000 koşumu ~2 M satır daha büyük veritabanıyla **tekrarlandı** | **Elendi** — yazıcı 270,4 → 274,5 msj/s, CPU %163,5 → %160,8 |
-| 2 | Telemetri şeması büyüdü | `wc -l` + `git log` | **Elendi** — şema 12 Eylül'den beri hiç değişmedi (198 satır, tek commit `630067b`) |
-| 3 | `_parse` kod yolu değişti | `git show 318c47f:backend/app/ingest.py` ile karşılaştırma | **Elendi** — `_parse` **birebir aynı**; `_contains_nul` ve `best_match` zaten 12 Eylül'de vardı |
-| 4 | `write_batch` ya da SQL değişti | 318c47f ile bayt bayt karşılaştırma | **Elendi** — gövde ve dört SQL sabitinin dördü de **aynı** |
-| 5 | Bağımlılık sürümleri değişti | `diff` ile `requirements.txt` ve `Dockerfile` | **Elendi** — `requirements.txt` **birebir aynı** |
-| 6 | Aynı makinedeki diğer konteynerler CPU'da yarışıyor | `panosim`, `mpr-sim`, `tvoc-sim`, `frontend`, `grafana` **durduruldu**, ölçüm tekrarlandı | **Elendi** — şema doğrulaması 1.150–1.374 µs'ten 1.074–1.717 µs'e; **düzelmedi** |
-| 7 | **Merkez dedektör** (RLS + K/K₀) her örnekte koşuyor — 15 Eylül'de bağlandı, yani tablodan **sonra** | `CENTRAL_DETECTOR=0` ile 3.000 panoluk koşum **tekrarlandı** (A/B) | **Elendi** — yazıcı 270,4 → **244,5** msj/s; tavan **düzelmedi** |
+Bu karışıklığın sebebi tek bir eksiktir: **`loadtest/fleet.py` hangi makinede koştuğunu
+kaydetmiyordu.** Eserde CPU/bellek *kullanımı* var, ama CPU/bellek *kapasitesi* yok.
+Düzenek yalnızca §3'te, elle, tek bir kez yazılmıştı. 20 Eylül'de bu kapatıldı: eser
+artık `makine` bloğunu taşır (çekirdek, iş parçacığı, Docker'ın gördüğü CPU ve bellek),
+yani iki koşum bir daha sessizce farklı donanımda karşılaştırılamaz.
 
-> **Bir düzeltme, kendi hesabımıza.** Bu listenin ilk hâlinde 7. madde *"dinleyiciler
-> 13 Eylül'de, tablonun yazıldığı gün eklenmişti, dolayısıyla sebep olamaz"* diye
-> **elenmiş sayılmıştı**. Bu yanlıştı: dinleyicinin *kaydı* 13 Eylül'de yapılmış ama
-> **içi 15 Eylül'de dolmuş** (`f7076f4`, `central_detector_enabled`). Hipotez bu yüzden
-> yeniden açıldı ve A/B ile sınandı. Kayıt tarihine bakıp içeriğe bakmamak, tam olarak
-> bu belgenin başka yerlerde uyardığı hatadır.
+#### Ölçümle elenen hipotezler — *yanlış bir olguyu açıklamak için yapıldılar, ama sonuçları geçerlidir*
 
-#### Yayımlanan 501 µs karşılaştırılabilir değil — ve "1,88 kat" iddiası GERİ ÇEKİLDİ
+Aşağıdaki eleme çalışması, yukarıda çürütülen "3,4 kat gerileme" olgusunu açıklamak için
+yapıldı. Olgu yanlış çıktı; elemelerin **kendileri** yine de doğrudur ve bir dahaki sefere
+tekrar edilmeleri gerekmez:
 
-§4.4 mesaj başına 615 µs, bunun 501 µs'ini şema doğrulaması diye yayımlıyordu. Bu sayıyı
-üreten **hiçbir betik depoda yoktu**: hangi çalışma zamanında, hangi yükle, kaç tekrarla
-ölçüldüğü kayıtlı değildi. Dolayısıyla bugünkü ölçümle **karşılaştırılamaz** ve bu
-belgenin bir önceki hâlindeki *"doğrulama 501 → 941 µs, 1,88 kat yavaşladı"* cümlesi
-**geri çekilmiştir** — yeniden üretilemeyen bir tabana karşı kat hesaplamak, bu deponun
-kendi kuralını çiğnemekti.
+| Hipotez | Nasıl sınandı | Sonuç |
+|---|---|---|
+| Veritabanı büyümesi | 3.000 koşumu ~2 M satır daha büyük veritabanıyla tekrarlandı | Elendi — 270,4 → 274,5 msj/s |
+| Telemetri şeması büyüdü | `git log` | Elendi — 12 Eylül'den beri değişmemiş (198 satır) |
+| `_parse` kodu değişti | `318c47f` ile karşılaştırma | Elendi — **birebir aynı** |
+| `write_batch` / SQL değişti | `318c47f` ile bayt bayt karşılaştırma | Elendi — gövde ve dört SQL sabiti **aynı** |
+| Bağımlılık sürümleri | `requirements.txt` / `Dockerfile` farkı | Elendi — `requirements.txt` birebir aynı |
+| Komşu konteynerler CPU'da yarışıyor | 5 konteyner durduruldu, ölçüm tekrarlandı | Elendi — düzelmedi |
+| Merkez dedektör (15 Eylül'de bağlandı) | `CENTRAL_DETECTOR=0` ile A/B koşumu | Elendi — 270,4 → 244,5, düzelmedi |
 
-Bugün ölçülen (aynı betik, kanıt dosyasıyla, 7 tur): şema doğrulaması **738 µs**
-(724–883), `_parse` toplamı **851 µs**. Yükler de aynı değil: yayımlanan ölçüm 1.623
-baytlık / 81 satırlık bir mesaj kullanmış, bu betik sözleşmeden türettiği 1.212 baytlık /
-64 satırlık bir mesaj kullanıyor. **Bundan sonra karşılaştırma mümkündür**, çünkü betik
-de kanıt dosyası da depodadır.
+**Not:** `loadtest/ingest_maliyeti.py` ile ölçülen mesaj başına maliyetler (`_parse`
+851 µs, `write_batch` 583 µs) **bu makinede** (i5-11300H) alınmıştır ve §4.4'teki
+13 Eylül değerleriyle (i7-14700KF) **karşılaştırılamaz**. Betik artık depodadır; aynı
+komut §3'teki makinede koşulduğunda karşılaştırma ilk kez mümkün olacaktır.
 
 ### 4.2 Kaynak kullanımı
 
@@ -240,16 +260,16 @@ Alarm açılması görünmeden kısadır: alarm servisi, telemetri partisinin ya
 kadardır; gerçek şebekede operatörün teslim süresi (tipik birkaç saniye) eklenir. Beş alarm iki alıcıya sırayla gittiği için son SMS'ler
 kuyruk bekler: p95, küçük bir **alarm selinin** gecikmesidir.
 
-### 4.4 Kapasite sınırı ve darboğaz — *13 Eylül ölçümü, 20 Eylül'de kısmen geçersizleşti*
+### 4.4 Kapasite sınırı ve darboğaz — *13 Eylül ölçümü, §3'teki düzenekte*
 
-> **Aşağıdaki sayılar 13 Eylül'e aittir ve bugün geçerli değildir.** 20 Eylül'de ölçüm
+> **Aşağıdaki sayılar 13 Eylül'e ve §3'teki makineye aittir.** 20 Eylül'de ölçüm
 > `loadtest/ingest_maliyeti.py` ile **yeniden üretilebilir** hâle getirildi: `_parse`
 > toplamı **851 µs** (tek thread tavanı ~1.175 msj/s), `write_batch` **583 µs**
 > (~1.715 msj/s) — ama gerçek boru hattı **~250 msj/s**'de tavan yapıyor, yani ikisinin
 > toplamı bile açıklamıyor. **Aşağıdaki 615/501 µs değerleri bir betikle üretilmediği
-> için bugünkü ölçümle karşılaştırılamaz.** Ayrıntı, bileşen tablosu ve ölçümle elenen
-> yedi hipotez §4.1c'dedir. Bölüm silinmiyor çünkü **yöntemi** ve kaldıraç listesi hâlâ
-> doğru; geçersizleşen yalnızca sayılardır.
+> için bugünkü ölçümle karşılaştırılamaz — üstelik iki ölçüm **farklı makinelerde**
+> yapılmıştır. Ayrıntı ve bileşen tablosu §4.1c'dedir. Bölümün yöntemi ve kaldıraç
+> listesi geçerlidir; sayıları §3'teki düzeneğe bağlıdır.
 
 10.000 panoda kayıp yoktur: 50.000'lik kuyruk 120 saniyelik aşırı yükü emdi ve yük bitince boşaldı. Ama alarm gecikmesi 9 saniyeye çıktı.
 Operasyonel açıdan bu, sistemin **doymuş** olduğu anlamına gelir. Alım gecikmesinin de (p95 3,7 s) büyümesi, sorunun veritabanında değil
