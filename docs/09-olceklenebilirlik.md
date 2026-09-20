@@ -2,9 +2,10 @@
 
 > **Sahip:** Kişi B · **Ölçüm tarihi:** 13 Eylül 2026 (§6.1 veri bütçesi: **18 Eylül 2026**) ·
 > **Araçlar:** `loadtest/fleet.py` (yük), `loadtest/storage.py` (depolama), `loadtest/veri_butcesi.py` (uyarlanabilir raporlama, §6.1)
-> **Ham sonuçlar:** `loadtest/results/*.json` — §4.1b'deki koşumların eserleri **commit'lidir**;
-> §1 ve §3'teki 13 Eylül koşumlarının eserleri **depoda yoktur** (o koşumun düzeneği §2'de
-> düzyazı olarak kayıtlıdır) ·
+> **Ham sonuçlar:** `loadtest/results/*.json` — **14 koşumun tamamının eseri commit'lidir**
+> (13 Eylül'ün 7'si + 19–20 Eylül'ün 7'si). §4.1b tablosu bu eserlerden üretilir; §1 ve §3'teki
+> 13 Eylül sayıları da artık eserle karşılaştırılabilir. **Hiçbir eser `makine` bloğu taşımaz**
+> (bkz. §4.1b); o koşumların düzeneği yalnızca §2 ve §4.1b düzyazısında kayıtlıdır ·
 > **Grafana:** "Grid Up — Ölçek ve yük testi" (koşu seçilerek) ve "Grid Up — Alarm KPI" · Rapor karşılığı: §6.8
 
 ## 1. Özet
@@ -81,8 +82,11 @@ pano için 5 dakika sonra `ALM-COMMS-LOST` üretirdi.
 > Ayrıca bu tablonun **hiçbir satırının kanıt dosyası klonda yoktu**: `loadtest/results/`
 > 20 Eylül'e kadar `.gitignore` ile tamamen dışarıdaydı, ve eser **koşum makinesini
 > kaydetmiyordu**. İkisi birden, 20 Eylül'de bu tablonun farklı bir donanımda koşulup
-> "gerileme" diye okunmasına yol açtı (§4.1c). Her ikisi de kapatıldı: eserler commit'li,
-> eser artık `makine` bloğunu taşıyor.
+> "gerileme" diye okunmasına yol açtı (§4.1c). **Birinci eksik kapatıldı:** bu tablonun yedi
+> satırının da eseri artık klonda (`20260913T*.json`, §4.1b'de listeli) — ör. 1.000 pano / 7
+> nokta koşumu `20260913T151550-1000p.json`, görünme p95 **657,0 ms**. **İkinci eksik yalnızca
+> ileriye dönük kapatıldı:** `fleet.py` artık `makine` bloğu yazar, ama bu yedi eser o
+> değişiklikten önce üretildiği için **bloğu taşımazlar**.
 
 | Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Reddedilen / düşürülen / yazma hatası |
 |---|---|---|---|---|---|---|
@@ -116,12 +120,19 @@ arasında neredeyse değişmemesi, sistemin bu aralıkta yük altında olmadığ
 <!-- URETILMIS:kanitli-kosumlar -->
 | Filo | Nokta | Süre | Mesaj | Üreteç | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |
 |---|---|---|---|---|---|---|---|---|
+| 20 | 7 | 40 s | 80 | `?` | 2,4 / 3,6 / 4,6 ms | 368,2 / 621,8 / 683,8 ms | 0 / 0 / 0 | [`20260913T151000-20p.json`](../loadtest/results/20260913T151000-20p.json) |
+| 100 | 7 | 180 s | 1.800 | `?` | 0,6 / 2,8 / 8,2 ms | 386,1 / 656,8 / 906 ms | 0 / 0 / 0 | [`20260913T151206-100p.json`](../loadtest/results/20260913T151206-100p.json) |
 | 100 | 7 | 180 s | 1.800 | `template` | 1,7 / 3 / 5,2 ms | 388,6 / 667,8 / 759,6 ms | 0 / 0 / 0 | [`20260920T111907-100p.json`](../loadtest/results/20260920T111907-100p.json) |
+| 1.000 | 7 | 300 s | 30.000 | `?` | 2 / 6,3 / 18,3 ms | 384,7 / 657 / 771,2 ms | 0 / 0 / 0 | [`20260913T151550-1000p.json`](../loadtest/results/20260913T151550-1000p.json) |
 | 1.000 | 7 | 180 s | 18.000 | `physics` | 1,4 / 12,8 / 63,6 ms | 404,5 / 710,5 / 835,9 ms | 0 / 0 / 0 | [`20260919T135916-1000p.json`](../loadtest/results/20260919T135916-1000p.json) |
 | 1.000 | 7 | 300 s | 30.000 | `template` | 1,7 / 13 / 277,9 ms | 385,5 / 763,2 / 2054,5 ms | 0 / 0 / 0 | [`20260920T112254-1000p.json`](../loadtest/results/20260920T112254-1000p.json) |
+| 1.000 | 25 | 180 s | 18.000 | `?` | 2,2 / 7,9 / 28,9 ms | 390,3 / 693,7 / 821,4 ms | 0 / 0 / 0 | [`20260913T152157-1000p.json`](../loadtest/results/20260913T152157-1000p.json) |
 | 1.000 | 25 | 180 s | 18.000 | `template` | 5,2 / 37,5 / 163,1 ms | 351 / 754,5 / 967,6 ms | 0 / 0 / 0 | [`20260920T113423-1000p.json`](../loadtest/results/20260920T113423-1000p.json) |
+| 3.000 | 7 | 120 s | 36.000 | `?` | 2,5 / 7,3 / 20,6 ms | 400,4 / 704 / 809,3 ms | 0 / 0 / 0 | [`20260913T153222-3000p.json`](../loadtest/results/20260913T153222-3000p.json) |
 | 3.000 | 7 | 120 s | 36.000 | `template` | 3328,5 / 6962,6 / 7351,6 ms | 3695,4 / 7357,2 / 7816,4 ms | 0 / 0 / 0 | [`20260920T112824-3000p.json`](../loadtest/results/20260920T112824-3000p.json) |
+| 5.000 | 7 | 120 s | 60.000 | `?` | 3,4 / 15,2 / 48 ms | 402,7 / 769,1 / 883,4 ms | 0 / 0 / 0 | [`20260913T153457-5000p.json`](../loadtest/results/20260913T153457-5000p.json) |
 | 5.000 | 7 | 120 s | 60.000 | `template` | 36478,4 / 42.460 / 43211,8 ms | 36988,6 / 42851,5 / 43678,7 ms | 0 / 0 / 0 | [`20260920T113800-5000p.json`](../loadtest/results/20260920T113800-5000p.json) |
+| 10.000 | 7 | 120 s | 120.000 | `?` | 134,3 / 3716,8 / 4495,1 ms | 8452,5 / 18940,5 / 20415,8 ms | 0 / 0 / 0 | [`20260913T152748-10000p.json`](../loadtest/results/20260913T152748-10000p.json) |
 | 10.000 | 7 | 120 s | 120.000 | `template` | 39166,1 / 55476,5 / 56095,5 ms | 39702,2 / 55935,5 / 56.751 ms | 0 / 0 / 0 | [`20260920T113058-10000p.json`](../loadtest/results/20260920T113058-10000p.json) |
 <!-- /URETILMIS:kanitli-kosumlar -->
 

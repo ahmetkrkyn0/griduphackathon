@@ -26,6 +26,32 @@
 > **Hiçbir puan değiştirilmedi.** Düzeltmelerin puana etkisi §5.3'ün altındaki
 > senaryo hesabında tahmin olarak verilmiştir; gerçekleşmesi **yeni ve bağımsız** bir
 > değerlendirme gerektirir.
+>
+> ### Ek not — `origin/main` birleştirildikten sonra (20 Eylül, 17:40)
+>
+> Değerlendirme `tuna/polish` dalında yapıldı. Sonradan `origin/main` (11 commit) bu dala
+> alındı ve **K6'nın en ağır bulgusunun dayanağı değişti:**
+>
+> - **`976ff06` 13 Eylül yük koşumlarının 7 eserini klona almış.** Yani §3.3'te
+>   `ÜRETİLEMEZ` yazdığım **657 ms artık bir eserde duruyor**:
+>   `loadtest/results/20260913T151550-1000p.json` → 1.000 pano / 7 nokta / 300 s,
+>   görünme p50 384,7 / **p95 657,0** / maks 771,2 ms, kayıp 0. `docs/09` §1 tablosunun
+>   **altı satırının tamamı** artık eserle örtülü (3.000 → 704,0 · 5.000 → 769,1 ·
+>   10.000 → 18.940,5 · 1.000×25 → 693,7 ms). **Bu bulgum kapanmıştır.** Değerlendirdiğim
+>   ağaçta (`467e99c`) eser gerçekten yoktu; ekip bunu `main`'de zaten kapatmıştı, `polish`
+>   dalı geride kalmıştı.
+> - **Kapanmayan kısım:** 14 eserin **hiçbiri** hâlâ `makine` bloğu taşımıyor (özyineli
+>   olarak yeniden taradım). Y1 geçerliliğini koruyor ve dokümanı buna göre düzelttim.
+> - **Birleştirmenin ortaya çıkardığı YENİ bir kusur:** `976ff06` eserleri commit'lerken
+>   `docs/09`'u yeniden üretmemiş. `origin/main`'i ayrı bir çalışma ağacına alıp denedim:
+>   **`python scripts/gen_olcek_doc.py --check` `main`'in kendisinde de düşüyor**
+>   (`guncel degil`). Yeniden ürettim (7 satır eklendi), artık geçiyor.
+>
+> **Bu ek notla K6'nın gerekçesi değişir.** Puanı raporda değiştirmiyorum — ama jüri için
+> açık olsun: bugünkü birleşik ağaçta K6'nın üç dayanağından ikisi (araç çöküyor, 657 ms
+> eseri yok) **kapanmıştır**; açık kalanlar eserlerdeki makine bloğu eksikliği ve F-36
+> eserinin bayatlığıdır. Aynı çapalarla bugün K6'ya **8** verirdim; bu, A ortalamasını
+> 7,89 → 8,22'ye taşır. **Bu, bağımsız olarak doğrulanmamış bir güncellemedir.**
 
 > Bu rapordaki her sayının yanında ne olduğu yazılıdır: **ÖLÇTÜM** (komutu ben koştum,
 > çıktısı burada), **BEYAN** (doküman söylüyor, koşmadım), **ÜRETİLEMEZ** (sayıyı üreten
