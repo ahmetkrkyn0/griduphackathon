@@ -1,0 +1,54 @@
+{
+ "arac": "loadtest/ingest_maliyeti.py",
+ "surum": 1,
+ "calisma_zamani": {
+  "python": "3.12.14",
+  "jsonschema": "4.23.0",
+  "konteyner_icinde": true
+ },
+ "yuk": {
+  "bayt": 1212,
+  "nokta": 7,
+  "satir_mesaj_basina": 64
+ },
+ "adimlar": {
+  "json_loads": {
+   "us_medyan": 18.3,
+   "us_min": 17.0,
+   "us_maks": 20.8,
+   "tur": 7,
+   "tekrar": 1500
+  },
+  "contains_nul": {
+   "us_medyan": 26.9,
+   "us_min": 25.2,
+   "us_maks": 31.1,
+   "tur": 7,
+   "tekrar": 1500
+  },
+  "sema_dogrulamasi": {
+   "us_medyan": 738.4,
+   "us_min": 723.8,
+   "us_maks": 883.3,
+   "tur": 7,
+   "tekrar": 1500
+  },
+  "flatten": {
+   "us_medyan": 67.2,
+   "us_min": 64.3,
+   "us_maks": 95.9,
+   "tur": 7,
+   "tekrar": 1500
+  }
+ },
+ "parse_toplami_us": 850.8,
+ "tek_thread_tavani_msj_s": 1175,
+ "write_batch": {
+  "parti": 500,
+  "tur": 7,
+  "parti_ms_medyan": 291.5,
+  "mesaj_basina_us": 583.0,
+  "tavan_msj_s": 1715,
+  "not": "SIM-9xxxx kimlikleri yazildi; 'fleet.py --cleanup-only' temizler"
+ }
+}
