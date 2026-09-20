@@ -515,8 +515,13 @@ def _report_scenario(plan: scenarios.ScenarioPlan, seen: dict[str, float]) -> No
     if edge_expected:
         missing = sorted(edge_expected - set(seen))
         print(
-            f"[panosim] beklenenlerden {len(edge_expected) - len(missing)}/{len(edge_expected)} gorundu"
-            + (f"; kisa oynatmada gorunmeyen: {', '.join(missing)}" if missing else ""),
+            f"[panosim] KENARDA beklenenlerden {len(edge_expected) - len(missing)}/{len(edge_expected)} gorundu"
+            + (
+                f"; bu kisa oynatmada kenarda cikmayan: {', '.join(missing)}"
+                " (MERKEZ dedektoru yine de uretebilir — /api/v1/alarms'a bakin)"
+                if missing
+                else ""
+            ),
             flush=True,
         )
     fired = sorted(forbidden & set(seen))

@@ -77,8 +77,11 @@ flowchart TD
 ```
 
 **Sıranın gerekçesi:** veri kalitesi (L-1) **en başta** çalışır. Bozuk bir ölçüm
-L0/L1'e girerse arıza gibi görünür; verilen "İstenen Veriler.xlsx"teki 15 dakikada
-438 A'lık sıçramalar tam olarak bu katmanda ayıklanır (rapor §3.4a).
+L0/L1'e girerse arıza gibi görünür. **Kapsam sınırı:** L-1 kuralları bugün yalnızca
+**bağlantı sıcaklığı** (`t_c`) üstünde çalışır — donmuş değer, fiziksel olmayan hız
+(`dq_max_rate_k_per_min`), ortam altı, düğüm sessiz. Verilen "İstenen Veriler.xlsx"teki
+15 dakikada 438 A'lık akım sıçramaları (rapor §3.4a) **bu katmanda ayıklanmaz**; akım için
+bir değişim-hızı kuralı yazılmadı. Ayrıntı ve kapatma yolu: `docs/05` §7.
 
 **TVOC-2 salt okunurdur (GK6).** Ark korumasına yazma yapılmaz; FC06/FC16 ağ geçidinde
 filtrelenir. Otomatik açma (trip) yoktur.

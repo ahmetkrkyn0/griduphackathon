@@ -18,12 +18,21 @@ izleme + SCADA entegrasyonu + SMS/WhatsApp alarmı içeren; en az 100 modüle ö
 2. **Panoda zaten iki akıllı cihaz var:** ENTES MPR-53CS (enerji analizörü) ve ABB TVOC-2 (ark
    koruma), ikisi de Modbus RTU. Yeni bir akım sensörüne gerek yok — bu cihazları **okumak**
    yeterli. Bu, hem maliyeti düşürür hem kablo kalabalığını artırmaz (rapor §3.2, §3.5, §3.6).
-3. **TVOC-2 zaten arkı <1 ms'de kesiyor (SIL-2).** Bizim katkımız arkı "tespit etmek" değil:
+3. **TVOC-2 arkı zaten mevcut koruma zinciriyle kesiyor (SIL-2).** Katalog değeri: ışık
+   algılamadan **açma kontağına** (K4/K5/K6) **~1 ms**, ışıktan sinyal rölesine (K2/K3)
+   < 10 ms (`Hackathon Verileri/tvoc.pdf`, Reaction time tablosu). **Bu süre arkın sönme
+   süresi değildir** — arkın sönmesi için kesicinin kendi açma süresi eklenir. Bizim
+   katkımız arkı "tespit etmek" değil:
    koruma sisteminin **sağlığını** izlemek (dedektör arızası = pano sessizce korumasız kalır),
    olayı konumla bildirmek ve ark öncesi öncülleri (ısınma, yoğuşma) yakalamak.
-4. **AG panoda kısmi deşarj (PD) fiziksel olarak nadir** (havada Paschen minimumu ~327 V; 400 V
-   sistemde pratikte beklenmez). PD'yi AG'nin ana özelliği gibi sunan bir takım "problemi yanlış
-   anlamış" görünür; biz PD'yi bilinçli olarak bir **OG hücre eklentisi** olarak konumlandırıyoruz.
+4. **AG panoda kısmi deşarj (PD) pratikte nadirdir — ama gerekçe "Paschen minimumu ~327 V"
+   kısayolu DEĞİLDİR.** O kısayol eksiktir: 400 V sistemde faz-faz tepe gerilimi
+   √2 × 400 ≈ **566 V**'tur, yani 327 V'un üstündedir. Doğru gerekçe geometriktir (Paschen
+   eğrisi gerilimi değil **basınç × boşluk mesafesini** sınırlar) ve bir **literatür
+   kabulüdür, bizim ölçümümüz değildir** — AG panoda PD ölçümü yapılmadı. Tam gerekçe
+   [`05-anomali-tespiti.md`](05-anomali-tespiti.md) §PD ve
+   [`13-donanim-tasarimi.md`](13-donanim-tasarimi.md) §7.1'dedir. Biz PD'yi bilinçli olarak
+   bir **OG hücre eklentisi** olarak konumlandırıyoruz.
 5. **WhatsApp On-Premises API 23 Ekim 2025'te kapandı.** "Public cloud yok" şartıyla çelişen bir
    noktayı fark etmek jüriye "problemi doğru anladık" mesajı verir: birincil kanal tamamen on-prem
    **GSM SMS**, WhatsApp yalnızca hassas olmayan kısa metinle ikincil kanal.
