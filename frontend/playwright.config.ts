@@ -71,7 +71,16 @@ const ekranProjesi = {
 const sanayiProjesi = {
   name: "sanayi",
   testMatch: /(industrial|twin)\.spec\.ts$/,
-  timeout: 45_000,
+  // 45_000 IDI ve twin.spec.ts'i DUSURUYORDU. Teshis (20 Eylul): testin kendisi
+  // saglam — 390 px'e inip 3D ikizi yeniden baglamak izole kosumda canvas'i
+  // sorunsuz getiriyor (.twin-workbench canvas = 1, pageerror = 0). Dusme sebebi
+  // SURE: spec ~20 etkilesim + iki tam ekran gecisi + WebGL sahnesi tasiyor ve
+  // olculen kosum suresi bu makinede 1,5 DAKIKA. 45 sn'nin marji yoktu; testin
+  // SON beklentisi, saatin bittigi yerde patliyordu. Dogru duzeltme testi kismak
+  // degil, butceyi olculen sureye gore acmaktir — 150 sn ~1,7x marj birakir.
+  // retries HALA 0: bu bir kararsizligi gizleme degil, yanlis bir zaman asiminin
+  // duzeltilmesidir.
+  timeout: 150_000,
   use: {
     ...devices["Desktop Chrome"],
     ...ORTAK,
