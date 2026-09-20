@@ -129,7 +129,7 @@ yorumunda da yazılıdır (`libs/panoalgo/panoalgo/generator.py`, `DT_AT_RATED_K
 | Nötr akımı | fazör toplamı ⊕ 3·I_h3 (triplen aritmetik toplanır) | Kapalı form **TÜRETİLMİŞ** |
 | THD | hafif yükte yüksek: 4–8 % | **TÜRETİLMİŞ** |
 | Gerilim | 231 V − yükle düşüş | **TÜRETİLMİŞ** |
-| PD | yalnızca OG; AG panoda `null` | Rapor §3.7 (Paschen ~327 V) |
+| PD | yalnızca OG; AG panoda `null` | Gerekçe geometriktir, "Paschen ~327 V" kısayolu DEĞİL — bkz. `docs/05` §PD |
 
 ## 5. Senaryo kataloğu
 

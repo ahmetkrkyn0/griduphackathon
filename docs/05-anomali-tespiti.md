@@ -195,9 +195,18 @@ Eşikler: marj < 3,0 K → `ALM-DEW-WARN`, marj < 1,0 K → `ALM-DEW-ALM`. Refer
 
 ## 7. L-1 — Veri kalitesi
 
-Amaç bir arıza bulmak değil, arızaya benzeyen **bozuk ölçümü** ayıklamaktır. Verilen
-"İstenen Veriler.xlsx"te 15 dakikada 438 A'lık sıçramalar var (rapor §3.4a); bunlar
-L0/L1'e girmeden burada işaretlenir. Öncelik `SYS`: izleme sistemi arızası, pano arızası değil.
+Amaç bir arıza bulmak değil, arızaya benzeyen **bozuk ölçümü** ayıklamaktır. Öncelik `SYS`:
+izleme sistemi arızası, pano arızası değil.
+
+> **AÇIK BOŞLUK — akım için veri kalitesi kuralı YOKTUR.** Verilen "İstenen Veriler.xlsx"te
+> 15 dakikada **438 A**'lık sıçramalar var (rapor §3.4a; ölçtük: ardışık farkın maksimumu tam
+> 438,0 A, lag-1 otokorelasyon 0,0003). Bu dokümanın önceki sürümü bu sıçramaların "L-1'de
+> işaretlendiğini" yazıyordu; **bu yanlıştı.** Aşağıdaki dört kuralın dördü de
+> `t_conn[].t_c` üstünde çalışır (`libs/panoalgo/panoalgo/quality.py:140-170`); depoda akım
+> için bir değişim-hızı kuralı **yoktur**. Kurumun verdiği seri gerçek bir pano yükü değil
+> beyaz gürültü olduğu için bu boşluk bugün bizi yanıltmıyor, ama **sahada gelirse
+> yakalanmaz**. Kapatma yolu: `dq_max_rate_a_per_min` eşiği + `point_quality()` içinde
+> akım karşılaştırması; sözleşme değişikliği gerektirir (`contracts/changes/`).
 
 | Kural | Eşik | Kod / bit |
 |---|---|---|
