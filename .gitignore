@@ -9,6 +9,12 @@ deploy/.env.*
 *.pem
 *.key
 secrets/
+# --- Ucuncu parti agent skill'leri ---
+# `npx skills add` skill'i PROJE dizinine kurar (.agents/skills/, 17 MB mp3/ogg
+# varliklariyla) ve gitignore'a kendisi eklemez. Deponun parcasi degil, gelistirici
+# araci: klonlayan herkes kendi kurar. 20 Eylul'de brag kurulurken fark edildi.
+.agents/
+skills-lock.json
 # NOT: *.key Apple Keynote sunumlarini da yutar; sunumu .pdf/.pptx olarak koyun.
 
 # --- F-27 mTLS: yerel sertifika otoritesi materyali ---
