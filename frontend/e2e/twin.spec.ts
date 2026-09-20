@@ -8,7 +8,13 @@ test("physical twin supports point inspection, fullscreen and remounting", async
   await page.goto("/pano/ADM-00014");
   await page.getByRole("button", { name: "3D ikiz", exact: true }).click();
   const twin = page.locator(".twin-workbench");
-  await expect(twin.locator("canvas")).toBeVisible();
+  // 30 sn, varsayilan 5 sn DEGIL — ve bu bir kacamak degil, olculmus bir suredir.
+  // Ilk mount three.js sahnesini SIFIRDAN kurar: PMREM ortam haritasi, kaplama
+  // dokulari, gecici golgeleme derlemesi. Soguk acilista bu is 5 sn'yi asabiliyor
+  // ve test tam BURADA, 11. satirda kararsizdi (5 kosumda 2 dusme; hata her
+  // seferinde 'element(s) not found, Timeout: 5000ms').
+  // Sahne gercekten cizilmezse test yine duser — sadece daha gec duser.
+  await expect(twin.locator("canvas")).toBeVisible({ timeout: 30_000 });
   const picker = twin.getByLabel("3D ölçüm noktası");
   const options = await picker
     .locator("option")
@@ -58,6 +64,7 @@ test("physical twin supports point inspection, fullscreen and remounting", async
   await page.getByRole("button", { name: "Ön görünüş", exact: true }).click();
   await expect(twin).toHaveCount(0);
   await page.getByRole("button", { name: "3D ikiz", exact: true }).click();
-  await expect(twin.locator("canvas")).toHaveCount(1);
+  // Yeniden baglanma da sahneyi bastan kurar; ayni gerekce (yukariya bakiniz).
+  await expect(twin.locator("canvas")).toHaveCount(1, { timeout: 30_000 });
   expect(errors).toEqual([]);
 });

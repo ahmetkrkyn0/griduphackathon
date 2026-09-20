@@ -177,17 +177,33 @@ Beşi de bu raporun §7'sindeki `pytest -q` koşusunun içinde, tamamı **PASS**
 ## 4. Bilinen sınır: S8 (sürüklenen sensör) — dürüst sonuç
 
 **Sayı değişmedi.** [docs/12-dogrulama-sonuclari.md](12-dogrulama-sonuclari.md) §4.3'teki S8
-prognoz yanlış-alarmı hâlâ **99 tahmin, 89'u `ALM-TTL-14D`**. Bu rapor için docs/12 19 Eylül 2026'da
+prognoz yanlış-alarmı hâlâ **183 tahmin, 86'sı `ALM-TTL-14D`**. Bu rapor için docs/12 19 Eylül 2026'da
 yeniden üretildi (`python scripts/validate.py --out docs/12-dogrulama-sonuclari.md`); `git diff`
 yalnızca "Üretim zamanı" satırını değiştirdi, S8 dâhil **hiçbir sayı bir birim bile kımıldamadı**.
 
-**Neden:** S8'in 99 tahmininin tamamı `DSYA4_L3`'ün *sürüklenen* (drift) sensöründen geliyor.
+> **20 Eylül notu — sayılar güncellendi.** Bu bölüm yazıldığında dalın üzerindeki `docs/12`
+> **99 tahmin / 89** basıyordu ve yukarıdaki cümle o an doğruydu. `main`'den gelen **F-31**
+> (düğüm kütüğü, `102850c`, 18 Eylül) birleştirildikten sonra aynı betik **183 / 86** üretiyor;
+> sayılar buna göre düzeltildi. Bölümün iddiası değişmedi: Task 1'in kalite koruması bu sayıyı
+> hâlâ kımıldatmıyor. Sayılar `data/fixtures/S8_sensor_fault.csv`'den bağımsız olarak da
+> doğrulanabilir (sonlu `min_ttl_h` = 183, `ALM-TTL-14D` taşıyan satır = 86).
+
+**Neden (20 Eylül'de yeniden ölçüldü).** S8'in 183 tahmini **tek bir noktadan gelmiyor**:
+fikstürün `worst_point` sütununa göre beş noktaya dağılıyor — `DSYA5_L2` 57, `DSYA4_L3` 54,
+`DSYA4_L1` 41, `DSYA3_L1` 21, `DSYA7_L1` 10 (`data/fixtures/S8_sensor_fault.csv`).
 Task 1'in eklediği koruma (`_suppress_ttl_when_quality_suspect`, §2) yalnızca `q != 0` olan
-noktalarda devreye girer — yani zaten var olan bir kalite kuralı (donma, sıçrama, ortam altı,
-düğüm kaybı) bir noktayı işaretlemişse. Yavaş, monoton bir sürüklenme bu dört kuraldan hiçbirine
-takılmıyor (docs/05 §7, §10'da önceden de belgeliydi), dolayısıyla S8'in `DSYA4_L3` noktasında
-`q` 672 örneğin hiçbirinde sıfırdan çıkmıyor. Koruma tetiklenecek bir bayrak bulamıyor; sayı
-hareket etmiyor.
+noktalarda devreye girer — yani zaten var olan bir kalite kuralı bir noktayı işaretlemişse.
+
+Bu bölümün önceki hâli "yavaş, monoton bir sürüklenme dört kuraldan hiçbirine takılmıyor,
+`q` 672 örneğin hiçbirinde sıfırdan çıkmıyor" diyordu. **Bu artık doğru değildir:** F-31 ile
+sürüklenme için beşinci bir kural eklendi (`ALM-DQ-DRIFT`, bit 22, `contracts/alarm-codes.yaml`
+v4) ve aynı fikstürde **239 kez** tetikleniyor; pano genelinde `q_any` 672 satırın **448'inde**
+sıfırdan farklı.
+
+**Açık kalan soru — uydurmuyoruz.** Sürüklenme artık işaretlendiği hâlde 86 satırın neden hâlâ
+`ALM-TTL-14D` taşıdığı bu teslimde **ölçülmedi**. Akla gelen yol, korumanın `_update_quality`'den
+ÖNCE koşması ve bir önceki turun `q`'sunu görmesi — bayrak birikene kadar geçen turlarda TTL
+geçiyor olabilir. Bu bir **hipotezdir, ölçülmemiştir**; sonraki iterasyonun maddesidir.
 
 **Bu bir eksik uygulama değil, kapsam dışı bırakılmış bir iştir.** Kapatmak, sürüklenmeyi
 yakalayan yeni ve özel bir kalite kuralı gerektirir (uzun vadeli eğilimi bir taban ya da fiziksel

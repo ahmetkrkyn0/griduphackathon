@@ -173,12 +173,45 @@ Gerçek harita karosu hiçbir ekranda kullanılmaz (GK4: yığın internetten ba
   `--dim` token'ı orada 4,61:1 değil **4,21:1** verir, yani **AA'nın altına düşer**.
 
   **Ölçülen erişilebilirlik ihlalleri — gizlenmiyor.** `@axe-core/playwright` ile WCAG 2.1 A +
-  AA taraması: mock kipinde **5 düğüm**, canlı kipte **23 düğüm**; hepsi `color-contrast`,
-  başka hiçbir axe kuralı ihlal edilmiyor. Ayrıntı ve düğüm listesi
-  `frontend/e2e/smoke.spec.ts` başındaki blokta. Kip farkının tamamı `AppShell`'deki iki
-  öğeden gelir (`.connection-pill` 4,26:1 ve `.btn-link` 2,91:1); ikisi de örnek veri
-  kipinde çizilmez. Renkler bu oturumda **değiştirilmedi** — palet kararı test işi değildir —
-  ama sayı artık testte kilitli, düzeltilirse test düşer ve bu tablo da güncellenmek zorunda kalır.
+  AA taraması, **20 Eylül ölçümü**: örnek veri kipinde **0 ihlal**. Kontrast dâhil hiçbir
+  axe kuralı ihlal edilmiyor ve sayı `frontend/e2e/smoke.spec.ts`'te kilitlidir.
+
+  **Buraya nasıl gelindi — sayı "iyi olduğu için" yazılmadı, ölçüldü.** 19 Eylül'de aynı
+  ölçüm **5** ihlal veriyordu; 20 Eylül'de **83** verdi. Bu bir **gerilemeydi**: `main`
+  birleşmesiyle (`c6b5dcd`) gelen sanayi kabuğu `frontend/src/industrial.css` içinde
+  paletin **tamamını** yeniden tanımlıyor ve `--dim` değerini `#65717d`'den `#61738a`'ya
+  taşımıştı. 83 ihlalin **69'u tek bir renkten** geliyordu; hepsi 3,71–4,47 aralığında,
+  yani 4,5 eşiğinin hemen altında.
+
+  **Bu gerilemeyi `theme.test.ts` göremedi** — çünkü o test yalnızca `theme.css` metnini
+  okuyordu, ezen dosya ise `industrial.css`'ti. Kilidin kör noktası buydu; kapatıldı
+  (`theme.test.ts` → *"industrial.css ezen paleti"* başlıklı dört test).
+
+  | Kök renk | Önce | Sonra | Kapanan ihlal |
+  |---|---|---|---:|
+  | `--dim` (`industrial.css` `:root`) | `#61738a` | `#58687d` | **69** |
+  | `aria-pressed` düğme **metni** | `--brand` üzerine beyaz (2,91:1) | `--brand` üzerine `--ink` (4,86:1) | **9** |
+  | `.focus-number` (`workspace.css`) | `#a4adb4` (2,27:1) | `#6a7680` (4,65:1) | **3** |
+  | `.section-kicker` | `#687e97` (3,71:1) | `#5b6e84` (4,66:1) | **2** |
+
+  Hiçbiri yeni renk icadı değildir: üçü aynı tonun koyulaştırılmışı, dördüncüsü zaten
+  palette duran `--ink`. Seçim gözle değil **hesapla** yapıldı — her aday, bu kabukta
+  gerçekten kullanılan **altı zeminin** hepsine karşı sınandı (en dar yer `#e4e8ec`).
+
+  **Marka turuncusuna dokunulmadı ve bunu bir test zorladı.** İlk denemede `aria-pressed`
+  düğmelerinin *zemini* `--brand-deep`'e taşınmıştı; `frontend/e2e/industrial.spec.ts:84`
+  bunu **düşürdü**, çünkü o test seçili filtre düğmesinin `rgb(255, 103, 30)` olduğunu
+  bilerek kilitliyor. Test haklıydı: düzeltilmesi gereken marka rengi değil, üzerindeki
+  metindi. `--brand` bir piksel bile değişmedi; beyaz metin `--ink` ile değiştirildi ve
+  oran 2,91'den **4,86**'ya çıktı. Tasarım kilidi ile erişilebilirlik çatışmadı.
+
+  **Gövde metni kontrastı iki palette de yüksektir ama aynı değildir:** `theme.css`
+  çiftinde **13,33:1**, ekranda gerçekten kazanan `industrial.css` çiftinde
+  (`#182c44` / `#eef2f6`) **12,59:1**. İkisi de `theme.test.ts`'te kilitlidir.
+
+  **Canlı kip bu teslimde yeniden ölçülmemiştir.** Eski 23 rakamı kaynaktan daha eski bir
+  kapsayıcı görüntüsünden gelir; palet düzeltmesi canlı kipi de etkiler ama ölçüm
+  yapılmadan sayı yazılmaz.
 - Dar ekranda yatay taşmaya karşı tüm tablo/eksen içerikleri kendi `overflow-x: auto`
   kapsayıcısında (`.tbl-wrap`, `frontend/src/app.css`). **Doğrulama biçimi:** 390 px ve 1440 px
   genişlikte elle görsel kontrolden geçti (`frontend/TASARIM-REVIZYONU.md` §11). **19 Eylül

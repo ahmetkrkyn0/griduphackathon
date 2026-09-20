@@ -10,7 +10,7 @@ Bu dosya, "Pano/Hücre İçi Anomali Erken Uyarı Sistemi" için üç aşamalı 
 
 | Yetenek | Bizde | Sektörde tipik | Boşluk |
 |---|---|---|---|
-| Fizik tabanlı erken uyarı | dT = K·I² + unutma faktörlü RLS; S1'de 70 K sınırından 209 saat önce uyarı (ölçüldü) | eşik/termografi turu, bazılarında benzerlik tabanlı artık izleme | Yok — burası güçlü yanımız |
+| Fizik tabanlı erken uyarı | dT = K·I² + unutma faktörlü RLS; S1'de 70 K sınırından 172,5 saat önce uyarı (ölçüldü; 209 saatlik rakamı `ALM-TTL-14D` prognozu tetikler) | eşik/termografi turu, bazılarında benzerlik tabanlı artık izleme | Yok — burası güçlü yanımız |
 | Tespit doğrulaması | 10 etiketli senaryo, 8'inde recall 1,00; yanlış alarm 71,4/100 pano-gün (ölçüldü) | üretici iç testi, nadiren yayımlanır | Prognoz doğruluğu (yakınsama) hiç ölçülmedi |
 | Alarm yaşam döngüsü | ISA-18.2: onay, raf, histerezis, olay gruplama, first-out, eskalasyon, bakım modu | aynı; üstüne periyodik başarım raporu ve "kötü aktör" listesi | Sel/bayat/chattering metrikleri ve kod bazında kötü aktör yok |
 | SCADA entegrasyonu | Modbus TCP 502 + IEC 60870-5-104 2404, canlı ve eşdeğerliği ölçülmüş (0 fark) | aynı ikisi + DNP3/IEC 61850; ADMS tarafında CIM | Standart formda birlikte çalışabilirlik listesi yok |

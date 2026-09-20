@@ -281,10 +281,13 @@ class EdgePipeline:
         bir nokta (q != 0) hicbir durumda da TTL tahmini tasimasin — bu metod bu
         kontrati garanti eder.
 
-        Not: S8 bilinen siniri (docs/05 #10) surunen sensoru tespiti icerir, ama
-        drift varolan ALM-DQ-* kurallari tarafindan yakalanmaz (q asla set olmaz).
-        Bu metod zaten-isaretli noktalar icin kontrati garantiler, drift tespitini
-        degil. Drift tespiti ayri, ozel bir kalite kurali gerekir (henuz eklenmedi)."""
+        Not: S8 bilinen siniri (docs/05 #10) surunen sensoru tespiti icerir. Bu metod
+        zaten-isaretli noktalar icin kontrati garantiler, drift tespitini degil.
+        Drift tespitinin kendisi F-31 ile ayri bir kalite kurali olarak EKLENDI
+        (ALM-DQ-DRIFT, bit 22 — contracts/alarm-codes.yaml v4); bu metod o biti de
+        diger q bitleri gibi okur. 20 Eylul olcumu: S8 fiksturunde ALM-DQ-DRIFT 239
+        kez tetikleniyor, buna ragmen 86 satir hala ALM-TTL-14D tasiyor — sebebi
+        olculmedi (bkz. docs/21 #4)."""
         for point in payload["t_conn"]:
             if point.get("q", 0) != 0:
                 point["ttl_h"] = None

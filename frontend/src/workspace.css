@@ -518,7 +518,8 @@ kbd {
 }
 .focus-number {
   font-size: 11px;
-  color: #a4adb4;
+  /* #a4adb4 beyaz zeminde 2,27:1 idi — olculen en kotu ihlal. #6a7680 -> 4,65:1. */
+  color: #6a7680;
   padding-top: 3px;
 }
 .focus-list strong {
