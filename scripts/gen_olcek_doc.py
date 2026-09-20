@@ -62,12 +62,12 @@ def filo_kosumlari() -> list[dict]:
 def filo_tablosu() -> str:
     kosumlar = filo_kosumlari()
     satirlar = [
-        "| Filo | Nokta | Süre | Mesaj | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Filo | Nokta | Süre | Mesaj | Üreteç | Alım p50 / p95 / maks. | Görünme p50 / p95 / maks. | Red / düş / hata | Kanıt dosyası |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     if not kosumlar:
         satirlar.append(
-            "| — | — | — | — | — | — | — | **Hiç kanıt dosyası commit'li değil** |"
+            "| — | — | — | — | — | — | — | — | **Hiç kanıt dosyası commit'li değil** |"
         )
         return "\n".join(satirlar)
     for k in sorted(kosumlar, key=lambda x: (x["config"]["panels"], x["config"]["points"])):
@@ -76,7 +76,7 @@ def filo_tablosu() -> str:
         gor = g["visible_latency_ms"]
         satirlar.append(
             f"| {_sayi(c['panels'])} | {c['points']} | {_sayi(c['duration_s'])} s "
-            f"| {_sayi(k['publish']['sent'])} "
+            f"| {_sayi(k['publish']['sent'])} | `{c.get('generator', '?')}` "
             f"| {_sayi(al['p50'])} / {_sayi(al['p95'])} / {_sayi(al['max'])} ms "
             f"| {_sayi(gor['p50'])} / {_sayi(gor['p95'])} / {_sayi(gor['max'])} ms "
             f"| {a['rejected']} / {a['dropped']} / {a['write_errors']} "

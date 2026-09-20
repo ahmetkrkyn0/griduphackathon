@@ -14,7 +14,7 @@ Bu dosya, "Pano/Hücre İçi Anomali Erken Uyarı Sistemi" için üç aşamalı 
 | Tespit doğrulaması | 10 etiketli senaryo, 8'inde recall 1,00; yanlış alarm 71,4/100 pano-gün (ölçüldü) | üretici iç testi, nadiren yayımlanır | Prognoz doğruluğu (yakınsama) hiç ölçülmedi |
 | Alarm yaşam döngüsü | ISA-18.2: onay, raf, histerezis, olay gruplama, first-out, eskalasyon, bakım modu | aynı; üstüne periyodik başarım raporu ve "kötü aktör" listesi | Sel/bayat/chattering metrikleri ve kod bazında kötü aktör yok |
 | SCADA entegrasyonu | Modbus TCP 502 + IEC 60870-5-104 2404, canlı ve eşdeğerliği ölçülmüş (0 fark) | aynı ikisi + DNP3/IEC 61850; ADMS tarafında CIM | Standart formda birlikte çalışabilirlik listesi yok |
-| Ölçek | 1.000 sanal pano, görünme p95 657 ms, kayıp 0; 46-48x sıkıştırma | on binler (Iberdrola STAR ~90.000 merkez) | "Hangi 100 pano önce" sorusunun cevabı yok |
+| Ölçek | 1.000 sanal pano, görünme p95 763 ms, kayıp 0 (20 Eyl); 46-48x sıkıştırma | on binler (Iberdrola STAR ~90.000 merkez) | "Hangi 100 pano önce" sorusunun cevabı yok |
 | Varlık kimliği | `panels` tablosunda 8 alan: pano_id, ad, tip, lat/lon, kurulum, taban günü, not | CBS tekil kodu, fider/TM, abone sayısı, kritiklik, bakım tarihi | Panonun NE olduğu ve KİMİ etkilediği sistemde yok |
 | Risk gösterimi | Risk matrisi; y ekseni risk skorunun kendisi (kodda dürüstçe itiraf edilmiş) | sağlık × kritiklik (CBRM/CNAIM) | Matris fiilen tek boyutlu — etki ekseni yok |
 | Güç kalitesi | u_ph, thd_i (akım THD'si), unbal_pct (akım dengesizliği) toplanıyor | EN 50160 değerlendirmesi ve raporu bir ana modül | Toplanan gerilim verisi hiçbir kuralda tüketilmiyor |
@@ -145,7 +145,7 @@ GK2 gereği bu pencerede kod yazılmaz. **Doküman bütçesi kararı:** en çok 
 Değerlendirme kriterlerinin her biri için tek satırlık kanıt eşlemesi · **Etki:** çok yüksek · **Efor:** 1-1,5 saat · **Nerede yaşar:** [README.md](README.md) başı veya yeni `docs/00-juri-kanit-haritasi.md`
 **Sektörel dayanak:** Yok — bu bir teslim disiplini maddesi; jürinin kendi değerlendirme cetveline hizalanma.
 **Bizdeki boşluk:** 18 doküman teslim ediyoruz, jüri dokuz kriterden puan veriyor ve aradaki eşlemeyi kurma işini jüriye bırakıyoruz.
-**Ne üretir:** Tek sayfa: kriter | kanıt dosyası | ölçülmüş sayı (recall 1,00 · 209 saat · 71,4 yanlış alarm/100 pano-gün · p95 657 ms · 1.000 pano · 46-48x sıkıştırma · mutasyon sayıları · 987 test · üç protokolde 0 fark).
+**Ne üretir:** Tek sayfa: kriter | kanıt dosyası | ölçülmüş sayı (recall 1,00 · 209 saat · 71,4 yanlış alarm/100 pano-gün · p95 763 ms · 1.000 pano · 46-48x sıkıştırma · mutasyon sayıları · 987 test · üç protokolde 0 fark).
 **Dikkat:** Yeni hiçbir iş üretmiyor, yalnızca ölçülmüş olanı hizalıyor. Provada herkesin ezberleyeceği tek sayfa da bu olmalı.
 
 ### F-12 · 17 soruluk jüri cevap kartı — ✅ tamamlandı
