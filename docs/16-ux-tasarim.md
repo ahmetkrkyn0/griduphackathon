@@ -173,12 +173,31 @@ Gerçek harita karosu hiçbir ekranda kullanılmaz (GK4: yığın internetten ba
   `--dim` token'ı orada 4,61:1 değil **4,21:1** verir, yani **AA'nın altına düşer**.
 
   **Ölçülen erişilebilirlik ihlalleri — gizlenmiyor.** `@axe-core/playwright` ile WCAG 2.1 A +
-  AA taraması: mock kipinde **5 düğüm**, canlı kipte **23 düğüm**; hepsi `color-contrast`,
-  başka hiçbir axe kuralı ihlal edilmiyor. Ayrıntı ve düğüm listesi
-  `frontend/e2e/smoke.spec.ts` başındaki blokta. Kip farkının tamamı `AppShell`'deki iki
-  öğeden gelir (`.connection-pill` 4,26:1 ve `.btn-link` 2,91:1); ikisi de örnek veri
-  kipinde çizilmez. Renkler bu oturumda **değiştirilmedi** — palet kararı test işi değildir —
-  ama sayı artık testte kilitli, düzeltilirse test düşer ve bu tablo da güncellenmek zorunda kalır.
+  AA taraması, **20 Eylül ölçümü**: örnek veri kipinde **83 düğüm**; hepsi `color-contrast`,
+  **kontrast dışında hiçbir WCAG 2.1 AA kuralı ihlal edilmiyor** (bu ikinci iddia her iki
+  kipte de testte kilitlidir). Ayrıntı ve düğüm listesi `frontend/e2e/smoke.spec.ts`
+  başındaki blokta.
+
+  **Bu bir gerilemedir ve saklanmıyor.** 19 Eylül'de aynı ölçüm **5 düğüm** veriyordu.
+  Aradaki 78 ihlal `main` birleşmesiyle (`c6b5dcd`, içinde "3D chart support and styling
+  updates") gelen yeni arayüz katmanından geliyor. **Taban tokenlar bozulmadı** —
+  `frontend/src/theme.test.ts` hâlâ `#f5f6f8 / #202b34 / #65717d` kilidini geçiyor ve gövde
+  metni 13,33:1'dir. Sayılan dağılım:
+
+  | Seçici ailesi | İhlal | Not |
+  |---|---:|---|
+  | `footer > span:nth-child(1)` ve `(2)` | 20 | her rotada iki öğe |
+  | `kbd` | 10 | klavye kısayol rozetleri |
+  | `div[aria-label=…] > button` | 14 | araç çubuğu segment düğmeleri |
+  | `.hero > p` | 7 | |
+  | `.back` | 3 | |
+  | kalan | 29 | `.dim`, `.focus-number`, `code`, `em` … |
+
+  İlk üç kalem tek tek bileşen değil, **ortak birkaç renk kararıdır**; düzeltilirse 83'ün
+  yarısından fazlası tek hamlede kapanır. **Canlı kip sayısı bu teslimde yeniden
+  ölçülmemiştir:** eski 23 rakamı kaynaktan daha eski bir kapsayıcı görüntüsünden gelir,
+  o yüzden güncel diye yazılmıyor. Sayı testte kilitli; düzeltilirse test düşer ve bu
+  tablo da güncellenmek zorunda kalır.
 - Dar ekranda yatay taşmaya karşı tüm tablo/eksen içerikleri kendi `overflow-x: auto`
   kapsayıcısında (`.tbl-wrap`, `frontend/src/app.css`). **Doğrulama biçimi:** 390 px ve 1440 px
   genişlikte elle görsel kontrolden geçti (`frontend/TASARIM-REVIZYONU.md` §11). **19 Eylül

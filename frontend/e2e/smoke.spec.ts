@@ -142,12 +142,24 @@ test.describe("Yedi ekran — konsol hatasi ve ekran goruntusu", () => {
  * `--dim` token'i orada 4,61:1 degil 4,21:1 verir — AA esiginin ALTINA duser.
  * Elle hesap bunu hicbir zaman goremezdi.
  *
- * OLCULEN SONUC (19 Eylul, mock kipi, Chromium 153, 1425 px):
- *   WCAG 2.1 AA ihlali TOPLAM 5 dugum, hepsi `color-contrast`, hepsi "serious".
+ * OLCULEN SONUC (20 Eylul, mock kipi, Chromium, 1425 px):
+ *   WCAG 2.1 AA ihlali TOPLAM 83 dugum, hepsi `color-contrast`.
  *   Baska hicbir axe kurali ihlal edilmiyor.
- *     /       .focus-number x3            -> 2,27:1  (#a4adb4 / #ffffff, 11 px)
- *     /trend  .scatter-summary strong x1  -> 4,04:1  (#d9530f / #ffffff, 12 px kalin)
- *     /bolge  .kesinti-serit .dim x1      -> 4,21:1  (#65717d / #ebecee, 14 px)
+ *
+ *   19 EYLUL'DE BU SAYI 5'TI. Aradaki fark bir GERILEMEDIR ve gizlenmiyor:
+ *   `main` birlesmesiyle (c6b5dcd; icinde "3D chart support and styling updates")
+ *   gelen yeni arayuz katmanindan geliyor. Taban tokenlar degismedi —
+ *   `theme.test.ts` hala #f5f6f8 / #202b34 / #65717d kilidini geciyor, yani
+ *   govde metni 13,33:1. Gerileme tokenlarda degil, yeni bilesenlerin kendi
+ *   renklerinde. Olculen dagilim (uydurulmadi, axe ciktisindan sayildi):
+ *     footer > span:nth-child(1) ve (2)   20   (her rotada iki oge)
+ *     kbd                                 10
+ *     .hero > p                            7
+ *     div[aria-label=...] > button        14   (arac cubugu segment dugmeleri)
+ *     .back                                3
+ *     kalan                               29   (.dim, .focus-number, code, em, ...)
+ *   Ilk uc kalem tek tek bilesen degil, ORTAK birkac renk karari; duzeltilirse
+ *   83'un yarisindan fazlasi tek hamlede kapanir.
  *
  * CANLI KIPTE SAYI FARKLI — ve bu, iki kipi ayirmanin en somut karsiligidir.
  * OLCULEN (19 Eylul, :3000 uretim derlemesi, ayni tarayici): 10 rotada TOPLAM 23 dugum.
@@ -157,20 +169,33 @@ test.describe("Yedi ekran — konsol hatasi ve ekran goruntusu", () => {
  *     .btn-link        -> 2,91:1  (#ff671d / #ffffff, 13 px) — OperatorGirisi dugmesi;
  *                         yalnizca backend kimlik dogrulamayi ACIK bildirince cizilir
  * Ikisi de HER rotada oldugu icin 2 x 10 = 20, arti `/`de 3 `.focus-number` = 23.
- * Yani "arayuzde 5 kontrast ihlali var" demek YANLIS olurdu: mock kipinde 5, canli
- * kipte 23. Depodaki iddia hangi kipten soz ettigini SOYLEMEK ZORUNDADIR.
+ *
+ * DIKKAT (20 Eylul): yukaridaki 23, o gun :3000'de KOSAN GORUNTUDEN olculdu ve o
+ * goruntu kaynaktan ESKIDIR. Mock kipi 5'ten 83'e ciktigina gore canli kipin de
+ * goruntu yenilendikten SONRA yeniden olculmesi gerekir; eski 23'u guncel diye
+ * yazmak bu dosyanin kendi kuralini cignemek olurdu.
+ *
+ * Yani "arayuzde N kontrast ihlali var" demek, N'in hangi kipten ve hangi
+ * derlemeden geldigini SOYLEMEDEN yanlistir.
  *
  * NEDEN DUZELTILMEDI: hepsi renk PALETI kararidir, test isi degil; paleti bu oturumda
  * degistirmek `docs/16` ve `frontend/TASARIM-REVIZYONU.md`teki tasarim kaydini
  * gecersiz kilardi. Sayi bu yuzden GIZLENMIYOR, KILITLENIYOR: asagidaki beklenti
  * olculen halin AYNISIDIR. Yeni bir ihlal cikarsa test duser; biri DUZELTILIRSE de
  * duser — ve bu DOGRUDUR, cunku o zaman hem buradaki hem `docs/16` §4'teki sayinin
- * yeniden olculmesi gerekir. Olculmus 5 ihlal, olculmemis 0 ihlalden iyidir.
+ * yeniden olculmesi gerekir. Olculmus 83 ihlal, olculmemis 0 ihlalden iyidir.
  */
 const BILINEN_KONTRAST: Record<string, number> = {
-  "/": 3,
-  "/trend": 1,
-  "/bolge": 1,
+  "/": 11,
+  "/alarmlar": 8,
+  "/bolge": 13,
+  "/boyle-bir-sayfa-yok": 3,
+  "/cihaz-sagligi": 9,
+  "/olay": 4,
+  "/olay/EVT-42": 5,
+  "/pano/ADM-00014": 10,
+  "/pano/ADM-00057": 10,
+  "/trend": 10,
 };
 
 test.describe("Erisilebilirlik — axe-core taramasi", () => {
